@@ -1,0 +1,38 @@
+<view wx:if="{{!isParent}}">
+  <scroll-view scroll-x class="clsbar">
+    <view class="clsrow">
+      <view wx:for="{{clsNames}}" wx:key="id" class="chip {{item.id===clsId?'on':''}}" bindtap="pickCls" data-id="{{item.id}}">{{item.name}}</view>
+      <view class="chip" bindtap="goMgr">＋ 管理</view>
+    </view>
+  </scroll-view>
+  <view class="card" wx:for="{{students}}" wx:key="id">
+    <view class="sturow" bindtap="goStudent" data-sid="{{item.id}}">
+      <view class="ava">{{item.name[0]}}</view>
+      <view class="stuinfo">
+        <view class="h1">{{item.name}}</view>
+        <view class="mi">{{item.meta}}</view>
+      </view>
+      <view class="chev">›</view>
+    </view>
+    <view wx:if="{{item.latest}}" class="latest">
+      <view class="lrow">
+        <text class="pill" style="background:#e8590c">最近</text>
+        <text class="mi">{{item.latest.course}} · {{item.latest.date}}</text>
+        <text class="score">{{item.latest.score}}分</text>
+      </view>
+      <view class="lnote" wx:if="{{item.latest.note}}">“{{item.latest.note}}”</view>
+    </view>
+    <view wx:else class="mi" style="margin-top:12rpx">暂无记录</view>
+    <view class="btn ghost" style="margin-top:16rpx" bindtap="goRecord" data-sid="{{item.id}}">＋ 记录本节成果</view>
+  </view>
+  <view wx:if="{{!students.length}}" class="empty">该班级暂无学生，去「我的 → 学生」添加</view>
+</view>
+<view wx:else>
+  <view class="card" wx:for="{{kids}}" wx:key="id" bindtap="goStudent" data-sid="{{item.id}}">
+    <view class="sturow">
+      <view class="ava">{{item.name[0]}}</view>
+      <view class="stuinfo"><view class="h1">{{item.name}}</view><view class="mi">{{item.latest}}</view></view>
+      <view class="chev">›</view>
+    </view>
+  </view>
+</view>

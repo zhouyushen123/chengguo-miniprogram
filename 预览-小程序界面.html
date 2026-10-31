@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>橙果小程序 · 界面预览</title>
+<style>
+:root{--ac:#e8590c;--acbg:#fdeee2;--ink:#232323;--ink5:#9c948a;--line:#e5e2dd;--bg:#f7f6f3}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"PingFang SC",sans-serif;background:#2b2b2b;padding:28px 16px;color:var(--ink)}
+.note{text-align:center;color:#bbb;font-size:13px;margin-bottom:20px;line-height:1.8}
+.phone{width:375px;background:var(--bg);border-radius:28px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.5);display:inline-block;vertical-align:top;margin:0 14px 28px}
+.status{background:#fff;padding:8px 18px;font-size:12px;color:#333;display:flex;justify-content:space-between}
+.nav{background:#fff;padding:12px 18px;text-align:center;font-weight:600;font-size:16px;border-bottom:1px solid #f0eeea}
+.body{padding:14px 14px 90px;min-height:520px}
+.tabbar{background:#fff;border-top:1px solid #f0eeea;display:flex;padding:10px 0 20px;position:relative}
+.tab{flex:1;text-align:center;font-size:11px;color:var(--ink5)}
+.tab.on{color:var(--ac);font-weight:700}
+.tab .ico{font-size:20px;display:block}
+.card{background:#fff;border-radius:24rpx;background:#fff;border-radius:12px;padding:14px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-size:13px;padding:5px 14px;border-radius:999px;background:#f0eeea;color:#4a4a4a}
+.chip.on{background:var(--acbg);color:var(--ac);font-weight:600;box-shadow:inset 0 0 0 1.5px var(--ac)}
+.h1{font-size:17px;font-weight:700}
+.mi{font-size:12px;color:var(--ink5)}
+.ava{width:42px;height:42px;border-radius:50%;background:#f0a95f;color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+.sturow{display:flex;align-items:center;gap:12px}
+.stuinfo{flex:1}
+.chev{color:#c9c4bd;font-size:20px}
+.latest{margin-top:10px;background:#faf9f7;border-radius:10px;padding:10px 12px}
+.lrow{display:flex;align-items:center;gap:8px}
+.score{margin-left:auto;color:var(--ac);font-weight:800;font-size:17px}
+.lnote{margin-top:6px;font-size:13px;color:#6b655e}
+.pill{font-size:11px;padding:2px 9px;border-radius:999px;color:#fff}
+.btn{background:var(--ac);color:#fff;border-radius:12px;font-size:15px;font-weight:600;padding:11px 0;text-align:center;cursor:pointer}
+.btn.ghost{background:#fff;color:#4a4a4a;border:1px solid var(--line);font-weight:500}
+.scorerow{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.scorenum{font-size:26px;font-weight:800;color:var(--ac);flex:none}
+.slider{flex:1;height:6px;border-radius:3px;background:linear-gradient(90deg,#f5a15f,#e8590c);position:relative}
+.slider::after{content:'';position:absolute;right:18%;top:50%;transform:translateY(-50%);width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--ac);box-shadow:0 2px 6px rgba(232,89,12,.35)}
+.notebar{border:1.5px solid var(--line);border-radius:10px;padding:5px 5px 5px 12px;display:flex;align-items:flex-end;gap:6px;background:#fff}
+.noteinput{flex:1;font-size:14px;color:#8b8b8b;padding:10px 0}
+.notetools{display:flex;align-items:center;gap:6px;padding-bottom:5px;flex:none}
+.tplbtn{font-size:12px;padding:6px 12px;border-radius:999px;background:#f0eeea;color:#4a4a4a;cursor:pointer}
+.tplbtn b{background:var(--ac);color:#fff;border-radius:8px;font-size:10px;padding:0 5px;margin-left:4px;font-weight:400}
+.micbtn{width:38px;height:38px;border-radius:10px;background:var(--acbg);display:flex;align-items:center;justify-content:center;font-size:17px;cursor:pointer}
+.micbtn.rec{background:var(--ac);animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.hintline{color:var(--ac);font-size:12px;margin-bottom:8px}
+.mediarow{display:flex;gap:10px}
+.mbtn{flex:1;background:#faf9f7;border:1px dashed var(--line);border-radius:10px;text-align:center;padding:20px 0;font-size:13px;color:#6b655e;cursor:pointer}
+.photogrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.ph{aspect-ratio:1;border-radius:8px;position:relative}
+.ph i{position:absolute;inset:0;border-radius:8px;font-style:normal;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff}
+.row2{display:flex;gap:10px;margin-bottom:10px}
+.row2 .btn{flex:1}
+.hint{text-align:center;font-size:12px;color:var(--ink5);background:#f0eeea;border-radius:10px;padding:11px}
+.dimhead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.dimname{font-size:14px;font-weight:700;flex:1}
+.mini{font-size:12px;padding:4px 10px;border-radius:999px;background:#f0eeea;color:#4a4a4a;cursor:pointer}
+.mini.ac{background:var(--acbg);color:var(--ac)}
+.opt{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.optmain{flex:1;font-size:13px;padding:9px 12px;border-radius:11px;background:#faf9f7;border:1.5px solid var(--line);color:#4a4a4a;cursor:pointer;transition:.15s}
+.optmain.on{background:var(--acbg);border-color:var(--ac);color:var(--ac);font-weight:600}
+.footbar{position:sticky;bottom:0;display:flex;gap:10px;padding:10px 14px calc(10px + 6px);background:#fff;border-top:1px solid #f0eeea;margin:0 -14px}
+.footbar .btn{flex:1;padding:9px 0;font-size:13px}
+.tabs{display:flex;background:#fff;padding:0 12px}
+.tabs .tab{padding:12px 0;font-size:14px;border-bottom:2px solid transparent;flex:1}
+.tabs .tab.on{border-bottom-color:var(--ac)}
+.addrow{display:flex;gap:8px;align-items:center}
+.addrow .fakeinput{flex:1;background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;color:#b5b0a9}
+.item{display:flex;justify-content:space-between;align-items:center}
+.del{font-size:12px;color:#c0564a;cursor:pointer}
+.pickerbox{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;margin-bottom:10px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="note">橙果·课后成果记录 —— 微信小程序界面预览（高保真还原，可点击体验多选/展开交互）<br>正式预览请用微信开发者工具导入 /workspace/橙果-小程序/ 后「预览」扫码</div>
+
+<!-- 首页 -->
+<div class="phone">
+  <div class="status"><span>09:45</span><span>橙果小程序</span><span>🔋</span></div>
+  <div class="nav">橙果·课后成果</div>
+  <div class="body">
+    <div class="chips" style="margin-bottom:12px">
+      <span class="chip on">书法班</span><span class="chip">素描班</span><span class="chip">＋ 管理</span>
+    </div>
+    <div class="card">
+      <div class="sturow"><div class="ava">张</div><div class="stuinfo"><div class="h1">张三</div><div class="mi">书法班 · 素描班</div></div><div class="chev">›</div></div>
+      <div class="latest">
+        <div class="lrow"><span class="pill" style="background:var(--ac)">最近</span><span class="mi">楷书 · 2026-10-29</span><span class="score">85分</span></div>
+        <div class="lnote">“上课态度：认真专注，积极举手发言”</div>
+      </div>
+      <div class="btn ghost" style="margin-top:10px;font-size:14px;padding:9px 0">＋ 记录本节成果</div>
+    </div>
+    <div class="card">
+      <div class="sturow"><div class="ava" style="background:#8fb3e8">李</div><div class="stuinfo"><div class="h1">李四</div><div class="mi">书法班</div></div><div class="chev">›</div></div>
+      <div class="mi" style="margin-top:8px">暂无记录</div>
+      <div class="btn ghost" style="margin-top:10px;font-size:14px;padding:9px 0">＋ 记录本节成果</div>
+    </div>
+  </div>
+  <div class="tabbar"><div class="tab on"><span class="ico">⌂</span>首页</div><div class="tab"><span class="ico">☰</span>记录</div><div class="tab"><span class="ico">◎</span>我的</div></div>
+</div>
+
+<!-- 录入 -->
+<div class="phone">
+  <div class="status"><span>09:45</span><span>录入成果</span><span>🔋</span></div>
+  <div class="nav">录入成果</div>
+  <div class="body">
+    <div class="card">
+      <div class="mi" style="margin-bottom:8px;font-weight:600;color:#4a4a4a">选择学生</div>
+      <div class="chips"><span class="chip on">张三</span><span class="chip">李四</span></div>
+    </div>
+    <div class="card">
+      <div class="scorerow"><div class="scorenum">85<span style="font-size:12px;font-weight:400;color:var(--ink5)"> 分</span></div><div class="slider"></div></div>
+      <div class="chips"><span class="chip">待提高</span><span class="chip on">良好</span><span class="chip">优秀</span></div>
+    </div>
+    <div class="card">
+      <div class="pickerbox">楷书 <span class="mi">▾</span></div>
+      <div class="mi" style="font-weight:600;color:#4a4a4a;margin-bottom:8px">老师留言</div>
+      <div class="hintline" id="hint" style="display:none">正在听写，请说话…说完点麦克风结束，文字可修改</div>
+      <div class="notebar">
+        <div class="noteinput" id="noteTxt">老师留言…（模板+语音快速生成）</div>
+        <div class="notetools"><span class="tplbtn">模板<b id="badge">2</b></span><span class="micbtn" id="mic" onclick="toggleRec(this)">🎙</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="mediarow"><div class="mbtn">📷 拍照</div><div class="mbtn">🖼 相册</div></div>
+      <div class="photogrid"><div class="ph" style="background:#f3d9b8">作品1</div><div class="ph" style="background:#c9d8ec">作品2</div><div class="ph" style="background:#d9e8c9">＋</div></div>
+    </div>
+    <div class="card">
+      <div class="row2"><div class="btn ghost">预览效果</div><div class="btn ghost">存草稿</div></div>
+      <div class="btn">发送给家长</div>
+    </div>
+  </div>
+</div>
+
+<!-- 评价模板 -->
+<div class="phone">
+  <div class="status"><span>09:45</span><span>评价模板</span><span>🔋</span></div>
+  <div class="nav">评价模板</div>
+  <div class="body" style="padding-bottom:70px">
+    <div class="mi" style="margin-bottom:10px">点选项可多选 · 支持编辑 / 删除 / 语音录入</div>
+    <div class="card">
+      <div class="dimhead"><div class="dimname">上课态度<span class="mi"> · 3项</span></div><span class="mini ac">🎙</span><span class="mini ac">＋ 新增</span></div>
+      <div class="opt"><div class="optmain on" onclick="tog(this)">✓ 认真专注，积极举手发言</div><span class="mini">✎</span><span class="mini del">✕</span></div>
+      <div class="opt"><div class="optmain" onclick="tog(this)">听讲认真，偶有走神，提醒后能改正</div><span class="mini">✎</span><span class="mini del">✕</span></div>
+      <div class="opt"><div class="optmain" onclick="tog(this)">状态放松，与同学互动积极</div><span class="mini">✎</span><span class="mini del">✕</span></div>
+    </div>
+    <div class="card">
+      <div class="dimhead"><div class="dimname">反馈交流<span class="mi"> · 3项</span></div><span class="mini ac">🎙</span><span class="mini ac">＋ 新增</span></div>
+      <div class="opt"><div class="optmain on" onclick="tog(this)">✓ 能主动和老师交流，回答问题思路清晰</div><span class="mini">✎</span><span class="mini del">✕</span></div>
+      <div class="opt"><div class="optmain" onclick="tog(this)">愿意表达自己的想法，敢于提问</div><span class="mini">✎</span><span class="mini del">✕</span></div>
+    </div>
+    <div class="footbar"><div class="btn ghost">清空选择</div><div class="btn">插入所选（2）</div></div>
+  </div>
+</div>
+
+<!-- 管理 -->
+<div class="phone">
+  <div class="status"><span>09:45</span><span>我的 · 管理</span><span>🔋</span></div>
+  <div class="nav">我的 · 管理</div>
+  <div class="body">
+    <div class="tabs" style="margin:-14px -14px 14px"><div class="tab on">班级</div><div class="tab">课程</div><div class="tab">学生</div></div>
+    <div class="card">
+      <div class="mi" style="font-weight:600;color:#4a4a4a;margin-bottom:8px">添加班级</div>
+      <div class="addrow"><div class="fakeinput">班级名称</div><div class="btn" style="padding:9px 18px;font-size:13px">添加</div></div>
+    </div>
+    <div class="card item"><b>书法班</b><span class="del">删除</span></div>
+    <div class="card item"><b>素描班</b><span class="del">删除</span></div>
+    <div class="card mi" style="text-align:center">老师端数据经云开发实时同步，多设备登录数据一致</div>
+  </div>
+  <div class="tabbar"><div class="tab"><span class="ico">⌂</span>首页</div><div class="tab"><span class="ico">☰</span>记录</div><div class="tab on"><span class="ico">◎</span>我的</div></div>
+</div>
+
+<script>
+function tog(el){
+  el.classList.toggle('on');
+  const t=el.textContent.replace('✓ ','');
+  el.textContent=el.classList.contains('on')?'✓ '+t:t;
+}
+function toggleRec(el){
+  el.classList.toggle('rec');
+  const h=document.getElementById('hint'),n=document.getElementById('noteTxt');
+  if(el.classList.contains('rec')){h.style.display='block';n.textContent='听写中…请说话';n.style.color='#232323'}
+  else{h.style.display='none';n.textContent='上课态度：认真专注，积极举手发言（语音转文字，可修改）'}
+}
+</script>
+</body>
+</html>

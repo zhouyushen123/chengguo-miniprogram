@@ -1,0 +1,55 @@
+<view wx:if="{{s}}" class="wrap">
+  <view class="card">
+    <view class="sturow">
+      <view class="ava">{{s.name[0]}}</view>
+      <view class="stuinfo">
+        <view class="h1">{{s.name}}</view>
+        <view class="mi">{{s.meta}}{{s.wechat?' · 微信 '+s.wechat:''}}</view>
+      </view>
+      <view class="chip" bindtap="goProfile">资料</view>
+    </view>
+  </view>
+
+  <!-- 指定记录（从记录列表点入） -->
+  <view wx:if="{{rec}}" class="card">
+    <view class="r1"><b>{{rec.course}}</b><text class="mi">{{rec.date}}</text><text class="score">{{rec.score}}分</text></view>
+    <view class="chips" style="margin:12rpx 0">
+      <text wx:if="{{rec.tag}}" class="pill" style="background:#e8590c">{{rec.tag}}</text>
+      <text class="pill" style="background:{{rec.sent?'#3a9e5f':'#b8860b'}}">{{rec.sent?'已发送':'待发送'}}</text>
+    </view>
+    <view class="notegroups">
+      <block wx:for="{{rec.noteLines}}" wx:key="*this"><view class="mi">{{item}}</view></block>
+    </view>
+    <view class="photogrid">
+      <image wx:for="{{photoUrls}}" wx:key="*this" src="{{item}}" mode="aspectFill" bindtap="previewPhoto" data-i="{{index}}" />
+    </view>
+    <audio wx:if="{{rec.audio}}" src="{{rec.audio}}" controls style="width:100%;margin-top:16rpx" />
+  </view>
+
+  <!-- 最近一次 + 历史列表 -->
+  <block wx:if="{{!rec}}">
+    <view wx:if="{{latest}}" class="card">
+      <view class="dimhead"><text class="pill" style="background:#e8590c">最近一次</text><text class="mi">{{latest.course}} · {{latest.date}}</text><text class="score">{{latest.score}}分</text></view>
+      <view class="chips" style="margin:12rpx 0">
+        <text wx:if="{{latest.tag}}" class="pill" style="background:#3a9e5f">{{latest.tag}}</text>
+      </view>
+      <view class="notegroups">
+        <view class="mi" wx:for="{{latest.noteLines}}" wx:key="*this">{{item}}</view>
+      </view>
+      <view class="photogrid">
+        <image wx:for="{{photoUrls}}" wx:key="*this" src="{{item}}" mode="aspectFill" bindtap="previewPhoto" data-i="{{index}}" />
+      </view>
+    </view>
+    <view wx:else class="card mi">暂无课程记录</view>
+
+    <view class="card" wx:if="{{history.length}}">
+      <view class="label">历史课程</view>
+      <view class="hist" wx:for="{{history}}" wx:key="id" bindtap="openHistory" data-rid="{{item.id}}">
+        <view><b>{{item.course}}</b><view class="mi">{{item.date}} · {{item.score}}分 {{item.tag?'· '+item.tag:''}}</view></view>
+        <view class="chev">›</view>
+      </view>
+    </view>
+  </block>
+
+  <view class="btn" bindtap="goRecord">＋ 记录本节成果</view>
+</view>

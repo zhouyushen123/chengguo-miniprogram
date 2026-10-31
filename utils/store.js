@@ -1,0 +1,70 @@
+// utils/store.js —— 本地数据层（与 H5 版数据结构一致，DB: chengguo_v2）
+const KEY = 'chengguo_v2';
+const TPL_KEY = 'chengguo_tpls';
+
+const DEFAULT_TPLS = [
+  { n: '上课态度', opts: ['认真专注，积极举手发言', '听讲认真，偶有走神，提醒后能改正', '状态放松，与同学互动积极'] },
+  { n: '反馈交流', opts: ['能主动和老师交流，回答问题思路清晰', '愿意表达自己的想法，敢于提问', '与老师配合默契，反馈及时'] },
+  { n: '课堂记录', opts: ['本节课完成新内容练习，整体完成度较高', '本节课以复习巩固为主，练习认真', '课堂纪律良好，练习节奏跟得上'] },
+  { n: '知识点掌握', opts: ['已基本掌握本节内容，细节还需多加练习', '重点内容掌握扎实，可进入下一阶段', '部分知识点还需课后加强，建议多练'] },
+  { n: '下次课程注意', opts: ['请课后复习本节内容，下节课将巩固练习', '请提前完成课后作业，下节课检查讲评', '下节课将学习新内容，请保持状态'] }
+];
+
+let db = null;
+
+function init() {
+  db = wx.getStorageSync(KEY) || null;
+  if (!db) {
+    db = {
+      teacher: '测试老师', me: 't1', role: 'teacher',
+      users: [{ id: 't1', name: '测试老师', role: 'teacher' }, { id: 'p1', name: '家长演示', role: 'parent' }],
+      classes: [{ id: 1, name: '书法班' }, { id: 2, name: '素描班' }],
+      courses: [{ id: 1, name: '楷书', clsId: 1 }, { id: 2, name: '素描', clsId: 2 }],
+      students: [
+        { id: 1, name: '张三', clsIds: [1, 2], parent: '张珊珊', wechat: '' },
+        { id: 2, name: '李四', clsIds: [1], parent: '', wechat: '' }
+      ],
+      records: [],
+      profile: {}
+    };
+    save();
+  }
+  if (!wx.getStorageSync(TPL_KEY)) wx.setStorageSync(TPL_KEY, DEFAULT_TPLS);
+}
+function get() { return db; }
+function save() { wx.setStorageSync(KEY, db); }
+function replaceDb(next) { if (next && next.classes) { db = next; save(); } }
+function tpls() { return wx.getStorageSync(TPL_KEY) || DEFAULT_TPLS; }
+function saveTpls(t) { wx.setStorageSync(TPL_KEY, t); }
+function clsName(id) { const c = db.classes.find(x => x.id === id); return c ? c.name : ''; }
+function student(id) { return db.students.find(s => s.id === id); }
+function coursesOf(clsId) { return db.courses.filter(c => c.clsId === clsId); }
+function studentsOf(clsId) { return db.students.filter(s => (s.clsIds || []).includes(clsId)); }
+function today() { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+function latestRecord(sid) {
+  const list = db.records.filter(r => r.sid === sid).sort((a, b) => b.date.localeCompare(a.date));
+  return list[0] || null;
+}
+// 记录状态机：内容补齐（有学生 && 有照片/语音/留言）才可发送
+function canSend(pick) {
+  return !!(pick.sid && ((pick.photos && pick.photos.length) || pick.audio || (pick.note && pick.note.trim())));
+}
+function saveRecord(pick, send) {
+  if (send && !canSend(pick)) return { ok: false, msg: '内容还没补齐' };
+  const fields = {
+    sid: pick.sid, cid: pick.cls, course: pick.course || '', score: pick.score,
+    note: pick.note || '', tag: pick.tag || '', audio: pick.audio || null,
+    photos: pick.photos || [], sent: !!send, updatedAt: Date.now()
+  };
+  let rid = pick.rid;
+  if (rid) {
+    const r = db.records.find(x => x.id === rid);
+    if (r) Object.assign(r, fields);
+  } else {
+    rid = Date.now();
+    db.records.push(Object.assign({ id: rid, date: today() }, fields));
+  }
+  save();
+  return { ok: true, rid, record: db.records.find(x => x.id === rid) };
+}
+module.exports = { init, get, save, replaceDb, tpls, saveTpls, clsName, student, coursesOf, studentsOf, today, latestRecord, canSend, saveRecord, DEFAULT_TPLS, KEY };

@@ -1,0 +1,35 @@
+{
+  "description": "橙果·课后成果记录 微信小程序",
+  "appid": "touristappid",
+  "projectname": "chengguo-mini",
+  "compileType": "miniprogram",
+  "cloudfunctionRoot": "cloudfunctions/",
+  "libVersion": "3.0.0",
+  "setting": {
+    "es6": true,
+    "postcss": true,
+    "minified": true,
+    "urlCheck": false
+  },
+  "condition": {},
+  "packOptions": {
+    "ignore": [
+      {
+        "type": "folder",
+        "value": "node_modules"
+      },
+      {
+        "type": "file",
+        "value": "deploy.js"
+      },
+      {
+        "type": "file",
+        "value": "private.key"
+      },
+      {
+        "type": "file",
+        "value": "package.json"
+      }
+    ]
+  }
+}

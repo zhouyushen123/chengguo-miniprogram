@@ -1,0 +1,21 @@
+<scroll-view scroll-x class="clsbar">
+  <view class="clsrow">
+    <view wx:for="{{tabs}}" wx:key="*this" class="chip {{tab===index?'on':''}}" bindtap="pickTab" data-i="{{index}}">{{item}}</view>
+  </view>
+</scroll-view>
+<view class="card rec" wx:for="{{list}}" wx:key="id">
+  <view class="recrow" bindtap="openRec" data-rid="{{item.id}}">
+    <image wx:if="{{item.photo}}" class="thumb" src="{{item.photo}}" mode="aspectFill" />
+    <view class="recinfo">
+      <view class="r1"><b>{{item.name}}</b><text class="mi">{{item.course}} · {{item.date}}</text><text class="score">{{item.score}}分</text></view>
+      <view class="chips" style="margin:8rpx 0">
+        <text wx:if="{{item.tag}}" class="pill" style="background:#e8590c">{{item.tag}}</text>
+        <text class="pill" style="background:{{item.sent?'#3a9e5f':'#b8860b'}}">{{item.sent?'已发送':'待发送'}}</text>
+      </view>
+      <view wx:if="{{item.note}}" class="mi note">“{{item.note}}”</view>
+      <view class="mi footer">📷 {{item.photoCount}} 张{{item.hasAudio?' · 🎧 语音':''}}</view>
+    </view>
+  </view>
+  <view wx:if="{{role!=='parent'}}" class="btn ghost" style="margin-top:16rpx" catchtap="editRec" data-rid="{{item.id}}">编辑</view>
+</view>
+<view wx:if="{{!list.length}}" class="empty">暂无记录，去首页记录一条吧</view>

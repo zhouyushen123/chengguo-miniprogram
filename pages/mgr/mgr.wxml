@@ -1,0 +1,43 @@
+<view class="tabs">
+  <view wx:for="{{tabs}}" wx:key="*this" class="tab {{tab===index?'on':''}}" bindtap="pickTab" data-i="{{index}}">{{item}}</view>
+</view>
+
+<view wx:if="{{tab===0}}" class="wrap">
+  <view class="card">
+    <view class="label">添加班级</view>
+    <view class="addrow">
+      <input class="input" style="flex:1;margin-bottom:0" placeholder="班级名称" value="{{newCls}}" bindinput="onNewCls" />
+      <view class="btn addbtn" bindtap="addClass">添加</view>
+    </view>
+  </view>
+  <view class="card item" wx:for="{{classes}}" wx:key="id">
+    <b>{{item.name}}</b><view class="mi del" bindtap="delClass" data-id="{{item.id}}">删除</view>
+  </view>
+</view>
+
+<view wx:if="{{tab===1}}" class="wrap">
+  <view class="card">
+    <view class="label">添加课程</view>
+    <picker mode="selector" range="{{classes}}" range-key="name" value="{{courseClsIdx}}" bindchange="onCourseCls">
+      <view class="pickerbox">所属班级：{{classes[courseClsIdx].name || '请先添加班级'}} ▾</view>
+    </picker>
+    <view class="addrow">
+      <input class="input" style="flex:1;margin-bottom:0" placeholder="课程名称" value="{{newCourse}}" bindinput="onNewCourse" />
+      <view class="btn addbtn" bindtap="addCourse">添加</view>
+    </view>
+  </view>
+  <view class="card item" wx:for="{{courses}}" wx:key="id">
+    <view><b>{{item.name}}</b><view class="mi">{{item.cls}}</view></view>
+    <view class="mi del" bindtap="delCourse" data-id="{{item.id}}">删除</view>
+  </view>
+</view>
+
+<view wx:if="{{tab===2}}" class="wrap">
+  <view class="card">
+    <view class="btn" bindtap="addStudent">＋ 添加学生</view>
+  </view>
+  <view class="card item" wx:for="{{students}}" wx:key="id">
+    <view><b>{{item.name}}</b><view class="mi">{{item.cls}} {{item.parent?'· '+item.parent:''}}{{item.wechat?' · 微信 '+item.wechat:''}}</view></view>
+    <view class="mi del" bindtap="delStudent" data-id="{{item.id}}">删除</view>
+  </view>
+</view>

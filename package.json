@@ -1,0 +1,7 @@
+{
+  "name": "chengguo-deploy",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": { "deploy": "node deploy.js" },
+  "dependencies": { "miniprogram-ci": "^2.1.9" }
+}

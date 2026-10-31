@@ -1,0 +1,21 @@
+<view class="wrap">
+  <view class="tip">请家长填写孩子的资料，提交后老师端即可查看</view>
+  <view class="card">
+    <view class="label">基本信息</view>
+    <input class="input" placeholder="{{fields[0].ph}}" value="{{f.nick}}" bindinput="onInput" data-k="nick" />
+    <input class="input" placeholder="{{fields[1].ph}}" value="{{f.birth}}" bindinput="onInput" data-k="birth" />
+    <input class="input" placeholder="{{fields[2].ph}}" value="{{f.school}}" bindinput="onInput" data-k="school" />
+  </view>
+  <view class="card">
+    <view class="label">家长联系方式</view>
+    <input class="input" type="number" placeholder="{{fields[3].ph}}" value="{{f.phone}}" bindinput="onInput" data-k="phone" />
+    <input class="input" placeholder="{{fields[4].ph}}" value="{{f.wechat}}" bindinput="onInput" data-k="wechat" />
+  </view>
+  <view class="card">
+    <view class="label">学习情况</view>
+    <input class="input" placeholder="{{fields[5].ph}}" value="{{f.level}}" bindinput="onInput" data-k="level" />
+    <input class="input" placeholder="{{fields[6].ph}}" value="{{f.goal}}" bindinput="onInput" data-k="goal" />
+    <input class="input" placeholder="{{fields[7].ph}}" value="{{f.note}}" bindinput="onInput" data-k="note" />
+  </view>
+  <view class="btn" style="margin:0 24rpx" bindtap="submit">保存并提交</view>
+</view>

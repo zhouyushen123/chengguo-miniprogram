@@ -1,0 +1,49 @@
+# GitHub Actions：push 到 main 自动上传小程序新版本（开发版本）
+# 仓库 Secrets 需配置（Settings → Secrets and variables → Actions）：
+#   MINI_APPID      小程序 AppID，如 wx1234567890abcdef
+#   MINI_UPLOAD_KEY 代码上传密钥的「文件内容」（公众平台→开发设置→小程序代码上传 下载）
+# 首次使用：在微信公众平台「开发设置」把 GitHub Actions 出口 IP 加入白名单，或关闭 IP 白名单校验
+name: deploy-mini
+
+on:
+  push:
+    branches: [main]
+    paths: ['橙果-小程序/**']
+  workflow_dispatch: {}
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 安装依赖
+        working-directory: 橙果-小程序
+        run: npm i miniprogram-ci --no-audit --no-fund
+
+      - name: 写入上传密钥
+        working-directory: 橙果-小程序
+        run: |
+          echo "${{ secrets.MINI_UPLOAD_KEY }}" > private.key
+          chmod 600 private.key
+
+      - name: 生成版本号
+        id: ver
+        run: echo "version=1.0.$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+
+      - name: 自动上传新版本
+        working-directory: 橙果-小程序
+        env:
+          APPID: ${{ secrets.MINI_APPID }}
+        run: |
+          # 用 Secrets 注入 AppID（避免把 AppID 写死在仓库里）
+          sed -i "s/const APPID = '.*';/const APPID = '${APPID}';/" deploy.js
+          node deploy.js "${{ steps.ver.outputs.version }}"
+
+      # 可选：自动部署云函数（需要先开通云开发并配置腾讯云密钥 Secrets：TENCENT_SECRET_ID / TENCENT_SECRET_KEY）
+      # - name: 部署云函数 sync
+      #   run: npx miniprogram-ci cloud functions deploy --env <你的环境ID> --name sync --path cloudfunctions/sync --remote-npm-install true

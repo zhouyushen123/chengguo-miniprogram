@@ -1,0 +1,10 @@
+.clsbar { background: #fff; padding: 20rpx 0; white-space: nowrap; }
+.clsrow { display: inline-flex; gap: 16rpx; padding: 0 24rpx; }
+.recrow { display: flex; gap: 20rpx; }
+.thumb { width: 160rpx; height: 160rpx; border-radius: 16rpx; flex: none; }
+.recinfo { flex: 1; }
+.r1 { display: flex; align-items: center; gap: 12rpx; }
+.score { margin-left: auto; color: #e8590c; font-weight: 800; font-size: 32rpx; }
+.note { margin-top: 6rpx; }
+.footer { margin-top: 6rpx; }
+.empty { text-align: center; color: #9c948a; padding: 120rpx 0; }

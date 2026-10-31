@@ -1,0 +1,10 @@
+.sturow { display: flex; align-items: center; gap: 20rpx; }
+.stuinfo { flex: 1; }
+.r1 { display: flex; align-items: center; gap: 12rpx; }
+.score { margin-left: auto; color: #e8590c; font-weight: 800; font-size: 34rpx; }
+.dimhead { display: flex; align-items: center; gap: 12rpx; }
+.notegroups { background: #faf9f7; border-radius: 16rpx; padding: 16rpx 20rpx; margin: 12rpx 0; }
+.photogrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx; margin-top: 8rpx; }
+.photogrid image { width: 100%; aspect-ratio: 1; border-radius: 12rpx; }
+.hist { display: flex; align-items: center; justify-content: space-between; padding: 20rpx 0; border-bottom: 2rpx solid #f5f3f0; }
+.chev { color: #c9c4bd; font-size: 36rpx; }

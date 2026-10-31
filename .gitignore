@@ -1,0 +1,4 @@
+node_modules/
+private.key
+deploy.log
+.DS_Store

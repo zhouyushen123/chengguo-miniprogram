@@ -1,0 +1,34 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/record/record",
+    "pages/records/records",
+    "pages/student/student",
+    "pages/profile/profile",
+    "pages/mgr/mgr",
+    "pages/tpls/tpls"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "橙果·课后成果",
+    "backgroundColor": "#f7f6f3"
+  },
+  "tabBar": {
+    "color": "#9c948a",
+    "selectedColor": "#e8590c",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "首页" },
+      { "pagePath": "pages/records/records", "text": "记录" },
+      { "pagePath": "pages/mgr/mgr", "text": "我的" }
+    ]
+  },
+  "plugins": {
+    "WechatSI": {
+      "version": "0.3.5",
+      "provider": "wx069ba97219f66d99"
+    }
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

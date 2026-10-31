@@ -1,0 +1,25 @@
+.wrap { padding-bottom: 40rpx; }
+.scorerow { display: flex; align-items: center; gap: 28rpx; margin-bottom: 20rpx; }
+.scorenum { font-size: 52rpx; font-weight: 800; color: #e8590c; flex: none; }
+.scorebar { flex: 1; }
+.pickerbox { background: #fff; border: 2rpx solid #e5e2dd; border-radius: 20rpx; padding: 20rpx 24rpx; font-size: 28rpx; }
+.notebar { border: 2rpx solid #e5e2dd; border-radius: 20rpx; padding: 8rpx 8rpx 8rpx 24rpx; display: flex; align-items: flex-end; gap: 12rpx; background: #fff; }
+.noteinput { flex: 1; font-size: 28rpx; min-height: 88rpx; }
+.notetools { display: flex; align-items: center; gap: 12rpx; flex: none; padding-bottom: 8rpx; }
+.tplbtn { font-size: 25rpx; padding: 12rpx 24rpx; border-radius: 999rpx; background: #f0eeea; color: #4a4a4a; }
+.badge { background: #e8590c; color: #fff; border-radius: 16rpx; font-size: 20rpx; padding: 0 10rpx; margin-left: 6rpx; }
+.micbtn { width: 84rpx; height: 84rpx; border-radius: 20rpx; background: #fdeee2; display: flex; align-items: center; justify-content: center; font-size: 36rpx; }
+.micbtn.rec { background: #e8590c; animation: pulse 1.2s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+.audiorow { display: flex; align-items: center; gap: 16rpx; background: #faf9f7; border-radius: 16rpx; padding: 16rpx 20rpx; margin-top: 16rpx; }
+.del { color: #c0564a; margin-left: 12rpx; }
+.mediarow { display: flex; gap: 20rpx; }
+.mbtn { flex: 1; background: #faf9f7; border: 2rpx dashed #e5e2dd; border-radius: 20rpx; text-align: center; padding: 36rpx 0; font-size: 28rpx; color: #6b655e; white-space: pre-line; }
+.photogrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16rpx; margin-top: 20rpx; }
+.ph { position: relative; aspect-ratio: 1; }
+.ph image { width: 100%; height: 100%; border-radius: 16rpx; }
+.rm { position: absolute; right: 8rpx; top: 8rpx; width: 40rpx; height: 40rpx; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; text-align: center; line-height: 40rpx; font-size: 24rpx; }
+.row2 { display: flex; gap: 20rpx; margin-bottom: 20rpx; }
+.row2 .btn { flex: 1; }
+.hint { text-align: center; font-size: 25rpx; color: #9c948a; background: #f0eeea; border-radius: 16rpx; padding: 20rpx; }
+.hintline { color: #e8590c; font-size: 24rpx; margin-bottom: 12rpx; }

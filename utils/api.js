@@ -2,9 +2,13 @@
 // 依赖：project.config.json cloudfunctionRoot 已配置；先部署 cloudfunctions/sync 云函数
 // 云数据库集合：records（课后记录）、profiles（学生资料）
 const CLOUD_ENV = 'chengguo-0gxxx'; // ← 改成你的云环境 ID（开发者工具-云开发控制台可查）
+// ★ 云开关：未完成微信认证/未开通云开发前保持 false（纯本地模式，数据存手机）
+// 认证通过并开通云开发后，改为 true 并填好上面的 CLOUD_ENV，再部署云函数即可
+const CLOUD_ENABLED = false;
 
 let cloudReady = false;
 function initCloud() {
+  if (!CLOUD_ENABLED) { cloudReady = false; return; }
   if (cloudReady || !wx.cloud) return;
   try { wx.cloud.init({ env: CLOUD_ENV, traceUser: true }); cloudReady = true; } catch (e) { cloudReady = false; }
 }

@@ -56,7 +56,40 @@
 <!-- 微信式贴底输入条 -->
 <view class="notebar">
   <input class="noteinput" placeholder="本节课表现等；可用模板快速生成" placeholder-class="ph" value="{{note}}" bindinput="onNote" confirm-type="done" maxlength="500" />
-  <view class="barbtn" hover-class="btn-hover" bindtap="goTplsSel">模板<text wx:if="{{selCount}}" class="badge">{{selCount}}</text></view>
+  <view class="barbtn" hover-class="btn-hover" bindtap="toggleTpl">模板<text wx:if="{{selCount}}" class="badge">{{selCount}}</text></view>
   <view class="micbtn {{(recording||recognizing)?'rec':''}}" hover-class="btn-hover" bindtap="toggleRec">🎙</view>
 </view>
 <view wx:if="{{recognizing}}" class="reclayer">正在听写，请说话…说完点麦克风结束，文字可修改</view>
+
+<!-- 模板全屏面板：多选 / 增删改选项 -->
+<view wx:if="{{tplOpen}}" class="tplpanel">
+  <view class="tplhd">
+    <view class="tplback" bindtap="tplClose">‹</view>
+    <view class="tpltitle">评价模板</view>
+    <view class="tplcount">已选 {{sel.length}}</view>
+  </view>
+  <scroll-view scroll-y class="tplbody">
+    <view class="card tpldim" wx:for="{{tplList}}" wx:for-item="dim" wx:for-index="di" wx:key="n">
+      <view class="dimhd">
+        <view class="dimname">{{dim.n}}</view>
+        <view class="dimacts">
+          <text class="dimact" bindtap="tplAdd" data-di="{{di}}">＋ 新增选项</text>
+        </view>
+      </view>
+      <view wx:for="{{dim.opts}}" wx:for-item="opt" wx:for-index="oi" wx:key="*this"
+            class="optrow {{sel.indexOf(di+':'+oi)>=0?'on':''}}" bindtap="tplToggle" data-k="{{di}}:{{oi}}">
+        <view class="optcheck">{{sel.indexOf(di+':'+oi)>=0?'✓':''}}</view>
+        <view class="opttext">{{opt}}</view>
+        <view class="optacts" catchtap="">
+          <text class="optact" catchtap="tplEdit" data-di="{{di}}" data-oi="{{oi}}">编辑</text>
+          <text class="optact del" catchtap="tplDel" data-di="{{di}}" data-oi="{{oi}}">删除</text>
+        </view>
+      </view>
+    </view>
+    <view style="height:40rpx"></view>
+  </scroll-view>
+  <view class="tplft">
+    <view class="btn ghost" hover-class="btn-hover" bindtap="tplClear">清空选择</view>
+    <view class="btn" hover-class="btn-hover" bindtap="tplApply">插入所选{{sel.length?'（'+sel.length+'）':''}}</view>
+  </view>
+</view>

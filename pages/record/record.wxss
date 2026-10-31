@@ -70,3 +70,39 @@
   position: fixed; left: 0; right: 0; bottom: 130rpx; z-index: 49;
   text-align: center; font-size: 24rpx; color: #e8590c;
 }
+
+/* ---------- 模板全屏面板 ---------- */
+.tplpanel { position: fixed; inset: 0; z-index: 90; background: #f7f6f3; display: flex; flex-direction: column; }
+.tplhd {
+  display: flex; align-items: center; padding: calc(20rpx + env(safe-area-inset-top)) 28rpx 20rpx;
+  background: #fff; border-bottom: 2rpx solid #eceae6;
+}
+.tplback { font-size: 48rpx; font-weight: 300; color: #232323; width: 80rpx; }
+.tpltitle { flex: 1; text-align: center; font-size: 34rpx; font-weight: 700; }
+.tplcount { width: 140rpx; text-align: right; font-size: 24rpx; color: #e8590c; font-weight: 600; }
+.tplbody { flex: 1; padding-top: 24rpx; box-sizing: border-box; }
+.tpldim { padding: 24rpx; }
+.dimhd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx; }
+.dimname { font-size: 30rpx; font-weight: 700; color: #232323; }
+.dimact { font-size: 25rpx; color: #e8590c; font-weight: 600; padding: 8rpx 0 8rpx 24rpx; }
+.optrow {
+  display: flex; align-items: center; gap: 18rpx; padding: 22rpx 20rpx;
+  background: #faf9f7; border-radius: 18rpx; margin-bottom: 14rpx;
+  border: 2rpx solid transparent; transition: all .15s;
+}
+.optrow.on { background: #fdeee2; border-color: #e8590c; }
+.optcheck {
+  width: 40rpx; height: 40rpx; border-radius: 50%; flex: none;
+  border: 3rpx solid #d8d3cc; color: #fff; font-size: 26rpx;
+  display: flex; align-items: center; justify-content: center;
+}
+.optrow.on .optcheck { background: #e8590c; border-color: #e8590c; }
+.opttext { flex: 1; font-size: 27rpx; color: #4a4a4a; line-height: 1.55; }
+.optacts { display: flex; flex: none; }
+.optact { font-size: 23rpx; color: #9c948a; padding: 8rpx 0 8rpx 18rpx; }
+.optact.del { color: #c0564a; }
+.tplft {
+  display: flex; gap: 20rpx; padding: 20rpx 28rpx calc(20rpx + env(safe-area-inset-bottom));
+  background: #fff; border-top: 2rpx solid #eceae6;
+}
+.tplft .btn { flex: 1; }

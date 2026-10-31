@@ -7,7 +7,8 @@ Page({
     clsId: null, students: [], courses: [], courseIdx: 0, course: '',
     score: 85, tags: ['待提高', '良好', '优秀'], tag: '',
     note: '', photos: [], audio: null, recording: false, recognizing: false, canSend: false,
-    selCount: 0, editing: false
+    selCount: 0, editing: false,
+    tplOpen: false, tplList: [], sel: []
   },
   onLoad(q) {
     const pick = getApp().globalData.pick || {};
@@ -117,5 +118,82 @@ Page({
     wx.showToast({ title: send ? '已发送' : '已存草稿', icon: 'success' });
     setTimeout(() => wx.navigateBack(), 800);
   },
-  goTplsSel() { wx.navigateTo({ url: '/pages/tpls/tpls?mode=select' }); }
+  /* ================= 模板：页内全屏面板（多选/增删改） ================= */
+  toggleTpl() {
+    if (this.data.tplOpen) { this.setData({ tplOpen: false }); return; }
+    const pick = getApp().globalData.pick || {};
+    const sel = (pick.tplSel || []).slice();
+    this.setData({ tplOpen: true, tplList: store.tpls().map(t => ({ n: t.n, opts: t.opts.slice() })), sel });
+  },
+  tplClose() { this.setData({ tplOpen: false }); },
+  tplToggle(e) {
+    const k = e.currentTarget.dataset.k, sel = this.data.sel.slice();
+    const i = sel.indexOf(k); i >= 0 ? sel.splice(i, 1) : sel.push(k);
+    const pick = getApp().globalData.pick || (getApp().globalData.pick = {});
+    pick.tplSel = sel;
+    this.setData({ sel, selCount: sel.length });
+  },
+  tplAdd(e) {
+    const di = e.currentTarget.dataset.di;
+    wx.showModal({
+      title: '新增选项 · ' + this.data.tplList[di].n, editable: true, placeholderText: '输入选项内容',
+      success: r => {
+        if (!r.confirm || !r.content || !r.content.trim()) return;
+        const list = this.data.tplList.slice();
+        list[di] = Object.assign({}, list[di], { opts: list[di].opts.concat(r.content.trim()) });
+        this.setData({ tplList: list });
+        const t = store.tpls().slice(); t[di] = { n: t[di].n, opts: list[di].opts }; store.saveTpls(t);
+      }
+    });
+  },
+  tplEdit(e) {
+    const { di, oi } = e.currentTarget.dataset;
+    const old = this.data.tplList[di].opts[oi];
+    wx.showModal({
+      title: '编辑选项', editable: true, placeholderText: old, content: old,
+      success: r => {
+        if (!r.confirm || !r.content || !r.content.trim()) return;
+        const list = this.data.tplList.slice();
+        const opts = list[di].opts.slice(); opts[oi] = r.content.trim();
+        list[di] = Object.assign({}, list[di], { opts });
+        this.setData({ tplList: list });
+        const t = store.tpls().slice(); t[di] = { n: t[di].n, opts }; store.saveTpls(t);
+        const k = di + ':' + oi, sel = this.data.sel.slice();
+        if (sel.includes(k)) this.setData({ sel });
+      }
+    });
+  },
+  tplDel(e) {
+    const { di, oi } = e.currentTarget.dataset;
+    wx.showModal({ title: '删除这个选项？', success: r => {
+      if (!r.confirm) return;
+      const list = this.data.tplList.slice();
+      const opts = list[di].opts.slice(); opts.splice(oi, 1);
+      list[di] = Object.assign({}, list[di], { opts });
+      this.setData({ tplList: list, sel: this.data.sel.filter(k => k !== di + ':' + oi) });
+      const t = store.tpls().slice(); t[di] = { n: t[di].n, opts }; store.saveTpls(t);
+    } });
+  },
+  tplClear() {
+    const pick = getApp().globalData.pick || (getApp().globalData.pick = {});
+    pick.tplSel = [];
+    this.setData({ sel: [], selCount: 0 });
+  },
+  tplApply() {
+    // 同维度合并为一行「维度：内容；内容」
+    const list = this.data.tplList, sel = this.data.sel;
+    const byDim = {};
+    sel.forEach(k => {
+      const [di, oi] = k.split(':').map(Number);
+      const opt = list[di] && list[di].opts[oi];
+      if (opt) (byDim[di] = byDim[di] || []).push(opt);
+    });
+    const lines = Object.keys(byDim).sort((a, b) => a - b)
+      .map(di => list[di].n + '：' + byDim[di].join('；'));
+    const add = lines.join('\n');
+    if (!add) { wx.showToast({ title: '请先勾选选项', icon: 'none' }); return; }
+    this.setData({ note: (this.data.note ? this.data.note.replace(/\s+$/, '') + '\n' : '') + add, tplOpen: false, selCount: sel.length });
+    this.refreshCan();
+    wx.showToast({ title: '已插入 ' + lines.length + ' 个维度', icon: 'none' });
+  }
 });

@@ -14,3 +14,19 @@
 .addrow { display: flex; gap: 16rpx; align-items: center; }
 .addbtn { padding: 20rpx 40rpx; flex: none; }
 .del { color: #c0564a; font-size: 25rpx; padding: 10rpx 0 10rpx 24rpx; flex: none; }
+.act { color: #e8590c; font-size: 25rpx; font-weight: 600; padding: 10rpx 24rpx 10rpx 0; }
+.itrow { display: flex; align-items: center; gap: 20rpx; }
+.itrow .ava { width: 76rpx; height: 76rpx; font-size: 30rpx; }
+/* ---------- 底部弹层 ---------- */
+.mask {
+  position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.45);
+  display: flex; align-items: flex-end;
+}
+.sheet {
+  width: 100%; background: #fff; border-radius: 32rpx 32rpx 0 0;
+  padding: 36rpx 32rpx calc(36rpx + env(safe-area-inset-bottom));
+  max-height: 82vh; overflow-y: auto; box-sizing: border-box;
+}
+.sheet-t { text-align: center; font-size: 34rpx; font-weight: 700; margin-bottom: 28rpx; }
+.row2 { display: flex; gap: 20rpx; margin-top: 28rpx; }
+.row2 .btn { flex: 1; }

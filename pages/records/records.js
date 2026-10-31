@@ -11,9 +11,14 @@ Page({
   refresh() {
     const db = store.get();
     const t = this.data.tabs[this.data.tab];
+    const u = db.users.find(x => x.id === db.me) || db.users[0];
+    const kidIds = u.role === 'parent' ? (u.studentIds || []) : null;
+    const visCls = u.role === 'teacher' && (u.clsIds || []).length ? u.clsIds : null;
     const cid = t === '全部' ? null : (db.classes.find(c => c.name === t) || {}).id;
     const list = db.records
       .filter(r => !cid || r.cid === cid)
+      .filter(r => !kidIds || kidIds.includes(r.sid))
+      .filter(r => !visCls || visCls.includes(r.cid))
       .sort((a, b) => b.id - a.id)
       .map(r => {
         const s = store.student(r.sid) || { name: '—' };

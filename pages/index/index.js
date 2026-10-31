@@ -8,20 +8,24 @@ Page({
     const u = db.users.find(x => x.id === db.me) || db.users[0];
     const isParent = u.role === 'parent';
     if (isParent) {
-      const kids = db.students.map(s => {
-        const r = store.latestRecord(s.id);
-        return { id: s.id, name: s.name, latest: r ? (r.course + ' · ' + r.score + '分 · ' + r.date) : '暂无记录' };
-      });
+      const kids = db.students
+        .filter(s => !(u.studentIds || []).length || (u.studentIds || []).includes(s.id))
+        .map(s => {
+          const r = store.latestRecord(s.id);
+          return { id: s.id, name: s.name, latest: r ? (r.course + ' · ' + r.score + '分 · ' + r.date) : '暂无记录' };
+        });
       this.setData({ isParent: true, kids });
     } else {
-      const cls = db.classes;
-      const clsId = this.data.clsId || (cls[0] && cls[0].id);
-      this.refresh(clsId);
+      // 老师按"负责班级"过滤；未分配则看全部
+      const vis = (u.clsIds || []).length ? db.classes.filter(c => u.clsIds.includes(c.id)) : db.classes;
+      const clsId = vis.find(c => c.id === this.data.clsId) ? this.data.clsId : (vis[0] && vis[0].id);
+      this.refresh(clsId, vis);
     }
-    this.setData({ dbName: db.teacher });
+    this.setData({ dbName: u.name || db.teacher });
   },
-  refresh(clsId) {
+  refresh(clsId, vis) {
     const db = store.get();
+    const cls = vis || db.classes;
     const students = store.studentsOf(clsId).map(s => {
       const r = store.latestRecord(s.id);
       return {

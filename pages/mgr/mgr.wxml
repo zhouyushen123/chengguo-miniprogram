@@ -1,43 +1,126 @@
-<view class="tabs" >
+<view class="tabs">
   <view wx:for="{{tabs}}" wx:key="*this" class="tab {{tab===index?'on':''}}" bindtap="pickTab" data-i="{{index}}">{{item}}</view>
 </view>
 
+<!-- ============ 班级 ============ -->
 <view wx:if="{{tab===0}}" class="wrap">
   <view class="card">
-    <view class="label">添加班级</view>
+    <view class="sec"><view class="label">添加班级</view></view>
     <view class="addrow">
       <input class="input" style="flex:1;margin-bottom:0" placeholder="班级名称" value="{{newCls}}" bindinput="onNewCls" />
-      <view class="btn addbtn" bindtap="addClass">添加</view>
+      <view class="btn addbtn" hover-class="btn-hover" bindtap="addClass">添加</view>
     </view>
   </view>
   <view class="card item" wx:for="{{classes}}" wx:key="id">
-    <b>{{item.name}}</b><view class="mi del" bindtap="delClass" data-id="{{item.id}}">删除</view>
+    <view class="itrow"><view class="ava">{{item.name[0]}}</view><b>{{item.name}}</b></view>
+    <view class="mi del" catchtap="delClass" data-id="{{item.id}}">删除</view>
   </view>
 </view>
 
+<!-- ============ 课程 ============ -->
 <view wx:if="{{tab===1}}" class="wrap">
   <view class="card">
-    <view class="label">添加课程</view>
+    <view class="sec"><view class="label">添加课程</view></view>
     <picker mode="selector" range="{{classes}}" range-key="name" value="{{courseClsIdx}}" bindchange="onCourseCls">
       <view class="pickerbox">所属班级：{{classes[courseClsIdx].name || '请先添加班级'}} ▾</view>
     </picker>
     <view class="addrow">
       <input class="input" style="flex:1;margin-bottom:0" placeholder="课程名称" value="{{newCourse}}" bindinput="onNewCourse" />
-      <view class="btn addbtn" bindtap="addCourse">添加</view>
+      <view class="btn addbtn" hover-class="btn-hover" bindtap="addCourse">添加</view>
     </view>
   </view>
   <view class="card item" wx:for="{{courses}}" wx:key="id">
-    <view><b>{{item.name}}</b><view class="mi">{{item.cls}}</view></view>
-    <view class="mi del" bindtap="delCourse" data-id="{{item.id}}">删除</view>
+    <view><b>{{item.name}}</b><view class="mi">归属：{{item.cls}}</view></view>
+    <view class="mi del" catchtap="delCourse" data-id="{{item.id}}">删除</view>
   </view>
 </view>
 
+<!-- ============ 学生 ============ -->
 <view wx:if="{{tab===2}}" class="wrap">
   <view class="card">
-    <view class="btn" bindtap="addStudent">＋ 添加学生</view>
+    <view class="btn" hover-class="btn-hover" bindtap="addStudent">＋ 添加学生</view>
   </view>
   <view class="card item" wx:for="{{students}}" wx:key="id">
-    <view><b>{{item.name}}</b><view class="mi">{{item.cls}} {{item.parent?'· '+item.parent:''}}{{item.wechat?' · 微信 '+item.wechat:''}}</view></view>
-    <view class="mi del" bindtap="delStudent" data-id="{{item.id}}">删除</view>
+    <view bindtap="goStudentPage" data-id="{{item.id}}">
+      <view class="itrow"><view class="ava">{{item.name[0]}}</view>
+        <view><b>{{item.name}}</b>
+        <view class="mi">{{item.cls}}{{item.parent?' · 家长 '+item.parent:''}}{{item.wechat?' · 微信 '+item.wechat:''}}</view></view>
+      </view>
+    </view>
+    <view style="display:flex;align-items:center">
+      <view class="mi act" catchtap="editStudent" data-id="{{item.id}}">编辑</view>
+      <view class="mi del" catchtap="delStudent" data-id="{{item.id}}">删除</view>
+    </view>
+  </view>
+</view>
+
+<!-- ============ 人员（老师/家长） ============ -->
+<view wx:if="{{tab===3}}" class="wrap">
+  <view class="card">
+    <view class="row2">
+      <view class="btn ghost" hover-class="btn-hover" bindtap="addUserTeacher">＋ 加老师</view>
+      <view class="btn ghost" hover-class="btn-hover" bindtap="addUserParent">＋ 加家长</view>
+    </view>
+    <view class="mi">老师可分配负责的班级与课程；家长可关联孩子查看成果。点人员卡片可切换当前身份。</view>
+  </view>
+  <view class="card item" wx:for="{{users}}" wx:key="id">
+    <view bindtap="switchMe" data-id="{{item.id}}">
+      <view class="itrow">
+        <view class="ava" style="background:{{item.role==='teacher'?'linear-gradient(135deg,#f7a23b,#e8590c)':'linear-gradient(135deg,#7fb069,#3a9e5f)'}}">{{item.name[0]}}</view>
+        <view><b>{{item.name}}</b><view class="mi">{{item.roleN}} · {{item.meta}}</view></view>
+      </view>
+    </view>
+    <view style="display:flex;align-items:center">
+      <text wx:if="{{item.cur}}" class="pill" style="background:#3a9e5f">当前</text>
+      <view class="mi act" catchtap="editUser" data-id="{{item.id}}">分配</view>
+      <view wx:if="{{item.role!=='admin'}}" class="mi del" catchtap="delUser" data-id="{{item.id}}">删除</view>
+    </view>
+  </view>
+</view>
+
+<!-- ============ 学生表单弹层 ============ -->
+<view wx:if="{{stuForm}}" class="mask" bindtap="stuCancel">
+  <view class="sheet" catchtap="">
+    <view class="sheet-t">{{stuForm.id?'编辑学生':'添加学生'}}</view>
+    <input class="input" placeholder="学生姓名" value="{{stuForm.name}}" bindinput="onStuName" />
+    <view class="label">加入班级（可多选）</view>
+    <view class="chips" style="margin-bottom:20rpx">
+      <view wx:for="{{classes}}" wx:key="id" class="chip {{stuClsSel.indexOf(item.id)>=0?'on':''}}" bindtap="stuClsTgl" data-id="{{item.id}}">{{item.name}}</view>
+    </view>
+    <view class="label">家长联系方式</view>
+    <input class="input" placeholder="家长称呼（如：张珊珊/妈妈）" value="{{stuForm.parent}}" bindinput="onStuParent" />
+    <input class="input" placeholder="家长微信号（方便沟通）" value="{{stuForm.wechat}}" bindinput="onStuWechat" />
+    <view class="row2">
+      <view class="btn ghost" hover-class="btn-hover" bindtap="stuCancel">取消</view>
+      <view class="btn" hover-class="btn-hover" bindtap="stuSave">保存</view>
+    </view>
+  </view>
+</view>
+
+<!-- ============ 人员表单弹层 ============ -->
+<view wx:if="{{userForm}}" class="mask" bindtap="userCancel">
+  <view class="sheet" catchtap="">
+    <view class="sheet-t">{{userForm.id?'编辑人员':'添加'+(userForm.role==='teacher'?'老师':'家长')}}</view>
+    <input class="input" placeholder="姓名" value="{{userForm.name}}" bindinput="onUserName" />
+    <block wx:if="{{userForm.role==='teacher'}}">
+      <view class="label">负责班级（可多选）</view>
+      <view class="chips" style="margin-bottom:16rpx">
+        <view wx:for="{{classes}}" wx:key="id" class="chip {{userClsSel.indexOf(item.id)>=0?'on':''}}" bindtap="userClsTgl" data-id="{{item.id}}">{{item.name}}</view>
+      </view>
+      <view class="label">课程权限（不选 = 所带班级全部课程）</view>
+      <view class="chips" style="margin-bottom:20rpx">
+        <view wx:for="{{courses}}" wx:key="id" class="chip {{userCrsSel.indexOf(item.id)>=0?'on':''}}" bindtap="userCrsTgl" data-id="{{item.id}}">{{item.name}}</view>
+      </view>
+    </block>
+    <block wx:else>
+      <view class="label">关联孩子（可多选）</view>
+      <view class="chips" style="margin-bottom:20rpx">
+        <view wx:for="{{students}}" wx:key="id" class="chip {{userStuSel.indexOf(item.id)>=0?'on':''}}" bindtap="userStuTgl" data-id="{{item.id}}">{{item.name}}</view>
+      </view>
+    </block>
+    <view class="row2">
+      <view class="btn ghost" hover-class="btn-hover" bindtap="userCancel">取消</view>
+      <view class="btn" hover-class="btn-hover" bindtap="userSave">保存</view>
+    </view>
   </view>
 </view>

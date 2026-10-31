@@ -122,44 +122,47 @@ Page({
   toggleTpl() {
     if (this.data.tplOpen) { this.setData({ tplOpen: false }); return; }
     const pick = getApp().globalData.pick || {};
-    const sel = (pick.tplSel || []).slice();
-    this.setData({ tplOpen: true, tplList: store.tpls().map(t => ({ n: t.n, opts: t.opts.slice() })), sel });
+    this._sel = (pick.tplSel || []).slice();
+    this._tpl = store.tpls().map(t => ({ n: t.n, opts: t.opts.slice() }));
+    this.setData({ tplOpen: true, tplList: this._render(), sel: this._sel, selCount: this._sel.length });
+  },
+  _render() {
+    // WXML 不支持方法调用，选中态在此预计算
+    return this._tpl.map((d, di) => ({
+      n: d.n,
+      opts: d.opts.map((t, oi) => ({ t, on: this._sel.indexOf(di + ':' + oi) >= 0 }))
+    }));
+  },
+  _sync(extra) {
+    const pick = getApp().globalData.pick || (getApp().globalData.pick = {});
+    pick.tplSel = this._sel.slice();
+    this.setData(Object.assign({ tplList: this._render(), sel: this._sel.slice(), selCount: this._sel.length }, extra || {}));
   },
   tplClose() { this.setData({ tplOpen: false }); },
   tplToggle(e) {
-    const k = e.currentTarget.dataset.k, sel = this.data.sel.slice();
-    const i = sel.indexOf(k); i >= 0 ? sel.splice(i, 1) : sel.push(k);
-    const pick = getApp().globalData.pick || (getApp().globalData.pick = {});
-    pick.tplSel = sel;
-    this.setData({ sel, selCount: sel.length });
+    const k = e.currentTarget.dataset.k, i = this._sel.indexOf(k);
+    i >= 0 ? this._sel.splice(i, 1) : this._sel.push(k);
+    this._sync();
   },
   tplAdd(e) {
     const di = e.currentTarget.dataset.di;
     wx.showModal({
-      title: '新增选项 · ' + this.data.tplList[di].n, editable: true, placeholderText: '输入选项内容',
+      title: '新增选项 · ' + this._tpl[di].n, editable: true, placeholderText: '输入选项内容',
       success: r => {
         if (!r.confirm || !r.content || !r.content.trim()) return;
-        const list = this.data.tplList.slice();
-        list[di] = Object.assign({}, list[di], { opts: list[di].opts.concat(r.content.trim()) });
-        this.setData({ tplList: list });
-        const t = store.tpls().slice(); t[di] = { n: t[di].n, opts: list[di].opts }; store.saveTpls(t);
+        this._tpl[di].opts.push(r.content.trim());
+        this._saveTpls(); this._sync();
       }
     });
   },
   tplEdit(e) {
     const { di, oi } = e.currentTarget.dataset;
-    const old = this.data.tplList[di].opts[oi];
     wx.showModal({
-      title: '编辑选项', editable: true, placeholderText: old, content: old,
+      title: '编辑选项', editable: true, content: this._tpl[di].opts[oi],
       success: r => {
         if (!r.confirm || !r.content || !r.content.trim()) return;
-        const list = this.data.tplList.slice();
-        const opts = list[di].opts.slice(); opts[oi] = r.content.trim();
-        list[di] = Object.assign({}, list[di], { opts });
-        this.setData({ tplList: list });
-        const t = store.tpls().slice(); t[di] = { n: t[di].n, opts }; store.saveTpls(t);
-        const k = di + ':' + oi, sel = this.data.sel.slice();
-        if (sel.includes(k)) this.setData({ sel });
+        this._tpl[di].opts[oi] = r.content.trim();
+        this._saveTpls(); this._sync();
       }
     });
   },
@@ -167,32 +170,25 @@ Page({
     const { di, oi } = e.currentTarget.dataset;
     wx.showModal({ title: '删除这个选项？', success: r => {
       if (!r.confirm) return;
-      const list = this.data.tplList.slice();
-      const opts = list[di].opts.slice(); opts.splice(oi, 1);
-      list[di] = Object.assign({}, list[di], { opts });
-      this.setData({ tplList: list, sel: this.data.sel.filter(k => k !== di + ':' + oi) });
-      const t = store.tpls().slice(); t[di] = { n: t[di].n, opts }; store.saveTpls(t);
+      this._tpl[di].opts.splice(oi, 1);
+      this._sel = this._sel.filter(k => k !== di + ':' + oi);
+      this._saveTpls(); this._sync();
     } });
   },
-  tplClear() {
-    const pick = getApp().globalData.pick || (getApp().globalData.pick = {});
-    pick.tplSel = [];
-    this.setData({ sel: [], selCount: 0 });
-  },
+  _saveTpls() { store.saveTpls(this._tpl.map(d => ({ n: d.n, opts: d.opts.slice() }))); },
+  tplClear() { this._sel = []; this._sync(); },
   tplApply() {
-    // 同维度合并为一行「维度：内容；内容」
-    const list = this.data.tplList, sel = this.data.sel;
-    const byDim = {};
+    const sel = this._sel, byDim = {};
     sel.forEach(k => {
       const [di, oi] = k.split(':').map(Number);
-      const opt = list[di] && list[di].opts[oi];
+      const opt = this._tpl[di] && this._tpl[di].opts[oi];
       if (opt) (byDim[di] = byDim[di] || []).push(opt);
     });
     const lines = Object.keys(byDim).sort((a, b) => a - b)
-      .map(di => list[di].n + '：' + byDim[di].join('；'));
+      .map(di => this._tpl[di].n + '：' + byDim[di].join('；'));
     const add = lines.join('\n');
     if (!add) { wx.showToast({ title: '请先勾选选项', icon: 'none' }); return; }
-    this.setData({ note: (this.data.note ? this.data.note.replace(/\s+$/, '') + '\n' : '') + add, tplOpen: false, selCount: sel.length });
+    this.setData({ note: (this.data.note ? this.data.note.replace(/\s+$/, '') + '\n' : '') + add, tplOpen: false });
     this.refreshCan();
     wx.showToast({ title: '已插入 ' + lines.length + ' 个维度', icon: 'none' });
   }

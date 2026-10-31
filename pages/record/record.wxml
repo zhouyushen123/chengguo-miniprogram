@@ -77,9 +77,9 @@
         </view>
       </view>
       <view wx:for="{{dim.opts}}" wx:for-item="opt" wx:for-index="oi" wx:key="*this"
-            class="optrow {{sel.indexOf(di+':'+oi)>=0?'on':''}}" bindtap="tplToggle" data-k="{{di}}:{{oi}}">
-        <view class="optcheck">{{sel.indexOf(di+':'+oi)>=0?'✓':''}}</view>
-        <view class="opttext">{{opt}}</view>
+            class="optrow {{opt.on?'on':''}}" bindtap="tplToggle" data-k="{{di}}:{{oi}}">
+        <view class="optcheck">{{opt.on?'✓':''}}</view>
+        <view class="opttext">{{opt.t}}</view>
         <view class="optacts" catchtap="">
           <text class="optact" catchtap="tplEdit" data-di="{{di}}" data-oi="{{oi}}">编辑</text>
           <text class="optact del" catchtap="tplDel" data-di="{{di}}" data-oi="{{oi}}">删除</text>

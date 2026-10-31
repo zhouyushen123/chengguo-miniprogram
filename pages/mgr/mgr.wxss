@@ -1,8 +1,16 @@
-.tabs { display: flex; background: #fff; padding: 0 24rpx; }
-.tab { flex: 1; text-align: center; padding: 24rpx 0; font-size: 29rpx; color: #9c948a; border-bottom: 6rpx solid transparent; }
-.tab.on { color: #232323; font-weight: 700; border-bottom-color: #e8590c; }
+/* ---------- 顶部页签 ---------- */
+.tabs {
+  display: flex; background: #fff; margin: 20rpx 24rpx 24rpx;
+  border-radius: 999rpx; padding: 8rpx; box-shadow: 0 4rpx 16rpx rgba(60,40,20,.05);
+}
+.tab {
+  flex: 1; text-align: center; font-size: 28rpx; color: #6b655e;
+  padding: 16rpx 0; border-radius: 999rpx; transition: all .15s;
+}
+.tab.on { background: #e8590c; color: #fff; font-weight: 700; box-shadow: 0 6rpx 16rpx rgba(232,89,12,.3); }
+/* ---------- 列表项 ---------- */
+.item { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
+.item b { font-size: 30rpx; }
 .addrow { display: flex; gap: 16rpx; align-items: center; }
-.addbtn { flex: none; padding: 20rpx 40rpx; }
-.pickerbox { background: #fff; border: 2rpx solid #e5e2dd; border-radius: 20rpx; padding: 20rpx 24rpx; font-size: 28rpx; margin-bottom: 20rpx; }
-.item { display: flex; justify-content: space-between; align-items: center; }
-.del { color: #c0564a; }
+.addbtn { padding: 20rpx 40rpx; flex: none; }
+.del { color: #c0564a; font-size: 25rpx; padding: 10rpx 0 10rpx 24rpx; flex: none; }

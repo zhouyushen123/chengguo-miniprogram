@@ -1,10 +1,21 @@
-.clsbar { background: #fff; padding: 20rpx 0; white-space: nowrap; }
+/* ---------- 班级横条 ---------- */
+.clsbar {
+  position: sticky; top: 0; z-index: 40;
+  background: rgba(247, 246, 243, 0.96); backdrop-filter: blur(10px);
+  padding: 20rpx 0 12rpx; white-space: nowrap;
+}
 .clsrow { display: inline-flex; gap: 16rpx; padding: 0 24rpx; }
-.sturow { display: flex; align-items: center; gap: 20rpx; }
-.stuinfo { flex: 1; }
-.chev { color: #c9c4bd; font-size: 36rpx; }
-.latest { margin-top: 16rpx; background: #faf9f7; border-radius: 16rpx; padding: 16rpx 20rpx; }
+/* ---------- 学生卡片 ---------- */
+.sturow { display: flex; align-items: center; gap: 22rpx; }
+.stuinfo { flex: 1; min-width: 0; }
+.latest {
+  margin-top: 20rpx; background: #faf9f7; border-radius: 20rpx; padding: 20rpx 24rpx;
+  border-left: 6rpx solid #e8590c;
+}
 .lrow { display: flex; align-items: center; gap: 12rpx; }
-.score { margin-left: auto; color: #e8590c; font-weight: 800; font-size: 32rpx; }
-.lnote { margin-top: 8rpx; font-size: 26rpx; color: #6b655e; }
-.empty { text-align: center; color: #9c948a; padding: 120rpx 0; font-size: 27rpx; }
+.score { margin-left: auto; color: #e8590c; font-weight: 800; font-size: 36rpx; }
+.lnote {
+  margin-top: 12rpx; font-size: 26rpx; color: #6b655e; line-height: 1.7;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
+.card .btn.ghost { margin-top: 20rpx; color: #e8590c; border-color: #f0c9a8; font-weight: 600; }

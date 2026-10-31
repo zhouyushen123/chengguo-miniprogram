@@ -1,4 +1,4 @@
-<view class="tabs">
+<view class="tabs" >
   <view wx:for="{{tabs}}" wx:key="*this" class="tab {{tab===index?'on':''}}" bindtap="pickTab" data-i="{{index}}">{{item}}</view>
 </view>
 

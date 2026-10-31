@@ -4,46 +4,83 @@ page {
   font-size: 28rpx;
   color: #232323;
 }
+/* ---------- 卡片体系 ---------- */
 .card {
   background: #fff;
-  border-radius: 24rpx;
-  padding: 24rpx;
-  margin: 0 24rpx 20rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  border-radius: 28rpx;
+  padding: 28rpx;
+  margin: 0 24rpx 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(60, 40, 20, 0.05);
 }
-.h1 { font-size: 36rpx; font-weight: 700; }
+.sec {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  margin: 8rpx 0 20rpx;
+}
+.sec::before {
+  content: "";
+  width: 8rpx;
+  height: 30rpx;
+  border-radius: 8rpx;
+  background: linear-gradient(180deg, #f7a23b, #e8590c);
+}
+.sec .label { margin: 0; }
+.label { font-size: 28rpx; font-weight: 700; color: #232323; margin: 28rpx 0 16rpx; }
+.h1 { font-size: 34rpx; font-weight: 700; }
 .mi { font-size: 24rpx; color: #9c948a; }
+/* ---------- 胶囊 ---------- */
 .chips { display: flex; flex-wrap: wrap; gap: 16rpx; }
 .chip {
   font-size: 26rpx;
-  padding: 10rpx 28rpx;
+  padding: 14rpx 32rpx;
   border-radius: 999rpx;
   background: #f0eeea;
   color: #4a4a4a;
+  transition: all 0.15s;
 }
-.chip.on { background: #fdeee2; color: #e8590c; font-weight: 600; box-shadow: inset 0 0 0 3rpx #e8590c; }
+.chip.on {
+  background: #fdeee2;
+  color: #e8590c;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 3rpx #e8590c, 0 4rpx 12rpx rgba(232, 89, 12, 0.15);
+}
+/* ---------- 按钮 ---------- */
 .btn {
-  background: #e8590c;
+  background: linear-gradient(135deg, #f7a23b, #e8590c);
   color: #fff;
-  border-radius: 24rpx;
+  border-radius: 26rpx;
   font-size: 30rpx;
   font-weight: 600;
-  padding: 22rpx 0;
+  padding: 24rpx 0;
   text-align: center;
+  box-shadow: 0 8rpx 20rpx rgba(232, 89, 12, 0.28);
 }
-.btn.ghost { background: #fff; color: #4a4a4a; border: 2rpx solid #e5e2dd; font-weight: 500; }
-.input {
+.btn.ghost {
   background: #fff;
+  color: #4a4a4a;
+  border: 2rpx solid #e5e2dd;
+  font-weight: 500;
+  box-shadow: none;
+}
+.btn-hover { opacity: 0.85; transform: scale(0.985); }
+/* ---------- 输入 ---------- */
+.input, .pickerbox {
+  background: #faf9f7;
   border: 2rpx solid #e5e2dd;
   border-radius: 20rpx;
-  padding: 20rpx 24rpx;
+  padding: 22rpx 26rpx;
   font-size: 28rpx;
   margin-bottom: 20rpx;
 }
-.label { font-size: 27rpx; font-weight: 600; color: #4a4a4a; margin: 24rpx 0 16rpx; }
+/* ---------- 头像 ---------- */
 .ava {
-  width: 84rpx; height: 84rpx; border-radius: 50%;
-  background: #f0a95f; color: #fff; font-size: 32rpx; font-weight: 700;
+  width: 92rpx; height: 92rpx; border-radius: 30rpx;
+  background: linear-gradient(135deg, #f7a23b, #e8590c);
+  color: #fff; font-size: 36rpx; font-weight: 700;
   display: flex; align-items: center; justify-content: center; flex: none;
+  box-shadow: 0 6rpx 14rpx rgba(232, 89, 12, 0.25);
 }
-.pill { font-size: 22rpx; padding: 4rpx 16rpx; border-radius: 999rpx; color: #fff; }
+.pill { font-size: 22rpx; padding: 6rpx 18rpx; border-radius: 999rpx; color: #fff; }
+.empty { text-align: center; color: #9c948a; padding: 140rpx 40rpx; font-size: 27rpx; line-height: 1.8; }
+.chev { color: #c9c4bd; font-size: 38rpx; font-weight: 300; }

@@ -1,15 +1,16 @@
 <view class="wrap">
   <view wx:if="{{!editing}}" class="card">
-    <view class="label">选择学生</view>
+    <view class="sec"><view class="label">选择学生</view></view>
     <view class="chips">
       <view wx:for="{{students}}" wx:key="id" class="chip {{sid===item.id?'on':''}}" bindtap="pickStu" data-sid="{{item.id}}">{{item.name}}</view>
     </view>
   </view>
 
   <view class="card">
+    <view class="sec"><view class="label">课堂评分</view></view>
     <view class="scorerow">
-      <view class="scorenum">{{score}}<text class="mi"> 分</text></view>
-      <slider class="scorebar" min="0" max="100" value="{{score}}" activeColor="#e8590c" block-size="20" bindchange="onScore" bindchanging="onScore" />
+      <view class="scorenum {{score<60?'low':''}}">{{score}}<text class="scoreunit">分</text></view>
+      <slider class="scorebar" min="0" max="100" value="{{score}}" activeColor="#e8590c" backgroundColor="#f0eeea" block-size="24" bindchange="onScore" bindchanging="onScore" />
     </view>
     <view class="chips">
       <view wx:for="{{tags}}" wx:key="*this" class="chip {{tag===item?'on':''}}" bindtap="pickTag" data-t="{{item}}">{{item}}</view>
@@ -17,30 +18,15 @@
   </view>
 
   <view class="card">
-    <view class="label">课程</view>
+    <view class="sec"><view class="label">课程</view></view>
     <picker mode="selector" range="{{courses}}" range-key="name" value="{{courseIdx}}" bindchange="onCourse">
       <view class="pickerbox">{{course || '选择课程'}} <text class="mi">▾</text></view>
     </picker>
-
-    <view class="label">老师留言</view>
-    <view class="hintline" wx:if="{{recognizing}}">正在听写，请说话…说完点麦克风结束，文字可修改</view>
-    <view class="notebar">
-      <textarea class="noteinput" placeholder="本节课表现等；可用模板快速生成" value="{{note}}" bindinput="onNote" auto-height maxlength="500" />
-      <view class="notetools">
-        <view class="tplbtn" bindtap="goTplsSel">模板<text wx:if="{{selCount}}" class="badge">{{selCount}}</text></view>
-        <view class="micbtn {{(recording||recognizing)?'rec':''}}" bindtap="toggleRec">🎙</view>
-      </view>
-    </view>
-    <view wx:if="{{audio}}" class="audiorow">
-      <text>🎧</text><text class="mi" style="flex:1">语音已录入，点试听</text>
-      <text class="mi" bindtap="playAudio">播放</text><text class="mi del" bindtap="rmAudio">删除</text>
-    </view>
-  </view>
-
-  <view class="card">
+    <view class="sec" style="margin-top:20rpx"><view class="label">课堂照片 / 语音</view></view>
     <view class="mediarow">
-      <view class="mbtn" bindtap="addMedia" data-src="camera">📷\n拍照</view>
-      <view class="mbtn" bindtap="addMedia" data-src="album">🖼\n相册</view>
+      <view class="mbtn" hover-class="btn-hover" bindtap="addMedia" data-src="camera">📷\n拍照</view>
+      <view class="mbtn" hover-class="btn-hover" bindtap="addMedia" data-src="album">🖼\n相册</view>
+      <view class="mbtn {{audio?'has':''}}" hover-class="btn-hover" bindtap="toggleRec">🎙\n{{audio?'重录':'语音'}}</view>
     </view>
     <view class="photogrid" wx:if="{{photos.length}}">
       <view class="ph" wx:for="{{photos}}" wx:key="*this">
@@ -48,14 +34,29 @@
         <view class="rm" catchtap="rmPhoto" data-i="{{index}}">×</view>
       </view>
     </view>
+    <view wx:if="{{audio}}" class="audiorow">
+      <text>🎧</text><text class="mi" style="flex:1">语音已录入</text>
+      <text class="mi act" bindtap="playAudio">播放</text><text class="mi del" bindtap="rmAudio">删除</text>
+    </view>
   </view>
 
   <view class="card sendzone">
+    <view class="sec"><view class="label">发送</view></view>
     <view class="row2">
-      <view class="btn ghost" bindtap="preview">预览效果</view>
-      <view class="btn ghost" bindtap="save" data-send="0">存草稿</view>
+      <view class="btn ghost" hover-class="btn-hover" bindtap="preview">预览效果</view>
+      <view class="btn ghost" hover-class="btn-hover" bindtap="save" data-send="0">存草稿</view>
     </view>
-    <view wx:if="{{canSend}}" class="btn" bindtap="save" data-send="1">发送给家长</view>
+    <view wx:if="{{canSend}}" class="btn" hover-class="btn-hover" bindtap="save" data-send="1">发送给家长</view>
     <view wx:else class="hint">补齐 照片/语音 与 老师留言 后，即可发送给家长</view>
   </view>
 </view>
+
+<view class="spaceholder"></view>
+
+<!-- 微信式贴底输入条 -->
+<view class="notebar">
+  <input class="noteinput" placeholder="本节课表现等；可用模板快速生成" placeholder-class="ph" value="{{note}}" bindinput="onNote" confirm-type="done" maxlength="500" />
+  <view class="barbtn" hover-class="btn-hover" bindtap="goTplsSel">模板<text wx:if="{{selCount}}" class="badge">{{selCount}}</text></view>
+  <view class="micbtn {{(recording||recognizing)?'rec':''}}" hover-class="btn-hover" bindtap="toggleRec">🎙</view>
+</view>
+<view wx:if="{{recognizing}}" class="reclayer">正在听写，请说话…说完点麦克风结束，文字可修改</view>

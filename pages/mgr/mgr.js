@@ -148,7 +148,8 @@ Page({
         const tmp = r.tempFiles[0] && r.tempFiles[0].tempFilePath;
         if (!tmp) return;
         this.setData({ 'stuForm.photo': media.persist(tmp, 'photo') });
-      }
+      },
+      fail: err => media.handleChooseFail(err, this)
     });
   },
   onStuParent(e) { this.setData({ 'stuForm.parent': e.detail.value }); },

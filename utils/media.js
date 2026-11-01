@@ -111,4 +111,29 @@ function remove(p) {
 
 function setProvider(fn) { provider = typeof fn === 'function' ? fn : null; }
 
-module.exports = { ROOT, DIR, LIMIT, isPersist, persist, persistMany, exists, usage, remove, setProvider, extOf };
+// chooseMedia 统一失败处理：不写 fail 回调时，相册被隐私/权限拦截会表现为「点了没反应」
+// page 传当前 Page 实例，用于唤起页面上的隐私弹窗组件（<privacy-popup id="privacy" />）
+function handleChooseFail(err, page) {
+  const msg = (err && err.errMsg) || String(err || '');
+  if (msg.indexOf('cancel') > -1) return; // 用户取消，不算错误
+  if (/privacy|not declared/i.test(msg)) {
+    // 隐私协议未同意（或后台「用户隐私保护指引」未配置）→ 唤起隐私弹窗
+    const comp = page && page.selectComponent && page.selectComponent('#privacy');
+    if (comp && comp.forceShow) { comp.forceShow(); return; }
+    wx.showToast({ title: '请先同意《隐私保护指引》', icon: 'none' });
+    return;
+  }
+  if (/auth|denied|deny|permission/i.test(msg)) {
+    // 相册/相机权限被用户永久拒绝 → 引导去设置页打开
+    wx.showModal({
+      title: '没有相册权限',
+      content: '请在设置中允许「橙果」使用照片和相机，否则无法添加课堂照片',
+      confirmText: '去设置',
+      success: r => { if (r.confirm) wx.openSetting(); }
+    });
+    return;
+  }
+  wx.showToast({ title: '选择失败，请重试', icon: 'none' });
+}
+
+module.exports = { ROOT, DIR, LIMIT, isPersist, persist, persistMany, exists, usage, remove, setProvider, extOf, handleChooseFail };

@@ -39,6 +39,8 @@ Component({
         }
       });
     },
+    // 页面在隐私接口 fail 时主动唤起（如选相册被拦），不等微信回调
+    forceShow() { this.setData({ show: true }); },
     agree() {
       this.setData({ show: false });
       const r = this._resolve;

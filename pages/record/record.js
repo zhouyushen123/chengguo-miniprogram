@@ -124,7 +124,8 @@ Page({
         if (over) wx.showToast({ title: '单个文件需小于 50MB，已跳过 ' + over + ' 个', icon: 'none' });
         this.setData({ photos: photos.slice(0, MAX_PHOTOS), videos: videos.slice(0, MAX_VIDEOS) });
         this.refreshCan();
-      }
+      },
+      fail: err => media.handleChooseFail(err, this)
     });
   },
   // 注意：这里只从表单里移除引用，不删物理文件。

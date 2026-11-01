@@ -117,3 +117,62 @@
   margin-top: 6rpx; font-size: 19rpx; color: #9c948a; padding: 0 6rpx;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+
+/* ---------- 家长端首页：孩子主页 ---------- */
+/* 孩子切换（多孩家庭） */
+.kidchips { display: flex; gap: 14rpx; margin: 0 24rpx 18rpx; flex-wrap: wrap; }
+.kchip {
+  font-size: 26rpx; padding: 12rpx 30rpx; border-radius: 999rpx;
+  background: #fff; color: #4a4a4a; box-shadow: 0 2rpx 8rpx rgba(60,40,20,.05);
+}
+.kchip.on { background: #e8590c; color: #fff; font-weight: 700; }
+
+/* 孩子卡 */
+.pstu { display: flex; align-items: center; gap: 20rpx; }
+.pav { width: 96rpx; height: 96rpx; border-radius: 30rpx; font-size: 38rpx; font-weight: 700;
+  background: linear-gradient(135deg, #f7a23b, #e8590c); color: #fff;
+  display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+.pav image { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.pav text { position: relative; }
+.stuinfo { flex: 1; min-width: 0; }
+
+/* 统计徽标：节课绿 / 优秀橙 / 学习日蓝（与学生主页同口径） */
+.pstats { display: flex; gap: 14rpx; margin-top: 22rpx; }
+.pstat { font-size: 23rpx; font-weight: 600; padding: 8rpx 20rpx; border-radius: 999rpx; }
+.ps-c { color: #3a9e5f; background: #e8f3ea; }
+.ps-g { color: #e8590c; background: #fdeee2; }
+.ps-d { color: #5a7bd6; background: #edf1fb; }
+.caretip {
+  margin-top: 18rpx; padding: 14rpx 20rpx; border-radius: 14rpx;
+  background: #fff7ec; border: 2rpx solid #f6dcc0;
+  font-size: 23rpx; color: #8a6d4b;
+}
+
+/* 最近一次详情 */
+.dimhead { display: flex; align-items: center; gap: 14rpx; flex-wrap: wrap; }
+.pill-o { background: #e8590c; }
+.lcourse { font-size: 32rpx; font-weight: 700; }
+.dhr { margin-left: auto; display: flex; align-items: center; gap: 12rpx; }
+.morelink { margin-top: 12rpx; color: #b8b2aa; }
+.notegroups { background: #faf9f7; border-radius: 16rpx; padding: 16rpx 20rpx; margin-top: 16rpx; }
+.kline { display: flex; align-items: flex-start; line-height: 1.7; font-size: 25rpx; }
+.klabel { color: #b8b2aa; flex: none; }
+.ktext { color: #3a3a3a; font-weight: 500; flex: 1; min-width: 0; }
+.photostrip { display: flex; gap: 12rpx; margin-top: 16rpx; }
+.photostrip image { flex: 1; height: 180rpx; border-radius: 12rpx; background: #f5f3f0; min-width: 0; }
+
+/* 评价徽标：优秀绿 / 良好橙 / 加油蓝灰 */
+.badge { font-size: 22rpx; font-weight: 700; padding: 6rpx 18rpx; border-radius: 999rpx; flex: none; }
+.badge.good { color: #3a9e5f; background: #e8f3ea; }
+.badge.mid { color: #e8590c; background: #fdeee2; }
+.badge.low { color: #5a7bd6; background: #edf1fb; }
+.badge.sm { font-size: 20rpx; padding: 4rpx 14rpx; }
+
+/* 需要注意 / 历史列表行 */
+.histr { display: flex; align-items: center; gap: 18rpx; padding: 22rpx 0; border-bottom: 2rpx solid #f5f3f0; }
+.histr:last-child { border-bottom: none; }
+.hmain { flex: 1; min-width: 0; }
+.ht1 { display: flex; align-items: center; gap: 12rpx; }
+.ht1 b { font-size: 29rpx; }
+.hcam { display: flex; align-items: center; gap: 6rpx; font-size: 22rpx; color: #9c948a; flex: none; }
+.camico { width: 28rpx; height: 28rpx; }

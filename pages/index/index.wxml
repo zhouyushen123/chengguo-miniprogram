@@ -84,13 +84,84 @@
     <view class="hello">{{roleLabel}} · {{uName}}</view>
     <view class="datechip">{{dateStr}}</view>
   </view>
-  <view class="card" wx:for="{{kids}}" wx:key="id" bindtap="goStudent" data-sid="{{item.id}}">
-    <view class="sturow">
-      <view class="ava">{{item.name[0]}}</view>
-      <view class="stuinfo"><view class="h1">{{item.name}}</view><view class="mi">{{item.latest}}</view></view>
-      <image class="chev" src="{{icoChev}}" mode="aspectFit" />
+
+  <!-- 多孩家庭：切换孩子 -->
+  <view wx:if="{{kids.length > 1}}" class="kidchips">
+    <view wx:for="{{kids}}" wx:key="id" class="kchip {{kidId===item.id?'on':''}}" bindtap="pickKid" data-id="{{item.id}}">{{item.name}}</view>
+  </view>
+
+  <!-- 孩子卡 + 统计 -->
+  <view class="card">
+    <view class="pstu">
+      <view class="ava pav">
+        <image wx:if="{{kPhoto}}" src="{{kPhoto}}" mode="aspectFill" />
+        <text wx:else>{{kName[0]}}</text>
+      </view>
+      <view class="stuinfo">
+        <view class="h1">{{kName}}</view>
+        <view class="mi">{{kCls}}</view>
+      </view>
+      <view class="seclink" bindtap="goKidPage">完整档案 ›</view>
+    </view>
+    <view wx:if="{{stats}}" class="pstats">
+      <text class="pstat ps-c">{{stats.lessons}} 节课</text>
+      <text class="pstat ps-g">优秀 {{stats.great}} 次</text>
+      <text class="pstat ps-d">{{stats.days}} 个学习日</text>
+    </view>
+    <view wx:if="{{stats && stats.care}}" class="caretip">有 {{stats.care}} 次课需要多鼓励，见下方「需要注意」</view>
+  </view>
+
+  <!-- 最近一次详情 -->
+  <view wx:if="{{kLatest}}" class="card" hover-class="btn-hover" bindtap="openRec" data-rid="{{kLatest.id}}" data-sid="{{kidId}}">
+    <view class="dimhead">
+      <text class="pill pill-o">最近一次</text>
+      <text class="lcourse">{{kLatest.course}}</text>
+      <view class="dhr">
+        <text class="mi">{{kLatest.date}}</text>
+        <text wx:if="{{kLatest.tag}}" class="badge {{kLatest.tcls}}">{{kLatest.tag}}</text>
+      </view>
+    </view>
+    <view class="notegroups" wx:if="{{kLatest.noteLines.length}}">
+      <view class="kline" wx:for="{{kLatest.noteLines}}" wx:key="index"><text wx:if="{{item.label}}" class="klabel">{{item.label}}：</text><text class="ktext">{{item.text}}</text></view>
+    </view>
+    <view wx:if="{{latestPhotos.length}}" class="photostrip">
+      <image wx:for="{{latestPhotos}}" wx:key="*this" src="{{item}}" mode="aspectFill" />
+    </view>
+    <view class="mi morelink" wx:if="{{kLatest.pcnt > latestPhotos.length}}">共 {{kLatest.pcnt}} 张照片，点看完整记录 ›</view>
+    <view class="mi" wx:if="{{!kLatest.noteLines.length && !kLatest.pcnt}}">老师还没有写下文字评价</view>
+  </view>
+  <view wx:elif="{{stats}}" class="card mi">还没有已发布的成果记录，老师发布后就能在这里看到</view>
+
+  <!-- 需要注意：加油/待提高的课 -->
+  <block wx:if="{{kCare.length}}">
+    <view class="sechead"><text class="sectitle">需要注意</text></view>
+    <view class="card">
+      <view class="histr" wx:for="{{kCare}}" wx:key="id" hover-class="btn-hover" bindtap="openRec" data-rid="{{item.id}}" data-sid="{{kidId}}">
+        <text class="badge {{item.tcls}}">{{item.tag}}</text>
+        <view class="hmain">
+          <view class="ht1"><b>{{item.course}}</b></view>
+          <view class="mi">{{item.date}} · {{item.snip}}</view>
+        </view>
+        <image class="chev" src="{{icoChev}}" mode="aspectFit" />
+      </view>
+    </view>
+  </block>
+
+  <!-- 历史记录 -->
+  <view class="sechead">
+    <text class="sectitle">历史记录</text>
+    <text class="seclink" wx:if="{{kidId}}" bindtap="goKidPage">全部</text>
+  </view>
+  <view class="card" wx:if="{{kHistory.length}}">
+    <view class="histr" wx:for="{{kHistory}}" wx:key="id" hover-class="btn-hover" bindtap="openRec" data-rid="{{item.id}}" data-sid="{{kidId}}">
+      <view class="hmain">
+        <view class="ht1"><b>{{item.course}}</b><text wx:if="{{item.tag}}" class="badge sm {{item.tcls}}">{{item.tag}}</text></view>
+        <view class="mi">{{item.date}} · {{item.score}}分{{item.snip?' · '+item.snip:''}}</view>
+      </view>
+      <view wx:if="{{item.pcnt}}" class="hcam"><image class="camico" src="{{icoCam}}" mode="aspectFit" />{{item.pcnt}}</view>
     </view>
   </view>
+  <view wx:elif="{{kLatest}}" class="empty">暂无更多历史记录</view>
 </view>
 
 <!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->

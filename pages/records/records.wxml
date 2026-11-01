@@ -1,8 +1,20 @@
-<scroll-view scroll-x class="clsbar">
-  <view class="clsrow">
-    <view wx:for="{{tabs}}" wx:key="*this" class="chip {{tab===index?'on':''}}" bindtap="pickTab" data-i="{{index}}">{{item}}</view>
+<!-- 筛选区：班级 → 日期 → 等级（级联） -->
+<view class="filtbar">
+  <scroll-view scroll-x class="clsbar">
+    <view class="clsrow">
+      <view wx:for="{{tabs}}" wx:key="*this" class="chip {{tab===index?'on':''}}" hover-class="btn-hover" bindtap="pickTab" data-i="{{index}}">{{item}}</view>
+    </view>
+  </scroll-view>
+  <view class="pickers">
+    <picker mode="selector" range="{{dateOpts}}" value="{{dateIdx}}" bindchange="onDate">
+      <view class="pkbox">{{dateOpts[dateIdx]}} ▾</view>
+    </picker>
+    <picker mode="selector" range="{{tagOpts}}" value="{{tagIdx}}" bindchange="onTag">
+      <view class="pkbox">{{tagOpts[tagIdx]}} ▾</view>
+    </picker>
+    <view class="cnt mi">共 {{total}}/{{allCount}} 条</view>
   </view>
-</scroll-view>
+</view>
 <view class="card rec" wx:for="{{list}}" wx:key="id">
   <view class="recrow" bindtap="openRec" data-rid="{{item.id}}" data-sid="{{item.sid}}">
     <image wx:if="{{item.photo}}" class="thumb" src="{{item.photo}}" mode="aspectFill" />
@@ -16,6 +28,9 @@
       <view class="mi footer">📷 {{item.photoCount}} 张{{item.hasAudio?' · 🎧 语音':''}}</view>
     </view>
   </view>
-  <view wx:if="{{role!=='parent'}}" class="btn ghost" style="margin-top:16rpx" catchtap="editRec" data-rid="{{item.id}}">编辑</view>
+  <view wx:if="{{role!=='parent'}}" class="btnrow">
+    <view class="btn ghost" hover-class="btn-hover" catchtap="editRec" data-rid="{{item.id}}">编辑</view>
+    <view class="btn send {{item.sent?'off':''}}" hover-class="{{item.sent?'none':'btn-hover'}}" catchtap="sendRec" data-rid="{{item.id}}">{{item.sent?'已发送':'发送给家长'}}</view>
+  </view>
 </view>
-<view wx:if="{{!list.length}}" class="empty">暂无记录，去首页记录一条吧</view>
+<view wx:if="{{!list.length}}" class="empty">当前筛选条件下暂无记录</view>

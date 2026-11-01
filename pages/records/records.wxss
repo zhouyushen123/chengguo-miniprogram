@@ -1,5 +1,15 @@
-.clsbar { background: #fff; padding: 20rpx 0; white-space: nowrap; }
+/* 筛选区：班级 chip 行 + 日期/等级下拉 */
+.filtbar { background: #fff; padding: 20rpx 0 24rpx; }
+.clsbar { white-space: nowrap; }
 .clsrow { display: inline-flex; gap: 16rpx; padding: 0 24rpx; }
+.pickers { display: flex; gap: 12rpx; align-items: center; padding: 16rpx 24rpx 0; }
+.pkbox {
+  font-size: 24rpx; color: #6f6a63; background: #faf9f7;
+  border: 2rpx solid #e5e2dd; border-radius: 999rpx; padding: 10rpx 24rpx;
+  white-space: nowrap;
+}
+.cnt { margin-left: auto; padding-right: 8rpx; }
+
 .recrow { display: flex; gap: 20rpx; }
 .thumb { width: 160rpx; height: 160rpx; border-radius: 16rpx; flex: none; }
 .recinfo { flex: 1; }
@@ -7,4 +17,9 @@
 .score { margin-left: auto; color: #e8590c; font-weight: 800; font-size: 32rpx; }
 .note { margin-top: 6rpx; }
 .footer { margin-top: 6rpx; }
+
+/* 每条记录双按钮：编辑 + 发送给家长 */
+.btnrow { display: flex; gap: 16rpx; margin-top: 16rpx; }
+.btnrow .btn { flex: 1; }
+.btn.send.off { background: #e5e2dd; color: #9c948a; box-shadow: none; }
 .empty { text-align: center; color: #9c948a; padding: 120rpx 0; }

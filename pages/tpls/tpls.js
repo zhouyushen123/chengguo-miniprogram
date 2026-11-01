@@ -2,9 +2,11 @@
 const store = require('../../utils/store');
 const api = require('../../utils/api');
 const stt = require('../../utils/stt');
+const icons = require('../../utils/icons');
 
 Page({
-  data: { mode: 'manage', groups: [], sel: [], previewText: '', addingIdx: -1 },
+  data: { mode: 'manage', groups: [], sel: [], previewText: '', addingIdx: -1,
+    icoMic: icons.mic('#E8590C'), icoEdit: icons.edit, icoClose: icons.close, icoPlus: icons.plus },
   onLoad(q) {
     this.mode = q.mode || 'manage';
     const pick = getApp().globalData.pick || {};

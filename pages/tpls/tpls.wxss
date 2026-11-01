@@ -2,8 +2,11 @@
 .tip { margin: 24rpx; color: #9c948a; font-size: 25rpx; }
 .dimhead { display: flex; align-items: center; gap: 16rpx; margin-bottom: 16rpx; }
 .dimname { font-size: 29rpx; font-weight: 700; flex: 1; }
-.mini { font-size: 24rpx; padding: 8rpx 20rpx; border-radius: 999rpx; background: #f0eeea; color: #4a4a4a; }
+.mini { font-size: 24rpx; padding: 8rpx 20rpx; border-radius: 999rpx; background: #f0eeea; color: #4a4a4a; display: inline-flex; align-items: center; gap: 6rpx; }
+.tico { width: 30rpx; height: 30rpx; }
+.tico.s { width: 24rpx; height: 24rpx; }
 .mini.del { color: #c0564a; }
+.mini.del .tico { width: 26rpx; height: 26rpx; }
 .mini.mic { background: #fdeee2; color: #e8590c; }
 .mini.add { background: #fdeee2; color: #e8590c; }
 .opt { display: flex; align-items: center; gap: 14rpx; margin-bottom: 12rpx; }

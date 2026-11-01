@@ -51,7 +51,7 @@
     <view class="notebar">
       <input class="noteinput" placeholder="本节课表现等；可用模板快速生成" placeholder-class="ph" value="{{note}}" bindinput="onNote" confirm-type="done" maxlength="500" />
       <view class="barbtn" hover-class="btn-hover" bindtap="toggleTpl">模板<text wx:if="{{selCount}}" class="badge">{{selCount}}</text></view>
-      <view class="micbtn {{(recording||recognizing)?'rec':''}}" hover-class="btn-hover" bindtap="toggleRec">🎙</view>
+      <view class="micbtn {{(recording||recognizing)?'rec':''}}" hover-class="btn-hover" bindtap="toggleRec"><image class="micico" src="{{(recording||recognizing)?icoWhite:icoOrange}}" mode="aspectFit" /></view>
     </view>
     <view wx:if="{{recognizing}}" class="reclayer">正在听写，请说话…说完点麦克风结束，文字可修改</view>
   </view>

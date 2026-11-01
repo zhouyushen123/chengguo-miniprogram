@@ -9,7 +9,10 @@ Page({
     score: 85, tags: ['待提高', '良好', '优秀'], tag: '',
     note: '', photos: [], audio: null, recording: false, recognizing: false, canSend: false,
     selCount: 0, editing: false,
-    tplOpen: false, tplList: [], sel: []
+    tplOpen: false, tplList: [], sel: [],
+    // 麦克风抽象图标（SVG data URI）：默认橙色，录音/听写时白色
+    icoOrange: "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23E8590C' stroke-width='2' stroke-linecap='round'%3E%3Crect x='9' y='3' width='6' height='11' rx='3'/%3E%3Cpath d='M5 11a7 7 0 0 0 14 0'/%3E%3Cpath d='M12 18v3'/%3E%3C/svg%3E",
+    icoWhite: "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2' stroke-linecap='round'%3E%3Crect x='9' y='3' width='6' height='11' rx='3'/%3E%3Cpath d='M5 11a7 7 0 0 0 14 0'/%3E%3Cpath d='M12 18v3'/%3E%3C/svg%3E"
   },
   onLoad(q) {
     const pick = getApp().globalData.pick || {};

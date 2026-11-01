@@ -22,7 +22,7 @@ const icons = {
   trash: I('trash', 'red'),
   close: I('close', 'gray'),
   check: I('check', 'white'),
-  plus: I('plus', 'orange'),
+  plus: c => I('plus', c === '#FFFFFF' ? 'white' : 'orange'),
   send: I('send', 'white'),
   chevron: I('chevron', 'gray'),
   chevronDown: I('chevron-down', 'gray'),

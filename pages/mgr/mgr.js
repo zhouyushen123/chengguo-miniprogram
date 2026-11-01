@@ -1,4 +1,4 @@
-const store = require('../../utils/store');
+const db = require('../../utils/db');
 const icons = require('../../utils/icons');
 
 Page({
@@ -13,62 +13,81 @@ Page({
   },
   onShow() { this.refresh(); },
   refresh() {
-    const db = store.get();
-    // 数据兼容：老数据补 users 字段
-    db.users = (db.users || []).map(u => Object.assign({ clsIds: [], courseIds: [], studentIds: [] }, u));
+    const s = db.settings();
+    const classes = db.classes.list();
+    const users = db.users.list();
     this.setData({
-      teacher: db.teacher,
-      classes: db.classes,
-      courses: db.courses.map(c => ({ id: c.id, name: c.name, cls: store.clsName(c.clsId) })),
-      students: store.allStudents().map(s => ({
-        id: s.id, name: s.name,
-        cls: (s.clsIds || []).map(store.clsName).join('、') || '未加入班级',
-        parent: s.parent || '', wechat: s.wechat || ''
+      teacher: s.teacher,
+      classes,
+      courses: db.courses.list().map(c => ({ id: c.id, name: c.name, cls: db.classes.name(c.clsId) })),
+      students: db.students.list().map(st => ({
+        id: st.id, name: st.name,
+        cls: (st.clsIds || []).map(db.classes.name).join('、') || '未加入班级',
+        parent: st.parent || '', wechat: st.wechat || ''
       })),
-      users: db.users.map(u => ({
+      users: users.map(u => ({
         id: u.id, name: u.name, role: u.role,
         roleN: u.role === 'teacher' ? '老师' : u.role === 'parent' ? '家长' : '管理员',
         meta: u.role === 'teacher'
-          ? '班级：' + ((u.clsIds || []).map(store.clsName).join('、') || '未分配') + ' · 课程：' + ((u.courseIds || []).length ? u.courseIds.map(id => (db.courses.find(c => c.id === id) || {}).name).join('、') : '全部')
-          : u.role === 'parent' ? '孩子：' + ((u.studentIds || []).map(id => (store.student(id) || {}).name).join('、') || '未关联') : '全部管理权限',
-        cur: u.id === db.me
+          ? '班级：' + ((u.clsIds || []).map(db.classes.name).join('、') || '未分配') +
+            ' · 课程：' + ((u.courseIds || []).length
+              ? u.courseIds.map(id => (db.courses.get(id) || {}).name).join('、') : '全部')
+          : u.role === 'parent'
+            ? '孩子：' + ((u.studentIds || []).map(id => (db.students.get(id) || {}).name).join('、') || '未关联')
+            : '全部管理权限',
+        cur: u.id === s.me
       })),
-      courseClsIdx: Math.min(this.data.courseClsIdx, Math.max(0, db.classes.length - 1))
+      courseClsIdx: Math.min(this.data.courseClsIdx, Math.max(0, classes.length - 1))
     });
   },
   pickTab(e) { this.setData({ tab: +e.currentTarget.dataset.i }); },
+
   /* ================= 班级 / 课程 ================= */
   onNewCls(e) { this.setData({ newCls: e.detail.value }); },
   addClass() {
-    const n = this.data.newCls.trim(); if (!n) return;
-    const db = store.get(); db.classes.push({ id: Date.now(), name: n }); store.save();
+    const n = this.data.newCls.trim();
+    const r = db.classes.create({ name: n });
+    if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
     this.setData({ newCls: '' }); this.refresh();
   },
   delClass(e) {
-    wx.showModal({ title: '删除班级不会删除学生记录，确定？', success: r => {
-      if (r.confirm) { const db = store.get(); db.classes = db.classes.filter(c => c.id !== e.currentTarget.dataset.id); store.save(); this.refresh(); }
-    } });
+    const id = +e.currentTarget.dataset.id;
+    wx.showModal({
+      title: '删除这个班级？',
+      content: '该班课程会一并删除，学生变为未分班，历史成果记录保留。',
+      success: r => {
+        if (!r.confirm) return;
+        const res = db.classes.remove(id);
+        if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
+        this.refresh();
+      }
+    });
   },
   onNewCourse(e) { this.setData({ newCourse: e.detail.value }); },
   onCourseCls(e) { this.setData({ courseClsIdx: +e.detail.value }); },
   addCourse() {
-    const n = this.data.newCourse.trim(); if (!n) return;
-    const db = store.get(); const c = db.classes[this.data.courseClsIdx];
+    const n = this.data.newCourse.trim();
+    const c = db.classes.list()[this.data.courseClsIdx];
     if (!c) { wx.showToast({ title: '请先添加班级', icon: 'none' }); return; }
-    db.courses.push({ id: Date.now(), name: n, clsId: c.id }); store.save();
+    const r = db.courses.create({ name: n, clsId: c.id });
+    if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
     this.setData({ newCourse: '' }); this.refresh();
   },
   delCourse(e) {
+    const id = +e.currentTarget.dataset.id;
     wx.showModal({ title: '确定删除该课程？', success: r => {
-      if (r.confirm) { const db = store.get(); db.courses = db.courses.filter(c => c.id !== e.currentTarget.dataset.id); store.save(); this.refresh(); }
+      if (!r.confirm) return;
+      const res = db.courses.remove(id);
+      if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
+      this.refresh();
     } });
   },
+
   /* ================= 学生：弹层表单（姓名+班级多选+家长+微信） ================= */
   addStudent() { this.openStuForm(null); },
   editStudent(e) { this.openStuForm(e.currentTarget.dataset.id); },
   openStuForm(id) {
-    const db = store.get();
-    const s = id ? db.students.find(x => x.id === id) : null;
+    const s = id ? db.students.get(id) : null;
     this.setData({
       stuForm: { id: id || null, name: s ? s.name : '', parent: s ? (s.parent || '') : '', wechat: s ? (s.wechat || '') : '', photo: s ? (s.photo || '') : '' },
       stuClsSel: s ? (s.clsIds || []).slice() : []
@@ -93,38 +112,47 @@ Page({
   onStuParent(e) { this.setData({ 'stuForm.parent': e.detail.value }); },
   onStuWechat(e) { this.setData({ 'stuForm.wechat': e.detail.value }); },
   stuClsTgl(e) {
-    const id = e.currentTarget.dataset.id, sel = this.data.stuClsSel.slice();
+    const id = +e.currentTarget.dataset.id, sel = this.data.stuClsSel.slice();
     const i = sel.indexOf(id); i >= 0 ? sel.splice(i, 1) : sel.push(id);
     this.setData({ stuClsSel: sel });
   },
   stuCancel() { this.setData({ stuForm: null }); },
   stuSave() {
     const f = this.data.stuForm, sel = this.data.stuClsSel;
-    const n = (f.name || '').trim(); if (!n) { wx.showToast({ title: '请输入姓名', icon: 'none' }); return; }
-    const db = store.get();
-    if (f.id) {
-      const s = db.students.find(x => x.id === f.id);
-      Object.assign(s, { name: n, clsIds: sel.slice(), parent: f.parent.trim(), wechat: f.wechat.trim(), photo: f.photo || '' });
-    } else {
-      db.students.push({ id: Date.now(), name: n, clsIds: sel.slice(), parent: f.parent.trim(), wechat: f.wechat.trim(), photo: f.photo || '' });
-    }
-    store.save(); this.setData({ stuForm: null }); this.refresh();
+    const n = (f.name || '').trim();
+    const payload = {
+      name: n, clsIds: sel.slice(),
+      parent: (f.parent || '').trim(), wechat: (f.wechat || '').trim(), photo: f.photo || ''
+    };
+    const r = f.id ? db.students.update(f.id, payload) : db.students.create(payload);
+    if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
+    this.setData({ stuForm: null }); this.refresh();
     wx.showToast({ title: '已保存', icon: 'success' });
   },
   goStudentPage(e) {
     wx.navigateTo({ url: '/pages/student/student?id=' + e.currentTarget.dataset.id });
   },
   delStudent(e) {
-    wx.showModal({ title: '确定删除该学生？', success: r => {
-      if (r.confirm) { const db = store.get(); db.students = db.students.filter(s => s.id !== e.currentTarget.dataset.id); store.save(); this.refresh(); }
-    } });
+    const id = +e.currentTarget.dataset.id;
+    const s = db.students.get(id);
+    wx.showModal({
+      title: '删除这个学生？',
+      content: (s ? s.name : '该学生') + ' 的 ' + db.records.ofStudent(id).length + ' 条成果记录会一并删除，且不可恢复。',
+      success: r => {
+        if (!r.confirm) return;
+        const res = db.students.remove(id);
+        if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
+        this.refresh();
+        wx.showToast({ title: '已删除', icon: 'success' });
+      }
+    });
   },
+
   /* ================= 人员（老师/家长） ================= */
   addUserTeacher() { this.openUserForm({ role: 'teacher' }); },
   addUserParent() { this.openUserForm({ role: 'parent' }); },
   editUser(e) {
-    const db = store.get();
-    const u = db.users.find(x => x.id === e.currentTarget.dataset.id);
+    const u = db.users.get(e.currentTarget.dataset.id);
     if (u) this.openUserForm(u);
   },
   openUserForm(u) {
@@ -140,37 +168,38 @@ Page({
   userCrsTgl(e) { this._tgl('userCrsSel', e); },
   userStuTgl(e) { this._tgl('userStuSel', e); },
   _tgl(key, e) {
-    const id = e.currentTarget.dataset.id, sel = this.data[key].slice();
+    const id = +e.currentTarget.dataset.id, sel = this.data[key].slice();
     const i = sel.indexOf(id); i >= 0 ? sel.splice(i, 1) : sel.push(id);
     this.setData({ [key]: sel });
   },
   userCancel() { this.setData({ userForm: null }); },
   userSave() {
     const f = this.data.userForm;
-    const n = (f.name || '').trim(); if (!n) { wx.showToast({ title: '请输入姓名', icon: 'none' }); return; }
-    const db = store.get();
-    const base = { name: n };
-    if (f.role === 'teacher') Object.assign(base, { clsIds: this.data.userClsSel.slice(), courseIds: this.data.userCrsSel.slice(), studentIds: [] });
-    else Object.assign(base, { studentIds: this.data.userStuSel.slice(), clsIds: [], courseIds: [] });
-    if (f.id) {
-      Object.assign(db.users.find(x => x.id === f.id), base);
-    } else {
-      db.users.push(Object.assign({ id: 'u' + Date.now(), role: f.role }, base));
-    }
-    store.save(); this.setData({ userForm: null }); this.refresh();
+    const n = (f.name || '').trim();
+    // 老师限定负责的班级/课程；家长限定关联的孩子，两类权限互斥
+    const base = f.role === 'teacher'
+      ? { name: n, clsIds: this.data.userClsSel.slice(), courseIds: this.data.userCrsSel.slice(), studentIds: [] }
+      : { name: n, studentIds: this.data.userStuSel.slice(), clsIds: [], courseIds: [] };
+    const r = f.id
+      ? db.users.update(f.id, base)
+      : db.users.create(Object.assign({ role: f.role }, base));
+    if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
+    this.setData({ userForm: null }); this.refresh();
     wx.showToast({ title: '已保存', icon: 'success' });
   },
   delUser(e) {
     const id = e.currentTarget.dataset.id;
     wx.showModal({ title: '确定删除该人员？', success: r => {
-      if (r.confirm) { const db = store.get(); db.users = db.users.filter(u => u.id !== id); if (db.me === id) db.me = db.users[0] && db.users[0].id; store.save(); this.refresh(); }
+      if (!r.confirm) return;
+      const res = db.users.remove(id);
+      if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
+      this.refresh();
     } });
   },
   switchMe(e) {
-    const db = store.get();
-    db.me = e.currentTarget.dataset.id;
-    db.role = (db.users.find(u => u.id === db.me) || {}).role || 'teacher';
-    store.save(); this.refresh();
+    const res = db.users.switchTo(e.currentTarget.dataset.id);
+    if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
+    this.refresh();
     wx.showToast({ title: '已切换身份', icon: 'success' });
   }
 });

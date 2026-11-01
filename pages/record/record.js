@@ -37,10 +37,12 @@ Page({
     const clsId = pick.cls || (classes[0] && classes[0].id);
     const courses = db.courses.of(clsId);
     const students = db.students.of(clsId); // 已按姓氏拼音排序
+    // 编辑已有记录时按记录里的课程名定位到下拉项，避免默认落到第一门课
+    const ci = Math.max(0, courses.findIndex(c => c.name === pick.course));
     this.setData({
-      clsId, students, courses,
+      clsId, students, courses, courseIdx: ci,
       over45: students.length > 45,
-      course: courses[0] ? courses[0].name : '',
+      course: courses[ci] ? courses[ci].name : '',
       sid: pick.sid || null, score: pick.score || 85, tag: pick.tag || '',
       note: pick.note || '', photos: pick.photos || [], videos: pick.videos || [], audio: pick.audio || null,
       rid: pick.rid || null, editing: !!pick.rid
@@ -194,8 +196,12 @@ Page({
     if (this.data.tplOpen) { this.setData({ tplOpen: false }); return; }
     const pick = getApp().globalData.pick || {};
     this._sel = (pick.tplSel || []).slice();
-    this._tpl = store.tpls().map(t => ({ n: t.n, opts: t.opts.slice() }));
+    this._reloadTpls();
     this.setData({ tplOpen: true, tplList: this._render(), sel: this._sel, selCount: this._sel.length });
+  },
+  // 从模板实体重新取一份本地副本（每次增删改后都要重取，保证下标与库一致）
+  _reloadTpls() {
+    this._tpl = db.templates.list().map(t => ({ id: t.id, n: t.name, opts: t.options.slice() }));
   },
   _render() {
     // WXML 不支持方法调用，选中态在此预计算
@@ -216,37 +222,49 @@ Page({
     this._sync();
   },
   tplAdd(e) {
-    const di = e.currentTarget.dataset.di;
+    const di = +e.currentTarget.dataset.di;
+    const g = this._tpl[di];
+    if (!g) return;
     wx.showModal({
-      title: '新增选项 · ' + this._tpl[di].n, editable: true, placeholderText: '输入选项内容',
+      title: '新增选项 · ' + g.n, editable: true, placeholderText: '输入选项内容',
       success: r => {
         if (!r.confirm || !r.content || !r.content.trim()) return;
-        this._tpl[di].opts.push(r.content.trim());
-        this._saveTpls(); this._sync();
+        const res = db.templates.addOption(g.id, r.content.trim());
+        if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
+        this._reloadTpls(); this._sync();
       }
     });
   },
   tplEdit(e) {
-    const { di, oi } = e.currentTarget.dataset;
+    const di = +e.currentTarget.dataset.di, oi = +e.currentTarget.dataset.oi;
+    const g = this._tpl[di];
+    if (!g) return;
     wx.showModal({
-      title: '编辑选项', editable: true, content: this._tpl[di].opts[oi],
+      title: '编辑选项', editable: true, content: g.opts[oi],
       success: r => {
         if (!r.confirm || !r.content || !r.content.trim()) return;
-        this._tpl[di].opts[oi] = r.content.trim();
-        this._saveTpls(); this._sync();
+        const res = db.templates.updateOption(g.id, oi, r.content.trim());
+        if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
+        this._reloadTpls(); this._sync();
       }
     });
   },
   tplDel(e) {
-    const { di, oi } = e.currentTarget.dataset;
+    const di = +e.currentTarget.dataset.di, oi = +e.currentTarget.dataset.oi;
+    const g = this._tpl[di];
+    if (!g) return;
     wx.showModal({ title: '删除这个选项？', success: r => {
       if (!r.confirm) return;
-      this._tpl[di].opts.splice(oi, 1);
-      this._sel = this._sel.filter(k => k !== di + ':' + oi);
-      this._saveTpls(); this._sync();
+      const res = db.templates.removeOption(g.id, oi);
+      if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
+      // 选中项随删除位移：同维度中排在被删项之后的整体前移一位，否则会错位选中其它评语
+      this._sel = this._sel.filter(k => k !== di + ':' + oi).map(k => {
+        const p = k.split(':'), d = +p[0], o = +p[1];
+        return (d === di && o > oi) ? (d + ':' + (o - 1)) : k;
+      });
+      this._reloadTpls(); this._sync();
     } });
   },
-  _saveTpls() { store.saveTpls(this._tpl.map(d => ({ n: d.n, opts: d.opts.slice() }))); },
   tplClear() { this._sel = []; this._sync(); },
   tplApply() {
     const sel = this._sel, byDim = {};

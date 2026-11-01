@@ -309,7 +309,6 @@ function recordSave(pick, send) {
 
   const base = {
     sid: stu.id, cid, courseId, course,
-    date: schema.normDate(p.date) || schema.ymd(),
     score: schema.num(p.score, 85),
     tag: schema.str(p.tag).trim(),
     note: schema.str(p.note),
@@ -321,7 +320,9 @@ function recordSave(pick, send) {
   if (rid) {
     const r = recordGet(rid);
     if (!r) return { ok: false, msg: '记录不存在' };
-    const next = schema.normalizeRecord(Object.assign({}, r, base), org(), now());
+    // 没显式传日期时保留原日期：编辑一条上周的记录不能把它改到今天
+    const date = schema.normDate(p.date) || r.date;
+    const next = schema.normalizeRecord(Object.assign({}, r, base, { date }), org(), now());
     const err = schema.validate('record', next);
     if (err) return { ok: false, msg: err };
     next.id = r.id; next.tid = r.tid || core.meta().me || ''; next.updatedAt = now();
@@ -330,7 +331,10 @@ function recordSave(pick, send) {
     return { ok: true, rid: r.id, record: r };
   }
 
-  const e = schema.normalizeRecord(Object.assign({}, base, { tid: core.meta().me || '' }), org(), now());
+  const e = schema.normalizeRecord(Object.assign({}, base, {
+    tid: core.meta().me || '',
+    date: schema.normDate(p.date) || schema.ymd()
+  }), org(), now());
   const err = schema.validate('record', e);
   if (err) return { ok: false, msg: err };
   e.id = core.nextId();

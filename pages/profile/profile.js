@@ -1,7 +1,7 @@
-const store = require('../../utils/store');
+const db = require('../../utils/db');
 
 Page({
-  data: { f: {}, fields: [
+  data: { fields: [
     { k: 'nick', label: '昵称', ph: '孩子的小名' },
     { k: 'birth', label: '生日', ph: '如 2018-06-01' },
     { k: 'school', label: '学校/班级', ph: '如 实验小学一年级' },
@@ -10,11 +10,10 @@ Page({
     { k: 'level', label: '当前水平', ph: '如 已学 1 年' },
     { k: 'goal', label: '学习目标', ph: '如 考级/兴趣培养' },
     { k: 'note', label: '备注', ph: '其他需要老师了解的信息' }
-  ] },
+  ], f: {} },
   onLoad(q) {
-    const db = store.get();
-    const s = store.student(+q.id);
     this.sid = +q.id;
+    const s = db.students.get(this.sid);
     const p = (s && s.profile) || {};
     this.setData({ f: { nick: p.nick || '', birth: p.birth || '', school: p.school || '', phone: p.phone || '', wechat: p.wechat || '', level: p.level || '', goal: p.goal || '', note: p.note || '' } });
   },
@@ -26,16 +25,11 @@ Page({
   submit() {
     const f = this.data.f;
     if (f.phone && !/^1\d{10}$/.test(f.phone)) { wx.showToast({ title: '手机号格式不对', icon: 'none' }); return; }
-    const s = store.student(this.sid);
-    if (!s) return;
-    s.profile = Object.assign({}, f, { submittedAt: store.today() });
-    store.save();
-    api_push(s);
+    const r = db.students.updateProfile(this.sid, f);
+    if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
+    // 家长填写的是孩子资料，属于学生实体的 profile 字段，一并推云端
+    require('../../utils/api').pushRecord({ type: 'profile', sid: r.item.id, profile: r.item.profile });
     wx.showToast({ title: '资料已提交', icon: 'success' });
     setTimeout(() => wx.navigateBack(), 800);
   }
 });
-function api_push(s) {
-  const api = require('../../utils/api');
-  api.pushRecord({ type: 'profile', sid: s.id, profile: s.profile });
-}

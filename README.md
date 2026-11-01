@@ -52,12 +52,25 @@
 ```
 橙果-小程序/
 ├── app.js / app.json / app.wxss      全局：数据初始化、tabBar、设计规范
-├── utils/store.js                    数据层（与 H5 版同构，wx.storage 持久化）
+├── utils/db/                         主数据层（六类实体，唯一读写入口）
+│   ├── index.js                      仓储 API：db.classes / db.students / db.records …
+│   ├── schema.js                     实体字段、默认值、校验规则
+│   ├── storage.js                    存储适配器（唯一接触 wx.storage 的文件）
+│   ├── core.js                       内存态、id 分配、落盘
+│   └── migrate.js                    v2 单一大对象 → v3 分集合迁移
 ├── utils/api.js                      线上同步层（REST，未配置自动降级本地）
 ├── pages/index|record|tpls|records|student|profile|mgr
 ├── cloudfunctions/sync               云函数（records/profiles 读写、按 openid 隔离）
 └── project.config.json
 ```
+
+### 数据层约定（改数据前必读）
+
+- 页面**只**通过 `const db = require('../../utils/db')` 读写数据，不碰 `wx.setStorageSync`，也不直接改返回对象里的字段——改字段要走 `update` / `markSent` 等方法，否则不会落盘、不会更新 `updatedAt`。
+- 六类实体：班级 `classes`、课程 `courses`、学生 `students`、课堂记录 `records`、人员 `users`、评价模板 `templates`，各自一个 storage key（对应将来云端一张表）。
+- 每个实体都带 `orgId`（归属机构）、`createdAt` / `updatedAt`、`removed`（软删除，多端同步时删除才能被传播）。
+- 写入前统一过 `schema.validate()`，非法数据（空名称、分数越界、照片超 9 张…）会被拒绝并返回文案。
+- **接云端只需替换 `utils/db/storage.js`**：仓储读内存、写落盘，换适配器后页面代码零改动。
 
 ## 六、版本规划
 

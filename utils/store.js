@@ -10,21 +10,29 @@ const DEFAULT_TPLS = [
   { n: '下次课程注意', opts: ['请课后复习本节内容，下节课将巩固练习', '请提前完成课后作业，下节课检查讲评', '下节课将学习新内容，请保持状态'] }
 ];
 
-// 演示学生（10 个，姓氏分散便于验证模糊搜索；含 2 个"周"姓）
-const DEMO_STUDENTS = [
-  { id: 3, name: '周雨桐', clsIds: [1], parent: '周敏', wechat: '' },
-  { id: 4, name: '周子轩', clsIds: [1, 2], parent: '周国强', wechat: '' },
-  { id: 5, name: '陈思远', clsIds: [2], parent: '陈慧', wechat: '' },
-  { id: 6, name: '林小满', clsIds: [1], parent: '林芳', wechat: '' },
-  { id: 7, name: '王一诺', clsIds: [1, 2], parent: '王丽', wechat: '' },
-  { id: 8, name: '刘星辰', clsIds: [2], parent: '刘洋', wechat: '' },
-  { id: 9, name: '赵可欣', clsIds: [1], parent: '赵静', wechat: '' },
-  { id: 10, name: '孙墨白', clsIds: [1, 2], parent: '孙磊', wechat: '' },
-  { id: 11, name: '吴梓萱', clsIds: [2], parent: '吴倩', wechat: '' },
-  { id: 12, name: '郑一鸣', clsIds: [1], parent: '郑伟', wechat: '' }
-];
+// 演示数据（45 位书法班学生 + 历史成果记录），见 utils/demo-data.js
+const demo = require('./demo-data');
 
 let db = null;
+
+// 一键灌入/刷新演示数据：老版本残留的演示学生与记录会先清掉，避免重复
+function seedDemo() {
+  if (db.demoVersion === demo.DEMO_VERSION) return;
+  const recSids = {};
+  (db.records || []).forEach(r => { if (r.sid) recSids[r.sid] = 1; });
+  const OLD_DEMO_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]; // 早期种子与第一版演示学生
+  db.students = (db.students || []).filter(s =>
+    !((s.demo || OLD_DEMO_IDS.indexOf(s.id) > -1) && !recSids[s.id])
+  );
+  db.records = (db.records || []).filter(r => !r.demo);
+  db.students = db.students.concat(demo.DEMO_STUDENTS.map(s => Object.assign({}, s, { clsIds: s.clsIds.slice() })));
+  db.records = db.records.concat(demo.DEMO_RECORDS.map(r => Object.assign({}, r)));
+  const p = (db.users || []).find(u => u.role === 'parent');
+  if (p) p.studentIds = [demo.DEMO_STUDENTS[0].id]; // 家长演示账号绑定第一个孩子
+  db.demoVersion = demo.DEMO_VERSION;
+  delete db.seedStudents;
+  save();
+}
 
 function init() {
   db = wx.getStorageSync(KEY) || null;
@@ -34,25 +42,13 @@ function init() {
       users: [{ id: 't1', name: '测试老师', role: 'teacher' }, { id: 'p1', name: '家长演示', role: 'parent' }],
       classes: [{ id: 1, name: '书法班' }, { id: 2, name: '素描班' }],
       courses: [{ id: 1, name: '楷书', clsId: 1 }, { id: 2, name: '素描', clsId: 2 }],
-      students: [
-        { id: 1, name: '张三', clsIds: [1, 2], parent: '张珊珊', wechat: '' },
-        { id: 2, name: '李四', clsIds: [1], parent: '', wechat: '' }
-      ],
+      students: [],
       records: [],
       profile: {}
     };
     save();
   }
-  // 一次性补充演示学生：老用户本地已有数据也能补上（按姓名去重，只补一次）
-  if (!db.seedStudents) {
-    db.students = db.students || [];
-    const names = db.students.map(s => s.name);
-    DEMO_STUDENTS.forEach(s => {
-      if (names.indexOf(s.name) === -1) db.students.push(Object.assign({}, s, { clsIds: s.clsIds.slice() }));
-    });
-    db.seedStudents = true;
-    save();
-  }
+  seedDemo();
   if (!wx.getStorageSync(TPL_KEY)) wx.setStorageSync(TPL_KEY, DEFAULT_TPLS);
 }
 function get() { return db; }

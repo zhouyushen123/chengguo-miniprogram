@@ -87,10 +87,7 @@
 
 <view wx:else>
   <view class="topbar">
-    <view class="topleft">
-      <view class="brand">橙果</view>
-      <view class="hello">{{roleLabel}} · {{uName}}</view>
-    </view>
+    <view class="hello">{{roleLabel}} · {{uName}}</view>
     <view class="datechip">{{dateStr}}</view>
   </view>
   <view class="card" wx:for="{{kids}}" wx:key="id" bindtap="goStudent" data-sid="{{item.id}}">

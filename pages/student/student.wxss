@@ -52,3 +52,14 @@
 .vmeta { flex: 1; min-width: 0; }
 .vt1 { font-size: 27rpx; font-weight: 600; color: #3a3a3a; }
 .vt2 { font-size: 22rpx; color: #b8b2aa; margin-top: 4rpx; }
+
+/* 照片网格自适应：1 张铺满整行，2 张对半，3 张及以上三列 */
+.photogrid.pg1 { grid-template-columns: 1fr; }
+.photogrid.pg1 image { aspect-ratio: auto; height: 480rpx; }
+.photogrid.pg2 { grid-template-columns: repeat(2, 1fr); }
+.photogrid.pg2 image { aspect-ratio: auto; height: 320rpx; }
+
+/* 课程评价：维度名浅色，正文深色且加重 */
+.nline { line-height: 1.7; }
+.nlabel { color: #b8b2aa; }
+.ntext { color: #3a3a3a; font-weight: 500; }

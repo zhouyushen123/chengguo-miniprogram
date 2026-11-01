@@ -33,14 +33,14 @@
       <text wx:if="{{rec.tag}}" class="pill" style="background:#e8590c">{{rec.tag}}</text>
       <text class="pill" style="background:{{rec.sent?'#3a9e5f':'#b8860b'}}">{{rec.sent?'已发送':'待发送'}}</text>
     </view>
-    <view class="photogrid">
+    <view class="photogrid {{photoCls}}">
       <image wx:for="{{photoUrls}}" wx:key="*this" src="{{item}}" mode="aspectFill" bindtap="previewPhoto" data-i="{{index}}" />
     </view>
     <view class="videolist">
       <video wx:for="{{videoUrls}}" wx:key="*this" class="vplayer" src="{{item}}" object-fit="cover" controls show-center-play-btn></video>
     </view>
     <view class="notegroups">
-      <block wx:for="{{rec.noteLines}}" wx:key="*this"><view class="mi">{{item}}</view></block>
+      <view class="mi nline" wx:for="{{rec.noteLines}}" wx:key="index"><text wx:if="{{item.label}}" class="nlabel">{{item.label}}：</text><text class="ntext">{{item.text}}</text></view>
     </view>
     <template is="voicebar" wx:if="{{rec.audio}}" data="{{vk:'rec', vsrc:rec.audio, playing, teacher, icoPlay, icoPause}}" />
   </view>
@@ -62,14 +62,14 @@
         <text wx:if="{{latest.tag}}" class="pill" style="background:#3a9e5f">{{latest.tag}}</text>
         <text class="pill" style="background:{{latest.sent?'#3a9e5f':'#b8860b'}}">{{latest.sent?'已发送':'待发送'}}</text>
       </view>
-      <view class="photogrid">
+      <view class="photogrid {{photoCls}}">
         <image wx:for="{{photoUrls}}" wx:key="*this" src="{{item}}" mode="aspectFill" bindtap="previewPhoto" data-i="{{index}}" />
       </view>
       <view class="videolist">
         <video wx:for="{{videoUrls}}" wx:key="*this" class="vplayer" src="{{item}}" object-fit="cover" controls show-center-play-btn></video>
       </view>
       <view class="notegroups">
-        <view class="mi" wx:for="{{latest.noteLines}}" wx:key="*this">{{item}}</view>
+        <view class="mi nline" wx:for="{{latest.noteLines}}" wx:key="index"><text wx:if="{{item.label}}" class="nlabel">{{item.label}}：</text><text class="ntext">{{item.text}}</text></view>
       </view>
       <template is="voicebar" wx:if="{{latest.audio}}" data="{{vk:'latest', vsrc:latest.audio, playing, teacher, icoPlay, icoPause}}" />
     </view>
@@ -92,14 +92,14 @@
             <text wx:if="{{item.tag}}" class="pill" style="background:#e8590c">{{item.tag}}</text>
             <text class="pill" style="background:{{item.sent?'#3a9e5f':'#b8860b'}}">{{item.sent?'已发送':'待发送'}}</text>
           </view>
-          <view class="photogrid" wx:if="{{item.photos.length}}">
+          <view class="photogrid {{item.pcls}}" wx:if="{{item.photos.length}}">
             <image wx:for="{{item.photos}}" wx:for-item="ph" wx:key="*this" src="{{ph}}" mode="aspectFill" />
           </view>
           <view class="videolist" wx:if="{{item.videos.length}}">
             <video wx:for="{{item.videos}}" wx:for-item="vd" wx:key="*this" class="vplayer" src="{{vd}}" object-fit="cover" controls show-center-play-btn></video>
           </view>
           <view class="notegroups">
-            <view class="mi" wx:for="{{item.noteLines}}" wx:for-item="line" wx:key="*this">{{line}}</view>
+            <view class="mi nline" wx:for="{{item.noteLines}}" wx:for-item="line" wx:key="index"><text wx:if="{{line.label}}" class="nlabel">{{line.label}}：</text><text class="ntext">{{line.text}}</text></view>
           </view>
           <template is="voicebar" wx:if="{{item.audio}}" data="{{vk:'h'+item.id, vsrc:item.audio, playing, teacher, icoPlay, icoPause}}" />
         </view>

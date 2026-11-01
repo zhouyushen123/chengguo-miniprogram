@@ -3,7 +3,7 @@ const icons = require('../../utils/icons');
 
 Page({
   data: {
-    s: null, tab: 0, latest: null, history: [], rec: null, photoUrls: [], videoUrls: [],
+    s: null, tab: 0, latest: null, history: [], rec: null, photoUrls: [], videoUrls: [], photoCls: '',
     filters: [], filt: '全部', total: 0, shown: 0, expandId: 0,
     playing: '', teacher: '', icoPlay: icons.play('#E8590C'), icoPause: icons.pause('#E8590C')
   },
@@ -23,7 +23,16 @@ Page({
     const s = store.student(this.sid);
     if (!s) return;
     const recs = db.records.filter(r => r.sid === this.sid).sort((a, b) => b.id - a.id);
-    const withLines = r => r ? Object.assign({}, r, { noteLines: (r.note || '').split('\n').filter(Boolean) }) : r;
+    // 评价行拆分：维度名（浅色）+ 正文（深色），如「上课态度：听讲认真」
+    const parseLine = t => {
+      const i = t.indexOf('：') > -1 ? t.indexOf('：') : t.indexOf(':');
+      return i > -1
+        ? { label: t.slice(0, i), text: t.slice(i + 1).replace(/^\s+/, '') }
+        : { label: '', text: t };
+    };
+    const withLines = r => r ? Object.assign({}, r, { noteLines: (r.note || '').split('\n').filter(Boolean).map(parseLine) }) : r;
+    // 照片网格自适应：1 张铺满整行，2 张对半，3 张及以上三列
+    const pgCls = n => n >= 3 ? 'pg3' : n === 2 ? 'pg2' : n === 1 ? 'pg1' : '';
 
     // 指定某条记录（从记录列表点入）
     if (this.rid) {
@@ -31,6 +40,7 @@ Page({
       this.setData({
         s: this.stuView(s), rec, latest: null, history: [],
         photoUrls: (rec || {}).photos || [], videoUrls: (rec || {}).videos || [],
+        photoCls: pgCls(((rec || {}).photos || []).length),
         filters: [], filt: '全部', total: 0, shown: 0, teacher: db.teacher
       });
       return;
@@ -47,9 +57,10 @@ Page({
       filters, filt, total: recs.length, shown: list.length,
       latest: withLines(list[0] || null),
       // 历史条目带全量字段，行内展开详情用（不再跳新页）
-      history: list.slice(1).map(withLines),
+      history: list.slice(1).map(r => Object.assign(withLines(r), { pcls: pgCls((r.photos || []).length) })),
       photoUrls: (list[0] || {}).photos || [],
       videoUrls: (list[0] || {}).videos || [],
+      photoCls: pgCls(((list[0] || {}).photos || []).length),
       teacher: db.teacher
     });
   },

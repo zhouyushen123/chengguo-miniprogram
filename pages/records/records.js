@@ -1,7 +1,6 @@
 const store = require('../../utils/store');
 const api = require('../../utils/api');
 const icons = require('../../utils/icons');
-const icons = require('../../utils/icons');
 
 // 筛选梯度：班级 → 录入日期 → 成果等级
 // 上一层变化会重算下一层的可选项：选了班级，日期只列该班有记录的日期；选了日期，等级只列该批记录中出现过的等级

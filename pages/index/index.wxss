@@ -99,6 +99,10 @@
 }
 .ctmeta { margin-top: 8rpx; font-size: 22rpx; color: #9c948a; }
 .ctwarn { margin-top: 6rpx; font-size: 21rpx; color: #e8590c; }
+/* 彩色头像（最近成果等处仍在用） */
+.ava.cls-ico-0 { background: linear-gradient(135deg, #6ea8ff, #4a7ddc); }
+.ava.cls-ico-1 { background: linear-gradient(135deg, #7ed6a2, #3a9e5f); }
+.ava.cls-ico-2 { background: linear-gradient(135deg, #f7a23b, #e8590c); }
 .scorebadge {
   flex: none; min-width: 88rpx; text-align: center;
   background: #fdeee2; color: #e8590c; font-weight: 800; font-size: 32rpx;

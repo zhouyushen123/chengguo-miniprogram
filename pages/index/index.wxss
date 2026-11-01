@@ -99,12 +99,21 @@
 }
 .ctmeta { margin-top: 8rpx; font-size: 22rpx; color: #9c948a; }
 .ctwarn { margin-top: 6rpx; font-size: 21rpx; color: #e8590c; }
-/* 彩色头像（最近成果等处仍在用） */
-.ava.cls-ico-0 { background: linear-gradient(135deg, #6ea8ff, #4a7ddc); }
-.ava.cls-ico-1 { background: linear-gradient(135deg, #7ed6a2, #3a9e5f); }
-.ava.cls-ico-2 { background: linear-gradient(135deg, #f7a23b, #e8590c); }
-.scorebadge {
-  flex: none; min-width: 88rpx; text-align: center;
-  background: #fdeee2; color: #e8590c; font-weight: 800; font-size: 32rpx;
-  border-radius: 999rpx; padding: 12rpx 20rpx;
+/* ---------- 最近成果：自适应磁贴（最多一行 5 个，少则拉伸） ---------- */
+.recgrid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(132rpx, 1fr));
+  gap: 14rpx; padding: 0 24rpx 24rpx;
+}
+.rectile {
+  background: #fff; border-radius: 18rpx; padding: 20rpx 10rpx 18rpx;
+  text-align: center; min-width: 0;
+  box-shadow: 0 4rpx 16rpx rgba(60, 40, 20, 0.05);
+}
+.rtname {
+  font-size: 26rpx; font-weight: 700; color: #33302c;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rtmeta {
+  margin-top: 6rpx; font-size: 19rpx; color: #9c948a; padding: 0 6rpx;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }

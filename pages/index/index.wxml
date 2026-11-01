@@ -70,14 +70,10 @@
     <text class="sectitle">最近成果</text>
     <text class="seclink" bindtap="goRecords">全部</text>
   </view>
-  <view class="card" wx:for="{{recent}}" wx:key="id">
-    <view class="sturow" bindtap="openRec" data-rid="{{item.id}}">
-      <view class="ava cls-ico-{{item.ci}}">{{item.name[0]}}</view>
-      <view class="stuinfo">
-        <view class="h1">{{item.name}}</view>
-        <view class="mi oneline">{{item.clsName}} · {{item.date}}{{item.tag?' · '+item.tag:''}}</view>
-      </view>
-      <view class="scorebadge">{{item.score}}</view>
+  <view class="recgrid">
+    <view class="rectile" wx:for="{{recent}}" wx:key="id" hover-class="btn-hover" bindtap="openRec" data-rid="{{item.id}}">
+      <view class="rtname">{{item.name}}</view>
+      <view class="rtmeta">{{item.clsName}} · {{item.sd}} · {{item.score}}分</view>
     </view>
   </view>
   <view wx:if="{{!recent.length}}" class="empty">还没有成果记录，点上面「开始录入」记一条吧</view>

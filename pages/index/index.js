@@ -41,12 +41,13 @@ Page({
     const recent = db.records
       .filter(r => visIds.includes(r.cid))
       .sort((a, b) => b.id - a.id)
-      .slice(0, 3)
+      .slice(0, 5)
       .map(r => {
         const s = store.student(r.sid) || { name: '—' };
         return {
           id: r.id, name: s.name, clsName: store.clsName(r.cid), date: r.date,
-          tag: r.tag || '', score: r.score, ci: Math.max(0, vis.findIndex(c => c.id === r.cid)) % 3
+          sd: (r.date || '').slice(5), score: r.score,
+          ci: Math.max(0, vis.findIndex(c => c.id === r.cid)) % 3
         };
       });
 

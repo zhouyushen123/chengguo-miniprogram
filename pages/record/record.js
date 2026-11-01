@@ -2,6 +2,7 @@ const store = require('../../utils/store');
 const api = require('../../utils/api');
 const stt = require('../../utils/stt');
 const icons = require('../../utils/icons');
+const pinyin = require('../../utils/pinyin');
 
 // 媒体限制：单个文件 50MB，视频最多 3 个，照片最多 9 张
 const MAX_FILE = 50 * 1024 * 1024;
@@ -25,7 +26,7 @@ Page({
     const db = store.get();
     const clsId = pick.cls || (db.classes[0] && db.classes[0].id);
     const courses = store.coursesOf(clsId);
-    const students = store.studentsOf(clsId);
+    const students = pinyin.sortStudents(store.studentsOf(clsId));
     this.setData({
       clsId, students, courses,
       over45: students.length > 45,

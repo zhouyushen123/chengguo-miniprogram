@@ -10,6 +10,20 @@ const DEFAULT_TPLS = [
   { n: '下次课程注意', opts: ['请课后复习本节内容，下节课将巩固练习', '请提前完成课后作业，下节课检查讲评', '下节课将学习新内容，请保持状态'] }
 ];
 
+// 演示学生（10 个，姓氏分散便于验证模糊搜索；含 2 个"周"姓）
+const DEMO_STUDENTS = [
+  { id: 3, name: '周雨桐', clsIds: [1], parent: '周敏', wechat: '' },
+  { id: 4, name: '周子轩', clsIds: [1, 2], parent: '周国强', wechat: '' },
+  { id: 5, name: '陈思远', clsIds: [2], parent: '陈慧', wechat: '' },
+  { id: 6, name: '林小满', clsIds: [1], parent: '林芳', wechat: '' },
+  { id: 7, name: '王一诺', clsIds: [1, 2], parent: '王丽', wechat: '' },
+  { id: 8, name: '刘星辰', clsIds: [2], parent: '刘洋', wechat: '' },
+  { id: 9, name: '赵可欣', clsIds: [1], parent: '赵静', wechat: '' },
+  { id: 10, name: '孙墨白', clsIds: [1, 2], parent: '孙磊', wechat: '' },
+  { id: 11, name: '吴梓萱', clsIds: [2], parent: '吴倩', wechat: '' },
+  { id: 12, name: '郑一鸣', clsIds: [1], parent: '郑伟', wechat: '' }
+];
+
 let db = null;
 
 function init() {
@@ -27,6 +41,16 @@ function init() {
       records: [],
       profile: {}
     };
+    save();
+  }
+  // 一次性补充演示学生：老用户本地已有数据也能补上（按姓名去重，只补一次）
+  if (!db.seedStudents) {
+    db.students = db.students || [];
+    const names = db.students.map(s => s.name);
+    DEMO_STUDENTS.forEach(s => {
+      if (names.indexOf(s.name) === -1) db.students.push(Object.assign({}, s, { clsIds: s.clsIds.slice() }));
+    });
+    db.seedStudents = true;
     save();
   }
   if (!wx.getStorageSync(TPL_KEY)) wx.setStorageSync(TPL_KEY, DEFAULT_TPLS);

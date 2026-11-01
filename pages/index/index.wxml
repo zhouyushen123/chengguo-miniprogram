@@ -1,33 +1,101 @@
 <view wx:if="{{!isParent}}">
-  <scroll-view scroll-x class="clsbar">
-    <view class="clsrow">
-      <view wx:for="{{clsNames}}" wx:key="id" class="chip {{item.id===clsId?'on':''}}" bindtap="pickCls" data-id="{{item.id}}">{{item.name}}</view>
-      <view class="chip" bindtap="goMgr">＋ 管理</view>
+  <!-- 顶部欢迎 -->
+  <view class="topbar">
+    <view class="topleft">
+      <view class="brand">橙果</view>
+      <view class="hello">{{roleLabel}} · 欢迎回来，{{uName}}</view>
     </view>
-  </scroll-view>
-  <view class="card" wx:for="{{students}}" wx:key="id">
-    <view class="sturow" bindtap="goStudent" data-sid="{{item.id}}">
-      <view class="ava">{{item.name[0]}}</view>
+    <view class="datechip">{{dateStr}}</view>
+  </view>
+
+  <!-- 主操作 + 搜索 -->
+  <view class="card hero">
+    <view class="hero2">
+      <view class="hero-btn primary" hover-class="btn-hover" bindtap="goRecord">
+        <view class="ht">开始录入</view>
+        <view class="hs">选学生 · 打分 · 发家长</view>
+      </view>
+      <view class="hero-btn" hover-class="btn-hover" bindtap="goRecords">
+        <view class="ht">全部记录</view>
+        <view class="hs">按学生查看</view>
+      </view>
+    </view>
+    <view class="searchrow">
+      <text class="sicon">🔍</text>
+      <input class="sinput" placeholder="搜索学生，直达TA的记录" placeholder-class="ph" value="{{q}}" bindinput="onSearch" confirm-type="search" />
+    </view>
+    <view wx:if="{{q}}" class="sresults">
+      <view wx:for="{{results}}" wx:key="id" class="sturow sresult" bindtap="goStudent" data-sid="{{item.id}}">
+        <view class="ava sm cls-ico-{{item.ci}}">{{item.name[0]}}</view>
+        <view class="stuinfo">
+          <view class="h1">{{item.name}}</view>
+          <view class="mi">{{item.meta}}</view>
+        </view>
+        <view class="chev">›</view>
+      </view>
+      <view wx:if="{{!results.length}}" class="mi" style="padding:12rpx 4rpx">没找到「{{q}}」相关学生</view>
+    </view>
+  </view>
+
+  <!-- 统计 -->
+  <view class="stats">
+    <view class="stat" hover-class="btn-hover" bindtap="goMgr">
+      <view class="num">{{clsCount}}</view>
+      <view class="sl">班级 ›</view>
+    </view>
+    <view class="stat" hover-class="btn-hover" bindtap="goMgr">
+      <view class="num">{{stuCount}}</view>
+      <view class="sl">学生 ›</view>
+    </view>
+    <view class="stat" hover-class="btn-hover" bindtap="goRecords">
+      <view class="num {{pending?'warn':''}}">{{pending}}</view>
+      <view class="sl">今日未录入 ›</view>
+    </view>
+  </view>
+
+  <!-- 我的班级 -->
+  <view class="sechead">
+    <text class="sectitle">我的班级</text>
+    <text class="seclink" bindtap="goMgr">管理</text>
+  </view>
+  <view class="card clsitem" wx:for="{{myClasses}}" wx:key="id" hover-class="btn-hover" bindtap="goCls" data-name="{{item.name}}">
+    <view class="sturow">
+      <view class="ava cls-ico-{{index%3}}">{{item.name[0]}}</view>
       <view class="stuinfo">
         <view class="h1">{{item.name}}</view>
-        <view class="mi">{{item.meta}}</view>
+        <view class="mi">{{item.count}} 名学生{{item.pending?' · 今日未录':''}}<text wx:if="{{item.pending}}" class="dot"></text></view>
       </view>
       <view class="chev">›</view>
     </view>
-    <view wx:if="{{item.latest}}" class="latest">
-      <view class="lrow">
-        <text class="pill" style="background:#e8590c">最近</text>
-        <text class="mi">{{item.latest.course}} · {{item.latest.date}}</text>
-        <text class="score">{{item.latest.score}}分</text>
-      </view>
-      <view class="lnote" wx:if="{{item.latest.note}}">“{{item.latest.note}}”</view>
-    </view>
-    <view wx:else class="mi" style="margin-top:12rpx">暂无记录</view>
-    <view class="btn ghost" style="margin-top:16rpx" bindtap="goRecord" data-sid="{{item.id}}">＋ 记录本节成果</view>
   </view>
-  <view wx:if="{{!students.length}}" class="empty">该班级暂无学生，去「我的 → 学生」添加</view>
+  <view wx:if="{{!myClasses.length}}" class="empty">还没有班级，去「我的」里创建</view>
+
+  <!-- 最近成果 -->
+  <view class="sechead">
+    <text class="sectitle">最近成果</text>
+    <text class="seclink" bindtap="goRecords">全部</text>
+  </view>
+  <view class="card" wx:for="{{recent}}" wx:key="id">
+    <view class="sturow" bindtap="openRec" data-rid="{{item.id}}">
+      <view class="ava cls-ico-{{item.ci}}">{{item.name[0]}}</view>
+      <view class="stuinfo">
+        <view class="h1">{{item.name}}</view>
+        <view class="mi oneline">{{item.clsName}} · {{item.date}}{{item.tag?' · '+item.tag:''}}</view>
+      </view>
+      <view class="scorebadge">{{item.score}}</view>
+    </view>
+  </view>
+  <view wx:if="{{!recent.length}}" class="empty">还没有成果记录，点上面「开始录入」记一条吧</view>
 </view>
+
 <view wx:else>
+  <view class="topbar">
+    <view class="topleft">
+      <view class="brand">橙果</view>
+      <view class="hello">{{roleLabel}} · {{uName}}</view>
+    </view>
+    <view class="datechip">{{dateStr}}</view>
+  </view>
   <view class="card" wx:for="{{kids}}" wx:key="id" bindtap="goStudent" data-sid="{{item.id}}">
     <view class="sturow">
       <view class="ava">{{item.name[0]}}</view>

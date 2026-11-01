@@ -5,7 +5,15 @@ Page({
   onShow() {
     const db = store.get();
     const tabs = ['全部'].concat(db.classes.map(c => c.name));
-    this.setData({ tabs, role: db.role });
+    // 从首页班级卡跳入：定位到对应班级页签
+    const preset = getApp().globalData.recTab;
+    let tab = this.data.tab;
+    if (preset) {
+      const i = tabs.indexOf(preset);
+      if (i > 0) tab = i;
+      getApp().globalData.recTab = null;
+    }
+    this.setData({ tabs, tab, role: db.role });
     this.refresh();
   },
   refresh() {

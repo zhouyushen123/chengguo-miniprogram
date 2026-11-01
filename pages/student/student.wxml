@@ -1,7 +1,10 @@
 <view wx:if="{{s}}" class="wrap">
   <view class="card">
     <view class="sturow">
-      <view class="ava">{{s.name[0]}}</view>
+      <view class="ava">
+        <image wx:if="{{s.photo}}" src="{{s.photo}}" mode="aspectFill" />
+        <text wx:else>{{s.name[0]}}</text>
+      </view>
       <view class="stuinfo">
         <view class="h1">{{s.name}}</view>
         <view class="mi">{{s.meta}}{{s.wechat?' · 微信 '+s.wechat:''}}</view>
@@ -10,6 +13,19 @@
     </view>
   </view>
 
+  <!-- 语音条（自定义，替代原生 audio 的"未知歌曲"显示） -->
+  <template name="voicebar">
+    <view class="voicebar" hover-class="btn-hover" bindtap="toggleAudio" data-key="{{vk}}" data-src="{{vsrc}}">
+      <view class="vbtn">
+        <image src="{{playing===vk?icoPause:icoPlay}}" mode="aspectFit" />
+      </view>
+      <view class="vmeta">
+        <view class="vt1">{{teacher}}的课堂语音</view>
+        <view class="vt2">{{playing===vk?'正在播放…':'点击播放'}}</view>
+      </view>
+    </view>
+  </template>
+
   <!-- 指定记录（从记录列表点入） -->
   <view wx:if="{{rec}}" class="card">
     <view class="r1"><b>{{rec.course}}</b><text class="mi">{{rec.date}}</text><text class="score">{{rec.score}}分</text></view>
@@ -17,16 +33,16 @@
       <text wx:if="{{rec.tag}}" class="pill" style="background:#e8590c">{{rec.tag}}</text>
       <text class="pill" style="background:{{rec.sent?'#3a9e5f':'#b8860b'}}">{{rec.sent?'已发送':'待发送'}}</text>
     </view>
-    <view class="notegroups">
-      <block wx:for="{{rec.noteLines}}" wx:key="*this"><view class="mi">{{item}}</view></block>
-    </view>
     <view class="photogrid">
       <image wx:for="{{photoUrls}}" wx:key="*this" src="{{item}}" mode="aspectFill" bindtap="previewPhoto" data-i="{{index}}" />
     </view>
     <view class="videolist">
       <video wx:for="{{videoUrls}}" wx:key="*this" class="vplayer" src="{{item}}" object-fit="cover" controls show-center-play-btn></video>
     </view>
-    <audio wx:if="{{rec.audio}}" src="{{rec.audio}}" controls style="width:100%;margin-top:16rpx" />
+    <view class="notegroups">
+      <block wx:for="{{rec.noteLines}}" wx:key="*this"><view class="mi">{{item}}</view></block>
+    </view>
+    <template is="voicebar" wx:if="{{rec.audio}}" data="{{vk:'rec', vsrc:rec.audio, playing, teacher, icoPlay, icoPause}}" />
   </view>
 
   <!-- 筛选 + 最近一次详情 + 历史列表 -->
@@ -46,16 +62,16 @@
         <text wx:if="{{latest.tag}}" class="pill" style="background:#3a9e5f">{{latest.tag}}</text>
         <text class="pill" style="background:{{latest.sent?'#3a9e5f':'#b8860b'}}">{{latest.sent?'已发送':'待发送'}}</text>
       </view>
-      <view class="notegroups">
-        <view class="mi" wx:for="{{latest.noteLines}}" wx:key="*this">{{item}}</view>
-      </view>
       <view class="photogrid">
         <image wx:for="{{photoUrls}}" wx:key="*this" src="{{item}}" mode="aspectFill" bindtap="previewPhoto" data-i="{{index}}" />
       </view>
       <view class="videolist">
         <video wx:for="{{videoUrls}}" wx:key="*this" class="vplayer" src="{{item}}" object-fit="cover" controls show-center-play-btn></video>
       </view>
-      <audio wx:if="{{latest.audio}}" src="{{latest.audio}}" controls style="width:100%;margin-top:16rpx" />
+      <view class="notegroups">
+        <view class="mi" wx:for="{{latest.noteLines}}" wx:key="*this">{{item}}</view>
+      </view>
+      <template is="voicebar" wx:if="{{latest.audio}}" data="{{vk:'latest', vsrc:latest.audio, playing, teacher, icoPlay, icoPause}}" />
     </view>
     <view wx:else class="card mi">{{total?'该课程暂无记录':'暂无课程记录'}}</view>
 
@@ -70,14 +86,11 @@
           <text wx:if="{{!item.sent}}" class="pill" style="background:#b8860b">待发送</text>
           <view class="chev {{expandId===item.id?'up':''}}">›</view>
         </view>
-        <!-- 行内展开：完整评价与媒体 -->
+        <!-- 行内展开：照片/视频在前，课程评价在后 -->
         <view wx:if="{{expandId===item.id}}" class="histdetail">
           <view class="chips" style="margin:0 0 12rpx">
             <text wx:if="{{item.tag}}" class="pill" style="background:#e8590c">{{item.tag}}</text>
             <text class="pill" style="background:{{item.sent?'#3a9e5f':'#b8860b'}}">{{item.sent?'已发送':'待发送'}}</text>
-          </view>
-          <view class="notegroups">
-            <view class="mi" wx:for="{{item.noteLines}}" wx:for-item="line" wx:key="*this">{{line}}</view>
           </view>
           <view class="photogrid" wx:if="{{item.photos.length}}">
             <image wx:for="{{item.photos}}" wx:for-item="ph" wx:key="*this" src="{{ph}}" mode="aspectFill" />
@@ -85,7 +98,10 @@
           <view class="videolist" wx:if="{{item.videos.length}}">
             <video wx:for="{{item.videos}}" wx:for-item="vd" wx:key="*this" class="vplayer" src="{{vd}}" object-fit="cover" controls show-center-play-btn></video>
           </view>
-          <audio wx:if="{{item.audio}}" src="{{item.audio}}" controls style="width:100%;margin-top:12rpx" />
+          <view class="notegroups">
+            <view class="mi" wx:for="{{item.noteLines}}" wx:for-item="line" wx:key="*this">{{line}}</view>
+          </view>
+          <template is="voicebar" wx:if="{{item.audio}}" data="{{vk:'h'+item.id, vsrc:item.audio, playing, teacher, icoPlay, icoPause}}" />
         </view>
       </block>
     </view>

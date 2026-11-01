@@ -32,3 +32,23 @@
 .hist.up { border-bottom-color: transparent; }
 .chev { transition: transform .15s ease; }
 .chev.up { transform: rotate(90deg); }
+
+/* 学生头像：有照片显示照片，无照片显示姓氏字母 */
+.ava { position: relative; overflow: hidden; }
+.ava image { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.ava text { position: relative; }
+
+/* 课堂语音条：替代原生 audio 组件 */
+.voicebar {
+  display: flex; align-items: center; gap: 18rpx;
+  background: #faf9f7; border: 2rpx solid #e5e2dd; border-radius: 16rpx;
+  padding: 18rpx 22rpx; margin-top: 16rpx;
+}
+.vbtn {
+  flex: none; width: 72rpx; height: 72rpx; border-radius: 50%;
+  background: #fdeee2; display: flex; align-items: center; justify-content: center;
+}
+.vbtn image { width: 40rpx; height: 40rpx; }
+.vmeta { flex: 1; min-width: 0; }
+.vt1 { font-size: 27rpx; font-weight: 600; color: #3a3a3a; }
+.vt2 { font-size: 22rpx; color: #b8b2aa; margin-top: 4rpx; }

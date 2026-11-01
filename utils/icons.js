@@ -19,5 +19,12 @@ const icons = {
 icons.mic = function (color) {
   return svg(color, "<rect x='9' y='3' width='6' height='11' rx='3'/><path d='M5 11a7 7 0 0 0 14 0'/><path d='M12 18v3'/>");
 };
+// 播放 / 暂停（语音条用，支持变色）
+icons.play = function (color) {
+  return svg(color, "<path d='M8 5.5v13l10.5-6.5z'/>");
+};
+icons.pause = function (color) {
+  return svg(color, "<path d='M8.5 5.5v13'/><path d='M15.5 5.5v13'/>");
+};
 
 module.exports = icons;

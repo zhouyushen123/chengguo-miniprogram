@@ -1,9 +1,11 @@
 const store = require('../../utils/store');
+const icons = require('../../utils/icons');
 
 Page({
   data: {
     s: null, tab: 0, latest: null, history: [], rec: null, photoUrls: [], videoUrls: [],
-    filters: [], filt: '全部', total: 0, shown: 0, expandId: 0
+    filters: [], filt: '全部', total: 0, shown: 0, expandId: 0,
+    playing: '', teacher: '', icoPlay: icons.play('#E8590C'), icoPause: icons.pause('#E8590C')
   },
   onLoad(q) {
     this.sid = +q.id || +q.sid || 0; // 兼容 id / sid 两种参数名
@@ -29,7 +31,7 @@ Page({
       this.setData({
         s: this.stuView(s), rec, latest: null, history: [],
         photoUrls: (rec || {}).photos || [], videoUrls: (rec || {}).videos || [],
-        filters: [], filt: '全部', total: 0, shown: 0
+        filters: [], filt: '全部', total: 0, shown: 0, teacher: db.teacher
       });
       return;
     }
@@ -47,11 +49,31 @@ Page({
       // 历史条目带全量字段，行内展开详情用（不再跳新页）
       history: list.slice(1).map(withLines),
       photoUrls: (list[0] || {}).photos || [],
-      videoUrls: (list[0] || {}).videos || []
+      videoUrls: (list[0] || {}).videos || [],
+      teacher: db.teacher
     });
   },
+  // 语音条：替代原生 audio 组件（那会显示"未知歌曲"），播放老师的课堂语音
+  toggleAudio(e) {
+    const key = e.currentTarget.dataset.key, src = e.currentTarget.dataset.src;
+    if (!src) return;
+    if (this.data.playing === key) { // 再点一次：停止
+      if (this.audio) this.audio.stop();
+      this.setData({ playing: '' });
+      return;
+    }
+    if (!this.audio) {
+      this.audio = wx.createInnerAudioContext();
+      this.audio.onEnded(() => this.setData({ playing: '' }));
+      this.audio.onError(() => { this.setData({ playing: '' }); wx.showToast({ title: '播放失败', icon: 'none' }); });
+    }
+    this.audio.stop();
+    this.audio.src = src;
+    this.audio.play();
+    this.setData({ playing: key });
+  },
   stuView(s) {
-    return { name: s.name, meta: (s.clsIds || []).map(store.clsName).join(' · '), wechat: s.wechat || '' };
+    return { name: s.name, photo: s.photo || '', meta: (s.clsIds || []).map(store.clsName).join(' · '), wechat: s.wechat || '' };
   },
   pickFilter(e) {
     this.setData({ filt: e.currentTarget.dataset.f, expandId: 0 }, () => this.render());

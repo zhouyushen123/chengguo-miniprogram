@@ -69,7 +69,7 @@ Page({
     const db = store.get();
     const s = id ? db.students.find(x => x.id === id) : null;
     this.setData({
-      stuForm: { id: id || null, name: s ? s.name : '', parent: s ? (s.parent || '') : '', wechat: s ? (s.wechat || '') : '' },
+      stuForm: { id: id || null, name: s ? s.name : '', parent: s ? (s.parent || '') : '', wechat: s ? (s.wechat || '') : '', photo: s ? (s.photo || '') : '' },
       stuClsSel: s ? (s.clsIds || []).slice() : []
     });
   },

@@ -36,14 +36,10 @@
 .row2 { display: flex; gap: 20rpx; margin-bottom: 20rpx; }
 .row2 .btn { flex: 1; }
 .hint { text-align: center; font-size: 25rpx; color: #9c948a; background: #f0eeea; border-radius: 18rpx; padding: 20rpx; }
-/* ---------- 贴底输入条 ---------- */
-.spaceholder { height: 130rpx; }
+/* ---------- 卡内留言输入条（与照片/语音同卡） ---------- */
 .notebar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
   display: flex; align-items: center; gap: 14rpx;
-  background: #fff; padding: 16rpx 20rpx calc(16rpx + env(safe-area-inset-bottom));
-  border-top: 2rpx solid #eceae6;
-  box-shadow: 0 -6rpx 24rpx rgba(60, 40, 20, 0.06);
+  margin-top: 16rpx;
 }
 .noteinput {
   flex: 1; min-width: 0; height: 76rpx; line-height: 76rpx;
@@ -67,8 +63,8 @@
 .micbtn.rec { background: #e8590c; animation: pulse 1.2s infinite; }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
 .reclayer {
-  position: fixed; left: 0; right: 0; bottom: 130rpx; z-index: 49;
-  text-align: center; font-size: 24rpx; color: #e8590c;
+  margin-top: 14rpx; text-align: center;
+  font-size: 24rpx; color: #e8590c;
 }
 
 /* ---------- 模板全屏面板 ---------- */

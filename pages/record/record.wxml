@@ -22,11 +22,13 @@
     <picker mode="selector" range="{{courses}}" range-key="name" value="{{courseIdx}}" bindchange="onCourse">
       <view class="pickerbox">{{course || '选择课程'}} <text class="mi">▾</text></view>
     </picker>
-    <view class="sec" style="margin-top:20rpx"><view class="label">课堂照片 / 语音</view></view>
+  </view>
+
+  <view class="card">
+    <view class="sec"><view class="label">课堂照片 / 语音</view></view>
     <view class="mediarow">
       <view class="mbtn" hover-class="btn-hover" bindtap="addMedia" data-src="camera">📷\n拍照</view>
       <view class="mbtn" hover-class="btn-hover" bindtap="addMedia" data-src="album">🖼\n相册</view>
-      <view class="mbtn {{audio?'has':''}}" hover-class="btn-hover" bindtap="toggleRec">🎙\n{{audio?'重录':'语音'}}</view>
     </view>
     <view class="photogrid" wx:if="{{photos.length}}">
       <view class="ph" wx:for="{{photos}}" wx:key="*this">
@@ -38,6 +40,13 @@
       <text>🎧</text><text class="mi" style="flex:1">语音已录入</text>
       <text class="mi act" bindtap="playAudio">播放</text><text class="mi del" bindtap="rmAudio">删除</text>
     </view>
+    <view class="sec" style="margin-top:24rpx"><view class="label">老师留言</view></view>
+    <view class="notebar">
+      <input class="noteinput" placeholder="本节课表现等；可用模板快速生成" placeholder-class="ph" value="{{note}}" bindinput="onNote" confirm-type="done" maxlength="500" />
+      <view class="barbtn" hover-class="btn-hover" bindtap="toggleTpl">模板<text wx:if="{{selCount}}" class="badge">{{selCount}}</text></view>
+      <view class="micbtn {{(recording||recognizing)?'rec':''}}" hover-class="btn-hover" bindtap="toggleRec">🎙</view>
+    </view>
+    <view wx:if="{{recognizing}}" class="reclayer">正在听写，请说话…说完点麦克风结束，文字可修改</view>
   </view>
 
   <view class="card sendzone">
@@ -50,16 +59,6 @@
     <view wx:else class="hint">补齐 照片/语音 与 老师留言 后，即可发送给家长</view>
   </view>
 </view>
-
-<view class="spaceholder"></view>
-
-<!-- 微信式贴底输入条 -->
-<view class="notebar">
-  <input class="noteinput" placeholder="本节课表现等；可用模板快速生成" placeholder-class="ph" value="{{note}}" bindinput="onNote" confirm-type="done" maxlength="500" />
-  <view class="barbtn" hover-class="btn-hover" bindtap="toggleTpl">模板<text wx:if="{{selCount}}" class="badge">{{selCount}}</text></view>
-  <view class="micbtn {{(recording||recognizing)?'rec':''}}" hover-class="btn-hover" bindtap="toggleRec">🎙</view>
-</view>
-<view wx:if="{{recognizing}}" class="reclayer">正在听写，请说话…说完点麦克风结束，文字可修改</view>
 
 <!-- 模板全屏面板：多选 / 增删改选项 -->
 <view wx:if="{{tplOpen}}" class="tplpanel">

@@ -89,10 +89,7 @@ Page({
     wx.navigateTo({ url: '/pages/record/record' });
   },
   goRecords() { wx.switchTab({ url: '/pages/records/records' }); },
-  goCls(e) {
-    getApp().globalData.recTab = e.currentTarget.dataset.name;
-    this.goRecords();
-  },
+  goCls(e) { wx.navigateTo({ url: '/pages/cls/cls?id=' + e.currentTarget.dataset.id }); },
   goMgr() { wx.switchTab({ url: '/pages/mgr/mgr' }); },
   openRec(e) { wx.navigateTo({ url: '/pages/student/student?rid=' + e.currentTarget.dataset.rid + '&sid=' + e.currentTarget.dataset.sid }); },
   goStudent(e) {

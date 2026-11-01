@@ -1,0 +1,31 @@
+<view wx:if="{{cls}}" class="wrap">
+  <!-- 学生录入状态 -->
+  <view class="card">
+    <view class="clshead">
+      <view class="h1">{{cls.name}} · 今日录入</view>
+      <view class="cnt">已录 <b>{{doneCount}}</b>/{{tiles.length}}</view>
+    </view>
+    <view class="stugrid">
+      <view wx:for="{{tiles}}" wx:key="id" class="stile {{item.done?'done':''}}" hover-class="btn-hover" bindtap="goRecord" data-sid="{{item.id}}">{{item.name}}</view>
+    </view>
+    <view class="legend">
+      <view class="lg"><view class="dot g"></view>已录入</view>
+      <view class="lg"><view class="dot n"></view>未录入</view>
+      <view class="lg tip">点击学生即可为其录入今日成果</view>
+    </view>
+  </view>
+
+  <!-- 本班全部记录 -->
+  <view class="card">
+    <view class="label">班级记录 · {{recTotal}} 条</view>
+    <view class="recrow" wx:for="{{recs}}" wx:key="id" hover-class="btn-hover" bindtap="openRec" data-sid="{{item.sid}}" data-rid="{{item.id}}">
+      <view class="hleft">
+        <b>{{item.name}}</b>
+        <view class="mi">{{item.course}} · {{item.date}}{{item.tag?' · '+item.tag:''}}</view>
+      </view>
+      <view class="score">{{item.score}}分</view>
+      <view class="chev">›</view>
+    </view>
+  </view>
+  <view wx:if="{{!recs.length}}" class="card mi">本班还没有成果记录</view>
+</view>

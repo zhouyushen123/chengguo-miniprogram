@@ -6,7 +6,8 @@
     "pages/student/student",
     "pages/profile/profile",
     "pages/mgr/mgr",
-    "pages/tpls/tpls"
+    "pages/tpls/tpls",
+    "pages/cls/cls"
   ],
   "window": {
     "navigationBarBackgroundColor": "#ffffff",

@@ -1,5 +1,6 @@
 const store = require('../../utils/store');
 const api = require('../../utils/api');
+const icons = require('../../utils/icons');
 
 Page({
   data: {
@@ -7,7 +8,8 @@ Page({
     roleLabel: '', uName: '', dateStr: '',
     q: '', results: [], moreCount: 0,
     clsCount: 0, stuCount: 0, pending: 0,
-    myClasses: [], recent: []
+    myClasses: [], recent: [],
+    icoSearch: icons.search
   },
   onShow() {
     const db = store.get();

@@ -19,7 +19,7 @@
     </view>
     <view class="searchwrap">
       <view class="searchrow">
-        <text class="sicon">🔍</text>
+        <image class="sicon" src="{{icoSearch}}" mode="aspectFit" />
         <input class="sinput" placeholder="搜索学生姓名，如：周" placeholder-class="ph" value="{{q}}" bindinput="onSearch" confirm-type="search" />
         <text wx:if="{{q}}" class="sclear" bindtap="clearSearch">×</text>
       </view>

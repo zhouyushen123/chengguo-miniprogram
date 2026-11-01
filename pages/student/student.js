@@ -2,7 +2,7 @@ const store = require('../../utils/store');
 
 Page({
   data: {
-    s: null, tab: 0, latest: null, history: [], rec: null, photoUrls: [],
+    s: null, tab: 0, latest: null, history: [], rec: null, photoUrls: [], videoUrls: [],
     filters: [], filt: '全部', total: 0, shown: 0
   },
   onLoad(q) {
@@ -23,7 +23,8 @@ Page({
       const rec = withLines(recs.find(r => r.id === this.rid) || null);
       this.setData({
         s: this.stuView(s), rec, latest: null, history: [],
-        photoUrls: (rec || {}).photos || [], filters: [], filt: '全部', total: 0, shown: 0
+        photoUrls: (rec || {}).photos || [], videoUrls: (rec || {}).videos || [],
+        filters: [], filt: '全部', total: 0, shown: 0
       });
       return;
     }
@@ -42,7 +43,8 @@ Page({
         id: r.id, course: r.course, date: r.date, score: r.score, tag: r.tag,
         sent: r.sent, note1: (r.note || '').split('\n')[0]
       })),
-      photoUrls: (list[0] || {}).photos || []
+      photoUrls: (list[0] || {}).photos || [],
+      videoUrls: (list[0] || {}).videos || []
     });
   },
   stuView(s) {

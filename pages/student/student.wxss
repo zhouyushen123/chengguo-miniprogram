@@ -19,3 +19,7 @@
 }
 .fchip.on { background: #e8590c; color: #fff; font-weight: 600; }
 .fcount { margin-left: auto; font-size: 22rpx; color: #b8b2aa; }
+
+/* 视频详情展示 */
+.videolist { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12rpx; margin-top: 8rpx; }
+.vplayer { width: 100%; height: 320rpx; display: block; background: #000; border-radius: 12rpx; }

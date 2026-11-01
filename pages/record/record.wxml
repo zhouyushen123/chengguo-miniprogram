@@ -32,10 +32,10 @@
   </view>
 
   <view class="card">
-    <view class="sec"><view class="label">课堂照片 / 语音</view></view>
+    <view class="sec"><view class="label">课堂成果<text class="mihint">（照片 · 视频 · 语音）</text></view></view>
     <view class="mediarow">
-      <view class="mbtn" hover-class="btn-hover" bindtap="addMedia" data-src="camera">📷\n拍照</view>
-      <view class="mbtn" hover-class="btn-hover" bindtap="addMedia" data-src="album">🖼\n相册</view>
+      <view class="mbtn" hover-class="btn-hover" bindtap="addMedia" data-src="camera"><image class="mico" src="{{icoCamera}}" mode="aspectFit" /><text>拍摄</text></view>
+      <view class="mbtn" hover-class="btn-hover" bindtap="addMedia" data-src="album"><image class="mico" src="{{icoAlbum}}" mode="aspectFit" /><text>相册</text></view>
     </view>
     <view class="photogrid" wx:if="{{photos.length}}">
       <view class="ph" wx:for="{{photos}}" wx:key="*this">
@@ -43,8 +43,14 @@
         <view class="rm" catchtap="rmPhoto" data-i="{{index}}">×</view>
       </view>
     </view>
+    <view class="videolist" wx:if="{{videos.length}}">
+      <view class="vitem" wx:for="{{videos}}" wx:key="*this">
+        <video class="vplayer" src="{{item}}" object-fit="cover" controls show-center-play-btn></video>
+        <view class="rm" catchtap="rmVideo" data-i="{{index}}">×</view>
+      </view>
+    </view>
     <view wx:if="{{audio}}" class="audiorow">
-      <text>🎧</text><text class="mi" style="flex:1">语音已录入</text>
+      <image class="aico" src="{{icoAudio}}" mode="aspectFit" /><text class="mi" style="flex:1">语音已录入</text>
       <text class="mi act" bindtap="playAudio">播放</text><text class="mi del" bindtap="rmAudio">删除</text>
     </view>
     <view class="sec" style="margin-top:24rpx"><view class="label">老师留言</view></view>

@@ -47,7 +47,7 @@ Page({
     if (!r) return;
     if (db.role === 'parent') { wx.showToast({ title: '家长为只读身份', icon: 'none' }); return; }
     getApp().globalData.pick = {
-      cls: r.cid, sid: r.sid, score: r.score, photos: r.photos || [], audio: r.audio,
+      cls: r.cid, sid: r.sid, score: r.score, photos: r.photos || [], videos: r.videos || [], audio: r.audio,
       tag: r.tag || '', note: r.note || '', rid: r.id, course: r.course
     };
     wx.navigateTo({ url: '/pages/record/record' });

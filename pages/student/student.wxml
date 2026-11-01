@@ -23,6 +23,9 @@
     <view class="photogrid">
       <image wx:for="{{photoUrls}}" wx:key="*this" src="{{item}}" mode="aspectFill" bindtap="previewPhoto" data-i="{{index}}" />
     </view>
+    <view class="videolist">
+      <video wx:for="{{videoUrls}}" wx:key="*this" class="vplayer" src="{{item}}" object-fit="cover" controls show-center-play-btn></video>
+    </view>
     <audio wx:if="{{rec.audio}}" src="{{rec.audio}}" controls style="width:100%;margin-top:16rpx" />
   </view>
 
@@ -48,6 +51,9 @@
       </view>
       <view class="photogrid">
         <image wx:for="{{photoUrls}}" wx:key="*this" src="{{item}}" mode="aspectFill" bindtap="previewPhoto" data-i="{{index}}" />
+      </view>
+      <view class="videolist">
+        <video wx:for="{{videoUrls}}" wx:key="*this" class="vplayer" src="{{item}}" object-fit="cover" controls show-center-play-btn></video>
       </view>
       <audio wx:if="{{latest.audio}}" src="{{latest.audio}}" controls style="width:100%;margin-top:16rpx" />
     </view>

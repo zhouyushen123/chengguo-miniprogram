@@ -67,16 +67,16 @@ function latestRecord(sid) {
   const list = db.records.filter(r => r.sid === sid).sort((a, b) => b.id - a.id);
   return list[0] || null;
 }
-// 记录状态机：内容补齐（有学生 && 有照片/语音/留言）才可发送
+// 记录状态机：内容补齐（有学生 && 有照片/视频/语音/留言）才可发送
 function canSend(pick) {
-  return !!(pick.sid && ((pick.photos && pick.photos.length) || pick.audio || (pick.note && pick.note.trim())));
+  return !!(pick.sid && ((pick.photos && pick.photos.length) || (pick.videos && pick.videos.length) || pick.audio || (pick.note && pick.note.trim())));
 }
 function saveRecord(pick, send) {
   if (send && !canSend(pick)) return { ok: false, msg: '内容还没补齐' };
   const fields = {
     sid: pick.sid, cid: pick.cls, course: pick.course || '', score: pick.score,
     note: pick.note || '', tag: pick.tag || '', audio: pick.audio || null,
-    photos: pick.photos || [], sent: !!send, updatedAt: Date.now()
+    photos: pick.photos || [], videos: pick.videos || [], sent: !!send, updatedAt: Date.now()
   };
   let rid = pick.rid;
   if (rid) {

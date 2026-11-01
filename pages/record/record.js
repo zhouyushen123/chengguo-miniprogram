@@ -1,18 +1,24 @@
 const store = require('../../utils/store');
 const api = require('../../utils/api');
 const stt = require('../../utils/stt');
+const icons = require('../../utils/icons');
+
+// 媒体限制：单个文件 50MB，视频最多 3 个，照片最多 9 张
+const MAX_FILE = 50 * 1024 * 1024;
+const MAX_PHOTOS = 9;
+const MAX_VIDEOS = 3;
 
 Page({
   data: {
     clsId: null, students: [], stuShow: [], stuQuery: '', stuExpanded: false, over45: false,
     courses: [], courseIdx: 0, course: '',
     score: 85, tags: ['待提高', '良好', '优秀'], tag: '',
-    note: '', photos: [], audio: null, recording: false, recognizing: false, canSend: false,
+    note: '', photos: [], videos: [], audio: null, recording: false, recognizing: false, canSend: false,
     selCount: 0, editing: false,
     tplOpen: false, tplList: [], sel: [],
-    // 麦克风抽象图标（SVG data URI）：默认橙色，录音/听写时白色
-    icoOrange: "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23E8590C' stroke-width='2' stroke-linecap='round'%3E%3Crect x='9' y='3' width='6' height='11' rx='3'/%3E%3Cpath d='M5 11a7 7 0 0 0 14 0'/%3E%3Cpath d='M12 18v3'/%3E%3C/svg%3E",
-    icoWhite: "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2' stroke-linecap='round'%3E%3Crect x='9' y='3' width='6' height='11' rx='3'/%3E%3Cpath d='M5 11a7 7 0 0 0 14 0'/%3E%3Cpath d='M12 18v3'/%3E%3C/svg%3E"
+    icoCamera: icons.camera, icoAlbum: icons.album, icoAudio: icons.audio,
+    icoOrange: icons.mic('#E8590C'),
+    icoWhite: icons.mic('#FFFFFF')
   },
   onLoad(q) {
     const pick = getApp().globalData.pick || {};
@@ -25,7 +31,7 @@ Page({
       over45: students.length > 45,
       course: courses[0] ? courses[0].name : '',
       sid: pick.sid || null, score: pick.score || 85, tag: pick.tag || '',
-      note: pick.note || '', photos: pick.photos || [], audio: pick.audio || null,
+      note: pick.note || '', photos: pick.photos || [], videos: pick.videos || [], audio: pick.audio || null,
       rid: pick.rid || null, editing: !!pick.rid
     });
     this._applyStuFilter();
@@ -73,20 +79,38 @@ Page({
   },
   onNote(e) { this.setData({ note: e.detail.value }); this.refreshCan(); },
   goTpls() { wx.navigateTo({ url: '/pages/tpls/tpls?mode=select' }); },
-  // 拍照 / 相册：wx.chooseMedia 二合一
+  // 拍摄 / 相册：均支持照片与小视频（同微信），单文件上限 50MB
   addMedia(e) {
     const src = e.currentTarget.dataset.src; // camera | album
+    const left = MAX_PHOTOS - this.data.photos.length + MAX_VIDEOS - this.data.videos.length;
+    if (left <= 0) { wx.showToast({ title: '最多 ' + MAX_PHOTOS + ' 张照片 + ' + MAX_VIDEOS + ' 个视频', icon: 'none' }); return; }
     wx.chooseMedia({
-      count: src === 'camera' ? 1 : 9,
-      mediaType: ['image'],
+      count: src === 'camera' ? 1 : Math.min(9, left),
+      mediaType: ['image', 'video'],
       sourceType: [src],
       sizeType: ['compressed'],
+      maxDuration: 60,
+      camera: 'back',
       success: r => {
-        const photos = this.data.photos.concat(r.tempFiles.map(f => f.tempFilePath));
-        this.setData({ photos: photos.slice(0, 9) });
+        const photos = this.data.photos.slice(), videos = this.data.videos.slice();
+        let over = 0;
+        (r.tempFiles || []).forEach(f => {
+          if ((f.size || 0) > MAX_FILE) { over++; return; }
+          if (f.fileType === 'video' || /\.mp4$/i.test(f.tempFilePath || '')) videos.push(f.tempFilePath);
+          else photos.push(f.tempFilePath);
+        });
+        if (over) wx.showToast({ title: '单个文件需小于 50MB，已跳过 ' + over + ' 个', icon: 'none' });
+        this.setData({ photos: photos.slice(0, MAX_PHOTOS), videos: videos.slice(0, MAX_VIDEOS) });
         this.refreshCan();
       }
     });
+  },
+  rmVideo(e) {
+    const i = e.currentTarget.dataset.i;
+    const videos = this.data.videos.slice();
+    videos.splice(i, 1);
+    this.setData({ videos });
+    this.refreshCan();
   },
   rmPhoto(e) {
     const i = e.currentTarget.dataset.i;

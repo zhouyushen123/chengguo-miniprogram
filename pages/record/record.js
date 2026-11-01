@@ -8,11 +8,21 @@ const MAX_FILE = 50 * 1024 * 1024;
 const MAX_PHOTOS = 9;
 const MAX_VIDEOS = 3;
 
+// 评分五档阶梯：待提高（最差）→ 加油（稍差）→ 良好 → 优秀 → 最佳
+// anchor 为点击该档时自动填入的代表分
+const TAGS = [
+  { t: '待提高', anchor: 60 },
+  { t: '加油', anchor: 75 },
+  { t: '良好', anchor: 85 },
+  { t: '优秀', anchor: 92 },
+  { t: '最佳', anchor: 98 }
+];
+
 Page({
   data: {
     clsId: null, students: [], stuShow: [], stuQuery: '', stuExpanded: false, over45: false,
     courses: [], courseIdx: 0, course: '',
-    score: 85, tags: ['待提高', '良好', '优秀'], tag: '',
+    score: 85, tags: TAGS, tag: '',
     note: '', photos: [], videos: [], audio: null, recording: false, recognizing: false, canSend: false,
     selCount: 0, editing: false,
     tplOpen: false, tplList: [], sel: [],

@@ -54,26 +54,39 @@
   </view>
 </view>
 
-<!-- ============ 人员（老师/家长） ============ -->
-<view wx:if="{{tab===3}}" class="wrap">
+<!-- ============ 成员管理（负责人/管理员可见） ============ -->
+<view wx:if="{{tab===3 && isManager}}" class="wrap">
+  <view class="card">
+    <view class="sec"><view class="label">机构名称</view></view>
+    <view class="addrow">
+      <input class="input" style="flex:1;margin-bottom:0" placeholder="机构名称" value="{{orgName}}" bindinput="onOrgName" />
+      <view class="btn addbtn" hover-class="btn-hover" bindtap="saveOrg">保存</view>
+    </view>
+    <view class="mi" style="margin-top:12rpx">当前身份：{{myRoleLabel}}。同一机构内的数据互相隔离，不同机构之间完全不可见。</view>
+  </view>
+
   <view class="card">
     <view class="row2">
       <view class="btn ghost" hover-class="btn-hover" bindtap="addUserTeacher">＋ 加老师</view>
       <view class="btn ghost" hover-class="btn-hover" bindtap="addUserParent">＋ 加家长</view>
     </view>
-    <view class="mi">老师可分配负责的班级与课程；家长可关联孩子查看成果。点人员卡片可切换当前身份。</view>
+    <view class="mi">老师只能看到并录入自己负责班级的成果；家长只能看自己孩子「已发布」的成果；管理员与负责人可见全机构。点成员卡片底部可切换身份预览效果。</view>
   </view>
-  <view class="card item" wx:for="{{users}}" wx:key="id">
-    <view bindtap="switchMe" data-id="{{item.id}}">
+
+  <view class="card item" wx:for="{{members}}" wx:key="id">
+    <view>
       <view class="itrow">
-        <view class="ava" style="background:{{item.role==='teacher'?'linear-gradient(135deg,#f7a23b,#e8590c)':'linear-gradient(135deg,#7fb069,#3a9e5f)'}}">{{item.name[0]}}</view>
-        <view><b>{{item.name}}</b><view class="mi">{{item.roleN}} · {{item.meta}}</view></view>
+        <view class="ava" style="background:{{item.role==='parent'?'linear-gradient(135deg,#7fb069,#3a9e5f)':(item.role==='admin'||item.role==='owner'?'linear-gradient(135deg,#6b8fd6,#4a7ddc)':'linear-gradient(135deg,#f7a23b,#e8590c)')}}">{{item.name[0]}}</view>
+        <view><b>{{item.name}}</b>
+          <view class="mi">{{item.roleLabel}} · {{item.meta}}<text wx:if="{{item.invited}}" class="mi"> · 待绑定</text></view>
+        </view>
       </view>
     </view>
     <view style="display:flex;align-items:center">
       <text wx:if="{{item.cur}}" class="pill" style="background:#3a9e5f">当前</text>
+      <view class="mi act" catchtap="switchMe" data-id="{{item.id}}">切换</view>
       <view class="mi act" catchtap="editUser" data-id="{{item.id}}">分配</view>
-      <view wx:if="{{item.role!=='admin'}}" class="mi del" catchtap="delUser" data-id="{{item.id}}">删除</view>
+      <view wx:if="{{item.role!=='owner'}}" class="mi del" catchtap="delUser" data-id="{{item.id}}">移除</view>
     </view>
   </view>
 </view>
@@ -104,13 +117,22 @@
   </view>
 </view>
 
-<!-- ============ 人员表单弹层 ============ -->
+<!-- ============ 成员表单弹层 ============ -->
 <view wx:if="{{userForm}}" class="mask" bindtap="userCancel">
   <view class="sheet" catchtap="">
-    <view class="sheet-t">{{userForm.id?'编辑人员':'添加'+(userForm.role==='teacher'?'老师':'家长')}}</view>
+    <view class="sheet-t">{{userForm.id ? '编辑成员' : '新增成员'}}</view>
     <input class="input" placeholder="姓名" value="{{userForm.name}}" bindinput="onUserName" />
+
+    <view class="label">角色</view>
+    <view class="chips" style="margin-bottom:16rpx">
+      <view wx:for="{{roleOpts}}" wx:key="k" class="chip {{userForm.role===item.k?'on':''}}" bindtap="pickRole" data-k="{{item.k}}">{{item.n}}</view>
+    </view>
+    <view class="mi" style="margin-bottom:20rpx">
+      <block wx:for="{{roleOpts}}" wx:key="k"><text wx:if="{{userForm.role===item.k}}">{{item.d}}</text></block>
+    </view>
+
     <block wx:if="{{userForm.role==='teacher'}}">
-      <view class="label">负责班级（可多选）</view>
+      <view class="label">负责班级（可多选，至少一个）</view>
       <view class="chips" style="margin-bottom:16rpx">
         <view wx:for="{{classes}}" wx:key="id" class="chip {{userClsSel.indexOf(item.id)>=0?'on':''}}" bindtap="userClsTgl" data-id="{{item.id}}">{{item.name}}</view>
       </view>
@@ -119,12 +141,16 @@
         <view wx:for="{{courses}}" wx:key="id" class="chip {{userCrsSel.indexOf(item.id)>=0?'on':''}}" bindtap="userCrsTgl" data-id="{{item.id}}">{{item.name}}</view>
       </view>
     </block>
-    <block wx:else>
-      <view class="label">关联孩子（可多选）</view>
+    <block wx:elif="{{userForm.role==='parent'}}">
+      <view class="label">关联孩子（可多选，至少一个）</view>
       <view class="chips" style="margin-bottom:20rpx">
         <view wx:for="{{students}}" wx:key="id" class="chip {{userStuSel.indexOf(item.id)>=0?'on':''}}" bindtap="userStuTgl" data-id="{{item.id}}">{{item.name}}</view>
       </view>
     </block>
+    <block wx:else>
+      <view class="mi" style="margin-bottom:20rpx">管理员可见并管理全机构的班级、学生、成员与模板，无需单独分配范围。</view>
+    </block>
+
     <view class="row2">
       <view class="btn ghost" hover-class="btn-hover" bindtap="userCancel">取消</view>
       <view class="btn" hover-class="btn-hover" bindtap="userSave">保存</view>

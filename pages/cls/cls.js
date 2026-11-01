@@ -25,7 +25,12 @@ Page({
   onShow() { this.render(); },
   render() {
     const cls = db.classes.get(this.clsId);
-    if (!cls) return;
+    // 班级不在可见范围内时给出明确提示，而不是留一个白屏
+    if (!cls) {
+      wx.showToast({ title: '该班级不在你的管理范围', icon: 'none' });
+      setTimeout(() => wx.navigateBack(), 900);
+      return;
+    }
     wx.setNavigationBarTitle({ title: cls.name });
     const t = db.today();
     const students = db.students.of(this.clsId);
@@ -82,25 +87,31 @@ Page({
       (this.data.tagIdx === 0 || r.tag === tag)
     );
     const recs = list.slice(0, 50).map(r => {
-      const s = db.students.get(r.sid) || { name: '—' };
-      return { id: r.id, sid: r.sid, name: s.name, course: r.course, date: r.date, score: r.score, tag: r.tag || '', sent: r.sent };
+      return { id: r.id, sid: r.sid, name: db.students.name(r.sid) || '—', course: r.course, date: r.date, score: r.score, tag: r.tag || '', sent: r.sent };
     });
     this.setData({ recs, recTotal: list.length });
   },
   // 统一发送：把今日该班所有「已录入未发布」的记录发给家长
   sendAll() {
     const t = db.today();
+    // 权限：只有能对这批记录执行"发送"的人才进得来（家长/无关老师直接挡回）
     const targets = db.records.ofClass(this.clsId).filter(r => r.date === t && !r.sent);
     if (!targets.length) { wx.showToast({ title: '今天没有待发送的记录', icon: 'none' }); return; }
+    if (!db.auth.can('record.send', { record: targets[0] })) {
+      wx.showToast({ title: db.auth.denyReason('record.send'), icon: 'none' });
+      return;
+    }
     wx.showModal({
       title: '统一发送给家长',
       content: '将把今天已录入的 ' + targets.length + ' 条成果记录发送给学生家长，确认发送？',
       confirmText: '发送',
       success: res => {
         if (!res.confirm) return;
-        const n = db.records.markSent(targets.map(r => r.id));
+        const out = db.records.markSent(targets.map(r => r.id));
+        if (!out.count) { wx.showToast({ title: '没有可发送的记录', icon: 'none' }); return; }
         targets.forEach(r => api.pushRecord(Object.assign({}, r, { sent: true })));
-        wx.showToast({ title: '已发送 ' + n + ' 条', icon: 'success' });
+        const tip = out.denied ? ('已发送 ' + out.count + ' 条，' + out.denied + ' 条无权发送') : ('已发送 ' + out.count + ' 条');
+        wx.showToast({ title: tip, icon: out.denied ? 'none' : 'success' });
         this.render(); // 返回后色块绿变蓝、计数即时刷新
       }
     });

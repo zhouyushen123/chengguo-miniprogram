@@ -12,26 +12,24 @@ Page({
     icoSearch: icons.search, icoClose: icons.close, icoChev: icons.chevron
   },
   onShow() {
-    const u = db.users.current() || { role: 'teacher', name: '', clsIds: [] };
+    const u = db.users.current() || { role: 'teacher', name: '' };
     const d = new Date();
     const dateStr = (d.getMonth() + 1) + '月' + d.getDate() + '日 周' + '日一二三四五六'[d.getDay()];
+    // 身份与数据范围统一由权限层给出：下面拿到的 list 已经是过滤后的结果，
+    // 页面不再自己写 role/clsIds 判断（那种写法漏一处就是越权）
+    const isParent = db.auth.isParent();
 
-    if (u.role === 'parent') {
-      const kids = db.students.list()
-        .filter(s => !(u.studentIds || []).length || (u.studentIds || []).includes(s.id))
-        .map(s => {
-          const r = db.records.latest(s.id);
-          return { id: s.id, name: s.name, latest: r ? (r.course + ' · ' + r.score + '分 · ' + r.date) : '暂无记录' };
-        });
+    if (isParent) {
+      const kids = db.students.list().map(s => {
+        const r = db.records.latest(s.id);
+        return { id: s.id, name: s.name, latest: r ? (r.course + ' · ' + r.score + '分 · ' + r.date) : '暂无记录' };
+      });
       this.setData({ isParent: true, kids, roleLabel: '家长端', uName: u.name, dateStr });
       return;
     }
 
-    // 老师按"负责班级"过滤；未分配则看全部（管理员看全部）
-    const classes = db.classes.list();
-    const vis = (u.clsIds || []).length ? classes.filter(c => u.clsIds.includes(c.id)) : classes;
-    const visIds = vis.map(c => c.id);
-    const stu = db.students.list().filter(s => (s.clsIds || []).some(id => visIds.includes(id)));
+    const vis = db.classes.list();
+    const stu = db.students.list();
     const t = db.today();
     const recs = db.records.list();
     const recOf = s => recs.filter(r => r.sid === s.id);
@@ -41,24 +39,17 @@ Page({
       const cs = db.students.of(c.id);
       return { id: c.id, name: c.name, count: cs.length, pending: cs.some(notToday) };
     });
-    // 最近成果：班级可见 或 学生可见 都算（历史记录 cid 缺失时也能显示，避免"录了首页看不到"）
-    const visStu = {};
-    stu.forEach(s => { visStu[s.id] = 1; });
-    const recent = recs
-      .filter(r => visIds.indexOf(r.cid) > -1 || visStu[r.sid])
-      .slice(0, 5)
-      .map(r => {
-        const s = db.students.get(r.sid) || { name: '—' };
-        return {
-          id: r.id, sid: r.sid, name: s.name, clsName: db.classes.name(r.cid), date: r.date,
-          sd: (r.date || '').slice(5), score: r.score,
-          ci: Math.max(0, vis.findIndex(c => c.id === r.cid)) % 3
-        };
-      });
+    const recent = recs.slice(0, 5).map(r => ({
+      id: r.id, sid: r.sid, name: db.students.name(r.sid) || '—',
+      clsName: db.classes.name(r.cid), date: r.date,
+      sd: (r.date || '').slice(5), score: r.score,
+      ci: Math.max(0, vis.findIndex(c => c.id === r.cid)) % 3
+    }));
 
+    const label = { parent: '家长端', admin: '管理员端' }[db.auth.role()] || '老师端';
     this.setData({
       isParent: false,
-      roleLabel: u.role === 'admin' ? '管理员端' : '老师端',
+      roleLabel: label,
       uName: u.name || db.settings().teacher,
       dateStr,
       clsCount: vis.length, stuCount: stu.length,
@@ -84,9 +75,8 @@ Page({
   },
   clearSearch() { this.setData({ q: '', results: [], moreCount: 0 }); },
   goRecord() {
-    const u = db.users.current() || { clsIds: [] };
-    const classes = db.classes.list();
-    const vis = (u.clsIds || []).length ? classes.filter(c => u.clsIds.includes(c.id)) : classes;
+    // 进入录入页前给一个默认班级（已在可见范围内），避免无权限班被当默认值传下去
+    const vis = db.classes.list();
     getApp().globalData.pick = { cls: vis[0] ? vis[0].id : null, sid: null, score: 85, photos: [], audio: null, tag: '', note: '', rid: null, course: '' };
     wx.navigateTo({ url: '/pages/record/record' });
   },

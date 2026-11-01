@@ -28,9 +28,9 @@
       <view class="mi footer"><image class="fico" src="{{icoCamera}}" /> {{item.photoCount}} 张<block wx:if="{{item.hasAudio}}"> · <image class="fico" src="{{icoAudio}}" /> 语音</block></view>
     </view>
   </view>
-  <view wx:if="{{role!=='parent'}}" class="btnrow">
-    <view class="btn ghost" hover-class="btn-hover" catchtap="editRec" data-rid="{{item.id}}">编辑</view>
-    <view class="btn send {{item.sent?'off':''}}" hover-class="{{item.sent?'none':'btn-hover'}}" catchtap="sendRec" data-rid="{{item.id}}">{{item.sent?'已发送':'发送给家长'}}</view>
+  <view wx:if="{{item.canEdit || item.canSend}}" class="btnrow">
+    <view wx:if="{{item.canEdit}}" class="btn ghost" hover-class="btn-hover" catchtap="editRec" data-rid="{{item.id}}">编辑</view>
+    <view wx:if="{{item.canSend}}" class="btn send {{item.sent?'off':''}}" hover-class="{{item.sent?'none':'btn-hover'}}" catchtap="sendRec" data-rid="{{item.id}}">{{item.sent?'已发送':'发送给家长'}}</view>
   </view>
 </view>
 <view wx:if="{{!list.length}}" class="empty">当前筛选条件下暂无记录</view>

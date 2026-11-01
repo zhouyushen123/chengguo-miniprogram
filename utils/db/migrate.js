@@ -123,7 +123,15 @@ function buildTemplates(legacyTpls, stamp) {
 
 function build(loaded) {
   const stamp = Date.now();
-  const legacy = loaded && loaded.meta ? null : require('./storage').readLegacy();
+
+  // 【必须先判这个】已有数据且版本不符 → 就地升级。
+  // 老代码在这里直接落到 buildFresh，升一次版本就把学生和记录全清零。
+  if (loaded && loaded.meta) {
+    if (loaded.meta.version === schema.VERSION) return loaded;
+    return upgrade(loaded, stamp);
+  }
+
+  const legacy = require('./storage').readLegacy();
   const old = (legacy && legacy.db) || null;
 
   if (!old) return buildFresh(stamp);
@@ -158,29 +166,54 @@ function build(loaded) {
       createdAt: r.createdAt, updatedAt: r.updatedAt
     }, ORG, stamp));
 
-  const users = (old.users || []).map(u =>
-    schema.normalizeUser({
-      id: u.id || ('u' + stamp + Math.floor(Math.random() * 1000)),
-      name: u.name, role: u.role,
-      clsIds: (u.clsIds || []).map(id => (classIds[id] !== undefined ? classIds[id] : id)),
-      courseIds: u.courseIds, studentIds: u.studentIds
-    }, ORG, stamp));
-  if (!users.length) users.push(schema.normalizeUser({ id: 't1', name: '测试老师', role: 'teacher' }, ORG, stamp));
+  const rawUsers = (old.users || []).map(u => Object.assign({}, u, {
+    clsIds: (u.clsIds || []).map(id => (classIds[id] !== undefined ? classIds[id] : id))
+  }));
+  const users = rawUsers.map(u =>
+    schema.normalizeUser({ id: u.id || ('u' + stamp + Math.floor(Math.random() * 1000)), name: u.name, role: u.role }, ORG, stamp));
+  if (!users.length) users.push(schema.normalizeUser({ id: 't1', name: '测试老师', role: 'owner' }, ORG, stamp));
+
+  // 权限从 user 搬到 member：第一个老师升为负责人，其余按原角色；
+  // 旧版"没分配班级 = 全可见"在这里显式展开成"分配全部班级"
+  const allClsIds = classes.filter(c => !c.removed).map(c => c.id);
+  let mseq = 0;
+  const members = rawUsers.length
+    ? rawUsers.map((u, i) => {
+      const uid = users[i].id;
+      const oldRole = u.role === 'admin' ? 'admin' : u.role === 'parent' ? 'parent' : 'teacher';
+      const role = (oldRole === 'teacher' && i === 0) ? 'owner' : oldRole;
+      const staff = role !== 'parent';
+      const clsIds = schema.numList(u.clsIds);
+      mseq += 1;
+      return schema.normalizeMember({
+        id: stamp + mseq, orgId: ORG, userId: uid, role, name: u.name,
+        clsIds: staff ? (clsIds.length ? clsIds : allClsIds) : [],
+        courseIds: staff ? schema.numList(u.courseIds) : [],
+        studentIds: role === 'parent' ? schema.numList(u.studentIds) : [],
+        status: (role === 'parent' && !schema.numList(u.studentIds).length) ? 'invited' : 'active'
+      }, ORG, stamp);
+    })
+    : [schema.normalizeMember({ id: stamp + 1, orgId: ORG, userId: users[0].id, role: 'owner', name: users[0].name }, ORG, stamp)];
+
+  const orgs = [schema.normalizeOrg({
+    id: ORG, name: '我的机构', ownerId: (members.find(m => m.role === 'owner') || members[0] || {}).userId || '', status: 'active'
+  }, stamp)];
 
   const me = users.some(u => u.id === old.me) ? old.me : users[0].id;
 
   return {
     meta: {
-      version: schema.VERSION, orgId: ORG,
+      version: schema.VERSION, orgId: ORG, orgName: '我的机构',
       teacher: old.teacher || '测试老师',
       me,
       demoVersion: Number(old.demoVersion) || 0,
       createdAt: stamp, updatedAt: stamp,
       migratedFrom: 'v2'
     },
+    orgs, members,
     classes, courses, students, records, users,
     templates: buildTemplates(legacy.tpls, stamp)
   };
 }
 
-module.exports = { build, buildFresh, buildTemplates };
+module.exports = { build, buildFresh, upgrade, buildTemplates };

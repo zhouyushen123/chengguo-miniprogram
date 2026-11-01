@@ -21,7 +21,12 @@ Page({
       if (r0) this.sid = r0.sid;
     }
     const s = db.students.get(this.sid);
-    if (!s) return;
+    // 学生不在可见范围（老师跨班、家长非自家孩子）时明确提示，不留白屏
+    if (!s) {
+      wx.showToast({ title: this.sid ? '该学生不在你的查看范围' : '没有找到这个学生', icon: 'none' });
+      setTimeout(() => wx.navigateBack(), 900);
+      return;
+    }
     const recs = db.records.ofStudent(this.sid);
     // 语音条上的老师名：优先用这条记录的录入老师，老数据回退到机构默认老师
     const tname = r => (r && db.users.name(r.tid)) || db.settings().teacher;

@@ -85,8 +85,10 @@ function canSend(pick) {
 }
 function saveRecord(pick, send) {
   if (send && !canSend(pick)) return { ok: false, msg: '内容还没补齐' };
+  // 录入页 data 里班级字段叫 clsId，各处入口传的是 cls，两处都兼容，避免 cid 落空
+  const cid = pick.cls !== undefined && pick.cls !== null ? pick.cls : pick.clsId;
   const fields = {
-    sid: pick.sid, cid: pick.cls, course: pick.course || '', score: pick.score,
+    sid: pick.sid, cid: cid, course: pick.course || '', score: pick.score,
     note: pick.note || '', tag: pick.tag || '', audio: pick.audio || null,
     photos: pick.photos || [], videos: pick.videos || [], sent: !!send, updatedAt: Date.now()
   };

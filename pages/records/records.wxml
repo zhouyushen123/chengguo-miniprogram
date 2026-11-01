@@ -25,7 +25,7 @@
         <text class="pill" style="background:{{item.sent?'#3a9e5f':'#b8860b'}}">{{item.sent?'已发送':'待发送'}}</text>
       </view>
       <view wx:if="{{item.note}}" class="mi note">“{{item.note}}”</view>
-      <view class="mi footer">📷 {{item.photoCount}} 张{{item.hasAudio?' · 🎧 语音':''}}</view>
+      <view class="mi footer"><image class="fico" src="{{icoCamera}}" /> {{item.photoCount}} 张<block wx:if="{{item.hasAudio}}"> · <image class="fico" src="{{icoAudio}}" /> 语音</block></view>
     </view>
   </view>
   <view wx:if="{{role!=='parent'}}" class="btnrow">

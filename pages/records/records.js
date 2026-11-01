@@ -1,5 +1,6 @@
 const store = require('../../utils/store');
 const api = require('../../utils/api');
+const icons = require('../../utils/icons');
 
 // 筛选梯度：班级 → 录入日期 → 成果等级
 // 上一层变化会重算下一层的可选项：选了班级，日期只列该班有记录的日期；选了日期，等级只列该批记录中出现过的等级
@@ -10,7 +11,8 @@ Page({
     tabs: [], tab: 0, role: 'teacher',
     dateOpts: ['不限日期'], dateIdx: 0,
     tagOpts: ['全部等级'].concat(TAGS), tagIdx: 0,
-    list: [], total: 0, allCount: 0
+    list: [], total: 0, allCount: 0,
+    icoCamera: icons.camera, icoAudio: icons.audio
   },
   onShow() {
     const db = store.get();

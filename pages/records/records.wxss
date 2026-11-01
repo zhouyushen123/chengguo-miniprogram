@@ -16,7 +16,8 @@
 .r1 { display: flex; align-items: center; gap: 12rpx; }
 .score { margin-left: auto; color: #e8590c; font-weight: 800; font-size: 32rpx; }
 .note { margin-top: 6rpx; }
-.footer { margin-top: 6rpx; }
+.footer { margin-top: 6rpx; display: flex; align-items: center; gap: 6rpx; }
+.fico { width: 26rpx; height: 26rpx; }
 
 /* 每条记录双按钮：编辑 + 发送给家长 */
 .btnrow { display: flex; gap: 16rpx; margin-top: 16rpx; }

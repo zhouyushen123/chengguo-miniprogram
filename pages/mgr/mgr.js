@@ -1,4 +1,5 @@
 const store = require('../../utils/store');
+const icons = require('../../utils/icons');
 
 Page({
   data: {
@@ -6,7 +7,7 @@ Page({
     classes: [], courses: [], students: [], users: [], teacher: '',
     newCls: '', newCourse: '', courseClsIdx: 0,
     // 学生表单弹层
-    stuForm: null, stuClsSel: [],
+    stuForm: null, stuClsSel: [], icoCamera: icons.camera,
     // 人员表单弹层
     userForm: null, userClsSel: [], userStuSel: [], userCrsSel: []
   },
@@ -74,6 +75,21 @@ Page({
     });
   },
   onStuName(e) { this.setData({ 'stuForm.name': e.detail.value }); },
+  // 上传学生照片：拍照/相册均可，拷贝到用户目录确保持久保存
+  onStuPhoto() {
+    wx.chooseMedia({
+      count: 1, mediaType: ['image'], sourceType: ['album', 'camera'], sizeType: ['compressed'],
+      success: r => {
+        const tmp = r.tempFiles[0] && r.tempFiles[0].tempFilePath;
+        if (!tmp) return;
+        try {
+          const dest = wx.env.USER_DATA_PATH + '/stu_' + Date.now() + '.jpg';
+          wx.getFileSystemManager().copyFileSync(tmp, dest);
+          this.setData({ 'stuForm.photo': dest });
+        } catch (e) { this.setData({ 'stuForm.photo': tmp }); }
+      }
+    });
+  },
   onStuParent(e) { this.setData({ 'stuForm.parent': e.detail.value }); },
   onStuWechat(e) { this.setData({ 'stuForm.wechat': e.detail.value }); },
   stuClsTgl(e) {
@@ -88,9 +104,9 @@ Page({
     const db = store.get();
     if (f.id) {
       const s = db.students.find(x => x.id === f.id);
-      Object.assign(s, { name: n, clsIds: sel.slice(), parent: f.parent.trim(), wechat: f.wechat.trim() });
+      Object.assign(s, { name: n, clsIds: sel.slice(), parent: f.parent.trim(), wechat: f.wechat.trim(), photo: f.photo || '' });
     } else {
-      db.students.push({ id: Date.now(), name: n, clsIds: sel.slice(), parent: f.parent.trim(), wechat: f.wechat.trim() });
+      db.students.push({ id: Date.now(), name: n, clsIds: sel.slice(), parent: f.parent.trim(), wechat: f.wechat.trim(), photo: f.photo || '' });
     }
     store.save(); this.setData({ stuForm: null }); this.refresh();
     wx.showToast({ title: '已保存', icon: 'success' });

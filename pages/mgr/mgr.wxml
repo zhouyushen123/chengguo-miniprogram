@@ -82,6 +82,13 @@
 <view wx:if="{{stuForm}}" class="mask" bindtap="stuCancel">
   <view class="sheet" catchtap="">
     <view class="sheet-t">{{stuForm.id?'编辑学生':'添加学生'}}</view>
+    <view class="avrow" bindtap="onStuPhoto">
+      <view class="ava big">
+        <image wx:if="{{stuForm.photo}}" src="{{stuForm.photo}}" mode="aspectFill" />
+        <image wx:else src="{{icoCamera}}" mode="aspectFit" style="width:44rpx;height:44rpx" />
+      </view>
+      <text class="mi">{{stuForm.photo?'点击更换照片':'上传学生照片（选填）'}}</text>
+    </view>
     <input class="input" placeholder="学生姓名" value="{{stuForm.name}}" bindinput="onStuName" />
     <view class="label">加入班级（可多选）</view>
     <view class="chips" style="margin-bottom:20rpx">

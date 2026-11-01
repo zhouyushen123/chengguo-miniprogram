@@ -31,3 +31,8 @@
 .sheet-t { text-align: center; font-size: 34rpx; font-weight: 700; margin-bottom: 28rpx; }
 .row2 { display: flex; gap: 20rpx; margin-top: 28rpx; }
 .row2 .btn { flex: 1; }
+
+/* 学生表单：照片上传行 */
+.avrow { display: flex; align-items: center; gap: 20rpx; margin-bottom: 20rpx; }
+.ava.big { width: 110rpx; height: 110rpx; border-radius: 34rpx; font-size: 44rpx; position: relative; overflow: hidden; }
+.ava.big image { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }

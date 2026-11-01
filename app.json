@@ -6,6 +6,7 @@
     "pages/student/student",
     "pages/profile/profile",
     "pages/mgr/mgr",
+    "pages/mine/mine",
     "pages/tpls/tpls",
     "pages/cls/cls"
   ],
@@ -32,7 +33,7 @@
         "selectedIconPath": "assets/tabbar/records-on.png"
       },
       {
-        "pagePath": "pages/mgr/mgr",
+        "pagePath": "pages/mine/mine",
         "text": "我的",
         "iconPath": "assets/tabbar/mine.png",
         "selectedIconPath": "assets/tabbar/mine-on.png"

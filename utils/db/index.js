@@ -234,6 +234,22 @@ function memberCurrentOfRole(role) {
   return oc('members').find(m => m.role === role) || null;
 }
 
+// 清空演示数据：只删带 demo 标记的记录与学生，真实数据不动。
+// 只清数据、不重置 demoVersion——否则下次启动演示数据又会长回来。
+function demoClear() {
+  const err = deny('member.manage');
+  if (err) return { ok: false, msg: err };
+  const rec = core.coll('records');
+  const stu = core.coll('students');
+  const nr = rec.filter(r => !r.demo);
+  const ns = stu.filter(s => !s.demo);
+  const rm = { records: rec.length - nr.length, students: stu.length - ns.length };
+  if (!rm.records && !rm.students) return { ok: true, item: rm };
+  core.setColl('records', nr);
+  core.setColl('students', ns);
+  return { ok: true, item: rm };
+}
+
 /* =====================================================================
  * 机构
  * ===================================================================*/
@@ -940,6 +956,7 @@ const db = {
   coll: core.coll,
   flush: core.flushAll,
   settings, setTeacher, today, canSend, merge, me, isParent,
+  demoClear,
   org, nextId: core.nextId,
   TAGS: schema.TAGS,
   TYPES: schema.RECORD_TYPES,

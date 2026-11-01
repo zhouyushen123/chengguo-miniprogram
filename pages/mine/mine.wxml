@@ -1,0 +1,35 @@
+<view class="hero"></view>
+
+<view class="page-title">我的</view>
+
+<!-- 身份条：预览他人身份时可一键切回 -->
+<view wx:if="{{canSwitchHome}}" class="idbar">
+  <text>正在以「{{name}} · {{roleLabel}}」身份预览</text>
+  <text class="idback" bindtap="backHome">切回我自己</text>
+</view>
+
+<!-- 个人卡片 -->
+<view class="card usercard">
+  <view class="ava">{{avaChar}}</view>
+  <view class="uc-txt">
+    <view class="uc-name">{{name}}</view>
+    <view class="uc-meta">{{roleLabel}}<text wx:if="{{orgName}}"> · {{orgName}}</text></view>
+    <view wx:if="{{meta}}" class="uc-meta">{{meta}}</view>
+  </view>
+</view>
+
+<!-- 功能入口 -->
+<view class="card menucard">
+  <view wx:for="{{entries}}" wx:key="k" class="mrow" hover-class="mrow-hover" bindtap="tapEntry" data-k="{{item.k}}">
+    <view class="mr-txt">
+      <view class="mr-t">{{item.t}}</view>
+      <view class="mr-d">{{item.d}}</view>
+    </view>
+    <view class="chev"></view>
+  </view>
+</view>
+
+<!-- 危险操作：仅负责人/管理员可见 -->
+<view wx:if="{{isManager && hasDemo}}" class="card danger" hover-class="mrow-hover" bindtap="clearDemo">清空演示数据</view>
+
+<view class="slogan">橙果 · 让每节课都有回音</view>

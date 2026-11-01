@@ -21,6 +21,10 @@ Page({
     userForm: null, userClsSel: [], userStuSel: [], userCrsSel: [],
     roleOpts: ROLE_OPTS
   },
+  // 从个人中心带参进入：?tab=3 直达人员管理
+  onLoad(q) {
+    if (q && q.tab !== undefined) this.setData({ tab: Math.min(+q.tab || 0, 3) });
+  },
   onShow() { this.refresh(); },
   refresh() {
     const s = db.settings();

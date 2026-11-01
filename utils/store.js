@@ -6,8 +6,8 @@ const DEFAULT_TPLS = [
   { n: '上课态度', opts: ['认真专注，积极举手发言', '听讲认真，偶有走神，提醒后能改正', '状态放松，与同学互动积极'] },
   { n: '反馈交流', opts: ['能主动和老师交流，回答问题思路清晰', '愿意表达自己的想法，敢于提问', '与老师配合默契，反馈及时'] },
   { n: '课堂记录', opts: ['本节课完成新内容练习，整体完成度较高', '本节课以复习巩固为主，练习认真', '课堂纪律良好，练习节奏跟得上'] },
-  { n: '知识点掌握', opts: ['已基本掌握本节内容，细节还需多加练习', '重点内容掌握扎实，可进入下一阶段', '部分知识点还需课后加强，建议多练'] },
-  { n: '下次课程注意', opts: ['请课后复习本节内容，下节课将巩固练习', '请提前完成课后作业，下节课检查讲评', '下节课将学习新内容，请保持状态'] }
+  { n: '知识掌握', opts: ['已基本掌握本节内容，细节还需多加练习', '重点内容掌握扎实，可进入下一阶段', '部分知识点还需课后加强，建议多练'] },
+  { n: '课程注意', opts: ['请课后复习本节内容，下节课将巩固练习', '请提前完成课后作业，下节课检查讲评', '下节课将学习新内容，请保持状态'] }
 ];
 
 // 演示数据（45 位书法班学生 + 历史成果记录），见 utils/demo-data.js
@@ -51,7 +51,16 @@ function init() {
     save();
   }
   seedDemo();
-  if (!wx.getStorageSync(TPL_KEY)) wx.setStorageSync(TPL_KEY, DEFAULT_TPLS);
+  // 模板维度名历史改名：知识点掌握→知识掌握、下次课程注意→课程注意（就地迁移，选项内容不变）
+  const storedTpls = wx.getStorageSync(TPL_KEY);
+  if (!storedTpls) wx.setStorageSync(TPL_KEY, DEFAULT_TPLS);
+  else if (storedTpls.some(t => t.n === '知识点掌握' || t.n === '下次课程注意')) {
+    storedTpls.forEach(t => {
+      if (t.n === '知识点掌握') t.n = '知识掌握';
+      if (t.n === '下次课程注意') t.n = '课程注意';
+    });
+    wx.setStorageSync(TPL_KEY, storedTpls);
+  }
 }
 function get() { return db; }
 function save() { wx.setStorageSync(KEY, db); }

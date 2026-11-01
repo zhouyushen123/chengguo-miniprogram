@@ -34,7 +34,7 @@
       <text class="pill" style="background:{{rec.sent?'#3a9e5f':'#b8860b'}}">{{rec.sent?'已发送':'待发送'}}</text>
     </view>
     <view class="photogrid {{photoCls}}">
-      <image wx:for="{{photoUrls}}" wx:key="*this" src="{{item}}" mode="aspectFill" bindtap="previewPhoto" data-i="{{index}}" />
+      <image wx:for="{{photoUrls}}" wx:key="*this" src="{{item}}" mode="{{photoCls==='pg1'?'aspectFit':'aspectFill'}}" bindtap="previewPhoto" data-i="{{index}}" />
     </view>
     <view class="videolist">
       <video wx:for="{{videoUrls}}" wx:key="*this" class="vplayer" src="{{item}}" object-fit="cover" controls show-center-play-btn></video>
@@ -63,7 +63,7 @@
         <text class="pill" style="background:{{latest.sent?'#3a9e5f':'#b8860b'}}">{{latest.sent?'已发送':'待发送'}}</text>
       </view>
       <view class="photogrid {{photoCls}}">
-        <image wx:for="{{photoUrls}}" wx:key="*this" src="{{item}}" mode="aspectFill" bindtap="previewPhoto" data-i="{{index}}" />
+        <image wx:for="{{photoUrls}}" wx:key="*this" src="{{item}}" mode="{{photoCls==='pg1'?'aspectFit':'aspectFill'}}" bindtap="previewPhoto" data-i="{{index}}" />
       </view>
       <view class="videolist">
         <video wx:for="{{videoUrls}}" wx:key="*this" class="vplayer" src="{{item}}" object-fit="cover" controls show-center-play-btn></video>
@@ -93,7 +93,7 @@
             <text class="pill" style="background:{{item.sent?'#3a9e5f':'#b8860b'}}">{{item.sent?'已发送':'待发送'}}</text>
           </view>
           <view class="photogrid {{item.pcls}}" wx:if="{{item.photos.length}}">
-            <image wx:for="{{item.photos}}" wx:for-item="ph" wx:key="*this" src="{{ph}}" mode="aspectFill" />
+            <image wx:for="{{item.photos}}" wx:for-item="ph" wx:key="*this" src="{{ph}}" mode="{{item.pcls==='pg1'?'aspectFit':'aspectFill'}}" />
           </view>
           <view class="videolist" wx:if="{{item.videos.length}}">
             <video wx:for="{{item.videos}}" wx:for-item="vd" wx:key="*this" class="vplayer" src="{{vd}}" object-fit="cover" controls show-center-play-btn></video>

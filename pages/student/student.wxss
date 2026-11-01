@@ -53,13 +53,17 @@
 .vt1 { font-size: 27rpx; font-weight: 600; color: #3a3a3a; }
 .vt2 { font-size: 22rpx; color: #b8b2aa; margin-top: 4rpx; }
 
-/* 照片网格自适应：1 张铺满整行，2 张对半，3 张及以上三列 */
+/* 照片网格自适应：1 张铺满整行（完整居中显示不裁切），2 张对半，3 张及以上三列 */
 .photogrid.pg1 { grid-template-columns: 1fr; }
-.photogrid.pg1 image { aspect-ratio: auto; height: 480rpx; }
+.photogrid.pg1 image {
+  aspect-ratio: auto; height: 520rpx; width: 100%;
+  background: #f5f3f0;
+  object-fit: contain;
+}
 .photogrid.pg2 { grid-template-columns: repeat(2, 1fr); }
 .photogrid.pg2 image { aspect-ratio: auto; height: 320rpx; }
 
-/* 课程评价：维度名浅色，正文深色且加重 */
-.nline { line-height: 1.7; }
-.nlabel { color: #b8b2aa; }
-.ntext { color: #3a3a3a; font-weight: 500; }
+/* 课程评价：维度名浅色，正文深色且加重；正文换行后与上行正文起点对齐（悬挂缩进） */
+.nline { display: flex; align-items: flex-start; line-height: 1.7; }
+.nlabel { color: #b8b2aa; flex: none; }
+.ntext { color: #3a3a3a; font-weight: 500; flex: 1; min-width: 0; }

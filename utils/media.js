@@ -69,7 +69,9 @@ function persist(tmpPath, kind) {
     fs().copyFileSync(s, dest);
     return dest;
   } catch (e) {
-    console.error('[media] 转存失败', k, e);
+    // 常见原因是临时文件已被系统清理。用 warn 而非 error：这是可预期的降级路径，
+    // 不是程序错误，调用方拿到原路径继续走。
+    console.warn('[media] 转存失败，保留原路径', k, (e && e.message) || e);
     return s;
   }
 }

@@ -1,4 +1,4 @@
-// .workbuddy/verify_db.js —— 主数据层回归验证（Node 环境，模拟 wx 存储）
+// tests/verify_db.js —— 主数据层回归验证（Node 环境，模拟 wx 存储）
 const path = require('path');
 const assert = require('assert');
 

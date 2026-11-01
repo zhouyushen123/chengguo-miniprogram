@@ -14,7 +14,9 @@
 // 【权限策略：读也过滤，不只拦写】
 // 列表查询默认已按当前身份过滤（老师只见自己班、家长只见自己孩子且仅已发布）。
 // 页面不要再自己写 role === 'parent' 之类的判断——规则只在 permissions.js 定义一次。
-// 需要绕过过滤做统计时，用 core.coll('xxx') 直接取原始集合。
+// 需要绕过身份过滤做统计时，用 oc(name)（仍限当前机构）；确实需要跨机构全量才用 core.coll。
+// 注意：写操作与启动维护（normalizeAll / repairRefs / seedDemo / merge）必须用 core.coll，
+// 否则 setColl 这类覆盖写会把他机构的数据一起抹掉。
 const storage = require('./storage');
 const schema = require('./schema');
 const core = require('./core');
@@ -904,17 +906,23 @@ function me() { return core.meta().me; }
 function isParent() { const a = actor(); return !!a && a.role === 'parent'; }
 
 // 云端拉取结果合并（按 updatedAt 取新，只处理记录与学生资料）
+// 【机构归属】外部数据一律强制打上当前机构：normalize 时 audit 优先用 raw.orgId，
+// 若云端带回来的是别的 orgId，记录会入库却永远读不出来（幽灵数据）。
 function merge(remote) {
   if (!remote) return false;
+  const o = org();
   let changed = false;
+  const own = raw => !(raw && raw.orgId && raw.orgId !== o);
   (remote.records || []).forEach(raw => {
-    const inc = schema.normalizeRecord(raw, org(), now());
+    if (!own(raw)) return;
+    const inc = schema.normalizeRecord(Object.assign({}, raw, { orgId: o }), o, now());
     if (!inc.id) return;
     const cur = core.coll('records').find(r => r.id === inc.id);
     if (!cur) { core.coll('records').push(inc); changed = true; }
     else if ((inc.updatedAt || 0) > (cur.updatedAt || 0)) { Object.assign(cur, inc); changed = true; }
   });
   (remote.profiles || []).forEach(p => {
+    if (!own(p)) return;
     const s = core.coll('students').find(x => x.id === Number(p.sid));
     if (s && p.profile) { s.profile = p.profile; s.updatedAt = now(); changed = true; }
   });

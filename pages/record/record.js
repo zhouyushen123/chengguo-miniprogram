@@ -127,6 +127,9 @@ Page({
       }
     });
   },
+  // 注意：这里只从表单里移除引用，不删物理文件。
+  // 编辑旧记录时删掉的照片可能仍被这条记录的原始版本引用，而用户中途放弃保存时
+  // 删文件就会把库里还在用的图片删掉。垃圾文件的清理留到上云后统一做（媒体走云存储）。
   rmVideo(e) {
     const i = e.currentTarget.dataset.i;
     const videos = this.data.videos.slice();

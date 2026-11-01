@@ -12,6 +12,7 @@ const path = require('path');
 const SUITES = [
   ['verify_db.js', '数据层'],
   ['verify_perm.js', '权限'],
+  ['verify_p0.js', 'P0 止血'],
   ['verify_pages.js', '页面级']
 ];
 
@@ -24,8 +25,9 @@ SUITES.forEach(([file, name]) => {
   const ok = r.status === 0;
   if (!ok) failed++;
   const lines = out ? out.split('\n') : [];
-  // 各脚本最后一行都是「全部 N 项断言通过」，取它作为摘要
-  const summary = (lines.filter(l => /通过|失败|Error/.test(l)).pop() || lines.pop() || '').trim();
+  // 各脚本最后都会打印「全部 N 项…通过」，取它作为摘要（不能用最后一行：
+  // 降级路径会打印 warn 日志，可能落在末尾）
+  const summary = (lines.filter(l => /全部.*通过|有 \d+ 项失败/.test(l)).pop() || lines[lines.length - 1] || '').trim();
   rows.push({ name, ok, summary, out });
 });
 

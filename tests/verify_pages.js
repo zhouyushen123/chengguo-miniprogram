@@ -1,4 +1,4 @@
-// .workbuddy/verify_pages.js —— 页面级联调：把真实页面模块跑起来，验证改数据层后流程没断
+// tests/verify_pages.js —— 页面级联调：把真实页面模块跑起来，验证改数据层后流程没断
 const path = require('path');
 const assert = require('assert');
 

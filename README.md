@@ -57,11 +57,15 @@
 │   ├── permissions.js                权限模型：角色 × 动作 × 数据范围（纯函数）
 │   ├── schema.js                     实体字段、默认值、校验规则
 │   ├── storage.js                    存储适配器（唯一接触 wx.storage 的文件）
-│   ├── core.js                       内存态、id 分配、落盘
+│   ├── core.js                       内存态、id 分配、落盘、降级保护
 │   └── migrate.js                    v2 单一大对象 → v4 分集合 + 权限拆表迁移
+├── utils/media.js                    媒体持久化（照片/视频/语音转存用户目录）
 ├── utils/api.js                      线上同步层（REST，未配置自动降级本地）
-├── pages/index|record|tpls|records|student|profile|mgr
-├── cloudfunctions/sync               云函数（records/profiles 读写、按 openid 隔离）
+├── assets/icons/                     线性图标（PNG，由 tools/gen_icons.py 生成）
+├── pages/index|record|tpls|records|student|cls|profile|mgr
+├── tests/                            回归测试（npm test，130 项断言）
+├── tools/gen_icons.py                图标生成脚本（改图标后重跑）
+├── cloudfunctions/sync               云函数（records/profiles 读写，模型待重构）
 └── project.config.json
 ```
 
@@ -70,6 +74,16 @@
 - 页面**只**通过 `const db = require('../../utils/db')` 读写数据，不碰 `wx.setStorageSync`，也不直接改返回对象里的字段——改字段要走 `update` / `markSent` 等方法，否则不会落盘、不会更新 `updatedAt`。
 - 八类实体：机构 `orgs`、成员 `members`、班级 `classes`、课程 `courses`、学生 `students`、课堂记录 `records`、人员 `users`、评价模板 `templates`，各自一个 storage key（对应将来云端一张表）。
 - **列表查询默认已按身份过滤**：老师只见自己带的班、家长只见自己孩子且仅已发布。页面不要再写 `role === 'parent'` 这类判断，规则只在 `utils/db/permissions.js` 定义一次。
+- **读走 `orgColl()`、写走 `coll()`**：读取一律经当前机构视图，写入保留全量。写也走视图会把其它机构的数据一起覆盖掉。
+- **媒体必须过 `utils/media.js`**：`wx.chooseMedia` 拿到的 `tempFilePath` 会在小程序退出后被系统清理，直接入库等于过几天全部裂图。
+
+### 改完代码怎么验
+
+```bash
+npm test          # 数据层 27 + 权限 45 + P0 27 + 页面级 31 = 130 项
+```
+
+页面级套件会真实加载 8 个页面模块并运行，能抓到"数据层没问题但页面会崩"的情况（例如之前 `icons.plus` 被当函数调用导致学生主页白屏）。
 
 ### 权限模型（机构 / 多老师）
 

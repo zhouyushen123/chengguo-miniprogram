@@ -1,4 +1,4 @@
-// .workbuddy/verify_perm.js —— 机构权限模型验证
+// tests/verify_perm.js —— 机构权限模型验证
 // 用真实模块跑，不 mock 业务逻辑：wx 只提供存储与提示接口。
 const assert = require('assert');
 const path = require('path');

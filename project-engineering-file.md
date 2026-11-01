@@ -75,12 +75,13 @@
 - **决策**：`utils/db/permissions.js` 零 IO 依赖、纯函数，上云后原样搬进云函数。
 - **状态**：已接受（⚠️ 上云时必须执行，见 §7 P2）
 
-### ADR-009（本次）记录实体升级为业务活动，预留 type 字段但不实现多类型
+### ADR-009（已落地）记录实体升级为业务活动，预留 type 字段但不实现多类型
 - **场景**：未来要加考勤、作业、课时消耗、缴费等业务，若每类建一套表，schema 与权限会指数膨胀。
 - **决策**：`record` 保持现有字段不变，仅增加保留字段 `type`（默认 `'achievement'`）；暂不实现多类型分发逻辑。
 - **理由**：当前只有一种业务，此时做 payload 抽象属过度设计（A1）；但表结构一旦定型后再加 `type` 需要全量数据迁移，成本更高。折中：留字段不留逻辑。
+- **落地（2026-11-01）**：`schema.js` 增加 `RECORD_TYPES = ['achievement']` 与 `normalizeRecord().type`；非法值归一到 `achievement`；`db.TYPES` 对外暴露清单。**编辑记录不会冲掉 `type`**（不传则沿用原值）。
 - **代价**：等二种业务真正落地时，仍需一次 `domain/activities` 注册表改造。
-- **状态**：提议（待 P1 实施）
+- **状态**：已接受（P0 已实施；多类型分发逻辑留到 P1）
 
 ## 4. 模块清单与进度
 
@@ -100,9 +101,9 @@
 | 班级/课程/学生管理 | `pages/mgr` | 已完成但过载 | 265 行，5 个分区挤一页（CR-012） |
 | 模板管理 | `pages/tpls` | 已完成 | 机构统一维护，老师只读 |
 | 家长端 | — | 未开始 | 目前复用老师端页面 + 权限降级 |
-| 媒体持久化 | — | **未实现** | 记录中的照片/视频/语音是临时路径（CR-001） |
+| 媒体持久化 | `utils/media.js` | **已完成（P0）** | 临时路径统一转存 USER_DATA_PATH；启动自愈存量记录 |
 | 云端同步 | `utils/api.js` + `cloudfunctions/sync` | 半成品 | 旧 openid 模型，与新架构冲突（CR-005） |
-| 自动化测试 | `.workbuddy/verify_*.js` | 已完成但未入库 | 103 项断言，被 gitignore（CR-010） |
+| 自动化测试 | `tests/verify_*.js` | **已完成（P0，已入库）** | 130 项断言，`npm test` 一键跑完 |
 
 ## 5. 接口约定
 
@@ -155,12 +156,14 @@ removeCollection(name)          // → boolean
 
 ### 🔴 阻塞级
 
-| 编号 | 位置 | 问题 | 影响 |
-|---|---|---|---|
-| CR-001 | `pages/record/record.js:119,120,167` | 照片/视频/语音保存的是 `tempFilePath` 临时路径，未持久化 | 小程序退出后系统清理临时文件，历史记录媒体全部失效——这是本产品的核心资产 |
-| CR-002 | `utils/db/index.js` 全部 `list()` + `schema.js:61 audit()` | 查询不过滤 `orgId`；`audit(raw, orgId, stamp)` 的 `orgId` 入参是死参数（实际用 `raw.orgId`）。**已实测：org2 的班级与学生出现在 org1 列表** | 机构模型形同虚设，多机构/上云共享库时数据直接串号 |
-| CR-003 | `.github/workflows/deploy.yml` | `paths: ['橙果-小程序/**']` 与 `working-directory: 橙果-小程序` 指向不存在的目录（仓库根即小程序根） | 该流水线从未被触发过，自动上传是假象 |
-| CR-004 | `deploy.js:9` | `PROJECT_PATH = path.join(__dirname, '..')` 指向仓库上级目录 | 手动执行会把整个 `E:\新建文件夹` 打包上传 |
+> **P0 已于 2026-11-01 全部修复**，修复方式见每行末尾「✅」。回归见 `tests/verify_p0.js`。
+
+| 编号 | 位置 | 问题 | 影响 | 状态 |
+|---|---|---|---|---|
+| CR-001 | `pages/record/record.js:119,120,167` | 照片/视频/语音保存的是 `tempFilePath` 临时路径，未持久化 | 小程序退出后系统清理临时文件，历史记录媒体全部失效——这是本产品的核心资产 | ✅ 新增 `utils/media.js`，采集即转存 `USER_DATA_PATH/media/`；启动时 `repairMedia()` 自愈存量记录（源文件已丢失则保留原路径不清空） |
+| CR-002 | `utils/db/index.js` 全部 `list()` + `schema.js:61 audit()` | 查询不过滤 `orgId`；`audit(raw, orgId, stamp)` 的 `orgId` 入参是死参数（实际用 `raw.orgId`）。**已实测：org2 的班级与学生出现在 org1 列表** | 机构模型形同虚设，多机构/上云共享库时数据直接串号 | ✅ `core.orgColl(name)` 作为读路径唯一入口（`orgs` 按 id、其余按 `orgId`）；写路径保持全量避免误删他机构数据；`orgs` 集合的 `orgId` 也改为真实归属 |
+| CR-003 | `.github/workflows/deploy.yml` | `paths: ['橙果-小程序/**']` 与 `working-directory: 橙果-小程序` 指向不存在的目录（仓库根即小程序根） | 该流水线从未被触发过，自动上传是假象 | ✅ 改为 `paths-ignore`（排除 md/tests/.github）+ 删除全部 `working-directory` |
+| CR-004 | `deploy.js:9` | `PROJECT_PATH = path.join(__dirname, '..')` 指向仓库上级目录 | 手动执行会把整个 `E:\新建文件夹` 打包上传 | ✅ 改为 `__dirname`；`ignores` 补 `tests/`、`.workbuddy/`、工程档案 |
 
 ### 🟠 重要
 
@@ -168,14 +171,14 @@ removeCollection(name)          // → boolean
 |---|---|---|---|
 | CR-005 | `utils/api.js` + `cloudfunctions/sync/index.js` | 云端是「按 openid 隔离」旧模型，与本地「机构内共享 + member 授权」新模型冲突；`merge()` 只同步 records/profiles | 一旦开云，换设备后学生/班级/课程为空，记录变成指向不存在学生的孤儿数据 |
 | CR-006 | `utils/db/storage.js:56` | 每次写操作序列化整个集合（全量覆盖写） | 单条录入写全部 records；数据到数千条时明显卡顿并可能触及 1MB key 限额 |
-| CR-007 | `utils/db/permissions.js:132-135` | `if (tid && tid !== actor.userId) return false` —— `tid` 为空时**放行** | 记录缺录入人时"只能改自己录的"规则失效（fail-open） |
-| CR-008 | `utils/db/index.js:574` | `cid` 取自入参且未校验是否属于该学生班级，`validate` 只查非 0 | 记录可挂在学生并不在的班级，污染班级统计与家长可见性 |
-| CR-009 | `utils/db/index.js:144 seedDemo()` | `init()` 无条件播种，`DEMO_VERSION` 升版即向真实数据追加 45 名演示学生 | 演示数据污染生产库，老师会看到不属于自己的学生 |
-| CR-010 | `.gitignore` 忽略 `.workbuddy/` | 103 项断言测试不在版本控制内 | 换机/协作即丢失质量网，CI 无法执行 |
-| CR-011 | `utils/db/index.js:857 merge()` | 按 `updatedAt` 取新，无墓碑、无冲突记录、无幂等键 | 多端同时编辑必然静默丢数据 |
-| CR-012 | `pages/mgr/mgr.js` | 单页 265 行承载机构/班级/课程/学生/成员 5 个分区 | 任何新业务（课表/考勤/收费）都会撑爆此页 |
-| CR-013 | `app.js:onLaunch` | `db.init()` 无 try/catch | 迁移或水合抛错即整站白屏，且无恢复入口 |
-| CR-014 | `utils/db/schema.js:104 normalizeRecord` | 实体为固定字段，无业务类型扩展位 | 加考勤/作业/缴费需改表结构 + 权限 + 全部页面（ADR-009 提出预留 `type`） |
+| CR-007 | `utils/db/permissions.js:132-135` | `if (tid && tid !== actor.userId) return false` —— `tid` 为空时**放行** | 记录缺录入人时"只能改自己录的"规则失效（fail-open） | ✅ 改为 fail-closed：有目标且 `tid` 为空即拒绝；`abilities()` 用空 target 预判时不误伤 |
+| CR-008 | `utils/db/index.js:574` | `cid` 取自入参且未校验是否属于该学生班级，`validate` 只查非 0 | 记录可挂在学生并不在的班级，污染班级统计与家长可见性 | 未修（P1） |
+| CR-009 | `utils/db/index.js:144 seedDemo()` | `init()` 无条件播种，`DEMO_VERSION` 升版即向真实数据追加 45 名演示学生 | 演示数据污染生产库，老师会看到不属于自己的学生 | 未修（P1） |
+| CR-010 | `.gitignore` 忽略 `.workbuddy/` | 103 项断言测试不在版本控制内 | 换机/协作即丢失质量网，CI 无法执行 | ✅ 迁到 `tests/` 入库，`npm test` 跑全部 130 项；图标脚本迁到 `tools/` |
+| CR-011 | `utils/db/index.js:857 merge()` | 按 `updatedAt` 取新，无墓碑、无冲突记录、无幂等键 | 多端同时编辑必然静默丢数据 | 未修（P2） |
+| CR-012 | `pages/mgr/mgr.js` | 单页 265 行承载机构/班级/课程/学生/成员 5 个分区 | 任何新业务（课表/考勤/收费）都会撑爆此页 | 未修（P1） |
+| CR-013 | `app.js:onLaunch` | `db.init()` 无 try/catch | 迁移或水合抛错即整站白屏，且无恢复入口 | ✅ `init()` 内部兜底：失败降级为**只读 + 空库**，磁盘数据原样保留；`app.js` 弹窗告知，`db.status()` 可查 |
+| CR-014 | `utils/db/schema.js:104 normalizeRecord` | 实体为固定字段，无业务类型扩展位 | 加考勤/作业/缴费需改表结构 + 权限 + 全部页面（ADR-009 提出预留 `type`） | ✅ 已加 `type`（默认 `achievement`），见 ADR-009 |
 
 ### 🟡 建议
 
@@ -194,25 +197,41 @@ removeCollection(name)          // → boolean
 4. 软删除 + 审计字段全覆盖。
 5. `schema` 白名单规范化，脏数据不抛错（`str/num/list` 容错）。
 6. 迁移"只做加法"铁律，已修复清空数据地雷并有回归固化。
-7. 103 项断言覆盖到页面级真实模块加载，不是只测数据层。
+7. 130 项断言覆盖到页面级真实模块加载，不是只测数据层（`npm test`，已入库）。
+
+## 6.5 P0 修复记录（2026-11-01）
+
+| 项 | 改动文件 | 关键决定 |
+|---|---|---|
+| 媒体持久化 | `utils/media.js`（新增）、`pages/record`、`pages/mgr`、`pages/record/record.js` | 采集瞬间就转存，不等到保存——用户可能中途杀掉小程序；转存失败保留原路径，不让整条记录保存失败 |
+| 存量媒体自愈 | `utils/db/index.js repairMedia()` | 源文件已丢失时**保留原路径而非清空**，清空等于主动删用户照片 |
+| 多机构隔离 | `utils/db/core.js orgColl()`、`utils/db/index.js` | 读走机构视图、写走全量：如果写也走视图，`setColl` 会把他机构数据一起抹掉 |
+| tid fail-closed | `utils/db/permissions.js` | 用 `hasOwnProperty('tid')` 区分"无目标预判"与"有目标且 tid 为空"，前者不拦，后者拒绝 |
+| 降级只读 | `utils/db/core.js setReadOnly()`、`app.js` | 启动失败时内存放空库但**禁止任何落盘**，否则一次读失败就永久覆盖真实数据 |
+| CI | `.github/workflows/deploy.yml`、`deploy.js` | 用 `paths-ignore` 替代 `paths`，避免再写错目录前缀 |
+| 测试入库 | `tests/`（新增）、`tools/gen_icons.py` | 测试与图标脚本都属于资产，`.workbuddy/` 只留临时产物 |
+| record.type | `utils/db/schema.js` | 白名单归一，非法值不报错只归位（避免旧数据被拒） |
 
 ## 7. 待办
 
-### P0 止血（不动架构，先让数据不丢）
-- [ ] CR-001 媒体持久化：`wx.getFileSystemManager().saveFile` → 永久路径；统一封装 `infra/media`
-- [ ] CR-002 全实体列表加 `orgId` 过滤；修 `audit()` 死参数
-- [ ] CR-003 / CR-004 修正 CI 路径与 `PROJECT_PATH`，或直接删除失效流水线
-- [ ] CR-007 修 `tid` fail-open
-- [ ] CR-008 校验 `cid ∈ student.clsIds`
-- [ ] CR-010 测试迁入仓库（`test/` 目录，`npm test` 可跑）
-- [ ] CR-013 启动包 try/catch + 降级提示
+### P0 止血（不动架构，先让数据不丢）—— **2026-11-01 完成**
+- [x] CR-001 媒体持久化：新增 `utils/media.js`，采集即转存 `USER_DATA_PATH/media/`；启动 `repairMedia()` 自愈存量
+- [x] CR-002 全实体列表加 `orgId` 过滤：新增 `core.orgColl()`，读路径全收口（写路径保持全量，避免误删他机构数据）
+- [x] CR-003 / CR-004 修正 CI 路径与 `PROJECT_PATH`
+- [x] CR-007 修 `tid` fail-open
+- [x] CR-010 测试迁入 `tests/`，`npm test` 跑 130 项
+- [x] CR-013 启动包兜底 + 降级为只读（**绝不落盘覆盖**，避免读失败变成永久丢失）
+- [x] ADR-009 `record.type` 预留（默认 `achievement`）
+- [ ] CR-008 校验 `cid ∈ student.clsIds`（顺延 P1，与 repo 拆分一起做）
+- [ ] CR-009 演示数据隔离（顺延 P1，与 `DEMO_MODE` 开关一起做）
 
 ### P1 划边界（改结构不改功能）
 - [ ] 拆 `utils/db/index.js` 为 `core/repo/{class,course,student,record,member,template}.js`
 - [ ] 引入 `domain/` 应用层，页面只调用例，不直接调 repo
 - [ ] 拆 `pages/mgr` 为「我的」+「管理」两个页面
 - [ ] 演示数据移出主包，与生产数据分离（`DEMO_MODE` 开关）
-- [ ] ADR-009 落地：`record.type` 预留 + `domain/activities` 注册表骨架
+- [ ] `domain/activities` 注册表骨架（接住 `record.type`）
+- [ ] CR-008 / CR-009
 
 ### P2 上云（微信认证后）
 - [ ] 实现 `infra/storage/cloud.js`，保持 `load/saveCollection/saveMeta` 接口

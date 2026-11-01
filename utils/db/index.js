@@ -681,8 +681,18 @@ function userSwitch(id) {
   const u = userGet(id);
   if (!u) return { ok: false, msg: '人员不存在' };
   const m = memberOfUser(u.id);
-  core.updateMeta({ me: String(id), role: (m && m.role) || u.role });
+  const meta = core.meta();
+  const patch = { me: String(id), role: (m && m.role) || u.role };
+  // 记住"我本来是谁"。没有这条，预览家长端后会因为看不到成员列表而切不回来
+  if (!meta.homeMe) patch.homeMe = meta.me || String(id);
+  core.updateMeta(patch);
   return { ok: true, item: userCurrent() };
+}
+// 回到本人的真实身份
+function userSwitchHome() {
+  const h = core.meta().homeMe;
+  if (!h) return { ok: false, msg: '没有可返回的身份' };
+  return userSwitch(h);
 }
 
 // 兼容旧调用：等价于"建人 + 建成员关系"
@@ -815,6 +825,8 @@ function settings() {
     orgName: (o && o.name) || m.orgName || '我的机构',
     teacher: m.teacher || '',
     me: m.me || '',
+    homeMe: m.homeMe || m.me || '',
+    canSwitchHome: !!(m.homeMe && m.homeMe !== m.me),
     role: (a && a.role) || '',
     roleLabel: (a && a.roleLabel) || '',
     memberId: (a && a.memberId) || 0,
@@ -928,7 +940,7 @@ const db = {
   },
   users: {
     list: userList, get: userGet, name: userName, current: userCurrent,
-    switchTo: userSwitch, create: userCreate, update: userUpdate, remove: userRemove
+    switchTo: userSwitch, switchHome: userSwitchHome, create: userCreate, update: userUpdate, remove: userRemove
   },
   templates: {
     list: tplList, get: tplGet, create: tplCreate, update: tplUpdate, remove: tplRemove,

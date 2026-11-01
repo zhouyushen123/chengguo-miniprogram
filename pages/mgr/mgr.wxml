@@ -2,6 +2,12 @@
   <view wx:for="{{tabs}}" wx:key="*this" class="tab {{tab===index?'on':''}}" bindtap="pickTab" data-i="{{index}}">{{item}}</view>
 </view>
 
+<!-- 身份条：预览他人身份时可一键切回 -->
+<view wx:if="{{canSwitchHome}}" class="idbar">
+  <text>正在以「{{meName}} · {{myRoleLabel}}」身份预览</text>
+  <text class="idback" bindtap="backHome">切回我自己</text>
+</view>
+
 <!-- ============ 班级 ============ -->
 <view wx:if="{{tab===0}}" class="wrap">
   <view class="card">

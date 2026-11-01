@@ -36,3 +36,15 @@
 .avrow { display: flex; align-items: center; gap: 20rpx; margin-bottom: 20rpx; }
 .ava.big { width: 110rpx; height: 110rpx; border-radius: 34rpx; font-size: 44rpx; position: relative; overflow: hidden; }
 .ava.big image { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+
+/* 身份预览条：以他人身份查看时的显式提示与返回出口 */
+.idbar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 0 28rpx 16rpx; padding: 14rpx 22rpx;
+  background: #fff4e8; border: 2rpx solid #f6dcc0; border-radius: 16rpx;
+  font-size: 23rpx; color: #8a6d4b;
+}
+.idbar .idback {
+  flex: none; margin-left: 18rpx; padding: 6rpx 20rpx;
+  background: #e8590c; color: #fff; border-radius: 999rpx; font-size: 22rpx;
+}

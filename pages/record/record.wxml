@@ -86,7 +86,7 @@
       <view class="dimhd">
         <view class="dimname">{{dim.n}}</view>
         <view class="dimacts">
-          <text class="dimact" bindtap="tplAdd" data-di="{{di}}">＋ 新增选项</text>
+          <text wx:if="{{canTplEdit}}" class="dimact" bindtap="tplAdd" data-di="{{di}}">＋ 新增选项</text>
         </view>
       </view>
       <view wx:for="{{dim.opts}}" wx:for-item="opt" wx:for-index="oi" wx:key="*this"
@@ -94,8 +94,8 @@
         <view class="optcheck">{{opt.on?'✓':''}}</view>
         <view class="opttext">{{opt.t}}</view>
         <view class="optacts" catchtap="">
-          <text class="optact" catchtap="tplEdit" data-di="{{di}}" data-oi="{{oi}}">编辑</text>
-          <text class="optact del" catchtap="tplDel" data-di="{{di}}" data-oi="{{oi}}">删除</text>
+          <text wx:if="{{canTplEdit}}" class="optact" catchtap="tplEdit" data-di="{{di}}" data-oi="{{oi}}">编辑</text>
+          <text wx:if="{{canTplEdit}}" class="optact del" catchtap="tplDel" data-di="{{di}}" data-oi="{{oi}}">删除</text>
         </view>
       </view>
     </view>

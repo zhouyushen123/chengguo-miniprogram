@@ -11,13 +11,13 @@
   <view class="card" wx:for="{{groups}}" wx:key="i">
     <view class="dimhead">
       <view class="dimname">{{item.n}}<text class="mi"> · {{item.opts.length}}项</text></view>
-      <view class="mini mic" bindtap="voiceOpt" data-i="{{item.i}}"><image class="tico" src="{{icoMic}}" mode="aspectFit" /></view>
-      <view class="mini add" bindtap="addOpt" data-i="{{item.i}}"><image class="tico s" src="{{icoPlus}}" mode="aspectFit" />新增</view>
+      <view wx:if="{{canEdit}}" class="mini mic" bindtap="voiceOpt" data-i="{{item.i}}"><image class="tico" src="{{icoMic}}" mode="aspectFit" /></view>
+      <view wx:if="{{canEdit}}" class="mini add" bindtap="addOpt" data-i="{{item.i}}"><image class="tico s" src="{{icoPlus}}" mode="aspectFit" />新增</view>
     </view>
     <view class="opt" wx:for="{{item.opts}}" wx:for-item="o" wx:key="j">
       <view class="optmain {{o.on?'on':''}}" bindtap="toggleOpt" data-k="{{item.i}}:{{o.j}}">{{o.on?'✓ ':''}}{{o.o}}</view>
-      <view class="mini" bindtap="editOpt" data-i="{{item.i}}" data-j="{{o.j}}"><image class="tico" src="{{icoEdit}}" mode="aspectFit" /></view>
-      <view class="mini del" bindtap="delOpt" data-i="{{item.i}}" data-j="{{o.j}}"><image class="tico" src="{{icoClose}}" mode="aspectFit" /></view>
+      <view wx:if="{{canEdit}}" class="mini" bindtap="editOpt" data-i="{{item.i}}" data-j="{{o.j}}"><image class="tico" src="{{icoEdit}}" mode="aspectFit" /></view>
+      <view wx:if="{{canEdit}}" class="mini del" bindtap="delOpt" data-i="{{item.i}}" data-j="{{o.j}}"><image class="tico" src="{{icoClose}}" mode="aspectFit" /></view>
     </view>
   </view>
 

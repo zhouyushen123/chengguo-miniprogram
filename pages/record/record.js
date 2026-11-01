@@ -45,7 +45,9 @@ Page({
       course: courses[ci] ? courses[ci].name : '',
       sid: pick.sid || null, score: pick.score || 85, tag: pick.tag || '',
       note: pick.note || '', photos: pick.photos || [], videos: pick.videos || [], audio: pick.audio || null,
-      rid: pick.rid || null, editing: !!pick.rid
+      rid: pick.rid || null, editing: !!pick.rid,
+      // 模板统一由机构维护：老师可选用，改模板需负责人/管理员权限
+      canTplEdit: db.auth.can('template.write')
     });
     this._applyStuFilter();
     this.refreshCan();

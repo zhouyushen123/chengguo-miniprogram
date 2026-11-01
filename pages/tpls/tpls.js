@@ -5,12 +5,14 @@ const icons = require('../../utils/icons');
 
 Page({
   data: { mode: 'manage', groups: [], sel: [], previewText: '', addingIdx: -1,
+    // 模板是机构统一话术：只有负责人/管理员能改，老师与家长只读
+    canEdit: false,
     icoMic: icons.mic('#E8590C'), icoEdit: icons.edit, icoClose: icons.close, icoPlus: icons.plus('#E8590C') },
   onLoad(q) {
     this.mode = q.mode || 'manage';
     const pick = getApp().globalData.pick || {};
     this.sel = pick.tplSel || [];
-    this.setData({ mode: this.mode, sel: this.sel.slice() });
+    this.setData({ mode: this.mode, sel: this.sel.slice(), canEdit: db.auth.can('template.write') });
     this.render();
     if (this.mode === 'preview') this.buildPreview();
   },

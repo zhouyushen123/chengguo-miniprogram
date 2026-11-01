@@ -52,12 +52,13 @@
 ```
 橙果-小程序/
 ├── app.js / app.json / app.wxss      全局：数据初始化、tabBar、设计规范
-├── utils/db/                         主数据层（六类实体，唯一读写入口）
-│   ├── index.js                      仓储 API：db.classes / db.students / db.records …
+├── utils/db/                         主数据层（八类实体 + 机构权限，唯一读写入口）
+│   ├── index.js                      仓储 API：db.classes / db.students / db.records / db.auth …
+│   ├── permissions.js                权限模型：角色 × 动作 × 数据范围（纯函数）
 │   ├── schema.js                     实体字段、默认值、校验规则
 │   ├── storage.js                    存储适配器（唯一接触 wx.storage 的文件）
 │   ├── core.js                       内存态、id 分配、落盘
-│   └── migrate.js                    v2 单一大对象 → v3 分集合迁移
+│   └── migrate.js                    v2 单一大对象 → v4 分集合 + 权限拆表迁移
 ├── utils/api.js                      线上同步层（REST，未配置自动降级本地）
 ├── pages/index|record|tpls|records|student|profile|mgr
 ├── cloudfunctions/sync               云函数（records/profiles 读写、按 openid 隔离）
@@ -67,7 +68,27 @@
 ### 数据层约定（改数据前必读）
 
 - 页面**只**通过 `const db = require('../../utils/db')` 读写数据，不碰 `wx.setStorageSync`，也不直接改返回对象里的字段——改字段要走 `update` / `markSent` 等方法，否则不会落盘、不会更新 `updatedAt`。
-- 六类实体：班级 `classes`、课程 `courses`、学生 `students`、课堂记录 `records`、人员 `users`、评价模板 `templates`，各自一个 storage key（对应将来云端一张表）。
+- 八类实体：机构 `orgs`、成员 `members`、班级 `classes`、课程 `courses`、学生 `students`、课堂记录 `records`、人员 `users`、评价模板 `templates`，各自一个 storage key（对应将来云端一张表）。
+- **列表查询默认已按身份过滤**：老师只见自己带的班、家长只见自己孩子且仅已发布。页面不要再写 `role === 'parent'` 这类判断，规则只在 `utils/db/permissions.js` 定义一次。
+
+### 权限模型（机构 / 多老师）
+
+权限属于「人 × 机构」这个组合，所以拆成两张表：`users` 只记"这个人是谁"，`members` 记"他在这家机构是什么角色、能管哪些数据"。同一位老师可以在两家机构兼职而互不影响，上云后 `members` 就是服务端的授权表。
+
+| 能力 | 负责人 owner | 管理员 admin | 老师 teacher | 家长 parent |
+|---|---|---|---|---|
+| 机构设置 / 成员管理 | ✓ | ✓ | | |
+| 班级 / 课程 / 模板增删改 | ✓ | ✓ | | |
+| 学生增删改 | 全机构 | 全机构 | 仅本班 | |
+| 录入成果 | ✓ | ✓ | 仅本班 | |
+| 修改 / 删除记录 | 全部 | 全部 | **仅自己录入的** | |
+| 发送给家长 | ✓ | ✓ | 仅本班 | |
+| 查看成果 | 全机构 | 全机构 | 仅本班 | **仅自己孩子、且仅已发布** |
+| 填写孩子档案 | ✓ | ✓ | 仅本班 | 仅自己孩子 |
+
+- **fail-closed**：没被显式授权的一律拒绝。老师没分配班级 = 看不到任何数据（而不是"没限制所以全放行"）。
+- 一个机构只能有一个负责人，转移需走「移交」而非直接改角色，避免把自己锁在门外。
+- 成员与范围是联动的：删班级会同步摘掉老师在成员里的该班授权，删学生会摘掉家长的绑定，不留悬空权限。
 - 每个实体都带 `orgId`（归属机构）、`createdAt` / `updatedAt`、`removed`（软删除，多端同步时删除才能被传播）。
 - 写入前统一过 `schema.validate()`，非法数据（空名称、分数越界、照片超 9 张…）会被拒绝并返回文案。
 - **接云端只需替换 `utils/db/storage.js`**：仓储读内存、写落盘，换适配器后页面代码零改动。

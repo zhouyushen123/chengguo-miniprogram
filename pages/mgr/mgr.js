@@ -32,6 +32,8 @@ Page({
       isManager,
       myRole: s.role,
       myRoleLabel: s.roleLabel,
+      canSwitchHome: s.canSwitchHome,
+      meName: (db.users.current() || {}).name || '',
       tabs: isManager ? ['班级', '课程', '学生', '人员'] : ['班级', '课程', '学生'],
       tab: Math.min(this.data.tab, isManager ? 3 : 2),
       teacher: s.teacher,
@@ -62,6 +64,13 @@ Page({
     });
   },
   pickTab(e) { this.setData({ tab: +e.currentTarget.dataset.i }); },
+  // 预览他人身份后回到自己：没有这个出口，切到家长就再也回不来了
+  backHome() {
+    const r = db.users.switchHome();
+    if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
+    this.refresh();
+    wx.showToast({ title: '已切回 ' + (r.item.name || '本人'), icon: 'none' });
+  },
 
   /* ================= 机构名称 ================= */
   onOrgName(e) { this.setData({ orgName: e.detail.value }); },

@@ -1,4 +1,4 @@
-const store = require('../../utils/store');
+const db = require('../../utils/db');
 const api = require('../../utils/api');
 const icons = require('../../utils/icons');
 
@@ -15,8 +15,8 @@ Page({
     icoChevD: icons.chevronDown, icoCamera: icons.camera, icoAudio: icons.audio
   },
   onShow() {
-    const db = store.get();
-    const tabs = ['全部'].concat(db.classes.map(c => c.name));
+    const u = db.users.current() || { role: 'teacher' };
+    const tabs = ['全部'].concat(db.classes.list().map(c => c.name));
     // 从首页班级卡跳入：定位到对应班级页签
     const preset = getApp().globalData.recTab;
     let tab = this.data.tab;
@@ -25,22 +25,21 @@ Page({
       if (i > 0) tab = i;
       getApp().globalData.recTab = null;
     }
-    this.setData({ tabs, tab: Math.min(tab, tabs.length - 1), role: db.role });
+    this.setData({ tabs, tab: Math.min(tab, tabs.length - 1), role: u.role });
     this.refresh();
   },
   // 第一层（班级）过滤后的可见记录池（含身份权限过滤）
   _pool() {
-    const db = store.get();
-    const u = db.users.find(x => x.id === db.me) || db.users[0];
+    const u = db.users.current() || { role: 'teacher' };
     const kidIds = u.role === 'parent' ? (u.studentIds || []) : null;
     const visCls = u.role === 'teacher' && (u.clsIds || []).length ? u.clsIds : null;
     const t = this.data.tabs[this.data.tab];
-    const cid = t === '全部' ? null : (db.classes.find(c => c.name === t) || {}).id;
-    return db.records
+    const cls = t === '全部' ? null : db.classes.list().find(c => c.name === t);
+    const cid = cls ? cls.id : null;
+    return db.records.list()
       .filter(r => !cid || r.cid === cid)
       .filter(r => !kidIds || kidIds.includes(r.sid))
-      .filter(r => !visCls || visCls.includes(r.cid))
-      .sort((a, b) => b.id - a.id);
+      .filter(r => !visCls || visCls.includes(r.cid));
   },
   refresh() {
     const pool = this._pool();
@@ -57,7 +56,7 @@ Page({
     const list = stage2
       .filter(r => tagIdx === 0 || r.tag === tagOpts[tagIdx])
       .map(r => {
-        const s = store.student(r.sid) || { name: '—' };
+        const s = db.students.get(r.sid) || { name: '—' };
         return {
           id: r.id, sid: r.sid, name: s.name, course: r.course, date: r.date, score: r.score, tag: r.tag,
           sent: r.sent, note: (r.note || '').split('\n')[0],
@@ -83,10 +82,10 @@ Page({
   },
   openRec(e) { wx.navigateTo({ url: '/pages/student/student?rid=' + e.currentTarget.dataset.rid + '&id=' + e.currentTarget.dataset.sid }); },
   editRec(e) {
-    const db = store.get();
-    const r = db.records.find(x => x.id === e.currentTarget.dataset.rid);
+    const r = db.records.get(e.currentTarget.dataset.rid);
     if (!r) return;
-    if (db.role === 'parent') { wx.showToast({ title: '家长为只读身份', icon: 'none' }); return; }
+    const u = db.users.current() || {};
+    if (u.role === 'parent') { wx.showToast({ title: '家长为只读身份', icon: 'none' }); return; }
     getApp().globalData.pick = {
       cls: r.cid, sid: r.sid, score: r.score, photos: r.photos || [], videos: r.videos || [], audio: r.audio,
       tag: r.tag || '', note: r.note || '', rid: r.id, course: r.course
@@ -95,19 +94,17 @@ Page({
   },
   // 单条发送：已发送的记录按钮置灰不可再点
   sendRec(e) {
-    const db = store.get();
-    const r = db.records.find(x => x.id === e.currentTarget.dataset.rid);
+    const r = db.records.get(e.currentTarget.dataset.rid);
     if (!r || r.sent) return;
-    const s = store.student(r.sid) || { name: '学生' };
+    const s = db.students.get(r.sid) || { name: '学生' };
     wx.showModal({
       title: '发送给家长',
       content: '将把 ' + s.name + ' ' + (r.date || '') + ' 的这条成果记录发送给学生家长，确认发送？',
       confirmText: '发送',
       success: res => {
         if (!res.confirm) return;
-        r.sent = true;
-        api.pushRecord(r);
-        store.save();
+        db.records.markSent([r.id]);
+        api.pushRecord(Object.assign({}, r, { sent: true }));
         wx.showToast({ title: '已发送', icon: 'success' });
         this.refresh();
       }

@@ -1,4 +1,4 @@
-const store = require('../../utils/store');
+const db = require('../../utils/db');
 const api = require('../../utils/api');
 const icons = require('../../utils/icons');
 
@@ -24,16 +24,16 @@ Page({
   },
   onShow() { this.render(); },
   render() {
-    const db = store.get();
-    const cls = db.classes.find(c => c.id === this.clsId);
+    const cls = db.classes.get(this.clsId);
     if (!cls) return;
     wx.setNavigationBarTitle({ title: cls.name });
-    const t = store.today();
-    const students = store.studentsOf(this.clsId);
+    const t = db.today();
+    const students = db.students.of(this.clsId);
+    const all = db.records.ofClass(this.clsId);
     // 今日该班每名学生的记录 → 三状态
     const today = {};
-    db.records.forEach(r => {
-      if (r.cid !== this.clsId || r.date !== t) return;
+    all.forEach(r => {
+      if (r.date !== t) return;
       const arr = today[r.sid] || (today[r.sid] = []);
       arr.push(r);
     });
@@ -50,11 +50,11 @@ Page({
       sent: tiles.filter(x => x.st === 'sent').length
     };
     // 今日待发送记录数（已录入但未发布）
-    const pending = db.records.filter(r => r.cid === this.clsId && r.date === t && !r.sent).length;
+    const pending = all.filter(r => r.date === t && !r.sent).length;
     // 记录日期选项（从新到旧）
-    const dates = [...new Set(db.records.filter(r => r.cid === this.clsId).map(r => r.date))].sort((a, b) => b.localeCompare(a));
+    const dates = [...new Set(all.map(r => r.date))].sort((a, b) => b.localeCompare(a));
     const dateOpts = ['不限日期'].concat(dates);
-    this._all = db.records.filter(r => r.cid === this.clsId).sort((a, b) => b.id - a.id);
+    this._all = all;
     this.setData({
       cls: { id: cls.id, name: cls.name },
       tiles, counts, dateOpts, pending,
@@ -82,16 +82,15 @@ Page({
       (this.data.tagIdx === 0 || r.tag === tag)
     );
     const recs = list.slice(0, 50).map(r => {
-      const s = store.student(r.sid) || { name: '—' };
+      const s = db.students.get(r.sid) || { name: '—' };
       return { id: r.id, sid: r.sid, name: s.name, course: r.course, date: r.date, score: r.score, tag: r.tag || '', sent: r.sent };
     });
     this.setData({ recs, recTotal: list.length });
   },
   // 统一发送：把今日该班所有「已录入未发布」的记录发给家长
   sendAll() {
-    const db = store.get();
-    const t = store.today();
-    const targets = db.records.filter(r => r.cid === this.clsId && r.date === t && !r.sent);
+    const t = db.today();
+    const targets = db.records.ofClass(this.clsId).filter(r => r.date === t && !r.sent);
     if (!targets.length) { wx.showToast({ title: '今天没有待发送的记录', icon: 'none' }); return; }
     wx.showModal({
       title: '统一发送给家长',
@@ -99,9 +98,9 @@ Page({
       confirmText: '发送',
       success: res => {
         if (!res.confirm) return;
-        targets.forEach(r => { r.sent = true; api.pushRecord(r); });
-        store.save();
-        wx.showToast({ title: '已发送 ' + targets.length + ' 条', icon: 'success' });
+        const n = db.records.markSent(targets.map(r => r.id));
+        targets.forEach(r => api.pushRecord(Object.assign({}, r, { sent: true })));
+        wx.showToast({ title: '已发送 ' + n + ' 条', icon: 'success' });
         this.render(); // 返回后色块绿变蓝、计数即时刷新
       }
     });

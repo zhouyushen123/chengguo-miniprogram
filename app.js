@@ -1,26 +1,13 @@
-const store = require('./utils/store');
+const db = require('./utils/db');
 const api = require('./utils/api');
 
 App({
   onLaunch() {
-    store.init();
-    // 云开发：启动时拉取云端记录并按 id 合并（云开发模式下线上读写自动生效）
+    // 主数据层：加载 → 迁移老数据 → 规范化 → 演示数据 → 引用自愈
+    db.init();
+    // 云开发：未认证前是空实现，pull 直接返回 null，不影响本地使用
     api.initCloud();
-    api.pull().then(remote => {
-      if (!remote) return;
-      const db = store.get();
-      const byId = {};
-      db.records.forEach(r => { byId[r.id] = r; });
-      (remote.records || []).forEach(r => {
-        if (!byId[r.id] || (r.updatedAt || 0) > (byId[r.id].updatedAt || 0)) byId[r.id] = r;
-      });
-      db.records = Object.values(byId);
-      (remote.profiles || []).forEach(p => {
-        const s = db.students.find(x => x.id === p.sid);
-        if (s && p.profile) s.profile = p.profile;
-      });
-      store.save();
-    }).catch(() => {});
+    api.pull().then(remote => { if (remote) db.merge(remote); }).catch(() => {});
   },
   globalData: { pick: null }
 });

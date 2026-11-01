@@ -1,4 +1,4 @@
-const store = require('../../utils/store');
+const db = require('../../utils/db');
 const api = require('../../utils/api');
 const stt = require('../../utils/stt');
 const icons = require('../../utils/icons');
@@ -33,10 +33,10 @@ Page({
   },
   onLoad(q) {
     const pick = getApp().globalData.pick || {};
-    const db = store.get();
-    const clsId = pick.cls || (db.classes[0] && db.classes[0].id);
-    const courses = store.coursesOf(clsId);
-    const students = store.studentsOf(clsId); // 已按姓氏拼音排序
+    const classes = db.classes.list();
+    const clsId = pick.cls || (classes[0] && classes[0].id);
+    const courses = db.courses.of(clsId);
+    const students = db.students.of(clsId); // 已按姓氏拼音排序
     this.setData({
       clsId, students, courses,
       over45: students.length > 45,
@@ -79,7 +79,7 @@ Page({
     this.refreshCan();
   },
   refreshCan() {
-    this.setData({ canSend: store.canSend(this.data) });
+    this.setData({ canSend: db.canSend(this.data) });
   },
   pickStu(e) { this.setData({ sid: e.currentTarget.dataset.sid }); this.refreshCan(); },
   onScore(e) { this.setData({ score: e.detail.value }); },
@@ -183,7 +183,7 @@ Page({
       course: this.data.course, score: this.data.score, tag: this.data.tag,
       note: this.data.note, photos: this.data.photos, videos: this.data.videos, audio: this.data.audio
     };
-    const res = store.saveRecord(payload, send);
+    const res = db.records.save(payload, send);
     if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
     api.pushRecord(res.record); // 线上模式自动上推，本地模式静默跳过
     wx.showToast({ title: send ? '已发送' : '已存草稿', icon: 'success' });

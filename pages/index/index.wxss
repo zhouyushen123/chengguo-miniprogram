@@ -1,10 +1,9 @@
 /* ---------- 顶部欢迎 ---------- */
 .topbar {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  padding: 30rpx 30rpx 24rpx;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 36rpx 30rpx 24rpx;
 }
-.brand { font-size: 44rpx; font-weight: 800; letter-spacing: 2rpx; }
-.hello { margin-top: 8rpx; font-size: 25rpx; color: #9c948a; }
+.hello { font-size: 27rpx; color: #6b655e; font-weight: 600; }
 .datechip {
   flex: none; font-size: 24rpx; color: #6b655e; font-weight: 600;
   background: #fff; border-radius: 999rpx; padding: 12rpx 24rpx;

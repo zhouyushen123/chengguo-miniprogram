@@ -1,10 +1,7 @@
 <view wx:if="{{!isParent}}">
   <!-- 顶部欢迎 -->
   <view class="topbar">
-    <view class="topleft">
-      <view class="brand">橙果</view>
-      <view class="hello">{{roleLabel}} · 欢迎回来，{{uName}}</view>
-    </view>
+    <view class="hello">{{roleLabel}} · 欢迎回来，{{uName}}</view>
     <view class="datechip">{{dateStr}}</view>
   </view>
 

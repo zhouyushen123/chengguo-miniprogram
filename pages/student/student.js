@@ -3,18 +3,23 @@ const store = require('../../utils/store');
 Page({
   data: {
     s: null, tab: 0, latest: null, history: [], rec: null, photoUrls: [], videoUrls: [],
-    filters: [], filt: '全部', total: 0, shown: 0
+    filters: [], filt: '全部', total: 0, shown: 0, expandId: 0
   },
   onLoad(q) {
-    this.sid = +q.id || 0;
+    this.sid = +q.id || +q.sid || 0; // 兼容 id / sid 两种参数名
     this.rid = +q.rid || 0;
   },
   onShow() { this.render(); },
   // 统一渲染：拉记录 → 按筛选过滤 → 首条做详情，其余进历史列表
   render() {
+    const db = store.get();
+    // 兼容只带 rid 的入口（如首页最近成果）：先从记录反查学生
+    if (!this.sid && this.rid) {
+      const r0 = db.records.find(r => r.id === this.rid);
+      if (r0) this.sid = r0.sid;
+    }
     const s = store.student(this.sid);
     if (!s) return;
-    const db = store.get();
     const recs = db.records.filter(r => r.sid === this.sid).sort((a, b) => b.id - a.id);
     const withLines = r => r ? Object.assign({}, r, { noteLines: (r.note || '').split('\n').filter(Boolean) }) : r;
 
@@ -39,10 +44,8 @@ Page({
       s: this.stuView(s), rec: null,
       filters, filt, total: recs.length, shown: list.length,
       latest: withLines(list[0] || null),
-      history: list.slice(1).map(r => ({
-        id: r.id, course: r.course, date: r.date, score: r.score, tag: r.tag,
-        sent: r.sent, note1: (r.note || '').split('\n')[0]
-      })),
+      // 历史条目带全量字段，行内展开详情用（不再跳新页）
+      history: list.slice(1).map(withLines),
       photoUrls: (list[0] || {}).photos || [],
       videoUrls: (list[0] || {}).videos || []
     });
@@ -51,7 +54,12 @@ Page({
     return { name: s.name, meta: (s.clsIds || []).map(store.clsName).join(' · '), wechat: s.wechat || '' };
   },
   pickFilter(e) {
-    this.setData({ filt: e.currentTarget.dataset.f }, () => this.render());
+    this.setData({ filt: e.currentTarget.dataset.f, expandId: 0 }, () => this.render());
+  },
+  // 历史条目行内展开/收起（同一时间只展开一条）
+  toggleExpand(e) {
+    const id = +e.currentTarget.dataset.rid;
+    this.setData({ expandId: this.data.expandId === id ? 0 : id });
   },
   goRecord() {
     const s = store.student(this.sid);
@@ -62,8 +70,5 @@ Page({
     wx.navigateTo({ url: '/pages/record/record' });
   },
   goProfile() { wx.navigateTo({ url: '/pages/profile/profile?id=' + this.sid }); },
-  openHistory(e) {
-    wx.navigateTo({ url: '/pages/student/student?rid=' + e.currentTarget.dataset.rid + '&id=' + this.sid });
-  },
   previewPhoto(e) { wx.previewImage({ urls: this.data.photoUrls, current: this.data.photoUrls[e.currentTarget.dataset.i] }); }
 });

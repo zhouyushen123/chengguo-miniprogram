@@ -47,7 +47,7 @@ Page({
       .map(r => {
         const s = store.student(r.sid) || { name: '—' };
         return {
-          id: r.id, name: s.name, clsName: store.clsName(r.cid), date: r.date,
+          id: r.id, sid: r.sid, name: s.name, clsName: store.clsName(r.cid), date: r.date,
           sd: (r.date || '').slice(5), score: r.score,
           ci: Math.max(0, vis.findIndex(c => c.id === r.cid)) % 3
         };
@@ -94,7 +94,7 @@ Page({
     this.goRecords();
   },
   goMgr() { wx.switchTab({ url: '/pages/mgr/mgr' }); },
-  openRec(e) { wx.navigateTo({ url: '/pages/student/student?rid=' + e.currentTarget.dataset.rid }); },
+  openRec(e) { wx.navigateTo({ url: '/pages/student/student?rid=' + e.currentTarget.dataset.rid + '&sid=' + e.currentTarget.dataset.sid }); },
   goStudent(e) {
     wx.navigateTo({ url: '/pages/student/student?id=' + e.currentTarget.dataset.sid });
     this.setData({ q: '', results: [], moreCount: 0 });

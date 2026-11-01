@@ -71,7 +71,7 @@
     <text class="seclink" bindtap="goRecords">全部</text>
   </view>
   <view class="recgrid">
-    <view class="rectile" wx:for="{{recent}}" wx:key="id" hover-class="btn-hover" bindtap="openRec" data-rid="{{item.id}}">
+    <view class="rectile" wx:for="{{recent}}" wx:key="id" hover-class="btn-hover" bindtap="openRec" data-rid="{{item.id}}" data-sid="{{item.sid}}">
       <view class="rtname">{{item.name}}</view>
       <view class="rtmeta">{{item.clsName}} · {{item.sd}} · {{item.score}}分</view>
     </view>

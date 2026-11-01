@@ -4,7 +4,7 @@
   </view>
 </scroll-view>
 <view class="card rec" wx:for="{{list}}" wx:key="id">
-  <view class="recrow" bindtap="openRec" data-rid="{{item.id}}">
+  <view class="recrow" bindtap="openRec" data-rid="{{item.id}}" data-sid="{{item.sid}}">
     <image wx:if="{{item.photo}}" class="thumb" src="{{item.photo}}" mode="aspectFill" />
     <view class="recinfo">
       <view class="r1"><b>{{item.name}}</b><text class="mi">{{item.course}} · {{item.date}}</text><text class="score">{{item.score}}分</text></view>

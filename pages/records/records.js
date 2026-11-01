@@ -31,7 +31,7 @@ Page({
       .map(r => {
         const s = store.student(r.sid) || { name: '—' };
         return {
-          id: r.id, name: s.name, course: r.course, date: r.date, score: r.score, tag: r.tag,
+          id: r.id, sid: r.sid, name: s.name, course: r.course, date: r.date, score: r.score, tag: r.tag,
           sent: r.sent, note: (r.note || '').split('\n')[0],
           photoCount: (r.photos || []).length, hasAudio: !!r.audio,
           photo: (r.photos || [])[0] || ''
@@ -40,7 +40,7 @@ Page({
     this.setData({ list });
   },
   pickTab(e) { this.setData({ tab: e.currentTarget.dataset.i }); this.refresh(); },
-  openRec(e) { wx.navigateTo({ url: '/pages/student/student?rid=' + e.currentTarget.dataset.rid }); },
+  openRec(e) { wx.navigateTo({ url: '/pages/student/student?rid=' + e.currentTarget.dataset.rid + '&id=' + e.currentTarget.dataset.sid }); },
   editRec(e) {
     const db = store.get();
     const r = db.records.find(x => x.id === e.currentTarget.dataset.rid);

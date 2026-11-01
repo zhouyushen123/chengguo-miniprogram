@@ -62,7 +62,8 @@ function coursesOf(clsId) { return db.courses.filter(c => c.clsId === clsId); }
 function studentsOf(clsId) { return db.students.filter(s => (s.clsIds || []).includes(clsId)); }
 function today() { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
 function latestRecord(sid) {
-  const list = db.records.filter(r => r.sid === sid).sort((a, b) => b.date.localeCompare(a.date));
+  // 记录 id 随时间递增，统一按 id 倒序取最近一条
+  const list = db.records.filter(r => r.sid === sid).sort((a, b) => b.id - a.id);
   return list[0] || null;
 }
 // 记录状态机：内容补齐（有学生 && 有照片/语音/留言）才可发送

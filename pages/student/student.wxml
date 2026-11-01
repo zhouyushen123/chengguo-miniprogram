@@ -26,12 +26,22 @@
     <audio wx:if="{{rec.audio}}" src="{{rec.audio}}" controls style="width:100%;margin-top:16rpx" />
   </view>
 
-  <!-- 最近一次 + 历史列表 -->
+  <!-- 筛选 + 最近一次详情 + 历史列表 -->
   <block wx:if="{{!rec}}">
+    <view wx:if="{{filters.length > 1}}" class="filterbar">
+      <view class="fchip {{filt===item?'on':''}}" wx:for="{{filters}}" wx:key="*this" bindtap="pickFilter" data-f="{{item}}">{{item}}</view>
+      <text class="fcount">{{shown}} 条</text>
+    </view>
+
     <view wx:if="{{latest}}" class="card">
-      <view class="dimhead"><text class="pill" style="background:#e8590c">最近一次</text><text class="mi">{{latest.course}} · {{latest.date}}</text><text class="score">{{latest.score}}分</text></view>
+      <view class="dimhead">
+        <text class="pill" style="background:#e8590c">{{filt==='全部'?'最近一次':filt+' · 最近'}}</text>
+        <text class="mi">{{latest.date}}</text>
+        <text class="score">{{latest.score}}分</text>
+      </view>
       <view class="chips" style="margin:12rpx 0">
         <text wx:if="{{latest.tag}}" class="pill" style="background:#3a9e5f">{{latest.tag}}</text>
+        <text class="pill" style="background:{{latest.sent?'#3a9e5f':'#b8860b'}}">{{latest.sent?'已发送':'待发送'}}</text>
       </view>
       <view class="notegroups">
         <view class="mi" wx:for="{{latest.noteLines}}" wx:key="*this">{{item}}</view>
@@ -39,13 +49,18 @@
       <view class="photogrid">
         <image wx:for="{{photoUrls}}" wx:key="*this" src="{{item}}" mode="aspectFill" bindtap="previewPhoto" data-i="{{index}}" />
       </view>
+      <audio wx:if="{{latest.audio}}" src="{{latest.audio}}" controls style="width:100%;margin-top:16rpx" />
     </view>
-    <view wx:else class="card mi">暂无课程记录</view>
+    <view wx:else class="card mi">{{total?'该课程暂无记录':'暂无课程记录'}}</view>
 
     <view class="card" wx:if="{{history.length}}">
-      <view class="label">历史课程</view>
+      <view class="label">历史课程 · {{history.length}} 条</view>
       <view class="hist" wx:for="{{history}}" wx:key="id" bindtap="openHistory" data-rid="{{item.id}}">
-        <view><b>{{item.course}}</b><view class="mi">{{item.date}} · {{item.score}}分 {{item.tag?'· '+item.tag:''}}</view></view>
+        <view class="hleft">
+          <b>{{item.course}}</b>
+          <view class="mi">{{item.date}} · {{item.score}}分 {{item.tag?'· '+item.tag:''}}</view>
+        </view>
+        <text wx:if="{{!item.sent}}" class="pill" style="background:#b8860b">待发送</text>
         <view class="chev">›</view>
       </view>
     </view>

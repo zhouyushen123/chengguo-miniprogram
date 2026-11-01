@@ -76,10 +76,29 @@
 .oneline {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-/* 彩色图标（班级/学生头像轮换三色） */
-.ava.cls-ico-0 { background: linear-gradient(135deg, #6ea8ff, #4a7ddc); box-shadow: 0 6rpx 14rpx rgba(74, 125, 220, 0.25); }
-.ava.cls-ico-1 { background: linear-gradient(135deg, #7ed6a2, #3a9e5f); box-shadow: 0 6rpx 14rpx rgba(58, 158, 95, 0.25); }
-.ava.cls-ico-2 { background: linear-gradient(135deg, #f7a23b, #e8590c); box-shadow: 0 6rpx 14rpx rgba(232, 89, 12, 0.25); }
+/* ---------- 我的班级：三列磁贴 ---------- */
+.clsgrid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16rpx;
+  padding: 0 24rpx 24rpx;
+}
+.clstile {
+  position: relative; background: #fff; border-radius: 20rpx;
+  padding: 24rpx 20rpx 20rpx; overflow: hidden;
+  box-shadow: 0 4rpx 16rpx rgba(60, 40, 20, 0.05);
+}
+.clstile::before {
+  content: ''; position: absolute; left: 20rpx; top: 0;
+  width: 48rpx; height: 6rpx; border-radius: 0 0 6rpx 6rpx;
+}
+.clstile.c0::before { background: #4a7ddc; }
+.clstile.c1::before { background: #3a9e5f; }
+.clstile.c2::before { background: #e8590c; }
+.ctname {
+  font-size: 27rpx; font-weight: 700; color: #33302c;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ctmeta { margin-top: 8rpx; font-size: 22rpx; color: #9c948a; }
+.ctwarn { margin-top: 6rpx; font-size: 21rpx; color: #e8590c; }
 .scorebadge {
   flex: none; min-width: 88rpx; text-align: center;
   background: #fdeee2; color: #e8590c; font-weight: 800; font-size: 32rpx;

@@ -56,14 +56,11 @@
     <text class="sectitle">我的班级</text>
     <text class="seclink" bindtap="goMgr">管理</text>
   </view>
-  <view class="card clsitem" wx:for="{{myClasses}}" wx:key="id" hover-class="btn-hover" bindtap="goCls" data-name="{{item.name}}">
-    <view class="sturow">
-      <view class="ava cls-ico-{{index%3}}">{{item.name[0]}}</view>
-      <view class="stuinfo">
-        <view class="h1">{{item.name}}</view>
-        <view class="mi">{{item.count}} 名学生{{item.pending?' · 今日未录':''}}<text wx:if="{{item.pending}}" class="dot"></text></view>
-      </view>
-      <view class="chev">›</view>
+  <view class="clsgrid">
+    <view class="clstile c{{index%3}}" wx:for="{{myClasses}}" wx:key="id" hover-class="btn-hover" bindtap="goCls" data-name="{{item.name}}">
+      <view class="ctname">{{item.name}}</view>
+      <view class="ctmeta">{{item.count}} 名学生</view>
+      <view wx:if="{{item.pending}}" class="ctwarn">今日未录<text class="dot"></text></view>
     </view>
   </view>
   <view wx:if="{{!myClasses.length}}" class="empty">还没有班级，去「我的」里创建</view>

@@ -40,7 +40,13 @@
   box-shadow: 0 16rpx 48rpx rgba(60, 40, 20, 0.16);
   padding: 10rpx 24rpx; max-height: 560rpx; overflow-y: auto;
 }
-.sresult { padding: 16rpx 4rpx; border-bottom: 2rpx solid #f3f1ee; }
+.sresult {
+  display: flex; align-items: center; gap: 16rpx;
+  padding: 20rpx 4rpx; border-bottom: 2rpx solid #f3f1ee;
+}
+.sname { font-size: 28rpx; font-weight: 600; color: #33302c; flex: none; }
+.smeta { flex: 1; font-size: 24rpx; color: #b8b2aa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sresult .chev { color: #c9c4bc; font-size: 30rpx; }
 .sresult:last-child { border-bottom: none; }
 .smore { padding: 14rpx 4rpx 18rpx; font-size: 22rpx; color: #b8b2aa; text-align: center; }
 .ava.sm { width: 72rpx; height: 72rpx; font-size: 30rpx; border-radius: 24rpx; }

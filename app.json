@@ -18,9 +18,24 @@
     "color": "#9c948a",
     "selectedColor": "#e8590c",
     "list": [
-      { "pagePath": "pages/index/index", "text": "首页" },
-      { "pagePath": "pages/records/records", "text": "记录" },
-      { "pagePath": "pages/mgr/mgr", "text": "我的" }
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "assets/tabbar/home.png",
+        "selectedIconPath": "assets/tabbar/home-on.png"
+      },
+      {
+        "pagePath": "pages/records/records",
+        "text": "记录",
+        "iconPath": "assets/tabbar/records.png",
+        "selectedIconPath": "assets/tabbar/records-on.png"
+      },
+      {
+        "pagePath": "pages/mgr/mgr",
+        "text": "我的",
+        "iconPath": "assets/tabbar/mine.png",
+        "selectedIconPath": "assets/tabbar/mine-on.png"
+      }
     ]
   },
   "style": "v2",

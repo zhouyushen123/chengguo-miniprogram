@@ -82,7 +82,12 @@ Page({
   },
   pickStu(e) { this.setData({ sid: e.currentTarget.dataset.sid }); this.refreshCan(); },
   onScore(e) { this.setData({ score: e.detail.value }); },
-  pickTag(e) { this.setData({ tag: e.currentTarget.dataset.t }); },
+  pickTag(e) {
+    const t = e.currentTarget.dataset.t;
+    const hit = TAGS.find(x => x.t === t);
+    // 点选等级时，分数自动落到该档代表分，保持等级与分数一致
+    this.setData({ tag: t, score: hit ? hit.anchor : this.data.score });
+  },
   onCourse(e) {
     const c = this.data.courses[e.detail.value];
     this.setData({ courseIdx: e.detail.value, course: c ? c.name : '' });

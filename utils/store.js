@@ -15,16 +15,17 @@ const demo = require('./demo-data');
 
 let db = null;
 
-// 一键灌入/刷新演示数据：老版本残留的演示学生与记录会先清掉，避免重复
+// 一键灌入/刷新演示数据：旧版演示学生与记录先清掉再灌入，避免重复
 function seedDemo() {
   if (db.demoVersion === demo.DEMO_VERSION) return;
-  const recSids = {};
-  (db.records || []).forEach(r => { if (r.sid) recSids[r.sid] = 1; });
-  const OLD_DEMO_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]; // 早期种子与第一版演示学生
-  db.students = (db.students || []).filter(s =>
-    !((s.demo || OLD_DEMO_IDS.indexOf(s.id) > -1) && !recSids[s.id])
-  );
   db.records = (db.records || []).filter(r => !r.demo);
+  const demoIdSet = {};
+  demo.DEMO_STUDENTS.forEach(s => { demoIdSet[s.id] = 1; });
+  const OLD_DEMO_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]; // 早期种子与第一版演示学生
+  // 旧演示学生整批移除（新旧 id 相同，属同一批演示数据，直接替换）
+  db.students = (db.students || []).filter(s =>
+    !(s.demo || OLD_DEMO_IDS.indexOf(s.id) > -1 || demoIdSet[s.id])
+  );
   db.students = db.students.concat(demo.DEMO_STUDENTS.map(s => Object.assign({}, s, { clsIds: s.clsIds.slice() })));
   db.records = db.records.concat(demo.DEMO_RECORDS.map(r => Object.assign({}, r)));
   const p = (db.users || []).find(u => u.role === 'parent');

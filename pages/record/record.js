@@ -4,7 +4,8 @@ const stt = require('../../utils/stt');
 
 Page({
   data: {
-    clsId: null, students: [], courses: [], courseIdx: 0, course: '',
+    clsId: null, students: [], stuShow: [], stuQuery: '', stuExpanded: false, over45: false,
+    courses: [], courseIdx: 0, course: '',
     score: 85, tags: ['待提高', '良好', '优秀'], tag: '',
     note: '', photos: [], audio: null, recording: false, recognizing: false, canSend: false,
     selCount: 0, editing: false,
@@ -15,15 +16,36 @@ Page({
     const db = store.get();
     const clsId = pick.cls || (db.classes[0] && db.classes[0].id);
     const courses = store.coursesOf(clsId);
+    const students = store.studentsOf(clsId);
     this.setData({
-      clsId, students: store.studentsOf(clsId), courses,
+      clsId, students, courses,
+      over45: students.length > 45,
       course: courses[0] ? courses[0].name : '',
       sid: pick.sid || null, score: pick.score || 85, tag: pick.tag || '',
       note: pick.note || '', photos: pick.photos || [], audio: pick.audio || null,
       rid: pick.rid || null, editing: !!pick.rid
     });
+    this._applyStuFilter();
     this.refreshCan();
   },
+  // 学生选择区：默认只展示 45 人，超出部分折叠；搜索时在全体中匹配
+  _applyStuFilter() {
+    const q = (this.data.stuQuery || '').trim();
+    let list = this.data.students;
+    if (q) {
+      list = list.filter(s => s.name.indexOf(q) > -1);
+    } else if (!this.data.stuExpanded) {
+      list = list.slice(0, 45);
+    }
+    // 已选中的学生始终可见
+    if (this.data.sid && !list.some(s => s.id === this.data.sid)) {
+      const sel = this.data.students.find(s => s.id === this.data.sid);
+      if (sel) list = [sel].concat(list);
+    }
+    this.setData({ stuShow: list });
+  },
+  onStuQuery(e) { this.setData({ stuQuery: e.detail.value }); this._applyStuFilter(); },
+  toggleStuExpand() { this.setData({ stuExpanded: !this.data.stuExpanded }); this._applyStuFilter(); },
   onShow() {
     // 从模板页返回：应用所选模板与语音状态
     const pick = getApp().globalData.pick;

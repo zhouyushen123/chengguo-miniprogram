@@ -4,7 +4,7 @@
       <view class="label">选择学生<text wx:if="{{over45 && !stuQuery}}" class="stucount">（{{stuExpanded ? '全部 ' + students.length + ' 人' : '前 45 人'}}）</text></view>
       <input wx:if="{{over45}}" class="stusearch" placeholder="快速搜索姓名" placeholder-class="ph" value="{{stuQuery}}" bindinput="onStuQuery" confirm-type="search" />
     </view>
-    <view class="chips">
+    <view class="chips stuchips">
       <view wx:for="{{stuShow}}" wx:key="id" class="chip {{sid===item.id?'on':''}}" bindtap="pickStu" data-sid="{{item.id}}">{{item.name}}</view>
     </view>
     <view wx:if="{{!stuShow.length}}" class="hint">没找到「{{stuQuery}}」相关学生</view>

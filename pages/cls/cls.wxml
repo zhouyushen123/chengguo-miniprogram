@@ -1,31 +1,50 @@
 <view wx:if="{{cls}}" class="wrap">
-  <!-- 学生录入状态 -->
+  <!-- 学生录入状态：三状态 + 分类筛选 -->
   <view class="card">
     <view class="clshead">
       <view class="h1">{{cls.name}} · 今日录入</view>
-      <view class="cnt">已录 <b>{{doneCount}}</b>/{{tiles.length}}</view>
+      <view class="cnt">已发布 <b class="blue">{{counts.sent}}</b> · 已录 <b>{{counts.rec}}</b> · 未录 <b class="gray">{{counts.none}}</b></view>
     </view>
+
+    <!-- 状态分类筛选 -->
+    <view class="filtbar">
+      <view wx:for="{{filts}}" wx:key="*this" class="fchip {{filt===item?'on':''}}" hover-class="btn-hover" bindtap="pickFilt" data-f="{{item}}">{{item}}</view>
+    </view>
+
     <view class="stugrid">
-      <view wx:for="{{tiles}}" wx:key="id" class="stile {{item.done?'done':''}}" hover-class="btn-hover" bindtap="goRecord" data-sid="{{item.id}}">{{item.name}}</view>
+      <view wx:for="{{shown}}" wx:key="id" class="stile s-{{item.st}}" hover-class="btn-hover" bindtap="goRecord" data-sid="{{item.id}}">{{item.name}}</view>
     </view>
+    <view wx:if="{{!shown.length}}" class="hint">该状态下暂无学生</view>
     <view class="legend">
-      <view class="lg"><view class="dot g"></view>已录入</view>
-      <view class="lg"><view class="dot n"></view>未录入</view>
-      <view class="lg tip">点击学生即可为其录入今日成果</view>
+      <view class="lg"><view class="dot dg"></view>已录入</view>
+      <view class="lg"><view class="dot db"></view>已发布</view>
+      <view class="lg"><view class="dot dn"></view>未录入</view>
+      <view class="lg tip">点击学生即可录入今日成果</view>
     </view>
   </view>
 
-  <!-- 本班全部记录 -->
+  <!-- 本班记录：日期 + 等级筛选 -->
   <view class="card">
-    <view class="label">班级记录 · {{recTotal}} 条</view>
+    <view class="rechead">
+      <view class="label">班级记录<text class="mi"> · {{recTotal}}/{{allCount}} 条</text></view>
+      <view class="pickers">
+        <picker mode="selector" range="{{dateOpts}}" value="{{dateIdx}}" bindchange="onDate">
+          <view class="pkbox">{{dateOpts[dateIdx]}} ▾</view>
+        </picker>
+        <picker mode="selector" range="{{tagOpts}}" value="{{tagIdx}}" bindchange="onTag">
+          <view class="pkbox">{{tagOpts[tagIdx]}} ▾</view>
+        </picker>
+      </view>
+    </view>
     <view class="recrow" wx:for="{{recs}}" wx:key="id" hover-class="btn-hover" bindtap="openRec" data-sid="{{item.sid}}" data-rid="{{item.id}}">
       <view class="hleft">
         <b>{{item.name}}</b>
         <view class="mi">{{item.course}} · {{item.date}}{{item.tag?' · '+item.tag:''}}</view>
       </view>
+      <text wx:if="{{item.sent}}" class="pill" style="background:#4a7ddc">已发布</text>
       <view class="score">{{item.score}}分</view>
       <view class="chev">›</view>
     </view>
+    <view wx:if="{{!recs.length}}" class="hint">当前筛选条件下暂无记录</view>
   </view>
-  <view wx:if="{{!recs.length}}" class="card mi">本班还没有成果记录</view>
 </view>

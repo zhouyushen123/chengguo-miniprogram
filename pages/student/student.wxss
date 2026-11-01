@@ -9,7 +9,7 @@
 .hist { display: flex; align-items: center; gap: 12rpx; padding: 20rpx 0; border-bottom: 2rpx solid #f5f3f0; }
 .hist:last-child { border-bottom: none; }
 .hleft { flex: 1; }
-.chev { color: #c9c4bd; font-size: 36rpx; }
+.chev { width: 30rpx; height: 30rpx; flex: none; }
 /* 筛选条 */
 .filterbar { display: flex; align-items: center; gap: 12rpx; margin: 0 24rpx 16rpx; flex-wrap: wrap; }
 .fchip {
@@ -30,8 +30,8 @@
   border-bottom: 2rpx solid #f5f3f0;
 }
 .hist.up { border-bottom-color: transparent; }
-.chev { transition: transform .15s ease; }
-.chev.up { transform: rotate(90deg); }
+.chev { width: 30rpx; height: 30rpx; flex: none; transition: transform .15s ease; }
+.chev.up { transform: rotate(-90deg); }
 
 /* 学生头像：有照片显示照片，无照片显示姓氏字母 */
 .ava { position: relative; overflow: hidden; }

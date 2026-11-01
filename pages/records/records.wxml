@@ -7,10 +7,10 @@
   </scroll-view>
   <view class="pickers">
     <picker mode="selector" range="{{dateOpts}}" value="{{dateIdx}}" bindchange="onDate">
-      <view class="pkbox">{{dateOpts[dateIdx]}} ▾</view>
+      <view class="pkbox">{{dateOpts[dateIdx]}}<image class="pico" src="{{icoChevD}}" mode="aspectFit" /></view>
     </picker>
     <picker mode="selector" range="{{tagOpts}}" value="{{tagIdx}}" bindchange="onTag">
-      <view class="pkbox">{{tagOpts[tagIdx]}} ▾</view>
+      <view class="pkbox">{{tagOpts[tagIdx]}}<image class="pico" src="{{icoChevD}}" mode="aspectFit" /></view>
     </picker>
     <view class="cnt mi">共 {{total}}/{{allCount}} 条</view>
   </view>

@@ -5,7 +5,8 @@ Page({
   data: {
     s: null, tab: 0, latest: null, history: [], rec: null, photoUrls: [], videoUrls: [], photoCls: '',
     filters: [], filt: '全部', total: 0, shown: 0, expandId: 0,
-    playing: '', teacher: '', icoPlay: icons.play('#E8590C'), icoPause: icons.pause('#E8590C')
+    playing: '', teacher: '', icoPlay: icons.play('#E8590C'), icoPause: icons.pause('#E8590C'),
+    icoChev: icons.chevron, icoPlus: icons.plus('#FFFFFF')
   },
   onLoad(q) {
     this.sid = +q.id || +q.sid || 0; // 兼容 id / sid 两种参数名

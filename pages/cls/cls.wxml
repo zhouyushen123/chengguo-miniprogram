@@ -32,10 +32,10 @@
       <view class="label">班级记录<text class="mi"> · {{recTotal}}/{{allCount}} 条</text></view>
       <view class="pickers">
         <picker mode="selector" range="{{dateOpts}}" value="{{dateIdx}}" bindchange="onDate">
-          <view class="pkbox">{{dateOpts[dateIdx]}} ▾</view>
+          <view class="pkbox">{{dateOpts[dateIdx]}}<image class="pico" src="{{icoChevD}}" mode="aspectFit" /></view>
         </picker>
         <picker mode="selector" range="{{tagOpts}}" value="{{tagIdx}}" bindchange="onTag">
-          <view class="pkbox">{{tagOpts[tagIdx]}} ▾</view>
+          <view class="pkbox">{{tagOpts[tagIdx]}}<image class="pico" src="{{icoChevD}}" mode="aspectFit" /></view>
         </picker>
       </view>
     </view>
@@ -46,7 +46,7 @@
       </view>
       <text wx:if="{{item.sent}}" class="pill" style="background:#4a7ddc">已发布</text>
       <view class="score">{{item.score}}分</view>
-      <view class="chev">›</view>
+      <image class="chev" src="{{icoChev}}" mode="aspectFit" />
     </view>
     <view wx:if="{{!recs.length}}" class="hint">当前筛选条件下暂无记录</view>
   </view>

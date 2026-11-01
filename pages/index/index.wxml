@@ -21,13 +21,13 @@
       <view class="searchrow">
         <image class="sicon" src="{{icoSearch}}" mode="aspectFit" />
         <input class="sinput" placeholder="搜索学生姓名，如：周" placeholder-class="ph" value="{{q}}" bindinput="onSearch" confirm-type="search" />
-        <text wx:if="{{q}}" class="sclear" bindtap="clearSearch">×</text>
+        <image wx:if="{{q}}" class="sclear" src="{{icoClose}}" mode="aspectFit" bindtap="clearSearch" />
       </view>
       <view wx:if="{{q}}" class="sresults">
         <view wx:for="{{results}}" wx:key="id" class="sresult" hover-class="btn-hover" bindtap="goStudent" data-sid="{{item.id}}">
           <text class="sname">{{item.name}}</text>
           <text class="smeta">{{item.meta}}</text>
-          <text class="chev">›</text>
+          <image class="chev" src="{{icoChev}}" mode="aspectFit" />
         </view>
         <view wx:if="{{!results.length}}" class="mi" style="padding:20rpx 8rpx">没找到「{{q}}」相关学生</view>
         <view wx:elif="{{moreCount}}" class="mi smore">还有 {{moreCount}} 位匹配学生，请继续输入缩小范围</view>
@@ -88,7 +88,7 @@
     <view class="sturow">
       <view class="ava">{{item.name[0]}}</view>
       <view class="stuinfo"><view class="h1">{{item.name}}</view><view class="mi">{{item.latest}}</view></view>
-      <view class="chev">›</view>
+      <image class="chev" src="{{icoChev}}" mode="aspectFit" />
     </view>
   </view>
 </view>

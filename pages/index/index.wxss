@@ -30,8 +30,7 @@
 .sinput { flex: 1; font-size: 27rpx; }
 .ph { color: #b8b2aa; }
 .sclear {
-  flex: none; width: 44rpx; height: 44rpx; line-height: 40rpx; text-align: center;
-  color: #b8b2aa; font-size: 34rpx;
+  flex: none; width: 34rpx; height: 34rpx; padding: 5rpx;
 }
 /* 搜索结果：搜索框正下方悬浮弹层 */
 .sresults {
@@ -46,7 +45,8 @@
 }
 .sname { font-size: 28rpx; font-weight: 600; color: #33302c; flex: none; }
 .smeta { flex: 1; font-size: 24rpx; color: #b8b2aa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sresult .chev { color: #c9c4bc; font-size: 30rpx; }
+.chev { width: 28rpx; height: 28rpx; flex: none; }
+.sresult .chev { width: 28rpx; height: 28rpx; flex: none; }
 .sresult:last-child { border-bottom: none; }
 .smore { padding: 14rpx 4rpx 18rpx; font-size: 22rpx; color: #b8b2aa; text-align: center; }
 .ava.sm { width: 72rpx; height: 72rpx; font-size: 30rpx; border-radius: 24rpx; }

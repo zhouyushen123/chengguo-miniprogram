@@ -84,7 +84,7 @@
             <view class="mi">{{item.date}} · {{item.score}}分 {{item.tag?'· '+item.tag:''}}</view>
           </view>
           <text wx:if="{{!item.sent}}" class="pill" style="background:#b8860b">待发送</text>
-          <view class="chev {{expandId===item.id?'up':''}}">›</view>
+          <image class="chev {{expandId===item.id?'up':''}}" src="{{icoChev}}" mode="aspectFit" />
         </view>
         <!-- 行内展开：照片/视频在前，课程评价在后 -->
         <view wx:if="{{expandId===item.id}}" class="histdetail">
@@ -107,5 +107,5 @@
     </view>
   </block>
 
-  <view class="btn" bindtap="goRecord">＋ 记录本节成果</view>
+  <view class="btn" bindtap="goRecord"><image class="bico" src="{{icoPlus}}" mode="aspectFit" />记录本节成果</view>
 </view>

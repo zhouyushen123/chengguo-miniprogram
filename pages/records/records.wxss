@@ -6,8 +6,9 @@
 .pkbox {
   font-size: 24rpx; color: #6f6a63; background: #faf9f7;
   border: 2rpx solid #e5e2dd; border-radius: 999rpx; padding: 10rpx 24rpx;
-  white-space: nowrap;
+  white-space: nowrap; display: inline-flex; align-items: center; gap: 8rpx;
 }
+.pico { width: 22rpx; height: 22rpx; }
 .cnt { margin-left: auto; padding-right: 8rpx; }
 
 .recrow { display: flex; gap: 20rpx; }

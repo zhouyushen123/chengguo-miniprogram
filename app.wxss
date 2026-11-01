@@ -84,3 +84,9 @@ page {
 .pill { font-size: 22rpx; padding: 6rpx 18rpx; border-radius: 999rpx; color: #fff; }
 .empty { text-align: center; color: #9c948a; padding: 140rpx 40rpx; font-size: 27rpx; line-height: 1.8; }
 .chev { color: #c9c4bd; font-size: 38rpx; font-weight: 300; }
+/* 橙色大按钮内的白色线性图标（如「＋ 记录本节成果」） */
+.btn { display: flex; align-items: center; justify-content: center; gap: 10rpx; }
+.bico { width: 32rpx; height: 32rpx; }
+/* 下拉选择框：文字 + 统一箭头图标 */
+.pickerbox { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; }
+.pickerbox .xico { width: 26rpx; height: 26rpx; }

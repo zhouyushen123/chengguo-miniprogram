@@ -28,7 +28,8 @@ Page({
     tplOpen: false, tplList: [], sel: [],
     icoCamera: icons.camera, icoAlbum: icons.album, icoAudio: icons.audio,
     icoOrange: icons.mic('#E8590C'),
-    icoWhite: icons.mic('#FFFFFF')
+    icoWhite: icons.mic('#FFFFFF'),
+    icoChevD: icons.chevronDown
   },
   onLoad(q) {
     const pick = getApp().globalData.pick || {};

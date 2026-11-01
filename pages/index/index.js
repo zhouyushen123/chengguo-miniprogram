@@ -9,7 +9,7 @@ Page({
     q: '', results: [], moreCount: 0,
     clsCount: 0, stuCount: 0, pending: 0,
     myClasses: [], recent: [],
-    icoSearch: icons.search
+    icoSearch: icons.search, icoClose: icons.close, icoChev: icons.chevron
   },
   onShow() {
     const db = store.get();

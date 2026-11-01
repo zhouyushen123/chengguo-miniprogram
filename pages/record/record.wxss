@@ -120,7 +120,10 @@
 .expander {
   margin-top: 18rpx; text-align: center; font-size: 24rpx; color: #e8590c;
   background: #fdeee2; border-radius: 999rpx; padding: 12rpx 0;
+  display: flex; align-items: center; justify-content: center; gap: 8rpx;
 }
+.xico { width: 24rpx; height: 24rpx; }
+.xico.up { transform: rotate(180deg); }
 
 /* 学生名帖：固定一行 5 个，等宽居中，超长省略 */
 .stuchips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14rpx; }

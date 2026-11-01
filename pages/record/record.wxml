@@ -9,7 +9,8 @@
     </view>
     <view wx:if="{{!stuShow.length}}" class="hint">没找到「{{stuQuery}}」相关学生</view>
     <view wx:if="{{over45 && !stuQuery}}" class="expander" hover-class="btn-hover" bindtap="toggleStuExpand">
-      {{stuExpanded ? '收起 ▴' : '展开全部 ' + students.length + ' 人 ▾'}}
+      <image class="xico {{stuExpanded?'up':''}}" src="{{icoChevD}}" mode="aspectFit" />
+      {{stuExpanded ? '收起' : '展开全部 ' + students.length + ' 人'}}
     </view>
   </view>
 
@@ -27,7 +28,7 @@
   <view class="card">
     <view class="sec"><view class="label">课程</view></view>
     <picker mode="selector" range="{{courses}}" range-key="name" value="{{courseIdx}}" bindchange="onCourse">
-      <view class="pickerbox">{{course || '选择课程'}} <text class="mi">▾</text></view>
+      <view class="pickerbox">{{course || '选择课程'}}<image class="xico" src="{{icoChevD}}" mode="aspectFit" /></view>
     </picker>
   </view>
 

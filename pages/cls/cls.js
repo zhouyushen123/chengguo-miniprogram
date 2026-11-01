@@ -1,5 +1,6 @@
 const store = require('../../utils/store');
 const api = require('../../utils/api');
+const icons = require('../../utils/icons');
 
 // 班级详情页：学生今日录入三状态（未录/已录/已发布）+ 筛选；下方本班记录支持按日期、等级筛选
 // 色块排序：未录入 > 已录入 > 已发布（未录入的排最前，提醒优先录入），同状态内保持姓氏拼音序
@@ -15,7 +16,8 @@ Page({
     // 记录筛选：日期 + 等级
     dateOpts: ['不限日期'], dateIdx: 0,
     tagOpts: ['全部等级'].concat(TAGS), tagIdx: 0,
-    recs: [], recTotal: 0, allCount: 0
+    recs: [], recTotal: 0, allCount: 0,
+    icoChevD: icons.chevronDown, icoChev: icons.chevron
   },
   onLoad(q) {
     this.clsId = +q.id || 0;

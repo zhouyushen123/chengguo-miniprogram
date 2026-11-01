@@ -51,10 +51,11 @@
 .pkbox {
   font-size: 22rpx; color: #6f6a63; background: #faf9f7;
   border: 2rpx solid #e5e2dd; border-radius: 999rpx; padding: 8rpx 20rpx;
-  white-space: nowrap;
+  white-space: nowrap; display: inline-flex; align-items: center; gap: 8rpx;
 }
+.pico { width: 22rpx; height: 22rpx; }
 
 .recrow { display: flex; align-items: center; gap: 14rpx; padding: 20rpx 0; border-bottom: 2rpx solid #f5f3f0; }
 .recrow:last-child { border-bottom: none; }
 .hleft { flex: 1; min-width: 0; }
-.chev { color: #c9c4bd; font-size: 36rpx; }
+.chev { width: 30rpx; height: 30rpx; flex: none; }

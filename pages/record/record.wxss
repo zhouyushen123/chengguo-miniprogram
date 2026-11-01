@@ -72,7 +72,11 @@
 }
 
 /* ---------- 模板全屏面板 ---------- */
-.tplpanel { position: fixed; inset: 0; z-index: 90; background: #f7f6f3; display: flex; flex-direction: column; }
+.tplpanel {
+  position: fixed; left: 0; top: 0; right: 0; bottom: 0;
+  z-index: 90; background: #f7f6f3;
+  display: flex; flex-direction: column; overflow: hidden;
+}
 .tplhd {
   display: flex; align-items: center; padding: calc(20rpx + env(safe-area-inset-top)) 28rpx 20rpx;
   background: #fff; border-bottom: 2rpx solid #eceae6;
@@ -80,7 +84,7 @@
 .tplback { font-size: 48rpx; font-weight: 300; color: #232323; width: 80rpx; }
 .tpltitle { flex: 1; text-align: center; font-size: 34rpx; font-weight: 700; }
 .tplcount { width: 140rpx; text-align: right; font-size: 24rpx; color: #e8590c; font-weight: 600; }
-.tplbody { flex: 1; padding-top: 24rpx; box-sizing: border-box; }
+.tplbody { flex: 1; height: 0; min-height: 0; padding-top: 24rpx; box-sizing: border-box; }
 .tpldim { padding: 24rpx; }
 .dimhd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx; }
 .dimname { font-size: 30rpx; font-weight: 700; color: #232323; }

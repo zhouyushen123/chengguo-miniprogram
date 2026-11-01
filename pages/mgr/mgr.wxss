@@ -19,7 +19,8 @@
 .itrow .ava { width: 76rpx; height: 76rpx; font-size: 30rpx; }
 /* ---------- 底部弹层 ---------- */
 .mask {
-  position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.45);
+  position: fixed; left: 0; top: 0; right: 0; bottom: 0;
+  z-index: 100; background: rgba(0,0,0,.45);
   display: flex; align-items: flex-end;
 }
 .sheet {

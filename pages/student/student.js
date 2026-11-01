@@ -1,19 +1,25 @@
 const db = require('../../utils/db');
 const icons = require('../../utils/icons');
 
+// 评价分档配色：优秀/最佳绿、良好橙、加油/待提高蓝灰
+const TAG_GOOD = ['优秀', '最佳'];
+const tagCls = t => !t ? '' : TAG_GOOD.indexOf(t) > -1 ? 'good' : t === '良好' ? 'mid' : 'low';
+
 Page({
   data: {
     s: null, tab: 0, latest: null, history: [], rec: null, photoUrls: [], videoUrls: [], photoCls: '',
     filters: [], filt: '全部', total: 0, shown: 0, expandId: 0,
+    // 新增：个人卡统计 / 资料入口 / 班级筛选 / 评价汇总
+    stats: null, profileFilled: true, clsFilters: [], clsF: 'all', tagCounts: [],
     playing: '', teacher: '', icoPlay: icons.play('#E8590C'), icoPause: icons.pause('#E8590C'),
-    icoChev: icons.chevron, icoPlus: icons.plus('#FFFFFF')
+    icoChev: icons.chevron, icoPlus: icons.plus('#FFFFFF'), icoCam: icons.camera
   },
   onLoad(q) {
     this.sid = +q.id || +q.sid || 0; // 兼容 id / sid 两种参数名
     this.rid = +q.rid || 0;
   },
   onShow() { this.render(); },
-  // 统一渲染：拉记录 → 按筛选过滤 → 首条做详情，其余进历史列表
+  // 统一渲染：拉记录 → 按班级/课程双维过滤 → 首条做详情，其余进历史列表
   render() {
     // 兼容只带 rid 的入口（如首页最近成果）：先从记录反查学生
     if (!this.sid && this.rid) {
@@ -40,10 +46,18 @@ Page({
     const withLines = r => r ? Object.assign({}, r, { noteLines: (r.note || '').split('\n').filter(Boolean).map(parseLine) }) : r;
     // 照片网格自适应：1 张铺满整行，2 张对半，3 张及以上三列
     const pgCls = n => n >= 3 ? 'pg3' : n === 2 ? 'pg2' : n === 1 ? 'pg1' : '';
+    // 记录的可读视图：班级名 + 评价分档配色 + 照片数 + 评价首行摘要（历史行用）
+    const deco = r => {
+      const x = withLines(r);
+      const first = (x.noteLines && x.noteLines[0]) || null;
+      let snip = first ? (first.text || first.label) : '';
+      if (snip.length > 16) snip = snip.slice(0, 16) + '…';
+      return x && Object.assign(x, { clsName: db.classes.name(r.cid), tcls: tagCls(r.tag), pcnt: (r.photos || []).length, snip });
+    };
 
     // 指定某条记录（从记录列表点入）
     if (this.rid) {
-      const rec = withLines(recs.find(r => r.id === this.rid) || null);
+      const rec = deco(recs.find(r => r.id === this.rid) || null);
       this.setData({
         s: this.stuView(s), rec, latest: null, history: [],
         photoUrls: (rec || {}).photos || [], videoUrls: (rec || {}).videos || [],
@@ -53,18 +67,43 @@ Page({
       return;
     }
 
+    // ---- 个人卡统计（口径对全量记录，不随筛选变，避免数字跳来跳去） ----
+    const daySet = {};
+    recs.forEach(r => { daySet[r.date] = 1; });
+    const stats = {
+      lessons: recs.length,
+      great: recs.filter(r => TAG_GOOD.indexOf(r.tag) > -1).length,
+      days: Object.keys(daySet).length
+    };
+    // ---- 资料入口：家长资料表单（profile）一个字没填才提示「待填写」 ----
+    const p = s.profile || {};
+    const profileFilled = ['nick', 'birth', 'school', 'phone', 'wechat', 'level', 'goal', 'note'].some(k => p[k]);
+    // ---- 班级筛选：学生同时在一个以上班级时才出现 ----
+    const clsFilters = (s.clsIds || []).length > 1
+      ? [{ k: 'all', n: '全部班级' }].concat(s.clsIds.map(id => ({ k: id, n: db.classes.name(id) })))
+      : [];
+    const clsF = clsFilters.some(f => String(f.k) === String(this.data.clsF)) ? this.data.clsF : 'all';
+    let pool = recs;
+    if (clsF !== 'all') pool = recs.filter(r => r.cid === Number(clsF));
+
     const courses = [];
-    recs.forEach(r => { if (r.course && courses.indexOf(r.course) === -1) courses.push(r.course); });
+    pool.forEach(r => { if (r.course && courses.indexOf(r.course) === -1) courses.push(r.course); });
     const filters = ['全部'].concat(courses);
     const filt = filters.indexOf(this.data.filt) > -1 ? this.data.filt : '全部';
-    const list = filt === '全部' ? recs : recs.filter(r => r.course === filt);
+    const list = filt === '全部' ? pool : pool.filter(r => r.course === filt);
+
+    // ---- 评价汇总：当前筛选下各档评价的次数 ----
+    const tc = {};
+    list.forEach(r => { if (r.tag) tc[r.tag] = (tc[r.tag] || 0) + 1; });
+    const tagCounts = db.TAGS.filter(t => tc[t]).map(t => ({ t, n: tc[t], cls: tagCls(t) }));
 
     this.setData({
       s: this.stuView(s), rec: null,
+      stats, profileFilled, clsFilters, clsF, tagCounts,
       filters, filt, total: recs.length, shown: list.length,
-      latest: withLines(list[0] || null),
+      latest: deco(list[0] || null),
       // 历史条目带全量字段，行内展开详情用（不再跳新页）
-      history: list.slice(1).map(r => Object.assign(withLines(r), { pcls: pgCls((r.photos || []).length) })),
+      history: list.slice(1).map(r => Object.assign(deco(r), { pcls: pgCls((r.photos || []).length) })),
       photoUrls: (list[0] || {}).photos || [],
       videoUrls: (list[0] || {}).videos || [],
       photoCls: pgCls(((list[0] || {}).photos || []).length),
@@ -91,7 +130,15 @@ Page({
     this.setData({ playing: key });
   },
   stuView(s) {
-    return { name: s.name, photo: s.photo || '', meta: (s.clsIds || []).map(db.classes.name).join(' · '), wechat: s.wechat || '' };
+    return {
+      name: s.name, photo: s.photo || '',
+      meta: (s.clsIds || []).map(db.classes.name).join(' · '),
+      parent: s.parent || '', wechat: s.wechat || ''
+    };
+  },
+  pickCls(e) {
+    // 切班级后课程集合会变，课程筛选一并回到「全部」
+    this.setData({ clsF: e.currentTarget.dataset.k, filt: '全部', expandId: 0 }, () => this.render());
   },
   pickFilter(e) {
     this.setData({ filt: e.currentTarget.dataset.f, expandId: 0 }, () => this.render());

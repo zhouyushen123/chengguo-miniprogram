@@ -1,4 +1,5 @@
 <view wx:if="{{s}}" class="wrap">
+  <!-- 个人卡：头像 + 姓名 + 班级/家长 + 三项统计 -->
   <view class="card">
     <view class="sturow">
       <view class="ava">
@@ -7,10 +8,21 @@
       </view>
       <view class="stuinfo">
         <view class="h1">{{s.name}}</view>
-        <view class="mi">{{s.meta}}{{s.wechat?' · 微信 '+s.wechat:''}}</view>
+        <view class="mi">{{s.meta}}{{s.parent?' · 家长：'+s.parent:''}}{{s.wechat?' · 微信 '+s.wechat:''}}</view>
       </view>
       <view class="chip" bindtap="goProfile">资料</view>
     </view>
+    <view wx:if="{{stats}}" class="stats">
+      <text class="stat st-c">{{stats.lessons}} 节课</text>
+      <text class="stat st-g">优秀 {{stats.great}} 次</text>
+      <text class="stat st-d">{{stats.days}} 个学习日</text>
+    </view>
+  </view>
+
+  <!-- 资料待填写：家长资料表单还是空白时给出显眼入口 -->
+  <view wx:if="{{!profileFilled}}" class="profrow">
+    <text class="mi">资料待填写</text>
+    <text class="proflink" bindtap="goProfile">填写学生资料 ›</text>
   </view>
 
   <!-- 语音条（自定义，替代原生 audio 的"未知歌曲"显示） -->
@@ -28,9 +40,15 @@
 
   <!-- 指定记录（从记录列表点入） -->
   <view wx:if="{{rec}}" class="card">
-    <view class="r1"><b>{{rec.course}}</b><text class="mi">{{rec.date}}</text><text class="score">{{rec.score}}分</text></view>
+    <view class="dimhead">
+      <text class="pill pill-o">本次</text>
+      <text class="lcourse">{{rec.course}}</text>
+      <view class="dhr">
+        <text class="mi">{{rec.clsName}} · {{rec.date}}</text>
+        <text wx:if="{{rec.tag}}" class="badge {{rec.tcls}}">{{rec.tag}}</text>
+      </view>
+    </view>
     <view class="chips" style="margin:12rpx 0">
-      <text wx:if="{{rec.tag}}" class="pill" style="background:#e8590c">{{rec.tag}}</text>
       <text class="pill" style="background:{{rec.sent?'#3a9e5f':'#b8860b'}}">{{rec.sent?'已发送':'待发送'}}</text>
     </view>
     <view class="photogrid {{photoCls}}">
@@ -45,23 +63,32 @@
     <template is="voicebar" wx:if="{{rec.audio}}" data="{{vk:'rec', vsrc:rec.audio, playing, teacher, icoPlay, icoPause}}" />
   </view>
 
-  <!-- 筛选 + 最近一次详情 + 历史列表 -->
+  <!-- 班级筛选 + 课程页签 + 最近一次详情 + 评价汇总 + 历史列表 -->
   <block wx:if="{{!rec}}">
-    <view wx:if="{{filters.length > 1}}" class="filterbar">
-      <view class="fchip {{filt===item?'on':''}}" wx:for="{{filters}}" wx:key="*this" bindtap="pickFilter" data-f="{{item}}">{{item}}</view>
+    <!-- 班级筛选：学生跨多班时出现 -->
+    <view wx:if="{{clsFilters.length > 1}}" class="filterbar">
+      <view class="fchip {{clsF==item.k?'on':''}}" wx:for="{{clsFilters}}" wx:key="k" bindtap="pickCls" data-k="{{item.k}}">{{item.n}}</view>
+    </view>
+
+    <!-- 课程页签：下划线式，同设计稿 -->
+    <view wx:if="{{filters.length > 1}}" class="ctabs">
+      <view class="ctab {{filt===item?'on':''}}" wx:for="{{filters}}" wx:key="*this" bindtap="pickFilter" data-f="{{item}}">{{item==='全部'?'全部课程':item}}</view>
       <text class="fcount">{{shown}} 条</text>
     </view>
 
     <view wx:if="{{latest}}" class="card">
       <view class="dimhead">
-        <text class="pill" style="background:#e8590c">{{filt==='全部'?'最近一次':filt+' · 最近'}}</text>
-        <text class="mi">{{latest.date}}</text>
-        <text class="score">{{latest.score}}分</text>
+        <text class="pill pill-o">{{filt==='全部'?'最近一次':filt}}</text>
+        <text class="lcourse">{{latest.course}}</text>
+        <view class="dhr">
+          <text class="mi">{{latest.clsName}} · {{latest.date}}</text>
+          <text wx:if="{{latest.tag}}" class="badge {{latest.tcls}}">{{latest.tag}}</text>
+        </view>
       </view>
       <view class="chips" style="margin:12rpx 0">
-        <text wx:if="{{latest.tag}}" class="pill" style="background:#3a9e5f">{{latest.tag}}</text>
         <text class="pill" style="background:{{latest.sent?'#3a9e5f':'#b8860b'}}">{{latest.sent?'已发送':'待发送'}}</text>
       </view>
+      <view wx:if="{{!photoUrls.length && !videoUrls.length}}" class="mi nofarm">本次还没有拍照片或录音 📷</view>
       <view class="photogrid {{photoCls}}">
         <image wx:for="{{photoUrls}}" wx:key="*this" src="{{item}}" mode="{{photoCls==='pg1'?'aspectFit':'aspectFill'}}" bindtap="previewPhoto" data-i="{{index}}" />
       </view>
@@ -72,24 +99,36 @@
         <view class="mi nline" wx:for="{{latest.noteLines}}" wx:key="index"><text wx:if="{{item.label}}" class="nlabel">{{item.label}}：</text><text class="ntext">{{item.text}}</text></view>
       </view>
       <template is="voicebar" wx:if="{{latest.audio}}" data="{{vk:'latest', vsrc:latest.audio, playing, teacher, icoPlay, icoPause}}" />
+      <!-- 评价汇总：当前筛选范围内各档评价次数 -->
+      <view wx:if="{{tagCounts.length}}" class="tagsum">
+        <view class="mi ts-title">评价汇总</view>
+        <view class="chips">
+          <text wx:for="{{tagCounts}}" wx:key="t" class="badge {{item.cls}}">{{item.t}} × {{item.n}}</text>
+        </view>
+      </view>
     </view>
     <view wx:else class="card mi">{{total?'该课程暂无记录':'暂无课程记录'}}</view>
 
     <view class="card" wx:if="{{history.length}}">
-      <view class="label">历史课程 · {{history.length}} 条</view>
+      <view class="histhead">
+        <view class="label">历史课程</view>
+        <text class="mi">共 {{history.length}} 条</text>
+      </view>
       <block wx:for="{{history}}" wx:key="id">
         <view class="hist" hover-class="btn-hover" bindtap="toggleExpand" data-rid="{{item.id}}">
           <view class="hleft">
-            <b>{{item.course}}</b>
-            <view class="mi">{{item.date}} · {{item.score}}分 {{item.tag?'· '+item.tag:''}}</view>
+            <view class="ht1"><b>{{item.course}}</b><text wx:if="{{item.tag}}" class="badge {{item.tcls}}">{{item.tag}}</text></view>
+            <view class="mi">{{item.clsName}} · {{item.date}} · {{item.score}}分{{item.snip?' · '+item.snip:''}}</view>
           </view>
-          <text wx:if="{{!item.sent}}" class="pill" style="background:#b8860b">待发送</text>
-          <image class="chev {{expandId===item.id?'up':''}}" src="{{icoChev}}" mode="aspectFit" />
+          <view class="hright">
+            <view wx:if="{{item.pcnt}}" class="hcam"><image class="camico" src="{{icoCam}}" mode="aspectFit" />{{item.pcnt}}</view>
+            <text wx:if="{{!item.sent}}" class="pill" style="background:#b8860b">待发送</text>
+            <image class="chev {{expandId===item.id?'up':''}}" src="{{icoChev}}" mode="aspectFit" />
+          </view>
         </view>
         <!-- 行内展开：照片/视频在前，课程评价在后 -->
         <view wx:if="{{expandId===item.id}}" class="histdetail">
           <view class="chips" style="margin:0 0 12rpx">
-            <text wx:if="{{item.tag}}" class="pill" style="background:#e8590c">{{item.tag}}</text>
             <text class="pill" style="background:{{item.sent?'#3a9e5f':'#b8860b'}}">{{item.sent?'已发送':'待发送'}}</text>
           </view>
           <view class="photogrid {{item.pcls}}" wx:if="{{item.photos.length}}">
@@ -108,4 +147,5 @@
   </block>
 
   <view class="btn" bindtap="goRecord"><image class="bico" src="{{icoPlus}}" mode="aspectFit" />记录本节成果</view>
+  <view class="slogan">橙果 · 让每节课都有回音</view>
 </view>

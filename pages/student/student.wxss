@@ -67,3 +67,61 @@
 .nline { display: flex; align-items: flex-start; line-height: 1.7; }
 .nlabel { color: #b8b2aa; flex: none; }
 .ntext { color: #3a3a3a; font-weight: 500; flex: 1; min-width: 0; }
+
+/* ---------- 个人卡统计（节课绿 / 优秀橙 / 学习日蓝） ---------- */
+.stats { display: flex; gap: 14rpx; margin-top: 22rpx; }
+.stat { font-size: 23rpx; font-weight: 600; padding: 8rpx 20rpx; border-radius: 999rpx; }
+.st-c { color: #3a9e5f; background: #e8f3ea; }
+.st-g { color: #e8590c; background: #fdeee2; }
+.st-d { color: #5a7bd6; background: #edf1fb; }
+
+/* ---------- 资料待填写行 ---------- */
+.profrow {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 0 36rpx 20rpx;
+}
+.proflink { color: #e8590c; font-size: 27rpx; font-weight: 700; }
+
+/* ---------- 评价分档徽标（优秀绿 / 良好橙 / 加油蓝灰） ---------- */
+.badge {
+  font-size: 22rpx; font-weight: 700; padding: 6rpx 18rpx;
+  border-radius: 999rpx; flex: none;
+}
+.badge.good { color: #3a9e5f; background: #e8f3ea; }
+.badge.mid { color: #e8590c; background: #fdeee2; }
+.badge.low { color: #5a7bd6; background: #edf1fb; }
+.badge.good, .badge.mid, .badge.low { font-size: 24rpx; padding: 10rpx 26rpx; }
+
+/* ---------- 记录头部：最近一次 / 本次 + 课程 + 班级·日期 + 评价徽标 ---------- */
+.dimhead { display: flex; align-items: center; gap: 14rpx; flex-wrap: wrap; }
+.pill-o { background: #e8590c; }
+.lcourse { font-size: 32rpx; font-weight: 700; }
+.dhr { margin-left: auto; display: flex; align-items: center; gap: 12rpx; }
+.nofarm { padding: 8rpx 0 4rpx; }
+
+/* ---------- 评价汇总 ---------- */
+.tagsum { margin-top: 18rpx; padding-top: 18rpx; border-top: 2rpx dashed #eee9e3; }
+.ts-title { margin-bottom: 12rpx; }
+
+/* ---------- 课程页签：下划线式 ---------- */
+.ctabs {
+  display: flex; align-items: center; gap: 36rpx;
+  margin: 8rpx 32rpx 20rpx;
+}
+.ctab {
+  font-size: 28rpx; color: #6b655e; padding: 12rpx 4rpx;
+  border-bottom: 6rpx solid transparent; font-weight: 500;
+}
+.ctab.on { color: #e8590c; border-bottom-color: #e8590c; font-weight: 700; }
+.ctabs .fcount { margin-left: auto; }
+
+/* ---------- 历史课程列表 ---------- */
+.histhead { display: flex; align-items: baseline; justify-content: space-between; }
+.histhead .label { margin: 4rpx 0 4rpx; }
+.ht1 { display: flex; align-items: center; gap: 12rpx; }
+.ht1 .badge { font-size: 21rpx; padding: 4rpx 14rpx; }
+.hright { display: flex; align-items: center; gap: 14rpx; flex: none; }
+.hcam { display: flex; align-items: center; gap: 6rpx; font-size: 22rpx; color: #9c948a; }
+.camico { width: 28rpx; height: 28rpx; }
+
+.slogan { text-align: center; color: #b8b1a7; font-size: 24rpx; margin: 40rpx 0 20rpx; }

@@ -12,7 +12,7 @@
     </view>
     <view class="p-btns">
       <button class="p-btn ghost" bindtap="reject">暂不使用</button>
-      <button id="privacy-agree" class="p-btn main" open-type="agreePrivacyAuthorization" bindagreeprivacyauthorization="agree">同意并继续</button>
+      <button id="privacy-agree" class="p-btn main" open-type="agreePrivacyAuthorization" bindagreeprivacyauthorization="agree" bindtap="agreeTap">同意并继续</button>
     </view>
   </view>
 </view>

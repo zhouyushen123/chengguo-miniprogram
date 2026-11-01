@@ -37,11 +37,14 @@ Page({
     const notToday = s => !recOf(s).some(r => r.date === t);
 
     const myClasses = vis.map(c => {
-      const cs = db.students.filter(s => (s.clsIds || []).includes(c.id));
+      const cs = store.studentsOf(c.id);
       return { id: c.id, name: c.name, count: cs.length, pending: cs.some(notToday) };
     });
+    // 最近成果：班级可见 或 学生可见 都算（历史记录 cid 缺失时也能显示，避免"录了首页看不到"）
+    const visStu = {};
+    stu.forEach(s => { visStu[s.id] = 1; });
     const recent = db.records
-      .filter(r => visIds.includes(r.cid))
+      .filter(r => visIds.indexOf(r.cid) > -1 || visStu[r.sid])
       .sort((a, b) => b.id - a.id)
       .slice(0, 5)
       .map(r => {

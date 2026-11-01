@@ -98,7 +98,7 @@ Page({
     const s = store.student(this.sid);
     getApp().globalData.pick = {
       cls: (s && s.clsIds && s.clsIds[0]) || null, sid: this.sid,
-      score: 85, photos: [], audio: null, tag: '', note: '', rid: null, course: ''
+      score: 85, photos: [], videos: [], audio: null, tag: '', note: '', rid: null, course: ''
     };
     wx.navigateTo({ url: '/pages/record/record' });
   },

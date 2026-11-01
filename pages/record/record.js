@@ -176,7 +176,13 @@ Page({
   },
   save(e) {
     const send = e.currentTarget.dataset.send === '1';
-    const res = store.saveRecord(Object.assign({}, this.data), send);
+    // 只回传业务字段：data 里的班级叫 clsId，而记录模型用 cid，这里显式映射一次
+    const payload = {
+      cls: this.data.clsId, sid: this.data.sid, rid: this.data.rid,
+      course: this.data.course, score: this.data.score, tag: this.data.tag,
+      note: this.data.note, photos: this.data.photos, videos: this.data.videos, audio: this.data.audio
+    };
+    const res = store.saveRecord(payload, send);
     if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
     api.pushRecord(res.record); // 线上模式自动上推，本地模式静默跳过
     wx.showToast({ title: send ? '已发送' : '已存草稿', icon: 'success' });

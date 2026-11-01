@@ -36,6 +36,19 @@ function seedDemo() {
   save();
 }
 
+// 历史脏数据修复：早期录入的记录漏写 cid（班级），按学生所属班级回填。
+// 否则首页「最近成果」、班级详情页的按班过滤会把它们整条筛掉，表现为"录了但首页不显示"。
+function repairRecords() {
+  let fixed = 0;
+  (db.records || []).forEach(r => {
+    if (r.cid !== undefined && r.cid !== null) return;
+    const s = (db.students || []).find(x => x.id === r.sid);
+    const cid = s && (s.clsIds || [])[0];
+    if (cid !== undefined && cid !== null) { r.cid = cid; fixed++; }
+  });
+  if (fixed) save();
+}
+
 function init() {
   db = wx.getStorageSync(KEY) || null;
   if (!db) {
@@ -51,6 +64,7 @@ function init() {
     save();
   }
   seedDemo();
+  repairRecords();
   // 模板维度名历史改名：知识点掌握→知识掌握、下次课程注意→课程注意（就地迁移，选项内容不变）
   const storedTpls = wx.getStorageSync(TPL_KEY);
   if (!storedTpls) wx.setStorageSync(TPL_KEY, DEFAULT_TPLS);
@@ -86,7 +100,11 @@ function canSend(pick) {
 function saveRecord(pick, send) {
   if (send && !canSend(pick)) return { ok: false, msg: '内容还没补齐' };
   // 录入页 data 里班级字段叫 clsId，各处入口传的是 cls，两处都兼容，避免 cid 落空
-  const cid = pick.cls !== undefined && pick.cls !== null ? pick.cls : pick.clsId;
+  let cid = pick.cls !== undefined && pick.cls !== null ? pick.cls : pick.clsId;
+  if (cid === undefined || cid === null) {
+    const s = student(pick.sid);
+    cid = s && (s.clsIds || [])[0];
+  }
   const fields = {
     sid: pick.sid, cid: cid, course: pick.course || '', score: pick.score,
     note: pick.note || '', tag: pick.tag || '', audio: pick.audio || null,

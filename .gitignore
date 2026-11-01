@@ -5,3 +5,6 @@ deploy.log
 
 # 微信开发者工具个人配置
 project.private.config.json
+
+# 本地生成脚本与验证工具（不入库）
+.workbuddy/

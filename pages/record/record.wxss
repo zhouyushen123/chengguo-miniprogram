@@ -108,7 +108,8 @@
 .tplft .btn { flex: 1; }
 
 /* ---------- 选择学生：折叠与快速搜索 ---------- */
-.stuhead { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
+/* .sec 已是 flex（::before 竖杠是第一个子项），标题保持紧贴竖杠，搜索框靠右填充 */
+.stuhead .stusearch { margin-left: auto; }
 .stucount { font-size: 22rpx; color: #b8b2aa; font-weight: 400; margin-left: 8rpx; }
 .stusearch {
   flex: 1; max-width: 320rpx; font-size: 24rpx;

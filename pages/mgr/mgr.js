@@ -19,7 +19,7 @@ Page({
       teacher: db.teacher,
       classes: db.classes,
       courses: db.courses.map(c => ({ id: c.id, name: c.name, cls: store.clsName(c.clsId) })),
-      students: db.students.map(s => ({
+      students: store.allStudents().map(s => ({
         id: s.id, name: s.name,
         cls: (s.clsIds || []).map(store.clsName).join('、') || '未加入班级',
         parent: s.parent || '', wechat: s.wechat || ''

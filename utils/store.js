@@ -12,6 +12,7 @@ const DEFAULT_TPLS = [
 
 // 演示数据（45 位书法班学生 + 历史成果记录），见 utils/demo-data.js
 const demo = require('./demo-data');
+const pinyin = require('./pinyin');
 
 let db = null;
 
@@ -60,7 +61,9 @@ function saveTpls(t) { wx.setStorageSync(TPL_KEY, t); }
 function clsName(id) { const c = db.classes.find(x => x.id === id); return c ? c.name : ''; }
 function student(id) { return db.students.find(s => s.id === id); }
 function coursesOf(clsId) { return db.courses.filter(c => c.clsId === clsId); }
-function studentsOf(clsId) { return db.students.filter(s => (s.clsIds || []).includes(clsId)); }
+// 学生列表统一按姓氏拼音首字母排序（全站一致），同姓保持原相对顺序
+function allStudents() { return pinyin.sortStudents(db.students); }
+function studentsOf(clsId) { return pinyin.sortStudents(db.students.filter(s => (s.clsIds || []).includes(clsId))); }
 function today() { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
 function latestRecord(sid) {
   // 记录 id 随时间递增，统一按 id 倒序取最近一条
@@ -89,4 +92,4 @@ function saveRecord(pick, send) {
   save();
   return { ok: true, rid, record: db.records.find(x => x.id === rid) };
 }
-module.exports = { init, get, save, replaceDb, tpls, saveTpls, clsName, student, coursesOf, studentsOf, today, latestRecord, canSend, saveRecord, DEFAULT_TPLS, KEY };
+module.exports = { init, get, save, replaceDb, tpls, saveTpls, clsName, student, coursesOf, studentsOf, allStudents, today, latestRecord, canSend, saveRecord, DEFAULT_TPLS, KEY };

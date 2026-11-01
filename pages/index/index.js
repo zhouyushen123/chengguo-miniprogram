@@ -18,7 +18,7 @@ Page({
     const dateStr = (d.getMonth() + 1) + '月' + d.getDate() + '日 周' + '日一二三四五六'[d.getDay()];
 
     if (u.role === 'parent') {
-      const kids = db.students
+      const kids = store.allStudents()
         .filter(s => !(u.studentIds || []).length || (u.studentIds || []).includes(s.id))
         .map(s => {
           const r = store.latestRecord(s.id);
@@ -31,7 +31,7 @@ Page({
     // 老师按"负责班级"过滤；未分配则看全部（管理员看全部）
     const vis = (u.clsIds || []).length ? db.classes.filter(c => u.clsIds.includes(c.id)) : db.classes;
     const visIds = vis.map(c => c.id);
-    const stu = db.students.filter(s => (s.clsIds || []).some(id => visIds.includes(id)));
+    const stu = store.allStudents().filter(s => (s.clsIds || []).some(id => visIds.includes(id)));
     const t = store.today();
     const recOf = s => db.records.filter(r => r.sid === s.id).sort((a, b) => b.id - a.id);
     const notToday = s => !recOf(s).some(r => r.date === t);
@@ -70,7 +70,7 @@ Page({
     const LIMIT = 20;
     let results = [], moreCount = 0;
     if (q) {
-      const hit = db.students.filter(s => s.name.indexOf(q) > -1);
+      const hit = store.allStudents().filter(s => s.name.indexOf(q) > -1);
       results = hit.slice(0, LIMIT).map(s => ({
         id: s.id, name: s.name,
         meta: (s.clsIds || []).map(store.clsName).join(' · ') || '未分班',

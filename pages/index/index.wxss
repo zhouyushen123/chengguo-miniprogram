@@ -20,16 +20,29 @@
 .hero-btn.primary .ht { color: #e8590c; }
 .hs { margin-top: 8rpx; font-size: 22rpx; color: #9c948a; }
 /* ---------- 搜索 ---------- */
+.searchwrap { position: relative; z-index: 30; margin-top: 20rpx; }
 .searchrow {
   display: flex; align-items: center; gap: 14rpx;
   background: #faf9f7; border: 2rpx solid #e5e2dd; border-radius: 999rpx;
-  padding: 16rpx 26rpx; margin-top: 22rpx;
+  padding: 16rpx 26rpx;
 }
 .sicon { font-size: 26rpx; }
 .sinput { flex: 1; font-size: 27rpx; }
 .ph { color: #b8b2aa; }
-.sresults { margin-top: 16rpx; }
-.sresult { padding: 14rpx 4rpx; }
+.sclear {
+  flex: none; width: 44rpx; height: 44rpx; line-height: 40rpx; text-align: center;
+  color: #b8b2aa; font-size: 34rpx;
+}
+/* 搜索结果：搜索框正下方悬浮弹层 */
+.sresults {
+  position: absolute; left: 0; right: 0; top: calc(100% + 12rpx);
+  background: #fff; border-radius: 24rpx;
+  box-shadow: 0 16rpx 48rpx rgba(60, 40, 20, 0.16);
+  padding: 10rpx 24rpx; max-height: 560rpx; overflow-y: auto;
+}
+.sresult { padding: 16rpx 4rpx; border-bottom: 2rpx solid #f3f1ee; }
+.sresult:last-child { border-bottom: none; }
+.smore { padding: 14rpx 4rpx 18rpx; font-size: 22rpx; color: #b8b2aa; text-align: center; }
 .ava.sm { width: 72rpx; height: 72rpx; font-size: 30rpx; border-radius: 24rpx; }
 /* ---------- 统计 ---------- */
 .stats { display: flex; gap: 20rpx; margin: 0 24rpx 24rpx; }

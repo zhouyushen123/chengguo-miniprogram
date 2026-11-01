@@ -5,7 +5,7 @@ Page({
   data: {
     isParent: false, kids: [],
     roleLabel: '', uName: '', dateStr: '',
-    q: '', results: [],
+    q: '', results: [], moreCount: 0,
     clsCount: 0, stuCount: 0, pending: 0,
     myClasses: [], recent: []
   },
@@ -61,17 +61,23 @@ Page({
     });
   },
   onSearch(e) {
-    const q = (e.detail.value || '').trim();
+    // 模糊搜索：输入单字（如"周"）即可匹配所有名字中含该字的学生
+    const q = (e.detail.value || '').trim().replace(/\s+/g, '');
     const db = store.get();
-    const results = q
-      ? db.students.filter(s => s.name.indexOf(q) > -1).slice(0, 5).map(s => ({
-          id: s.id, name: s.name,
-          meta: (s.clsIds || []).map(store.clsName).join(' · ') || '未分班',
-          ci: s.id % 3
-        }))
-      : [];
-    this.setData({ q, results });
+    const LIMIT = 20;
+    let results = [], moreCount = 0;
+    if (q) {
+      const hit = db.students.filter(s => s.name.indexOf(q) > -1);
+      results = hit.slice(0, LIMIT).map(s => ({
+        id: s.id, name: s.name,
+        meta: (s.clsIds || []).map(store.clsName).join(' · ') || '未分班',
+        ci: s.id % 3
+      }));
+      moreCount = Math.max(0, hit.length - LIMIT);
+    }
+    this.setData({ q, results, moreCount });
   },
+  clearSearch() { this.setData({ q: '', results: [], moreCount: 0 }); },
   goRecord() {
     const db = store.get();
     const u = db.users.find(x => x.id === db.me) || db.users[0];
@@ -88,7 +94,7 @@ Page({
   openRec(e) { wx.navigateTo({ url: '/pages/student/student?rid=' + e.currentTarget.dataset.rid }); },
   goStudent(e) {
     wx.navigateTo({ url: '/pages/student/student?id=' + e.currentTarget.dataset.sid });
-    this.setData({ q: '', results: [] });
+    this.setData({ q: '', results: [], moreCount: 0 });
   },
   onPullDownRefresh() {
     api.pull().then(d => { if (d) store.replaceDb(d); this.onShow(); wx.stopPullDownRefresh(); })

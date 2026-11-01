@@ -17,20 +17,24 @@
         <view class="hs">按学生查看</view>
       </view>
     </view>
-    <view class="searchrow">
-      <text class="sicon">🔍</text>
-      <input class="sinput" placeholder="搜索学生，直达TA的记录" placeholder-class="ph" value="{{q}}" bindinput="onSearch" confirm-type="search" />
-    </view>
-    <view wx:if="{{q}}" class="sresults">
-      <view wx:for="{{results}}" wx:key="id" class="sturow sresult" bindtap="goStudent" data-sid="{{item.id}}">
-        <view class="ava sm cls-ico-{{item.ci}}">{{item.name[0]}}</view>
-        <view class="stuinfo">
-          <view class="h1">{{item.name}}</view>
-          <view class="mi">{{item.meta}}</view>
-        </view>
-        <view class="chev">›</view>
+    <view class="searchwrap">
+      <view class="searchrow">
+        <text class="sicon">🔍</text>
+        <input class="sinput" placeholder="搜索学生姓名，如：周" placeholder-class="ph" value="{{q}}" bindinput="onSearch" confirm-type="search" />
+        <text wx:if="{{q}}" class="sclear" bindtap="clearSearch">×</text>
       </view>
-      <view wx:if="{{!results.length}}" class="mi" style="padding:12rpx 4rpx">没找到「{{q}}」相关学生</view>
+      <view wx:if="{{q}}" class="sresults">
+        <view wx:for="{{results}}" wx:key="id" class="sturow sresult" hover-class="btn-hover" bindtap="goStudent" data-sid="{{item.id}}">
+          <view class="ava sm cls-ico-{{item.ci}}">{{item.name[0]}}</view>
+          <view class="stuinfo">
+            <view class="h1">{{item.name}}</view>
+            <view class="mi">{{item.meta}}</view>
+          </view>
+          <view class="chev">›</view>
+        </view>
+        <view wx:if="{{!results.length}}" class="mi" style="padding:20rpx 8rpx">没找到「{{q}}」相关学生</view>
+        <view wx:elif="{{moreCount}}" class="mi smore">还有 {{moreCount}} 位匹配学生，请继续输入缩小范围</view>
+      </view>
     </view>
   </view>
 

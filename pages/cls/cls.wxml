@@ -21,6 +21,9 @@
       <view class="lg"><view class="dot dn"></view>未录入</view>
       <view class="lg tip">点击学生即可录入今日成果</view>
     </view>
+    <view class="sendbtn {{pending?'':'off'}}" hover-class="btn-hover" bindtap="sendAll">
+      {{pending ? '一键发送给家长（' + pending + ' 条待发送）' : '今日已全部发送'}}
+    </view>
   </view>
 
   <!-- 本班记录：日期 + 等级筛选 -->

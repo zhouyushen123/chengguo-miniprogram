@@ -1,7 +1,11 @@
 // utils/db/migrate.js —— 版本迁移
 //
-// v2（单个大对象 chengguo_v2 + 独立模板 key）→ v3（按实体分集合）
-// 迁移只做"搬家 + 补字段"，不删除旧 key：万一新版出问题，旧数据还在，回退不会丢东西。
+// 两条入口，绝不混淆：
+//   有 meta（已有数据）→ upgrade()：就地加字段 / 加集合 / 搬权限，一条数据都不重建
+//   无 meta（全新安装）→ buildFresh()：建默认班级与演示账号
+//   v2 大对象（chengguo_v2）→ build()：从旧的单对象搬家
+//
+// 铁律：升级只做加法。任何"重建集合"的写法都等于把老师手机上的学生和记录清零。
 const schema = require('./schema');
 
 const ORG = schema.DEFAULT_ORG;
@@ -16,17 +20,89 @@ function buildFresh(stamp) {
     schema.normalizeCourse({ id: 2, name: '素描', clsId: 2 }, ORG, stamp)
   ];
   const users = [
-    schema.normalizeUser({ id: 't1', name: '测试老师', role: 'teacher' }, ORG, stamp),
+    schema.normalizeUser({ id: 't1', name: '测试老师', role: 'owner' }, ORG, stamp),
     schema.normalizeUser({ id: 'p1', name: '家长演示', role: 'parent' }, ORG, stamp)
   ];
   const templates = schema.DEFAULT_TEMPLATES.map((t, i) =>
     schema.normalizeTemplate({ id: i + 1, name: t.name, options: t.options, sort: i }, ORG, stamp));
+
+  // 机构创建者即负责人；负责人不受数据范围限制，不需要分配班级
+  const orgs = [schema.normalizeOrg({ id: ORG, name: '我的机构', ownerId: 't1', status: 'active' }, stamp)];
+  const members = [
+    schema.normalizeMember({ id: stamp + 1, orgId: ORG, userId: 't1', role: 'owner', name: '测试老师' }, ORG, stamp),
+    // 家长在绑定孩子之前没有可见数据，status 置 invited，绑定后转 active
+    schema.normalizeMember({ id: stamp + 2, orgId: ORG, userId: 'p1', role: 'parent', name: '家长演示', status: 'invited' }, ORG, stamp)
+  ];
+
   return {
     meta: {
-      version: schema.VERSION, orgId: ORG,
+      version: schema.VERSION, orgId: ORG, orgName: '我的机构',
       teacher: '测试老师', me: 't1', demoVersion: 0, createdAt: stamp, updatedAt: stamp
     },
-    classes: cls, courses, students: [], records: [], users, templates
+    orgs, members, classes: cls, courses, students: [], records: [], users, templates
+  };
+}
+
+/* ---------------- 已有数据就地升级（v3 → v4：user 上的权限搬到 member） ---------------- */
+function upgrade(loaded, stamp) {
+  const meta = loaded.meta || {};
+  const orgId = schema.str(meta.orgId, ORG) || ORG;
+
+  // 除权限两类之外，全部按当前 schema 过一遍（保留 id，不重建）
+  const classes = (loaded.classes || []).map(c => schema.normalizeClass(c, orgId, stamp));
+  const allClsIds = classes.filter(c => !c.removed).map(c => c.id);
+
+  const rawUsers = Array.isArray(loaded.users) ? loaded.users : [];
+  const users = rawUsers.map(u => schema.normalizeUser(u, orgId, stamp));
+
+  // 机构：没有就按现有信息补一个，负责人取第一个非家长用户
+  const orgs = (Array.isArray(loaded.orgs) && loaded.orgs.length)
+    ? loaded.orgs.map(o => schema.normalizeOrg(o, stamp))
+    : [schema.normalizeOrg({
+      id: orgId,
+      name: meta.orgName || '我的机构',
+      ownerId: ((users.find(u => u.role !== 'parent') || users[0] || {}).id) || '',
+      status: 'active'
+    }, stamp)];
+
+  let seq = 0;
+  const nextMemberId = () => { seq += 1; return stamp + seq; };
+
+  const source = (Array.isArray(loaded.members) && loaded.members.length)
+    ? loaded.members
+    : rawUsers.map((u, i) => {
+      const oldRole = u.role === 'admin' ? 'admin' : u.role === 'parent' ? 'parent' : 'teacher';
+      // 第一个老师升为负责人：他就是这个机构唯一的经营者
+      const role = (oldRole === 'teacher' && i === 0) ? 'owner' : oldRole;
+      const staff = role !== 'parent';
+      const clsIds = schema.numList(u.clsIds);
+      return {
+        id: nextMemberId(), orgId, userId: u.id, role, name: u.name,
+        // 关键：旧版「没分配班级 = 看到全部」是隐式放行。新版 fail-closed，
+        // 这里把隐式授权显式化，否则老师升级后会突然什么都看不到。
+        clsIds: staff ? (clsIds.length ? clsIds : allClsIds) : [],
+        courseIds: staff ? schema.numList(u.courseIds) : [],
+        studentIds: role === 'parent' ? schema.numList(u.studentIds) : [],
+        status: (role === 'parent' && !schema.numList(u.studentIds).length) ? 'invited' : 'active'
+      };
+    });
+
+  const members = source.map(m => schema.normalizeMember(m, orgId, stamp));
+
+  return {
+    meta: Object.assign({}, meta, {
+      version: schema.VERSION,
+      orgId,
+      orgName: (orgs[0] && orgs[0].name) || meta.orgName || '我的机构',
+      updatedAt: stamp
+    }),
+    orgs, members,
+    classes,
+    courses: (loaded.courses || []).map(c => schema.normalizeCourse(c, orgId, stamp)),
+    students: (loaded.students || []).map(s => schema.normalizeStudent(s, orgId, stamp)),
+    records: (loaded.records || []).map(r => schema.normalizeRecord(r, orgId, stamp)),
+    users,
+    templates: (loaded.templates || []).map(t => schema.normalizeTemplate(t, orgId, stamp))
   };
 }
 

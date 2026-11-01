@@ -6,7 +6,10 @@
 const storage = require('./storage');
 const schema = require('./schema');
 
-const EMPTY = { meta: null, classes: [], courses: [], students: [], records: [], users: [], templates: [] };
+const EMPTY = {
+  meta: null, orgs: [], members: [], classes: [], courses: [],
+  students: [], records: [], users: [], templates: []
+};
 
 let state = Object.assign({}, EMPTY);
 let lastId = 0;

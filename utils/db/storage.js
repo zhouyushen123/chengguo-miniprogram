@@ -1,8 +1,11 @@
 // utils/db/storage.js —— 存储适配器（本地实现）
 //
 // 【唯一的落盘位置】全项目只有这个文件碰 wx.setStorageSync / wx.getStorageSync。
-// 存储形态：一类实体一个 key（chengguo_v3_classes / _courses / _students / _records / _users / _templates）
+// 存储形态：一类实体一个 key（chengguo_v3_orgs / _members / _classes / _courses / _students / _records / _users / _templates）
 // 每个 key 对应将来云端的一张表，迁移时一一对应即可。
+//
+// 【注意】前缀固定为 v3，不跟着 schema 版本走。版本号只记在 meta.version 里，
+// 这样每次升级都是「原地加字段/加集合」，不会因为换 key 把老师手机上的历史数据读丢。
 //
 // 【换云端怎么做】新增 cloudAdapter，实现同样的 load / saveCollection / saveMeta / removeCollection 接口：
 //   - load()          启动时一次性把远端数据水合成同样结构（可改为异步 hydrate）
@@ -12,7 +15,8 @@ const PREFIX = 'chengguo_v3_';
 const META_KEY = 'meta';
 
 // 实体集合（顺序即初始化顺序，被 load 与迁移共用）
-const COLLECTIONS = ['classes', 'courses', 'students', 'records', 'users', 'templates'];
+// orgs / members 是机构与成员关系：权限的唯一来源，云端对应 org 表与 member 授权表
+const COLLECTIONS = ['orgs', 'members', 'classes', 'courses', 'students', 'records', 'users', 'templates'];
 
 // v2 遗留的单一大对象（迁移源，保留不动作为兜底备份）
 const LEGACY_DB_KEY = 'chengguo_v2';

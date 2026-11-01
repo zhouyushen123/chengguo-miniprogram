@@ -1,21 +1,34 @@
 // utils/db/schema.js —— 主数据模型：实体定义、字段约束、校验规则
 //
-// 六类实体，各自有唯一 id 与归属机构：
+// 八类实体，各自有唯一 id 与归属机构：
+//   org      机构    { id, name, ownerId, status }          一个机构 = 一家校区/一个独立经营单元
+//   member   成员    { id, orgId, userId, role, clsIds[], courseIds[], studentIds[], status }
+//                                                          「某人在这家机构里是谁、能管哪些数据」
 //   class    班级    { id, name, sort }
 //   course   课程    { id, clsId, name }                    clsId → class.id
 //   student  学生    { id, name, clsIds[], parent, wechat, photo, profile{} }
 //   record   课堂记录 { id, sid, cid, courseId, course, date, score, tag, note, photos[], videos[], audio, sent, tid }
-//   user     人员    { id, name, role: teacher|parent|admin, clsIds[], courseIds[], studentIds[] }
+//   user     人员    { id, name }                           人的身份本身，不含权限
 //   template 评价模板 { id, name, options[] }
+//
+// 【为什么把权限从 user 拆到 member】
+// 原来 user 上直接挂 role + clsIds，等于"一个人一辈子只有一个身份"。但现实是：
+//   - 同一位老师可以在两家机构兼职，两边的班级和角色都不同
+//   - 一位家长有两个孩子，在不同机构上课
+// 权限属于「人 × 机构」这个组合，不属于人本身。拆开后换机构不影响历史数据，
+// 上云时 member 就是服务端的一张授权表，user 只是账号。
 //
 // 公共审计字段（所有实体强制携带）：orgId 归属机构 / createdAt 创建时间 / updatedAt 更新时间 / removed 软删除
 // 软删除的意义：多端同步时"删掉"必须能被同步，硬删会被其它端的历史数据覆盖复活。
-const VERSION = 3;
+const VERSION = 4;
 const DEFAULT_ORG = 'org1';
 
 // 评分五档（与录入页每档代表分对应，用于筛选与统计口径统一）
 const TAGS = ['待提高', '加油', '良好', '优秀', '最佳'];
-const ROLES = ['teacher', 'parent', 'admin'];
+// 角色顺序即权限由大到小；具体能做什么见 utils/db/permissions.js
+const ROLES = ['owner', 'admin', 'teacher', 'parent'];
+const MEMBER_STATUS = ['active', 'invited', 'disabled'];
+const ORG_STATUS = ['active', 'suspended'];
 
 // 默认评价模板：维度名 + 该维度下的常用评语选项
 const DEFAULT_TEMPLATES = [
@@ -110,16 +123,42 @@ function normalizeRecord(raw, orgId, stamp) {
   }, audit(r, orgId, stamp));
 }
 
+function normalizeOrg(raw, stamp) {
+  const r = raw || {};
+  return Object.assign({
+    id: str(r.id, DEFAULT_ORG) || DEFAULT_ORG,
+    name: str(r.name).trim(),
+    ownerId: str(r.ownerId).trim(),
+    status: ORG_STATUS.indexOf(r.status) > -1 ? r.status : 'active'
+  }, audit(r, str(r.orgId, r.id || DEFAULT_ORG), stamp));
+}
+
+// 成员关系：权限的唯一来源。role 决定能做什么，三个 id 列表决定能对谁做。
+function normalizeMember(raw, orgId, stamp) {
+  const r = raw || {};
+  const role = ROLES.indexOf(r.role) > -1 ? r.role : 'parent';
+  return Object.assign({
+    id: num(r.id, 0),
+    orgId: str(r.orgId, orgId || DEFAULT_ORG) || DEFAULT_ORG,
+    userId: str(r.userId).trim(),
+    role,
+    name: str(r.name).trim(),          // 冗余一份姓名，成员列表不必再查 users
+    clsIds: numList(r.clsIds),
+    courseIds: numList(r.courseIds),
+    studentIds: numList(r.studentIds),
+    status: MEMBER_STATUS.indexOf(r.status) > -1 ? r.status : 'active'
+  }, audit(r, orgId, stamp));
+}
+
+// 人员实体只保留"这个人是谁"，权限全部移到 member。
+// role 仅作默认值参考（新建成员关系时沿用），不参与任何判定。
 function normalizeUser(raw, orgId, stamp) {
   const r = raw || {};
   const role = ROLES.indexOf(r.role) > -1 ? r.role : 'teacher';
   return Object.assign({
     id: str(r.id),
     name: str(r.name).trim(),
-    role,
-    clsIds: numList(r.clsIds),
-    courseIds: numList(r.courseIds),
-    studentIds: numList(r.studentIds)
+    role
   }, audit(r, orgId, stamp));
 }
 
@@ -133,9 +172,11 @@ function normalizeTemplate(raw, orgId, stamp) {
   }, audit(r, orgId, stamp));
 }
 
-// 不同实体 id 类型不同：班级/课程/学生/记录/模板用自增数字，人员用字符串
+// 不同实体 id 类型不同：班级/课程/学生/记录/模板/成员用自增数字，人员与机构用字符串
 function normalize(entity, raw, orgId, stamp) {
   switch (entity) {
+    case 'org': return normalizeOrg(raw, stamp);
+    case 'member': return normalizeMember(raw, orgId, stamp);
     case 'class': return normalizeClass(raw, orgId, stamp);
     case 'course': return normalizeCourse(raw, orgId, stamp);
     case 'student': return normalizeStudent(raw, orgId, stamp);
@@ -150,6 +191,17 @@ function normalize(entity, raw, orgId, stamp) {
 function validate(entity, e) {
   if (!e) return '数据为空';
   switch (entity) {
+    case 'org':
+      if (!e.name) return '机构名称不能为空';
+      if (e.name.length > 30) return '机构名称过长';
+      return null;
+    case 'member':
+      if (!e.userId) return '成员必须关联人员';
+      if (ROLES.indexOf(e.role) < 0) return '角色不合法';
+      // 老师必须有分工范围：空范围会让"按班过滤"退化成全可见（fail-open）
+      if (e.role === 'teacher' && !e.clsIds.length && e.status === 'active') return '老师需要至少分配一个班级';
+      if (e.role === 'parent' && !e.studentIds.length && e.status === 'active') return '家长需要至少绑定一个孩子';
+      return null;
     case 'class':
       if (!e.name) return '班级名称不能为空';
       if (e.name.length > 20) return '班级名称过长';
@@ -184,8 +236,9 @@ function validate(entity, e) {
 }
 
 module.exports = {
-  VERSION, DEFAULT_ORG, TAGS, ROLES, DEFAULT_TEMPLATES,
+  VERSION, DEFAULT_ORG, TAGS, ROLES, MEMBER_STATUS, ORG_STATUS, DEFAULT_TEMPLATES,
   str, num, list, numList, txtList, ymd, normDate,
   normalize, validate,
+  normalizeOrg, normalizeMember,
   normalizeClass, normalizeCourse, normalizeStudent, normalizeRecord, normalizeUser, normalizeTemplate
 };

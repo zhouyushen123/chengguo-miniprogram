@@ -1,6 +1,6 @@
 // utils/demo-data.js —— 演示数据（45 位书法班学生 + 历史成果记录）
 // 由脚本生成，如需调整请改生成脚本而非手改本文件
-const DEMO_VERSION = 4;
+const DEMO_VERSION = 5;
 
 const DEMO_STUDENTS = [
   {

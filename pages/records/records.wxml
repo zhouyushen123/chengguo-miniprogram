@@ -34,3 +34,6 @@
   </view>
 </view>
 <view wx:if="{{!list.length}}" class="empty">当前筛选条件下暂无记录</view>
+
+<!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
+<privacy-popup />

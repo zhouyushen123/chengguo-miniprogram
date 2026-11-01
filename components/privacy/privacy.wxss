@@ -1,0 +1,29 @@
+.p-mask {
+  position: fixed; left: 0; top: 0; right: 0; bottom: 0;
+  z-index: 999; background: rgba(0, 0, 0, 0.45);
+  display: flex; align-items: flex-end;
+}
+.p-sheet {
+  width: 100%; background: #fff; border-radius: 32rpx 32rpx 0 0;
+  padding: 40rpx 36rpx calc(32rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+.p-title { text-align: center; font-size: 34rpx; font-weight: 700; margin-bottom: 26rpx; }
+.p-body { max-height: 52vh; overflow-y: auto; }
+.p-p { font-size: 26rpx; color: #4a4a4a; line-height: 1.75; margin-bottom: 16rpx; }
+.p-li { font-size: 25rpx; color: #6b655e; line-height: 1.75; margin-bottom: 10rpx; }
+.p-strong { color: #232323; font-weight: 600; }
+.p-link { font-size: 25rpx; color: #e8590c; font-weight: 600; margin-top: 14rpx; }
+
+.p-btns { display: flex; gap: 20rpx; margin-top: 32rpx; }
+/* 重置小程序 button 默认样式，跟全局 .btn 家族保持一致 */
+.p-btn {
+  flex: 1; margin: 0; padding: 0; line-height: 92rpx; height: 92rpx;
+  border-radius: 26rpx; font-size: 30rpx; font-weight: 600;
+}
+.p-btn::after { border: none; }
+.p-btn.ghost { background: #fff; color: #4a4a4a; border: 2rpx solid #e5e2dd; font-weight: 500; }
+.p-btn.main {
+  background: linear-gradient(135deg, #f7a23b, #e8590c);
+  color: #fff; box-shadow: 0 8rpx 20rpx rgba(232, 89, 12, 0.28);
+}

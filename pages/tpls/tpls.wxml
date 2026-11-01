@@ -26,3 +26,6 @@
     <view class="btn footbtn" bindtap="confirmSel">插入所选{{sel.length?'（'+sel.length+'）':''}}</view>
   </view>
 </view>
+
+<!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
+<privacy-popup />

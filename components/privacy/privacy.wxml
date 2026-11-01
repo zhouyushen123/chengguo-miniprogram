@@ -1,0 +1,18 @@
+<view wx:if="{{show}}" class="p-mask" catchtouchmove="noop">
+  <view class="p-sheet">
+    <view class="p-title">隐私保护指引</view>
+    <view class="p-body">
+      <view class="p-p">为了向你提供课后成果记录服务，橙果会在你主动使用时处理以下信息：</view>
+      <view class="p-li">· <text class="p-strong">照片与视频</text>：拍摄或选择孩子的课堂照片、作品视频，用于生成成果记录</view>
+      <view class="p-li">· <text class="p-strong">录音</text>：录制老师的课堂语音点评</view>
+      <view class="p-li">· <text class="p-strong">手机号、微信号</text>：仅在你填写学生资料时收集，用于老师与家长沟通</view>
+      <view class="p-li">· <text class="p-strong">头像与昵称</text>：用于在机构内展示你的身份</view>
+      <view class="p-p">以上信息仅保存在你的设备与所属机构内，未经你的同意不会提供给第三方。</view>
+      <view class="p-link" bindtap="openDetail">查看《橙果隐私保护指引》</view>
+    </view>
+    <view class="p-btns">
+      <button class="p-btn ghost" bindtap="reject">暂不使用</button>
+      <button id="privacy-agree" class="p-btn main" open-type="agreePrivacyAuthorization" bindagreeprivacyauthorization="agree">同意并继续</button>
+    </view>
+  </view>
+</view>

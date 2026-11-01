@@ -19,3 +19,6 @@
   </view>
   <view class="btn" style="margin:0 24rpx" bindtap="submit">保存并提交</view>
 </view>
+
+<!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
+<privacy-popup />

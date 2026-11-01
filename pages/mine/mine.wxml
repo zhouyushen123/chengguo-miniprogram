@@ -33,3 +33,6 @@
 <view wx:if="{{isManager && hasDemo}}" class="card danger" hover-class="mrow-hover" bindtap="clearDemo">清空演示数据</view>
 
 <view class="slogan">橙果 · 让每节课都有回音</view>
+
+<!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
+<privacy-popup />

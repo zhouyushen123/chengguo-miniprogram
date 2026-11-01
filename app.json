@@ -40,6 +40,10 @@
       }
     ]
   },
-  "style": "v2",
-  "sitemapLocation": "sitemap.json"
+  "usingComponents": {
+    "privacy-popup": "/components/privacy/privacy"
+  },
+  "__usePrivacyCheck__": true,
+  "sitemapLocation": "sitemap.json",
+  "style": "v2"
 }

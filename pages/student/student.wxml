@@ -149,3 +149,6 @@
   <view class="btn" bindtap="goRecord"><image class="bico" src="{{icoPlus}}" mode="aspectFit" />记录本节成果</view>
   <view class="slogan">橙果 · 让每节课都有回音</view>
 </view>
+
+<!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
+<privacy-popup />

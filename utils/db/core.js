@@ -14,6 +14,10 @@ const EMPTY = {
 let state = Object.assign({}, EMPTY);
 let lastId = 0;
 let ready = false;
+// 降级态：启动失败（读盘异常 / 数据损坏）时为 true。
+// 此时内存里是空库，绝不能落盘——否则会拿空库把磁盘上的真实数据覆盖掉，
+// 一次读取失败就变成永久数据丢失。
+let readOnly = false;
 
 function hydrate(loaded) {
   state = Object.assign({}, EMPTY);
@@ -35,14 +39,33 @@ const data = () => state;
 const coll = name => state[name];
 const meta = () => state.meta || {};
 
+// 当前机构视图：读取一律用这个，绝不要把 coll() 直接交给页面
+// 【为什么需要】coll() 返回全量（含其他机构的数据）。之前列表只过滤了"已删除"和
+// "权限范围"，没过滤 orgId，实测中另一个机构的班级会直接出现在当前机构的列表里。
+// 写入仍走 coll()（要保留其他机构的数据），读取走 orgColl()。
+function orgColl(name) {
+  const list = state[name] || [];
+  const o = (state.meta && state.meta.orgId) || schema.DEFAULT_ORG;
+  // orgs 集合的主键就是机构 id；其余实体靠 orgId 外键
+  if (name === 'orgs') return list.filter(x => !x.removed && x.id === o);
+  return list.filter(x => !x.removed && (x.orgId || o) === o);
+}
+
 function setColl(name, list) {
   state[name] = list;
   persist(name);
 }
 
-function persist(name) { return storage.saveCollection(name, state[name]); }
+function persist(name) {
+  if (readOnly) { console.warn('[db] 降级态，跳过落盘', name); return false; }
+  return storage.saveCollection(name, state[name]);
+}
+
+function setReadOnly(v) { readOnly = !!v; }
+const isReadOnly = () => readOnly;
 
 function flushAll() {
+  if (readOnly) { console.warn('[db] 降级态，跳过全量落盘'); return false; }
   let ok = true;
   storage.COLLECTIONS.forEach(name => { if (!persist(name)) ok = false; });
   if (state.meta) storage.saveMeta(state.meta);
@@ -51,7 +74,7 @@ function flushAll() {
 
 function updateMeta(patch) {
   state.meta = Object.assign({}, state.meta, patch);
-  storage.saveMeta(state.meta);
+  if (!readOnly) storage.saveMeta(state.meta);
   return state.meta;
 }
 
@@ -62,4 +85,7 @@ function nextId() {
   return lastId;
 }
 
-module.exports = { hydrate, isReady, data, coll, meta, setColl, persist, flushAll, updateMeta, nextId, EMPTY };
+module.exports = {
+  hydrate, isReady, data, coll, orgColl, meta, setColl, persist, flushAll, updateMeta, nextId,
+  setReadOnly, isReadOnly, EMPTY
+};

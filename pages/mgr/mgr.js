@@ -1,5 +1,6 @@
 const db = require('../../utils/db');
 const icons = require('../../utils/icons');
+const media = require('../../utils/media');
 
 // 角色选项目：负责人不在新建时出现（一个机构只能有一个，靠「移交」转移）
 const ROLE_OPTS = [
@@ -135,18 +136,14 @@ Page({
     });
   },
   onStuName(e) { this.setData({ 'stuForm.name': e.detail.value }); },
-  // 上传学生照片：拍照/相册均可，拷贝到用户目录确保持久保存
+  // 上传学生照片：拍照/相册均可，统一走 media 转存到用户目录
   onStuPhoto() {
     wx.chooseMedia({
       count: 1, mediaType: ['image'], sourceType: ['album', 'camera'], sizeType: ['compressed'],
       success: r => {
         const tmp = r.tempFiles[0] && r.tempFiles[0].tempFilePath;
         if (!tmp) return;
-        try {
-          const dest = wx.env.USER_DATA_PATH + '/stu_' + Date.now() + '.jpg';
-          wx.getFileSystemManager().copyFileSync(tmp, dest);
-          this.setData({ 'stuForm.photo': dest });
-        } catch (e) { this.setData({ 'stuForm.photo': tmp }); }
+        this.setData({ 'stuForm.photo': media.persist(tmp, 'photo') });
       }
     });
   },

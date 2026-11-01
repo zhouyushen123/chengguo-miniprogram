@@ -3,12 +3,20 @@
 #   MINI_APPID      小程序 AppID，如 wx1234567890abcdef
 #   MINI_UPLOAD_KEY 代码上传密钥的「文件内容」（公众平台→开发设置→小程序代码上传 下载）
 # 首次使用：在微信公众平台「开发设置」把 GitHub Actions 出口 IP 加入白名单，或关闭 IP 白名单校验
+#
+# 【注意】仓库根目录就是小程序根目录（app.js / app.json 就在根上）。
+# 不要再写「橙果-小程序/**」这种带目录前缀的路径——之前正因为这一条永远匹配不到，
+# 整条流水线一次都没有被触发过。
 name: deploy-mini
 
 on:
   push:
     branches: [main]
-    paths: ['橙果-小程序/**']
+    paths-ignore:
+      - '**.md'
+      - '.github/**'
+      - 'tests/**'
+      - '.workbuddy/**'
   workflow_dispatch: {}
 
 jobs:
@@ -22,11 +30,9 @@ jobs:
           node-version: 20
 
       - name: 安装依赖
-        working-directory: 橙果-小程序
         run: npm i miniprogram-ci --no-audit --no-fund
 
       - name: 写入上传密钥
-        working-directory: 橙果-小程序
         run: |
           echo "${{ secrets.MINI_UPLOAD_KEY }}" > private.key
           chmod 600 private.key
@@ -36,7 +42,6 @@ jobs:
         run: echo "version=1.0.$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
 
       - name: 自动上传新版本
-        working-directory: 橙果-小程序
         env:
           APPID: ${{ secrets.MINI_APPID }}
         run: |

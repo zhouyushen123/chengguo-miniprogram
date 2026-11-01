@@ -129,9 +129,16 @@ function can(actor, action, target) {
   const t = target || {};
 
   // 限本人：老师只能改/删自己录的；负责人与管理员不受限
+  // 【fail-closed】只有真正拿到目标对象时才检查归属：abilities() 用空 target 预判时不该被拦。
+  // 一旦有目标，tid 为空就拒绝——旧写法 `if (tid && ...)` 会让无主记录对所有人放行，
+  // 这正是"历史脏数据导致任何人都能改别人记录"的入口。
   if (rule.own && !actor.all) {
-    const tid = t.record ? t.record.tid : t.tid;
-    if (tid && tid !== actor.userId) return false;
+    const hasTarget = !!t.record || Object.prototype.hasOwnProperty.call(t, 'tid');
+    if (hasTarget) {
+      const tid = t.record ? t.record.tid : t.tid;
+      if (!tid) return false;
+      if (String(tid) !== String(actor.userId)) return false;
+    }
   }
 
   // 限范围：目标必须在自己可见范围内

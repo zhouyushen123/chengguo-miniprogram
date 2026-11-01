@@ -25,6 +25,11 @@ const DEFAULT_ORG = 'org1';
 
 // 评分五档（与录入页每档代表分对应，用于筛选与统计口径统一）
 const TAGS = ['待提高', '加油', '良好', '优秀', '最佳'];
+// 记录类型（ADR-009：留字段不留逻辑）
+// 现在只有一种「成果」，但字段先落下去。将来加考勤/作业/缴费时，只是往这个数组里加值
+// 并写对应的 domain 逻辑，不需要再改表结构、不需要迁移历史数据。
+// 这是用接近零的成本，换掉未来一次全量数据迁移。
+const RECORD_TYPES = ['achievement'];
 // 角色顺序即权限由大到小；具体能做什么见 utils/db/permissions.js
 const ROLES = ['owner', 'admin', 'teacher', 'parent'];
 const MEMBER_STATUS = ['active', 'invited', 'disabled'];
@@ -106,6 +111,7 @@ function normalizeRecord(raw, orgId, stamp) {
   const date = normDate(r.date) || ymd(new Date(num(r.createdAt, stamp)));
   return Object.assign({
     id: num(r.id, 0),
+    type: RECORD_TYPES.indexOf(r.type) > -1 ? r.type : 'achievement',   // 业务活动类型，见 ADR-009
     sid: num(r.sid, 0),
     cid: num(r.cid, 0),
     courseId: num(r.courseId, 0),
@@ -236,7 +242,7 @@ function validate(entity, e) {
 }
 
 module.exports = {
-  VERSION, DEFAULT_ORG, TAGS, ROLES, MEMBER_STATUS, ORG_STATUS, DEFAULT_TEMPLATES,
+  VERSION, DEFAULT_ORG, TAGS, RECORD_TYPES, ROLES, MEMBER_STATUS, ORG_STATUS, DEFAULT_TEMPLATES,
   str, num, list, numList, txtList, ymd, normDate,
   normalize, validate,
   normalizeOrg, normalizeMember,

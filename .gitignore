@@ -6,5 +6,6 @@ deploy.log
 # 微信开发者工具个人配置
 project.private.config.json
 
-# 本地生成脚本与验证工具（不入库）
+# 本地临时目录。回归测试在 tests/、图标生成脚本在 tools/，两者都已入库；
+# 这里只放临时产物，可随时清空。
 .workbuddy/

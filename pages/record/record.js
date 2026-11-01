@@ -2,6 +2,7 @@ const db = require('../../utils/db');
 const api = require('../../utils/api');
 const stt = require('../../utils/stt');
 const icons = require('../../utils/icons');
+const media = require('../../utils/media');
 
 // 媒体限制：单个文件 50MB，视频最多 3 个，照片最多 9 张
 const MAX_FILE = 50 * 1024 * 1024;
@@ -116,8 +117,9 @@ Page({
         let over = 0;
         (r.tempFiles || []).forEach(f => {
           if ((f.size || 0) > MAX_FILE) { over++; return; }
-          if (f.fileType === 'video' || /\.mp4$/i.test(f.tempFilePath || '')) videos.push(f.tempFilePath);
-          else photos.push(f.tempFilePath);
+          // 必须转存到用户目录：tempFilePath 在小程序退出后会被系统清理，历史记录会全部裂图
+          if (f.fileType === 'video' || /\.mp4$/i.test(f.tempFilePath || '')) videos.push(media.persist(f.tempFilePath, 'video'));
+          else photos.push(media.persist(f.tempFilePath, 'photo'));
         });
         if (over) wx.showToast({ title: '单个文件需小于 50MB，已跳过 ' + over + ' 个', icon: 'none' });
         this.setData({ photos: photos.slice(0, MAX_PHOTOS), videos: videos.slice(0, MAX_VIDEOS) });
@@ -163,8 +165,10 @@ Page({
     this.rec.onStop(res => {
       this.setData({ recording: false });
       if (!res.tempFilePath) return;
+      // 先转存为持久文件，再尝试上传云存储；未接云端时用的是本地持久路径
+      const local = media.persist(res.tempFilePath, 'audio');
       api.uploadFile(res.tempFilePath, 'audio').then(url => {
-        this.setData({ audio: url || res.tempFilePath });
+        this.setData({ audio: url || local });
         this.refreshCan();
         wx.showToast({ title: '语音已录入', icon: 'success' });
       });

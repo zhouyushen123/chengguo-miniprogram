@@ -22,9 +22,13 @@ const migrate = require('./migrate');
 const perms = require('./permissions');
 const pinyin = require('../pinyin');
 const demo = require('../demo-data');
+const media = require('../media');
 
 const now = () => Date.now();
 const org = () => (core.meta().orgId || schema.DEFAULT_ORG);
+// 读路径统一入口：当前机构视图。所有列表/查找都必须走这里，绝不能直接读全量集合，
+// 否则其他机构的数据会混进来（曾经的真实 bug：org2 的班级出现在 org1 的列表里）。
+const oc = name => core.orgColl(name);
 
 /* =====================================================================
  * 身份与权限
@@ -32,9 +36,7 @@ const org = () => (core.meta().orgId || schema.DEFAULT_ORG);
 // 当前机构下、当前登录人的成员关系（权限的唯一来源）
 function memberCurrent() {
   const m = core.meta().me;
-  const o = org();
-  const list = core.coll('members').filter(x =>
-    !x.removed && x.orgId === o && x.status !== 'disabled');
+  const list = oc('members').filter(x => x.status !== 'disabled');
   return list.find(x => x.userId === m) || list[0] || null;
 }
 
@@ -42,13 +44,13 @@ function memberCurrent() {
 function actor() {
   const m = memberCurrent();
   if (!m) return null;
-  const u = core.coll('users').find(x => x.id === m.userId && !x.removed);
+  const u = oc('users').find(x => x.id === m.userId);
   return perms.actorOf({
     id: m.id, orgId: m.orgId, userId: m.userId,
     role: m.role,
     name: (u && u.name) || m.name,
     clsIds: m.clsIds, courseIds: m.courseIds, studentIds: m.studentIds
-  }, core.coll('students'));
+  }, oc('students'));
 }
 
 // 写操作统一闸门：返回 null 表示放行，否则返回可直接 toast 的文案
@@ -59,25 +61,42 @@ function deny(action, target) {
 }
 
 /* =====================================================================
- * 启动：加载 → 迁移 → 规范化 → 演示数据 → 引用修复
- * ===================================================================*/
-let inited = false;
+ * 启动：加载 → 迁移 → 规范化 → 演示数据 → 引用修复 → 媒体自愈
+ * ===================================================================*/let inited = false;
+let bootError = '';
 
 function init() {
   if (inited) return;
-  const loaded = storage.load();
-  const data = (loaded.meta && loaded.meta.version === schema.VERSION)
-    ? loaded
-    : migrate.build(loaded);
-  core.hydrate(data);
+  try {
+    const loaded = storage.load();
+    const data = (loaded.meta && loaded.meta.version === schema.VERSION)
+      ? loaded
+      : migrate.build(loaded);
+    core.hydrate(data);
 
-  const changed = normalizeAll();
-  const seeded = seedDemo();
-  const repaired = repairRefs();
-  if (changed || seeded || repaired || !loaded.meta || loaded.meta.version !== schema.VERSION) {
-    core.flushAll();
+    const changed = normalizeAll();
+    const seeded = seedDemo();
+    const repaired = repairRefs();
+    const mediaFixed = repairMedia();
+    if (changed || seeded || repaired || mediaFixed || !loaded.meta || loaded.meta.version !== schema.VERSION) {
+      core.flushAll();
+    }
+  } catch (e) {
+    // 启动失败不能让整页白屏，也不能把坏状态写回磁盘：
+    // 降级成"内存空库 + 只读"，磁盘数据原样保留，页面照常渲染空态。
+    bootError = (e && e.message) || '数据加载失败';
+    core.setReadOnly(true);
+    if (!core.isReady()) {
+      try { core.hydrate(migrate.buildFresh(Date.now())); } catch (e2) { /* 连兜底都失败就只能空着 */ }
+    }
+    console.error('[db] 初始化失败，已降级为只读', e);
   }
   inited = true;
+}
+
+// 启动状态：页面可据此提示"数据读取异常，当前为只读"
+function status() {
+  return { ready: inited, degraded: !!bootError, error: bootError, readOnly: core.isReadOnly() };
 }
 
 // 把库里所有实体按当前 schema 过一遍（补默认字段、修正日期格式、丢弃未知字段）
@@ -107,8 +126,8 @@ function normalizeAll() {
     changed = true;
   }
   // 兜底：机构表为空时补一个，避免权限判定无处可取
-  if (!core.coll('orgs').length) {
-    const first = core.coll('users').find(u => u.role !== 'parent') || core.coll('users')[0];
+  if (!oc('orgs').length) {
+    const first = oc('users').find(u => u.role !== 'parent') || oc('users')[0];
     core.coll('orgs').push(schema.normalizeOrg({
       id: org(), name: m.orgName || '我的机构',
       ownerId: (first && first.id) || '', status: 'active'
@@ -138,6 +157,36 @@ function repairRefs() {
     if (!r.tid && me) { r.tid = me; changed++; }
   });
   return changed > 0;
+}
+
+// 媒体自愈：历史记录里的 photos / videos / audio 可能还是临时路径（系统随时会清理），
+// 启动时尝试把它们转存成持久文件。源文件已经不在了就无法恢复——此时保留原路径不动，
+// 而不是清空引用：清空等于主动删掉用户照片，留着至少还有一丝恢复可能。
+function repairMedia() {
+  let n = 0;
+  const fix = (p, kind) => {
+    const s = schema.str(p);
+    if (!s || media.isPersist(s)) return s;
+    if (!media.exists(s)) return s;
+    const next = media.persist(s, kind);
+    if (next && next !== s) { n++; return next; }
+    return s;
+  };
+  oc('records').forEach(r => {
+    const photos = (r.photos || []).map(p => fix(p, 'photo'));
+    const videos = (r.videos || []).map(p => fix(p, 'video'));
+    const audio = r.audio ? fix(r.audio, 'audio') : r.audio;
+    if (photos.join('|') !== (r.photos || []).join('|')) r.photos = photos;
+    if (videos.join('|') !== (r.videos || []).join('|')) r.videos = videos;
+    if (audio !== r.audio) r.audio = audio;
+  });
+  oc('students').forEach(s => {
+    if (s.photo) {
+      const np = fix(s.photo, 'photo');
+      if (np !== s.photo) s.photo = np;
+    }
+  });
+  return n > 0;
 }
 
 // 演示数据：版本变了才整批替换（演示学生与演示记录一起换，真实数据不动）
@@ -170,7 +219,7 @@ function seedDemo() {
   // 演示老师若没有任何班级分工，给他全部班级（否则 fail-closed 下看不到东西）
   const t = memberCurrentOfRole('teacher');
   if (t && !t.clsIds.length) {
-    t.clsIds = core.coll('classes').filter(c => !c.removed).map(c => c.id);
+    t.clsIds = oc('classes').map(c => c.id);
     t.updatedAt = now();
     core.persist('members');
   }
@@ -180,14 +229,14 @@ function seedDemo() {
 }
 
 function memberCurrentOfRole(role) {
-  return core.coll('members').find(m => !m.removed && m.orgId === org() && m.role === role) || null;
+  return oc('members').find(m => m.role === role) || null;
 }
 
 /* =====================================================================
  * 机构
  * ===================================================================*/
 function orgCurrent() {
-  return core.coll('orgs').find(o => o.id === org() && !o.removed) || null;
+  return oc('orgs').find(o => o.id === org()) || null;
 }
 function orgUpdate(patch) {
   const err = deny('org.manage');
@@ -208,7 +257,7 @@ function orgUpdate(patch) {
  * 成员（机构 × 人 × 角色 × 数据范围）
  * ===================================================================*/
 function memberList() {
-  return core.coll('members').filter(m => !m.removed && m.orgId === org()).slice();
+  return oc('members').slice();
 }
 // 成员的可读视图：补上人员姓名与范围文字（页面直接用，不必再各处拼）
 function memberView(m) {
@@ -225,10 +274,10 @@ function memberView(m) {
   };
 }
 function memberGet(id) {
-  return core.coll('members').find(m => m.id === Number(id) && !m.removed) || null;
+  return oc('members').find(m => m.id === Number(id)) || null;
 }
 function memberOfUser(userId) {
-  return core.coll('members').find(m => !m.removed && m.orgId === org() && m.userId === String(userId)) || null;
+  return oc('members').find(m => m.userId === String(userId)) || null;
 }
 
 function memberCreate(data) {
@@ -236,7 +285,7 @@ function memberCreate(data) {
   if (err) return { ok: false, msg: err };
   const d = data || {};
   // 一个机构只能有一个负责人：多个人都拿 owner 会让"谁最大"失去意义
-  if (d.role === 'owner' && core.coll('members').some(m => !m.removed && m.orgId === org() && m.role === 'owner')) {
+  if (d.role === 'owner' && oc('members').some(m => m.role === 'owner')) {
     return { ok: false, msg: '该机构已有负责人，请用「移交负责人」转移' };
   }
   // 有 id 视为给已存在的人员补一条成员关系，没有则先建人
@@ -308,13 +357,13 @@ function memberRemove(id) {
  * ===================================================================*/
 function classList() {
   const a = actor();
-  return core.coll('classes').filter(c => !c.removed && perms.canSeeClass(a, c.id))
+  return oc('classes').filter(c => perms.canSeeClass(a, c.id))
     .slice().sort((x, y) => (x.sort - y.sort) || (x.id - y.id));
 }
 // 不过滤的全量（内部统计与名称解析用，不暴露给页面）
 function classRaw(id) {
   const x = Number(id);
-  return core.coll('classes').find(c => c.id === x && !c.removed) || null;
+  return oc('classes').find(c => c.id === x) || null;
 }
 function classGet(id) {
   const a = actor();
@@ -354,15 +403,15 @@ function classRemove(id) {
   if (!c) return { ok: false, msg: '班级不存在' };
   const t = now();
   c.removed = true; c.updatedAt = t;
-  core.coll('courses').forEach(x => {
-    if (x.clsId === c.id && !x.removed) { x.removed = true; x.updatedAt = t; }
+  oc('courses').forEach(x => {
+    if (x.clsId === c.id) { x.removed = true; x.updatedAt = t; }
   });
-  core.coll('students').forEach(s => {
+  oc('students').forEach(s => {
     const i = s.clsIds.indexOf(c.id);
     if (i > -1) { s.clsIds.splice(i, 1); s.updatedAt = t; }
   });
   // 成员负责范围里也要摘掉这个班，否则会留下指向已删班级的悬空授权
-  core.coll('members').forEach(m => {
+  oc('members').forEach(m => {
     const i = m.clsIds.indexOf(c.id);
     if (i > -1) { m.clsIds.splice(i, 1); m.updatedAt = t; }
   });
@@ -375,19 +424,19 @@ function classRemove(id) {
  * ===================================================================*/
 function courseList() {
   const a = actor();
-  return core.coll('courses').filter(c => !c.removed && perms.canSeeClass(a, c.clsId))
+  return oc('courses').filter(c => perms.canSeeClass(a, c.clsId))
     .slice().sort((x, y) => (x.clsId - y.clsId) || (x.id - y.id));
 }
 function courseOf(clsId) {
   const x = Number(clsId);
   const a = actor();
   if (!perms.canSeeClass(a, x)) return [];
-  return core.coll('courses').filter(c => !c.removed && c.clsId === x)
+  return oc('courses').filter(c => c.clsId === x)
     .sort((p, q) => p.id - q.id);
 }
 function courseGet(id) {
   const x = Number(id);
-  const c = core.coll('courses').find(y => y.id === x && !y.removed);
+  const c = oc('courses').find(y => y.id === x);
   if (!c) return null;
   return perms.canSeeClass(actor(), c.clsId) ? c : null;
 }
@@ -430,19 +479,19 @@ function courseRemove(id) {
  * ===================================================================*/
 function studentList() {
   const a = actor();
-  return pinyin.sortStudents(core.coll('students').filter(s => !s.removed && perms.canSeeStudent(a, s)));
+  return pinyin.sortStudents(oc('students').filter(s => perms.canSeeStudent(a, s)));
 }
 function studentOf(clsId) {
   const x = Number(clsId);
   const a = actor();
   if (!perms.canSeeClass(a, x)) return [];
-  return pinyin.sortStudents(core.coll('students')
-    .filter(s => !s.removed && s.clsIds.indexOf(x) > -1 && perms.canSeeStudent(a, s)));
+  return pinyin.sortStudents(oc('students')
+    .filter(s => s.clsIds.indexOf(x) > -1 && perms.canSeeStudent(a, s)));
 }
-// 内部用：不过滤（名称解析、引用校验）
+// 内部用：不过滤权限（名称解析、引用校验），但仍限当前机构
 function studentRaw(id) {
   const x = Number(id);
-  return core.coll('students').find(s => s.id === x && !s.removed) || null;
+  return oc('students').find(s => s.id === x) || null;
 }
 function studentGet(id) {
   const s = studentRaw(id);
@@ -517,11 +566,11 @@ function studentRemove(id) {
   const t = now();
   s.removed = true; s.updatedAt = t;
   let n = 0;
-  core.coll('records').forEach(r => {
-    if (r.sid === s.id && !r.removed) { r.removed = true; r.updatedAt = t; n++; }
+  oc('records').forEach(r => {
+    if (r.sid === s.id) { r.removed = true; r.updatedAt = t; n++; }
   });
   // 家长绑定关系同步摘掉，避免指向已删学生
-  core.coll('members').forEach(m => {
+  oc('members').forEach(m => {
     const i = m.studentIds.indexOf(s.id);
     if (i > -1) { m.studentIds.splice(i, 1); m.updatedAt = t; }
   });
@@ -534,8 +583,8 @@ function studentRemove(id) {
  * ===================================================================*/
 function recordList() {
   const a = actor();
-  return core.coll('records')
-    .filter(r => !r.removed && perms.canSeeRecord(a, r))
+  return oc('records')
+    .filter(r => perms.canSeeRecord(a, r))
     .slice().sort((x, y) => y.id - x.id);
 }
 function recordOfStudent(sid) {
@@ -551,7 +600,7 @@ function recordOfClass(cid) {
 }
 function recordGet(id) {
   const x = Number(id);
-  const r = core.coll('records').find(y => y.id === x && !y.removed);
+  const r = oc('records').find(y => y.id === x);
   return (r && perms.canSeeRecord(actor(), r)) ? r : null;
 }
 function recordLatest(sid) {
@@ -576,7 +625,7 @@ function recordSave(pick, send) {
 
   // 权限：编辑看「只能改自己录的」，新建看「班级在范围内」
   if (rid) {
-    const r0 = core.coll('records').find(y => y.id === rid && !y.removed);
+    const r0 = oc('records').find(y => y.id === rid);
     if (!r0) return { ok: false, msg: '记录不存在' };
     const err = deny('record.update', { record: r0 });
     if (err) return { ok: false, msg: err };
@@ -590,9 +639,11 @@ function recordSave(pick, send) {
 
   const course = schema.str(p.course).trim();
   const courseId = Number(p.courseId) ||
-    ((core.coll('courses').find(c => c.clsId === cid && c.name === course && !c.removed) || {}).id || 0);
+    ((oc('courses').find(c => c.clsId === cid && c.name === course) || {}).id || 0);
 
   const base = {
+    // type 不传则沿用原有类型（编辑时不要把它冲掉），新建时默认 achievement
+    type: p.type,
     sid: stu.id, cid, courseId, course,
     score: schema.num(p.score, 85),
     tag: schema.str(p.tag).trim(),
@@ -602,7 +653,7 @@ function recordSave(pick, send) {
   };
 
   if (rid) {
-    const r = core.coll('records').find(y => y.id === rid && !y.removed);
+    const r = oc('records').find(y => y.id === rid);
     // 没显式传日期时保留原日期：编辑一条上周的记录不能把它改到今天
     const date = schema.normDate(p.date) || r.date;
     const next = schema.normalizeRecord(Object.assign({}, r, base, { date }), org(), now());
@@ -632,8 +683,8 @@ function recordMarkSent(ids) {
   const list = (Array.isArray(ids) ? ids : [ids]).map(Number);
   let n = 0; const t = now();
   let denied = 0;
-  core.coll('records').forEach(r => {
-    if (r.removed || r.sent || list.indexOf(r.id) < 0) return;
+  oc('records').forEach(r => {
+    if (r.sent || list.indexOf(r.id) < 0) return;
     if (!perms.can(a, 'record.send', { record: r })) { denied++; return; }
     r.sent = true; r.updatedAt = t; n++;
   });
@@ -641,7 +692,7 @@ function recordMarkSent(ids) {
   return { count: n, denied };
 }
 function recordRemove(id) {
-  const r = core.coll('records').find(y => y.id === Number(id) && !y.removed);
+  const r = oc('records').find(y => y.id === Number(id));
   if (!r) return { ok: false, msg: '记录不存在' };
   const err = deny('record.delete', { record: r });
   if (err) return { ok: false, msg: err };
@@ -653,8 +704,8 @@ function recordRemove(id) {
 /* =====================================================================
  * 人员（跨机构的账号本身；权限看 member）
  * ===================================================================*/
-function userList() { return core.coll('users').filter(u => !u.removed).slice(); }
-function userGet(id) { return core.coll('users').find(u => u.id === String(id) && !u.removed) || null; }
+function userList() { return oc('users').slice(); }
+function userGet(id) { return oc('users').find(u => u.id === String(id)) || null; }
 function userName(id) { const u = userGet(id); return u ? u.name : ''; }
 
 // 当前登录人的"合成身份"：user 的姓名 + member 的角色与范围
@@ -718,12 +769,11 @@ function userRemove(id) {
  * 评价模板
  * ===================================================================*/
 function tplList() {
-  return core.coll('templates').filter(t => !t.removed).slice()
-    .sort((a, b) => (a.sort - b.sort) || (a.id - b.id));
+  return oc('templates').slice().sort((a, b) => (a.sort - b.sort) || (a.id - b.id));
 }
 function tplGet(id) {
   const x = Number(id);
-  return core.coll('templates').find(t => t.id === x && !t.removed) || null;
+  return oc('templates').find(t => t.id === x) || null;
 }
 function tplCreate(data) {
   const err = deny('template.write');
@@ -877,12 +927,14 @@ function merge(remote) {
  * ===================================================================*/
 const db = {
   init,
+  status,
   raw: core.data,
   coll: core.coll,
   flush: core.flushAll,
   settings, setTeacher, today, canSend, merge, me, isParent,
   org, nextId: core.nextId,
   TAGS: schema.TAGS,
+  TYPES: schema.RECORD_TYPES,
 
   auth: {
     actor,
@@ -906,8 +958,8 @@ const db = {
 
   orgs: {
     current: orgCurrent, update: orgUpdate,
-    get: id => core.coll('orgs').find(o => o.id === String(id) && !o.removed) || null,
-    list: () => core.coll('orgs').filter(o => !o.removed)
+    get: id => oc('orgs').find(o => o.id === String(id)) || null,
+    list: () => oc('orgs')
   },
 
   members: {
@@ -922,8 +974,8 @@ const db = {
   classes: {
     list: classList, get: classGet, name: className,
     create: classCreate, update: classUpdate, remove: classRemove,
-    // 不过滤（内部/调试用，页面不要用）
-    _all: () => core.coll('classes')
+    // 不过滤权限，但仍限当前机构（内部/调试用，页面不要用）
+    _all: () => oc('classes')
   },
   courses: {
     list: courseList, of: courseOf, get: courseGet,

@@ -10,7 +10,9 @@ const path = require('path');
 
 const APPID = 'wx_your_appid'; // ← 必填（CI 下由 deploy.yml 用 Secret 注入）
 const KEY_PATH = path.join(__dirname, 'private.key');
-const PROJECT_PATH = path.join(__dirname, '..'); // 小程序工程根目录
+// 仓库根目录就是小程序根目录：这里必须是 __dirname，
+// 写成 '..' 会指向仓库的上一级，上传时找不到 app.json 直接失败。
+const PROJECT_PATH = __dirname;
 
 (async () => {
   if (APPID.startsWith('wx_your')) { console.error('请先把 APPID 改成你的小程序 AppID'); process.exit(1); }
@@ -19,7 +21,7 @@ const PROJECT_PATH = path.join(__dirname, '..'); // 小程序工程根目录
     type: 'miniProgram',
     projectPath: PROJECT_PATH,
     privateKeyPath: KEY_PATH,
-    ignores: ['node_modules/**/*', 'deploy.js', 'private.key', '.github/**/*', 'server/**/*', 'README.md']
+    ignores: ['node_modules/**/*', 'deploy.js', 'private.key', '.github/**/*', 'server/**/*', 'tests/**/*', '.workbuddy/**/*', 'README.md', 'project-engineering-file.md']
   });
   const version = process.argv[2] || '1.0.' + Math.floor(Date.now() / 1000);
   try {

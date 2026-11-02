@@ -26,6 +26,20 @@ PALETTE = {
     'red':    '#D9534F',
 }
 
+# 双主题调色板：键与 PALETTE 一致（'orange' = 品牌色）。
+# warm → assets/icons/（默认，文件名不含主题）；blue → assets/icons/blue/（同名文件）。
+# 换肤要求图标与主题同色系：蓝主题把暖灰换成冷灰、品牌橙换成清透蓝。
+THEME_PALETTES = {
+    'warm': PALETTE,
+    'blue': {
+        'ink':    '#33415E',   # 深藏青（对应主深色 #0D1349 的可读版）
+        'gray':   '#8FA3BC',   # 冷灰
+        'orange': '#59A8FF',   # 品牌蓝（沿用 'orange' 变体键名，避免改所有映射）
+        'white':  '#FFFFFF',
+        'red':    '#D9534F',
+    },
+}
+
 COL = PALETTE['ink']
 
 
@@ -232,6 +246,7 @@ VARIANTS = {
 }
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'icons')
+OUT_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets')
 
 
 def hex2rgb(h):
@@ -239,20 +254,60 @@ def hex2rgb(h):
     return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)) + (255,)
 
 
-def main():
+def emit_theme(theme, pal, out):
     global COL
-    os.makedirs(OUT, exist_ok=True)
+    os.makedirs(out, exist_ok=True)
     n = 0
     for name, fn in ICONS.items():
         for vk in VARIANTS[name]:
-            COL = hex2rgb(PALETTE[vk])
+            COL = hex2rgb(pal[vk])
             big = Image.new('RGBA', (PX * SS, PX * SS), (0, 0, 0, 0))
             d = ImageDraw.Draw(big)
             fn(d)
             small = big.resize((PX, PX), Image.LANCZOS)
-            small.save(os.path.join(OUT, '%s-%s.png' % (name, vk)))
+            small.save(os.path.join(out, '%s-%s.png' % (name, vk)))
             n += 1
-    print('生成 %d 个图标 → %s' % (n, os.path.normpath(OUT)))
+    print('生成 %d 个图标 → %s' % (n, os.path.normpath(out)))
+
+
+def emit_tabbar(theme, pal, out):
+    """tabBar 图标换肤：对现有单色 PNG 做颜色重映射（保留 alpha 形状不变）。"""
+    os.makedirs(out, exist_ok=True)
+    src = os.path.join(OUT_ROOT, 'tabbar')
+    # 灰色（未选中）与品牌色（选中）的目标色
+    gray_t, brand_t = hex2rgb(pal['gray'])[:3], hex2rgb(pal['orange'])[:3]
+    n = 0
+    for f in sorted(os.listdir(src)):
+        if not f.endswith('.png'):
+            continue
+        im = Image.open(os.path.join(src, f)).convert('RGBA')
+        # 判定该图标是选中态还是普通态：看主色更接近哪个基准
+        base = Image.new('RGBA', im.size, (0, 0, 0, 0))
+        px = im.load()
+        # 以不透明像素的平均色判断
+        rs = gs = bs = cnt = 0
+        for y in range(im.size[1]):
+            for x in range(im.size[0]):
+                r, g, b, a = px[x, y]
+                if a > 100:
+                    rs += r; gs += g; bs += b; cnt += 1
+        avg = (rs / cnt, gs / cnt, bs / cnt) if cnt else (0, 0, 0)
+        # 与 #E8590C 的距离决定选中态
+        d_sel = sum((avg[i] - (232, 89, 12)[i]) ** 2 for i in range(3))
+        d_gray = sum((avg[i] - (156, 148, 138)[i]) ** 2 for i in range(3))
+        tgt = brand_t if d_sel < d_gray else gray_t
+        recol = Image.new('RGBA', im.size, tgt + (0,))
+        recol.putalpha(im.split()[3])
+        recol.save(os.path.join(out, f))
+        n += 1
+    print('生成 %d 个 tabBar 图标 → %s' % (n, os.path.normpath(out)))
+
+
+def main():
+    for theme, pal in THEME_PALETTES.items():
+        out = OUT if theme == 'warm' else os.path.join(OUT, theme)
+        emit_theme(theme, pal, out)
+        emit_tabbar(theme, pal, os.path.join(OUT_ROOT, 'tabbar', theme))
 
 
 if __name__ == '__main__':

@@ -1,12 +1,20 @@
 // utils/icons.js —— 全站统一线性图标库（映射到 assets/icons/ 预渲染 PNG）
 // ------------------------------------------------------------------
 // 为什么是 PNG：小程序 image 组件对 SVG data URI 支持不稳定（真机常显示空白），
-// 预渲染 PNG 全端可靠。图标由 .workbuddy/gen_icons.py 统一生成：
+// 预渲染 PNG 全端可靠。图标由 tools/gen_icons.py 统一生成：
 //   · 24×24 网格，图形约束在 3~21 光学框内 → 视觉大小统一
 //   · 线宽统一 1.75、圆头圆角、不填充 → 笔画粗细一致
 //   · 72px 输出适配 3x 屏
+// 双主题：warm → assets/icons/；blue → assets/icons/blue/（同名文件、同色系键名）。
+// setTheme() 决定后续取图路径；页面在 onShow 里经 theme.apply() 重新取一次标准键。
 // 新增图标：在 gen_icons.py 里加绘制函数与配色组合，重跑脚本，再在此登记。
-const I = (name, color) => '/assets/icons/' + name + '-' + color + '.png';
+let theme = 'warm'; // 'warm' | 'blue'，由 theme.js 在启动与切换时同步
+const setTheme = t => { theme = t === 'blue' ? 'blue' : 'warm'; };
+const dirOf = () => (theme === 'blue' ? '/assets/icons/blue/' : '/assets/icons/');
+// 品牌色十六进制（JS 里需要色值参数时用，如播放按钮图标）
+const brand = () => (theme === 'blue' ? '#59A8FF' : '#E8590C');
+
+const I = (name, color) => dirOf() + name + '-' + color + '.png';
 
 const icons = {
   // —— 媒体 ——
@@ -38,4 +46,26 @@ const icons = {
   tpl: I('tpl', 'ink')
 };
 
-module.exports = icons;
+// 标准键集合：键名与各页面 data 里的 ico* 一一对应，
+// theme.apply() 在每次 onShow 时整包刷新，保证换肤后已加载页面的图标立即换色。
+function std() {
+  return {
+    icoAlbum: icons.album,
+    icoAudio: icons.audio,
+    icoCam: icons.camera,
+    icoCamera: icons.camera,
+    icoChev: icons.chevron,
+    icoChevD: icons.chevronDown,
+    icoClose: icons.close,
+    icoEdit: icons.edit,
+    icoSearch: icons.search,
+    icoMic: icons.mic(brand()),
+    icoOrange: icons.mic(brand()),
+    icoWhite: icons.mic('#FFFFFF'),
+    icoPlay: icons.play(brand()),
+    icoPause: icons.pause(brand()),
+    icoPlus: icons.plus(brand())
+  };
+}
+
+module.exports = { setTheme, brand, std, raw: icons };

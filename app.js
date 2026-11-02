@@ -1,8 +1,12 @@
 const db = require('./utils/db');
 const api = require('./utils/api');
+const theme = require('./utils/theme');
 
 App({
   onLaunch() {
+    // 主题：读回用户上次选的皮肤（图标模块同步 + 导航栏/tabBar 配色）
+    theme.init();
+
     // 主数据层：加载 → 迁移老数据 → 规范化 → 演示数据 → 引用自愈
     // init 内部有兜底：读盘失败时降级为只读，不会抛错也不会覆盖磁盘上的数据
     db.init();

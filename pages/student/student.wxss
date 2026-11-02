@@ -1,24 +1,24 @@
 .sturow { display: flex; align-items: center; gap: 20rpx; }
 .stuinfo { flex: 1; }
 .r1 { display: flex; align-items: center; gap: 12rpx; }
-.score { margin-left: auto; color: #e8590c; font-weight: 800; font-size: 34rpx; }
+.score { margin-left: auto; color: var(--brand); font-weight: 800; font-size: 34rpx; }
 .dimhead { display: flex; align-items: center; gap: 12rpx; }
-.notegroups { background: #faf9f7; border-radius: 16rpx; padding: 16rpx 20rpx; margin: 12rpx 0; }
+.notegroups { background: var(--bg); border-radius: 16rpx; padding: 16rpx 20rpx; margin: 12rpx 0; }
 .photogrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx; margin-top: 8rpx; }
 .photogrid image { width: 100%; aspect-ratio: 1; border-radius: 12rpx; }
-.hist { display: flex; align-items: center; gap: 12rpx; padding: 20rpx 0; border-bottom: 2rpx solid #f5f3f0; }
+.hist { display: flex; align-items: center; gap: 12rpx; padding: 20rpx 0; border-bottom: 2rpx solid var(--chip); }
 .hist:last-child { border-bottom: none; }
 .hleft { flex: 1; }
 .chev { width: 30rpx; height: 30rpx; flex: none; }
 /* 筛选条 */
 .filterbar { display: flex; align-items: center; gap: 12rpx; margin: 0 24rpx 16rpx; flex-wrap: wrap; }
 .fchip {
-  font-size: 24rpx; color: #6b655e; background: #fff;
+  font-size: 24rpx; color: var(--sub); background: #fff;
   border-radius: 999rpx; padding: 10rpx 24rpx;
-  box-shadow: 0 2rpx 8rpx rgba(60, 40, 20, 0.05);
+  box-shadow: 0 2rpx 8rpx var(--shadow);
 }
-.fchip.on { background: #e8590c; color: #fff; font-weight: 600; }
-.fcount { margin-left: auto; font-size: 22rpx; color: #b8b2aa; }
+.fchip.on { background: var(--brand); color: #fff; font-weight: 600; }
+.fcount { margin-left: auto; font-size: 22rpx; color: var(--faint); }
 
 /* 视频详情展示 */
 .videolist { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12rpx; margin-top: 8rpx; }
@@ -27,7 +27,7 @@
 /* 历史条目行内展开详情 */
 .histdetail {
   padding: 16rpx 4rpx 20rpx;
-  border-bottom: 2rpx solid #f5f3f0;
+  border-bottom: 2rpx solid var(--chip);
 }
 .hist.up { border-bottom-color: transparent; }
 .chev { width: 30rpx; height: 30rpx; flex: none; transition: transform .15s ease; }
@@ -41,23 +41,23 @@
 /* 课堂语音条：替代原生 audio 组件 */
 .voicebar {
   display: flex; align-items: center; gap: 18rpx;
-  background: #faf9f7; border: 2rpx solid #e5e2dd; border-radius: 16rpx;
+  background: var(--bg); border: 2rpx solid var(--line-2); border-radius: 16rpx;
   padding: 18rpx 22rpx; margin-top: 16rpx;
 }
 .vbtn {
   flex: none; width: 72rpx; height: 72rpx; border-radius: 50%;
-  background: #fdeee2; display: flex; align-items: center; justify-content: center;
+  background: var(--brand-soft); display: flex; align-items: center; justify-content: center;
 }
 .vbtn image { width: 40rpx; height: 40rpx; }
 .vmeta { flex: 1; min-width: 0; }
-.vt1 { font-size: 27rpx; font-weight: 600; color: #3a3a3a; }
-.vt2 { font-size: 22rpx; color: #b8b2aa; margin-top: 4rpx; }
+.vt1 { font-size: 27rpx; font-weight: 600; color: var(--text-2); }
+.vt2 { font-size: 22rpx; color: var(--faint); margin-top: 4rpx; }
 
 /* 照片网格自适应：1 张铺满整行（完整居中显示不裁切），2 张对半，3 张及以上三列 */
 .photogrid.pg1 { grid-template-columns: 1fr; }
 .photogrid.pg1 image {
   aspect-ratio: auto; height: 520rpx; width: 100%;
-  background: #f5f3f0;
+  background: var(--chip);
   object-fit: contain;
 }
 .photogrid.pg2 { grid-template-columns: repeat(2, 1fr); }
@@ -65,42 +65,42 @@
 
 /* 课程评价：维度名浅色，正文深色且加重；正文换行后与上行正文起点对齐（悬挂缩进） */
 .nline { display: flex; align-items: flex-start; line-height: 1.7; }
-.nlabel { color: #b8b2aa; flex: none; }
-.ntext { color: #3a3a3a; font-weight: 500; flex: 1; min-width: 0; }
+.nlabel { color: var(--faint); flex: none; }
+.ntext { color: var(--text-2); font-weight: 500; flex: 1; min-width: 0; }
 
 /* ---------- 个人卡统计（节课绿 / 优秀橙 / 学习日蓝） ---------- */
 .stats { display: flex; gap: 14rpx; margin-top: 22rpx; }
 .stat { font-size: 23rpx; font-weight: 600; padding: 8rpx 20rpx; border-radius: 999rpx; }
-.st-c { color: #3a9e5f; background: #e8f3ea; }
-.st-g { color: #e8590c; background: #fdeee2; }
-.st-d { color: #5a7bd6; background: #edf1fb; }
+.st-c { color: var(--ok); background: var(--ok-soft); }
+.st-g { color: var(--brand); background: var(--brand-soft); }
+.st-d { color: var(--info); background: var(--info-soft); }
 
 /* ---------- 资料待填写行 ---------- */
 .profrow {
   display: flex; align-items: center; justify-content: space-between;
   margin: 0 36rpx 20rpx;
 }
-.proflink { color: #e8590c; font-size: 27rpx; font-weight: 700; }
+.proflink { color: var(--brand); font-size: 27rpx; font-weight: 700; }
 
 /* ---------- 评价分档徽标（优秀绿 / 良好橙 / 加油蓝灰） ---------- */
 .badge {
   font-size: 22rpx; font-weight: 700; padding: 6rpx 18rpx;
   border-radius: 999rpx; flex: none;
 }
-.badge.good { color: #3a9e5f; background: #e8f3ea; }
-.badge.mid { color: #e8590c; background: #fdeee2; }
-.badge.low { color: #5a7bd6; background: #edf1fb; }
+.badge.good { color: var(--ok); background: var(--ok-soft); }
+.badge.mid { color: var(--brand); background: var(--brand-soft); }
+.badge.low { color: var(--info); background: var(--info-soft); }
 .badge.good, .badge.mid, .badge.low { font-size: 24rpx; padding: 10rpx 26rpx; }
 
 /* ---------- 记录头部：最近一次 / 本次 + 课程 + 班级·日期 + 评价徽标 ---------- */
 .dimhead { display: flex; align-items: center; gap: 14rpx; flex-wrap: wrap; }
-.pill-o { background: #e8590c; }
+.pill-o { background: var(--brand); }
 .lcourse { font-size: 32rpx; font-weight: 700; }
 .dhr { margin-left: auto; display: flex; align-items: center; gap: 12rpx; }
 .nofarm { padding: 8rpx 0 4rpx; }
 
 /* ---------- 评价汇总 ---------- */
-.tagsum { margin-top: 18rpx; padding-top: 18rpx; border-top: 2rpx dashed #eee9e3; }
+.tagsum { margin-top: 18rpx; padding-top: 18rpx; border-top: 2rpx dashed var(--line); }
 .ts-title { margin-bottom: 12rpx; }
 
 /* ---------- 课程页签：下划线式 ---------- */
@@ -109,10 +109,10 @@
   margin: 8rpx 32rpx 20rpx;
 }
 .ctab {
-  font-size: 28rpx; color: #6b655e; padding: 12rpx 4rpx;
+  font-size: 28rpx; color: var(--sub); padding: 12rpx 4rpx;
   border-bottom: 6rpx solid transparent; font-weight: 500;
 }
-.ctab.on { color: #e8590c; border-bottom-color: #e8590c; font-weight: 700; }
+.ctab.on { color: var(--brand); border-bottom-color: var(--brand); font-weight: 700; }
 .ctabs .fcount { margin-left: auto; }
 
 /* ---------- 历史课程列表 ---------- */
@@ -121,7 +121,7 @@
 .ht1 { display: flex; align-items: center; gap: 12rpx; }
 .ht1 .badge { font-size: 21rpx; padding: 4rpx 14rpx; }
 .hright { display: flex; align-items: center; gap: 14rpx; flex: none; }
-.hcam { display: flex; align-items: center; gap: 6rpx; font-size: 22rpx; color: #9c948a; }
+.hcam { display: flex; align-items: center; gap: 6rpx; font-size: 22rpx; color: var(--muted); }
 .camico { width: 28rpx; height: 28rpx; }
 
-.slogan { text-align: center; color: #b8b1a7; font-size: 24rpx; margin: 40rpx 0 20rpx; }
+.slogan { text-align: center; color: var(--faint); font-size: 24rpx; margin: 40rpx 0 20rpx; }

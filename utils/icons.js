@@ -68,4 +68,9 @@ function std() {
   };
 }
 
-module.exports = { setTheme, brand, std, raw: icons };
+// 挂在同一个导出对象上：既有用法（icons.search / icons.mic('#E8590C')）不受影响
+icons.setTheme = setTheme;
+icons.brand = brand;
+icons.std = std;
+
+module.exports = icons;

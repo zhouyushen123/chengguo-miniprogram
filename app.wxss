@@ -1,16 +1,95 @@
+/* ==================================================================
+   全局主题令牌（换肤体系的核心）
+   ------------------------------------------------------------------
+   · 默认值 = 暖橙主题（page 级 CSS 变量，全站继承）
+   · .theme-blue = 清透蓝主题覆盖（挂在每页最外层 .theme-root 上）
+   · 页面 wxss 一律使用 var(--token)，禁止硬编码主题色——
+     新增样式时从这里取令牌，换肤才能彻底（图标、按钮、卡片同色系联动）
+   ================================================================== */
 page {
-  background: #f7f6f3;
+  /* 品牌色（按钮 / 选中态 / 强调） */
+  --brand: #E8590C;
+  --brand-a: #F7A23B;   /* 渐变起 */
+  --brand-b: #E8590C;   /* 渐变止 */
+  --brand-soft: #FDEEE2;  /* 品牌浅底（chip 选中底、提示底） */
+  --brand-tint: #FFF4E8;  /* 更浅的暖底（输入底、提示条） */
+  --brand-tint-0: rgba(255, 244, 232, 0);  /* 同上的透明端（渐隐用，避免渐变中段发灰） */
+  --brand-border: #F6DCC0;  /* 品牌浅边框 */
+  --brand-glow: rgba(232, 89, 12, 0.15);
+  --brand-shadow: rgba(232, 89, 12, 0.28);  /* 品牌按钮投影 */
+  --brand-shadow-soft: rgba(232, 89, 12, 0.25);
+  /* 中性色 */
+  --bg: #FAF9F7;   /* 页面底 */
+  --card: #FFFFFF;   /* 卡片 */
+  --chip: #F5F3F0;   /* 未选中 chip / 次级底 */
+  --line: #F0EEEA;   /* 分隔线 */
+  --line-2: #E5E2DD;   /* 描边 */
+  --line-3: #ECEAE6;   /* 深分隔 */
+  --text: #232323;   /* 标题 */
+  --text-2: #3A3A3A;   /* 正文 */
+  --sub: #6B655E;   /* 次要说明 */
+  --muted: #9C948A;   /* 弱化信息 / 未选中 tab */
+  --faint: #B8B2AA;   /* 占位 / 箭头 */
+  /* 语义色（两主题通用，蓝主题略调冷） */
+  --ok: #3A9E5F;  --ok-soft: #E8F3EA;
+  --info: #5A7BD6;  --info-soft: #EDF1FB;
+  --danger: #C0564A;
+  /* 阴影 */
+  --shadow: rgba(60, 40, 20, 0.05);   /* 卡片投影 */
+  --mask: rgba(0, 0, 0, 0.55);   /* 弹窗遮罩 */
+
+  background: var(--bg);
   font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
   font-size: 28rpx;
-  color: #232323;
+  color: var(--text);
 }
+
+/* ---------- 清透蓝主题（设计规范：主 #59A8FF / 深 #0D1349 / 浅蓝 #A2DCFD） ---------- */
+.theme-blue {
+  --brand: #59A8FF;
+  --brand-a: #59A8FF;
+  --brand-b: #3D8BEE;
+  --brand-soft: #E3F0FF;
+  --brand-tint: #EFF6FF;
+  --brand-tint-0: rgba(239, 246, 255, 0);
+  --brand-border: #C7E1FF;
+  --brand-glow: rgba(89, 168, 255, 0.18);
+  --brand-shadow: rgba(89, 168, 255, 0.32);
+  --brand-shadow-soft: rgba(89, 168, 255, 0.28);
+
+  --bg: #F3F8FE;
+  --card: #FDFEFF;
+  --chip: #EDF3FA;
+  --line: #E4EEF8;
+  --line-2: #D5E3F2;
+  --line-3: #E8F0F9;
+  --text: #0D1349;
+  --text-2: #33415E;
+  --sub: #5E7290;
+  --muted: #8FA3BC;
+  --faint: #A9BACC;
+
+  --ok: #3AA97F;  --ok-soft: #E3F6EC;
+  --info: #4A7DDC;  --info-soft: #EDF1FB;
+  --danger: #D9534F;
+
+  --shadow: rgba(30, 70, 140, 0.08);
+}
+
+/* 每页最外层根节点：承载主题类，撑满全屏并把主题底色铺到页面上 */
+.theme-root {
+  min-height: 100vh;
+  background: var(--bg);
+  box-sizing: border-box;
+}
+
 /* ---------- 卡片体系 ---------- */
 .card {
-  background: #fff;
+  background: var(--card);
   border-radius: 28rpx;
   padding: 28rpx;
   margin: 0 24rpx 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(60, 40, 20, 0.05);
+  box-shadow: 0 4rpx 16rpx var(--shadow);
 }
 .sec {
   display: flex;
@@ -23,51 +102,51 @@ page {
   width: 8rpx;
   height: 30rpx;
   border-radius: 8rpx;
-  background: linear-gradient(180deg, #f7a23b, #e8590c);
+  background: linear-gradient(180deg, var(--brand-a), var(--brand-b));
 }
 .sec .label { margin: 0; }
-.label { font-size: 28rpx; font-weight: 700; color: #232323; margin: 28rpx 0 16rpx; }
+.label { font-size: 28rpx; font-weight: 700; color: var(--text); margin: 28rpx 0 16rpx; }
 .h1 { font-size: 34rpx; font-weight: 700; }
-.mi { font-size: 24rpx; color: #9c948a; }
+.mi { font-size: 24rpx; color: var(--muted); }
 /* ---------- 胶囊 ---------- */
 .chips { display: flex; flex-wrap: wrap; gap: 16rpx; }
 .chip {
   font-size: 26rpx;
   padding: 14rpx 32rpx;
   border-radius: 999rpx;
-  background: #f0eeea;
-  color: #4a4a4a;
+  background: var(--chip);
+  color: var(--text-2);
   transition: all 0.15s;
 }
 .chip.on {
-  background: #fdeee2;
-  color: #e8590c;
+  background: var(--brand-soft);
+  color: var(--brand);
   font-weight: 700;
-  box-shadow: inset 0 0 0 3rpx #e8590c, 0 4rpx 12rpx rgba(232, 89, 12, 0.15);
+  box-shadow: inset 0 0 0 3rpx var(--brand), 0 4rpx 12rpx var(--brand-glow);
 }
 /* ---------- 按钮 ---------- */
 .btn {
-  background: linear-gradient(135deg, #f7a23b, #e8590c);
+  background: linear-gradient(135deg, var(--brand-a), var(--brand-b));
   color: #fff;
   border-radius: 26rpx;
   font-size: 30rpx;
   font-weight: 600;
   padding: 24rpx 0;
   text-align: center;
-  box-shadow: 0 8rpx 20rpx rgba(232, 89, 12, 0.28);
+  box-shadow: 0 8rpx 20rpx var(--brand-shadow);
 }
 .btn.ghost {
-  background: #fff;
-  color: #4a4a4a;
-  border: 2rpx solid #e5e2dd;
+  background: var(--card);
+  color: var(--text-2);
+  border: 2rpx solid var(--line-2);
   font-weight: 500;
   box-shadow: none;
 }
 .btn-hover { opacity: 0.85; transform: scale(0.985); }
 /* ---------- 输入 ---------- */
 .input, .pickerbox {
-  background: #faf9f7;
-  border: 2rpx solid #e5e2dd;
+  background: var(--bg);
+  border: 2rpx solid var(--line-2);
   border-radius: 20rpx;
   padding: 22rpx 26rpx;
   font-size: 28rpx;
@@ -76,15 +155,15 @@ page {
 /* ---------- 头像 ---------- */
 .ava {
   width: 92rpx; height: 92rpx; border-radius: 30rpx;
-  background: linear-gradient(135deg, #f7a23b, #e8590c);
+  background: linear-gradient(135deg, var(--brand-a), var(--brand-b));
   color: #fff; font-size: 36rpx; font-weight: 700;
   display: flex; align-items: center; justify-content: center; flex: none;
-  box-shadow: 0 6rpx 14rpx rgba(232, 89, 12, 0.25);
+  box-shadow: 0 6rpx 14rpx var(--brand-shadow-soft);
 }
 .pill { font-size: 22rpx; padding: 6rpx 18rpx; border-radius: 999rpx; color: #fff; }
-.empty { text-align: center; color: #9c948a; padding: 140rpx 40rpx; font-size: 27rpx; line-height: 1.8; }
-.chev { color: #c9c4bd; font-size: 38rpx; font-weight: 300; }
-/* 橙色大按钮内的白色线性图标（如「＋ 记录本节成果」） */
+.empty { text-align: center; color: var(--muted); padding: 140rpx 40rpx; font-size: 27rpx; line-height: 1.8; }
+.chev { color: var(--faint); font-size: 38rpx; font-weight: 300; }
+/* 品牌色大按钮内的白色线性图标（如「＋ 记录本节成果」） */
 .btn { display: flex; align-items: center; justify-content: center; gap: 10rpx; }
 .bico { width: 32rpx; height: 32rpx; }
 /* 下拉选择框：文字 + 统一箭头图标 */

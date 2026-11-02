@@ -52,7 +52,7 @@
 ```
 橙果-小程序/
 ├── app.js / app.json / app.wxss      全局：数据初始化、tabBar、设计规范
-├── utils/db/                         主数据层（八类实体 + 机构权限，唯一读写入口）
+├── utils/db/                         主数据层（十类实体 + 机构权限，唯一读写入口）
 │   ├── index.js                      仓储 API：db.classes / db.students / db.records / db.auth …
 │   ├── permissions.js                权限模型：角色 × 动作 × 数据范围（纯函数）
 │   ├── schema.js                     实体字段、默认值、校验规则
@@ -72,7 +72,7 @@
 ### 数据层约定（改数据前必读）
 
 - 页面**只**通过 `const db = require('../../utils/db')` 读写数据，不碰 `wx.setStorageSync`，也不直接改返回对象里的字段——改字段要走 `update` / `markSent` 等方法，否则不会落盘、不会更新 `updatedAt`。
-- 八类实体：机构 `orgs`、成员 `members`、班级 `classes`、课程 `courses`、学生 `students`、课堂记录 `records`、人员 `users`、评价模板 `templates`，各自一个 storage key（对应将来云端一张表）。
+- 十类实体：机构 `orgs`、成员 `members`、学期 `terms`（开班时间段，含内置「长期班」收编历史数据）、班级 `classes`（挂学期，mode = 学期制/课时结转，可指派主讲）、课程 `courses`、学生 `students`、报名 `enrollments`（课时账本：购买/已消/结转溯源）、课堂记录 `records`（结转班每录一节自动消 1 课时）、人员 `users`、评价模板 `templates`，各自一个 storage key（对应将来云端一张表）。
 - **列表查询默认已按身份过滤**：老师只见自己带的班、家长只见自己孩子且仅已发布。页面不要再写 `role === 'parent'` 这类判断，规则只在 `utils/db/permissions.js` 定义一次。
 - **读走 `orgColl()`、写走 `coll()`**：读取一律经当前机构视图，写入保留全量。写也走视图会把其它机构的数据一起覆盖掉。
 - **媒体必须过 `utils/media.js`**：`wx.chooseMedia` 拿到的 `tempFilePath` 会在小程序退出后被系统清理，直接入库等于过几天全部裂图。

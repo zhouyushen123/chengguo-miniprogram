@@ -105,41 +105,53 @@ Page({
   // 步骤1：逐班决策（随学期结束 / 延续到下学期）
   wzDecision(e) {
     const cid = +e.currentTarget.dataset.cid, v = e.currentTarget.dataset.v;
-    const i = this.data.wz.classes.findIndex(c => c.id === cid);
-    this.setData({ ['wz.classes[' + i + '].decision']: v });
+    const classes = this.data.wz.classes.map(c =>
+      c.id === cid ? Object.assign({}, c, { decision: v }) : c);
+    this.setData({ 'wz.classes': classes });
   },
 
   // 步骤2：延续班级的课程勾选与老师指派
   wzCourse(e) {
     const ci = +e.currentTarget.dataset.ci, i = +e.currentTarget.dataset.i;
-    const key = 'wz.classes[' + ci + '].courses[' + i + '].sel';
-    this.setData({ [key]: !this.data.wz.classes[ci].courses[i].sel });
+    const classes = this.data.wz.classes.map((c, k) => k !== ci ? c : Object.assign({}, c, {
+      courses: c.courses.map((cr, j) => j !== i ? cr : Object.assign({}, cr, { sel: !cr.sel }))
+    }));
+    this.setData({ 'wz.classes': classes });
   },
   wzTeacher(e) {
     const ci = +e.currentTarget.dataset.ci;
-    const idx = +e.detail.value;
-    const t = this.data.wz.staff[idx] || { id: 0, name: '' };
-    this.setData({ ['wz.classes[' + ci + '].teacherId']: t.id, ['wz.classes[' + ci + '].teacherName']: t.name });
+    const t = this.data.wz.staff[+e.detail.value] || { id: 0, name: '' };
+    const classes = this.data.wz.classes.map((c, k) =>
+      k !== ci ? c : Object.assign({}, c, { teacherId: t.id, teacherName: t.name }));
+    this.setData({ 'wz.classes': classes });
   },
 
   // 步骤3：学生结转（单个切换 + 整班批量）
   wzAct(e) {
     const ci = +e.currentTarget.dataset.ci, i = +e.currentTarget.dataset.i, v = e.currentTarget.dataset.v;
-    this.setData({ ['wz.classes[' + ci + '].students[' + i + '].act']: v });
-    this._recount(ci);
+    const classes = this.data.wz.classes.map((c, k) => {
+      if (k !== ci) return c;
+      const students = c.students.map((s, j) => j !== i ? s : Object.assign({}, s, { act: v }));
+      return Object.assign({}, c, {
+        students,
+        reCount: students.filter(x => x.act === 're').length,
+        churnCount: students.filter(x => x.act === 'churn').length
+      });
+    });
+    this.setData({ 'wz.classes': classes });
   },
   wzBatch(e) {
     const ci = +e.currentTarget.dataset.ci, v = e.currentTarget.dataset.v;
-    const students = this.data.wz.classes[ci].students.map(s => Object.assign(s, { act: v }));
-    this.setData({ ['wz.classes[' + ci + '].students']: students });
-    this._recount(ci);
-  },
-  _recount(ci) {
-    const st = this.data.wz.classes[ci].students;
-    this.setData({
-      ['wz.classes[' + ci + '].reCount']: st.filter(s => s.act === 're').length,
-      ['wz.classes[' + ci + '].churnCount']: st.filter(s => s.act === 'churn').length
+    const classes = this.data.wz.classes.map((c, k) => {
+      if (k !== ci) return c;
+      const students = c.students.map(s => Object.assign({}, s, { act: v }));
+      return Object.assign({}, c, {
+        students,
+        reCount: students.filter(x => x.act === 're').length,
+        churnCount: students.filter(x => x.act === 'churn').length
+      });
     });
+    this.setData({ 'wz.classes': classes });
   },
 
   // 步骤4：确认生成

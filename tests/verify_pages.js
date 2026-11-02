@@ -273,7 +273,7 @@ ok('学期列表渲染：内置长期班 + 建议胶囊生成', () => {
 });
 ok('新建学期（秋季班）落库并出现在列表', () => {
   terms.openCreate();
-  terms.onF({ detail: { value: '2027 春季班' } });
+  terms.onF({ currentTarget: { dataset: { k: 'name' } }, detail: { value: '2027 春季班' } });
   terms.saveTerm();
   assert.ok(terms.data.terms.some(t => t.name === '2027 春季班'));
   assert.strictEqual(terms.data.showCreate, false);
@@ -312,7 +312,8 @@ ok('结转向导：建结转班+报名+记录后可走通四步', () => {
   const newEn = db.enrollments.of(newCls.id, s0.id);
   assert.ok(newEn, '续报报名应存在');
   assert.strictEqual(newEn.totalHours, 9, '剩余 9 课时带入');
-  const oldEn = db.enrollments.of(c0.id, s0.id);
+  const oldEn = db.enrollments.ofClass(c0.id).find(e => e.studentId === s0.id);
+  assert.ok(oldEn, '旧报名应存在');
   assert.strictEqual(oldEn.status, 'carried', '旧报名标记已结转');
   assert.strictEqual(db.terms.get(t0.id).status, 'archived', '旧学期已归档');
 });

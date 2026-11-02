@@ -3,6 +3,7 @@ const api = require('../../utils/api');
 const stt = require('../../utils/stt');
 const icons = require('../../utils/icons');
 const media = require('../../utils/media');
+const theme = require('../../utils/theme');
 
 // 媒体限制：单个文件 50MB，视频最多 3 个，照片最多 9 张
 const MAX_FILE = 50 * 1024 * 1024;
@@ -72,6 +73,7 @@ Page({
   onStuQuery(e) { this.setData({ stuQuery: e.detail.value }); this._applyStuFilter(); },
   toggleStuExpand() { this.setData({ stuExpanded: !this.data.stuExpanded }); this._applyStuFilter(); },
   onShow() {
+    theme.apply(this); // 主题：根类名 + 图标 + 原生 chrome
     // 从模板页返回：应用所选模板与语音状态
     const pick = getApp().globalData.pick;
     if (pick && pick.noteInsert) {

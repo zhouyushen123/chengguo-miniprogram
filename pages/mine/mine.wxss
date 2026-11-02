@@ -54,3 +54,24 @@
   flex: none; margin-left: 18rpx; padding: 6rpx 20rpx;
   background: var(--brand); color: #fff; border-radius: 999rpx; font-size: 22rpx;
 }
+
+/* ---------- 换肤卡片 ---------- */
+.skin-t { font-size: 28rpx; font-weight: 700; color: var(--text); margin-bottom: 20rpx; }
+.skins { display: flex; gap: 18rpx; }
+.skin {
+  flex: 1; border-radius: 22rpx; padding: 22rpx 24rpx;
+  background: var(--chip); border: 3rpx solid transparent;
+  transition: all 0.15s; position: relative;
+}
+.skin.on { background: var(--brand-soft); border-color: var(--brand); }
+.skin-dot {
+  width: 56rpx; height: 56rpx; border-radius: 50%;
+  box-shadow: inset 0 0 0 4rpx rgba(255, 255, 255, 0.65);
+  margin-bottom: 14rpx;
+}
+.skin-n { font-size: 28rpx; font-weight: 700; color: var(--text); }
+.skin-d { font-size: 22rpx; color: var(--muted); margin-top: 4rpx; }
+.skin-cur {
+  position: absolute; right: 20rpx; top: 22rpx;
+  font-size: 20rpx; font-weight: 700; color: var(--brand);
+}

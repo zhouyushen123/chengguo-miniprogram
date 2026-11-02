@@ -1,6 +1,7 @@
 const db = require('../../utils/db');
 const icons = require('../../utils/icons');
 const media = require('../../utils/media');
+const theme = require('../../utils/theme');
 
 // 角色选项目：负责人不在新建时出现（一个机构只能有一个，靠「移交」转移）
 const ROLE_OPTS = [
@@ -26,7 +27,7 @@ Page({
   onLoad(q) {
     if (q && q.tab !== undefined) this.setData({ tab: Math.min(+q.tab || 0, 3) });
   },
-  onShow() { this.refresh(); },
+  onShow() { theme.apply(this); this.refresh(); },
   refresh() {
     const s = db.settings();
     const classes = db.classes.list();

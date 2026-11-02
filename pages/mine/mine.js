@@ -1,4 +1,5 @@
 const db = require('../../utils/db');
+const theme = require('../../utils/theme');
 
 Page({
   data: {
@@ -9,7 +10,14 @@ Page({
     // 入口列表
     entries: []
   },
-  onShow() { this.refresh(); },
+  onShow() { theme.apply(this); this.setData({ themes: theme.LIST, theme: theme.current() }); this.refresh(); },
+  // 换肤：落盘 + 立即应用（本页 CSS 变量与图标即时切换，其他页面在下一次 onShow 跟上）
+  pickTheme(e) {
+    const t = theme.setTheme(e.currentTarget.dataset.k);
+    theme.apply(this);
+    this.setData({ theme: t });
+    wx.showToast({ title: '已换为「' + (theme.LIST.find(x => x.k === t) || {}).name + '」', icon: 'none' });
+  },
   refresh() {
     const s = db.settings();
     const u = db.users.current() || {};

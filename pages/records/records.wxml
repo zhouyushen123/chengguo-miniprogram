@@ -1,3 +1,4 @@
+<view class="theme-root {{themeCls}}">
 <!-- 筛选区：班级 → 日期 → 等级（级联） -->
 <view class="filtbar">
   <scroll-view scroll-x class="clsbar">
@@ -21,8 +22,8 @@
     <view class="recinfo">
       <view class="r1"><b>{{item.name}}</b><text class="mi">{{item.course}} · {{item.date}}</text><text class="score">{{item.score}}分</text></view>
       <view class="chips" style="margin:8rpx 0">
-        <text wx:if="{{item.tag}}" class="pill" style="background:#e8590c">{{item.tag}}</text>
-        <text class="pill" style="background:{{item.sent?'#3a9e5f':'#b8860b'}}">{{item.sent?'已发送':'待发送'}}</text>
+        <text wx:if="{{item.tag}}" class="pill" style="background:var(--brand)">{{item.tag}}</text>
+        <text class="pill" style="background:{{item.sent?'var(--ok)':'var(--warn)'}}">{{item.sent?'已发送':'待发送'}}</text>
       </view>
       <view wx:if="{{item.note}}" class="mi note">“{{item.note}}”</view>
       <view class="mi footer"><image class="fico" src="{{icoCamera}}" /> {{item.photoCount}} 张<block wx:if="{{item.hasAudio}}"> · <image class="fico" src="{{icoAudio}}" /> 语音</block></view>
@@ -37,3 +38,4 @@
 
 <!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
 <privacy-popup />
+</view>

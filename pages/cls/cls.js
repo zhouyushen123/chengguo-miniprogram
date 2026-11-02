@@ -1,6 +1,7 @@
 const db = require('../../utils/db');
 const api = require('../../utils/api');
 const icons = require('../../utils/icons');
+const theme = require('../../utils/theme');
 
 // 班级详情页：学生今日录入三状态（未录/已录/已发布）+ 筛选；下方本班记录支持按日期、等级筛选
 // 色块排序：未录入 > 已录入 > 已发布（未录入的排最前，提醒优先录入），同状态内保持姓氏拼音序
@@ -22,7 +23,7 @@ Page({
   onLoad(q) {
     this.clsId = +q.id || 0;
   },
-  onShow() { this.render(); },
+  onShow() { theme.apply(this); this.render(); },
   render() {
     const cls = db.classes.get(this.clsId);
     // 班级不在可见范围内时给出明确提示，而不是留一个白屏

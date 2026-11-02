@@ -2,6 +2,7 @@
 const db = require('../../utils/db');
 const stt = require('../../utils/stt');
 const icons = require('../../utils/icons');
+const theme = require('../../utils/theme');
 
 Page({
   data: { mode: 'manage', groups: [], sel: [], previewText: '', addingIdx: -1,
@@ -16,7 +17,7 @@ Page({
     this.render();
     if (this.mode === 'preview') this.buildPreview();
   },
-  onShow() { this.render(); },
+  onShow() { theme.apply(this); this.render(); },
   render() {
     const t = db.templates.list();
     this.setData({ groups: t.map((g, i) => ({ id: g.id, n: g.name, i, opts: g.options.map((o, j) => ({ o, j, on: this.sel.includes(i + ':' + j) })) })) });

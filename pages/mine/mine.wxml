@@ -1,3 +1,4 @@
+<view class="theme-root {{themeCls}}">
 <view class="hero"></view>
 
 <view class="page-title">我的</view>
@@ -29,6 +30,19 @@
   </view>
 </view>
 
+<!-- 换肤：点击即全局切换（卡片/按钮/图标/tabBar 同色系联动） -->
+<view class="card skincard">
+  <view class="skin-t">换肤</view>
+  <view class="skins">
+    <view wx:for="{{themes}}" wx:key="k" class="skin {{item.k===theme?'on':''}}" hover-class="mrow-hover" bindtap="pickTheme" data-k="{{item.k}}">
+      <view class="skin-dot" style="background:linear-gradient(135deg,{{item.dot2}},{{item.dot}})"></view>
+      <view class="skin-n">{{item.name}}</view>
+      <view class="skin-d">{{item.desc}}</view>
+      <view wx:if="{{item.k===theme}}" class="skin-cur">✓ 使用中</view>
+    </view>
+  </view>
+</view>
+
 <!-- 危险操作：仅负责人/管理员可见 -->
 <view wx:if="{{isManager && hasDemo}}" class="card danger" hover-class="mrow-hover" bindtap="clearDemo">清空演示数据</view>
 
@@ -36,3 +50,4 @@
 
 <!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
 <privacy-popup />
+</view>

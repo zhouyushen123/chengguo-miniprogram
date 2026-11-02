@@ -1,6 +1,7 @@
 const db = require('../../utils/db');
 const api = require('../../utils/api');
 const icons = require('../../utils/icons');
+const theme = require('../../utils/theme');
 
 Page({
   data: {
@@ -14,6 +15,7 @@ Page({
     icoSearch: icons.search, icoClose: icons.close, icoChev: icons.chevron, icoCam: icons.camera
   },
   onShow() {
+    theme.apply(this); // 主题：根类名 + 图标 + 原生 chrome
     const u = db.users.current() || { role: 'teacher', name: '' };
     const d = new Date();
     const dateStr = (d.getMonth() + 1) + '月' + d.getDate() + '日 周' + '日一二三四五六'[d.getDay()];

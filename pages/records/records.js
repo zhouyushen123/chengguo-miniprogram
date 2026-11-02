@@ -1,6 +1,7 @@
 const db = require('../../utils/db');
 const api = require('../../utils/api');
 const icons = require('../../utils/icons');
+const theme = require('../../utils/theme');
 
 // 筛选梯度：班级 → 录入日期 → 成果等级
 // 上一层变化会重算下一层的可选项：选了班级，日期只列该班有记录的日期；选了日期，等级只列该批记录中出现过的等级
@@ -15,6 +16,7 @@ Page({
     icoChevD: icons.chevronDown, icoCamera: icons.camera, icoAudio: icons.audio
   },
   onShow() {
+    theme.apply(this); // 主题：根类名 + 图标 + 原生 chrome
     const tabs = ['全部'].concat(db.classes.list().map(c => c.name));
     // 从首页班级卡跳入：定位到对应班级页签
     const preset = getApp().globalData.recTab;

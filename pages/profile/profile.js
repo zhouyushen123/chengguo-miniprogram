@@ -1,4 +1,5 @@
 const db = require('../../utils/db');
+const theme = require('../../utils/theme');
 
 Page({
   data: { fields: [
@@ -11,6 +12,8 @@ Page({
     { k: 'goal', label: '学习目标', ph: '如 考级/兴趣培养' },
     { k: 'note', label: '备注', ph: '其他需要老师了解的信息' }
   ], f: {} },
+  onShow() { theme.apply(this); },
+
   onLoad(q) {
     this.sid = +q.id;
     const s = db.students.get(this.sid);

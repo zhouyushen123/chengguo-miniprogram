@@ -1,3 +1,4 @@
+<view class="theme-root {{themeCls}}">
 <view wx:if="{{s}}" class="wrap">
   <!-- 个人卡：头像 + 姓名 + 班级/家长 + 三项统计 -->
   <view class="card">
@@ -49,7 +50,7 @@
       </view>
     </view>
     <view class="chips" style="margin:12rpx 0">
-      <text class="pill" style="background:{{rec.sent?'#3a9e5f':'#b8860b'}}">{{rec.sent?'已发送':'待发送'}}</text>
+      <text class="pill" style="background:{{rec.sent?'var(--ok)':'var(--warn)'}}">{{rec.sent?'已发送':'待发送'}}</text>
     </view>
     <view class="photogrid {{photoCls}}">
       <image wx:for="{{photoUrls}}" wx:key="*this" src="{{item}}" mode="{{photoCls==='pg1'?'aspectFit':'aspectFill'}}" bindtap="previewPhoto" data-i="{{index}}" />
@@ -86,7 +87,7 @@
         </view>
       </view>
       <view class="chips" style="margin:12rpx 0">
-        <text class="pill" style="background:{{latest.sent?'#3a9e5f':'#b8860b'}}">{{latest.sent?'已发送':'待发送'}}</text>
+        <text class="pill" style="background:{{latest.sent?'var(--ok)':'var(--warn)'}}">{{latest.sent?'已发送':'待发送'}}</text>
       </view>
       <view wx:if="{{!photoUrls.length && !videoUrls.length}}" class="mi nofarm">本次还没有拍照片或录音 📷</view>
       <view class="photogrid {{photoCls}}">
@@ -122,14 +123,14 @@
           </view>
           <view class="hright">
             <view wx:if="{{item.pcnt}}" class="hcam"><image class="camico" src="{{icoCam}}" mode="aspectFit" />{{item.pcnt}}</view>
-            <text wx:if="{{!item.sent}}" class="pill" style="background:#b8860b">待发送</text>
+            <text wx:if="{{!item.sent}}" class="pill" style="background:var(--warn)">待发送</text>
             <image class="chev {{expandId===item.id?'up':''}}" src="{{icoChev}}" mode="aspectFit" />
           </view>
         </view>
         <!-- 行内展开：照片/视频在前，课程评价在后 -->
         <view wx:if="{{expandId===item.id}}" class="histdetail">
           <view class="chips" style="margin:0 0 12rpx">
-            <text class="pill" style="background:{{item.sent?'#3a9e5f':'#b8860b'}}">{{item.sent?'已发送':'待发送'}}</text>
+            <text class="pill" style="background:{{item.sent?'var(--ok)':'var(--warn)'}}">{{item.sent?'已发送':'待发送'}}</text>
           </view>
           <view class="photogrid {{item.pcls}}" wx:if="{{item.photos.length}}">
             <image wx:for="{{item.photos}}" wx:for-item="ph" wx:key="*this" src="{{ph}}" mode="{{item.pcls==='pg1'?'aspectFit':'aspectFill'}}" />
@@ -152,3 +153,4 @@
 
 <!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
 <privacy-popup />
+</view>

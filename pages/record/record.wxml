@@ -1,3 +1,4 @@
+<view class="theme-root {{themeCls}}">
 <view class="wrap">
   <view wx:if="{{!editing}}" class="card">
     <view class="sec stuhead">
@@ -18,7 +19,7 @@
     <view class="sec"><view class="label">课堂评分</view></view>
     <view class="scorerow">
       <view class="scorenum {{score<60?'low':''}}">{{score}}<text class="scoreunit">分</text></view>
-      <slider class="scorebar" min="0" max="100" value="{{score}}" activeColor="#e8590c" backgroundColor="#f0eeea" block-size="24" bindchange="onScore" bindchanging="onScore" />
+      <slider class="scorebar" min="0" max="100" value="{{score}}" activeColor="{{cBrand}}" backgroundColor="{{cLine}}" block-size="24" bindchange="onScore" bindchanging="onScore" />
     </view>
     <view class="chips tagchips">
       <view wx:for="{{tags}}" wx:key="t" class="chip {{tag===item.t?'on':''}}" bindtap="pickTag" data-t="{{item.t}}">{{item.t}}</view>
@@ -109,3 +110,4 @@
 
 <!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
 <privacy-popup id="privacy" />
+</view>

@@ -1,5 +1,6 @@
 const db = require('../../utils/db');
 const icons = require('../../utils/icons');
+const theme = require('../../utils/theme');
 
 // 评价分档配色：优秀/最佳绿、良好橙、加油/待提高蓝灰
 const TAG_GOOD = ['优秀', '最佳'];
@@ -18,7 +19,12 @@ Page({
     this.sid = +q.id || +q.sid || 0; // 兼容 id / sid 两种参数名
     this.rid = +q.rid || 0;
   },
-  onShow() { this.render(); },
+  onShow() {
+    theme.apply(this);
+    // icoPlus 是品牌色按钮上的白色加号，std() 的整包刷新给的是品牌色版，这里单独纠正
+    this.setData({ icoPlus: icons.plus('#FFFFFF') });
+    this.render();
+  },
   // 统一渲染：拉记录 → 按班级/课程双维过滤 → 首条做详情，其余进历史列表
   render() {
     // 兼容只带 rid 的入口（如首页最近成果）：先从记录反查学生

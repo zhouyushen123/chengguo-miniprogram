@@ -1,3 +1,4 @@
+<view class="theme-root {{themeCls}}">
 <view class="tabs">
   <view wx:for="{{tabs}}" wx:key="*this" class="tab {{tab===index?'on':''}}" bindtap="pickTab" data-i="{{index}}">{{item}}</view>
 </view>
@@ -89,7 +90,7 @@
       </view>
     </view>
     <view style="display:flex;align-items:center">
-      <text wx:if="{{item.cur}}" class="pill" style="background:#3a9e5f">当前</text>
+      <text wx:if="{{item.cur}}" class="pill" style="background:var(--ok)">当前</text>
       <view class="mi act" catchtap="switchMe" data-id="{{item.id}}">切换</view>
       <view class="mi act" catchtap="editUser" data-id="{{item.id}}">分配</view>
       <view wx:if="{{item.role!=='owner'}}" class="mi del" catchtap="delUser" data-id="{{item.id}}">移除</view>
@@ -166,3 +167,4 @@
 
 <!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
 <privacy-popup id="privacy" />
+</view>

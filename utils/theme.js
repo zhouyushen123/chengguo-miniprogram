@@ -17,12 +17,12 @@ const LIST = [
 // 各主题的原生 chrome 取值（导航栏 / tabBar / 窗口背景）
 const CHROME = {
   warm: {
-    navBg: '#FFFFFF', winBg: '#FAF9F7',
+    navBg: '#FFFFFF', winBg: '#FAF9F7', line: '#F0EEEA',
     tab: { color: '#9C948A', selectedColor: '#E8590C', backgroundColor: '#FFFFFF', borderStyle: 'white' },
     tabDir: '/assets/tabbar/warm/'
   },
   blue: {
-    navBg: '#EAF4FF', winBg: '#F3F8FE',
+    navBg: '#EAF4FF', winBg: '#F3F8FE', line: '#E4EEF8',
     tab: { color: '#8FA3BC', selectedColor: '#59A8FF', backgroundColor: '#FDFEFF', borderStyle: 'white' },
     tabDir: '/assets/tabbar/blue/'
   }
@@ -54,9 +54,15 @@ function applyChrome() {
 }
 
 // 页面 onShow 统一入口：根类名（CSS 变量切主题）+ 图标整包刷新 + 原生 chrome
+// cBrand / cLine：给无法使用 CSS 变量的原生组件属性用（如 slider 的 activeColor）
 function apply(page) {
-  icons.setTheme(current());
-  page.setData(Object.assign({ themeCls: cls() }, icons.std()));
+  const t = current();
+  icons.setTheme(t);
+  const c = CHROME[t];
+  page.setData(Object.assign(
+    { themeCls: cls(), cBrand: t === 'blue' ? '#59A8FF' : '#E8590C', cLine: c.line },
+    icons.std()
+  ));
   applyChrome();
 }
 

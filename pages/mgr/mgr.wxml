@@ -105,7 +105,7 @@
     <view class="avrow" bindtap="onStuPhoto">
       <view class="ava big">
         <image wx:if="{{stuForm.photo}}" src="{{stuForm.photo}}" mode="aspectFill" />
-        <image wx:else src="{{icoCamera}}" mode="aspectFit" style="width:44rpx;height:44rpx" />
+        <image wx:else src="{{icoCamera}}" class="cam" mode="aspectFit" />
       </view>
       <text class="mi">{{stuForm.photo?'点击更换照片':'上传学生照片（选填）'}}</text>
     </view>

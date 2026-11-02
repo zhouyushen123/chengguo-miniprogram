@@ -34,8 +34,10 @@
 
 /* 学生表单：照片上传行 */
 .avrow { display: flex; align-items: center; gap: 20rpx; margin-bottom: 20rpx; }
-.ava.big { width: 110rpx; height: 110rpx; border-radius: 34rpx; font-size: 44rpx; position: relative; overflow: hidden; }
+.ava.big { width: 110rpx; height: 110rpx; border-radius: 34rpx; font-size: 44rpx; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .ava.big image { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+/* 无照片时的相机占位图标：独立于铺满式照片规则，居中显示 */
+.ava.big .cam { position: static; width: 44rpx; height: 44rpx; }
 
 /* 身份预览条：以他人身份查看时的显式提示与返回出口 */
 .idbar {

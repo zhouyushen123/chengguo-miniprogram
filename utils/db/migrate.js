@@ -253,4 +253,4 @@ function build(loaded) {
   };
 }
 
-module.exports = { build, buildFresh, upgrade, buildTemplates };
+module.exports = { build, buildFresh, upgrade, buildTemplates, ensureBuiltinTerm };

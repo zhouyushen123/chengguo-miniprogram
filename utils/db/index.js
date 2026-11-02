@@ -113,9 +113,11 @@ function normalizeAll() {
   };
   each('orgs', x => schema.normalizeOrg(x, now()));
   each('members', schema.normalizeMember);
+  each('terms', schema.normalizeTerm);
   each('classes', schema.normalizeClass);
   each('courses', schema.normalizeCourse);
   each('students', schema.normalizeStudent);
+  each('enrollments', schema.normalizeEnrollment);
   each('records', schema.normalizeRecord);
   each('users', schema.normalizeUser);
   each('templates', schema.normalizeTemplate);
@@ -136,6 +138,9 @@ function normalizeAll() {
     }, now()));
     changed = true;
   }
+  // 兜底：内置「长期班」不存在或班级没挂靠学期时补齐（版本刚升级/异常数据）
+  const termFix = migrate.ensureBuiltinTerm(core.coll('terms'), core.coll('classes'), org(), now());
+  if (termFix.changed) changed = true;
   return changed;
 }
 
@@ -371,6 +376,181 @@ function memberRemove(id) {
 }
 
 /* =====================================================================
+ * 学期（开班时间段）与结转向导
+ * ===================================================================*/
+// 排序：进行中 → 未开始 → 已归档；同组内按开始日期倒序（新的在前）
+function termList() {
+  const rank = { active: 0, upcoming: 1, archived: 2 };
+  return oc('terms').slice().sort((a, b) =>
+    (rank[a.status] - rank[b.status]) ||
+    String(b.startDate || '').localeCompare(String(a.startDate || '')) ||
+    (b.id - a.id));
+}
+function termRaw(id) {
+  const x = Number(id);
+  return oc('terms').find(t => t.id === x) || null;
+}
+function termGet(id) { return termRaw(id); }
+// 当前进行中的学期（可能多个：培训机构的暑假班和秋季班常常并行）
+function termActiveList() { return oc('terms').filter(t => t.status === 'active'); }
+function termCreate(data) {
+  const err = deny('term.manage');
+  if (err) return { ok: false, msg: err };
+  const d = data || {};
+  const e = schema.normalizeTerm({
+    name: d.name, startDate: d.startDate, endDate: d.endDate,
+    status: d.status
+  }, org(), now());
+  const ev = schema.validate('term', e);
+  if (ev) return { ok: false, msg: ev };
+  // 默认规则：机构还没有进行中的学期 → 新学期直接进行中；否则先建为未开始
+  if (!d.status) e.status = termActiveList().length ? 'upcoming' : 'active';
+  e.id = core.nextId();
+  core.coll('terms').push(e);
+  core.persist('terms');
+  return { ok: true, item: e };
+}
+function termUpdate(id, patch) {
+  const err = deny('term.manage');
+  if (err) return { ok: false, msg: err };
+  const t = termRaw(id);
+  if (!t) return { ok: false, msg: '学期不存在' };
+  const p = patch || {};
+  if (t.builtIn && (p.status === 'archived' || p.name !== undefined && p.name !== t.name)) {
+    return { ok: false, msg: '内置长期班不能归档或改名' };
+  }
+  const next = schema.normalizeTerm(Object.assign({}, t, p), org(), now());
+  const ev = schema.validate('term', next);
+  if (ev) return { ok: false, msg: ev };
+  next.id = t.id; next.builtIn = t.builtIn; next.updatedAt = now();
+  Object.assign(t, next);
+  core.persist('terms');
+  return { ok: true, item: t };
+}
+// 归档：只能通过结转向导的完成动作触发（这里提供原子操作）；归档后该学期全部只读
+function termArchive(id) {
+  const err = deny('term.manage');
+  if (err) return { ok: false, msg: err };
+  const t = termRaw(id);
+  if (!t) return { ok: false, msg: '学期不存在' };
+  if (t.builtIn) return { ok: false, msg: '内置长期班不能归档' };
+  t.status = 'archived'; t.updatedAt = now();
+  core.persist('terms');
+  return { ok: true, item: t };
+}
+// 结转向导的数据准备：该学期每个班级的课程、学生、报名与剩余课时
+function planSettle(termId) {
+  const err = deny('term.manage');
+  if (err) return { ok: false, msg: err };
+  const t = termRaw(termId);
+  if (!t) return { ok: false, msg: '学期不存在' };
+  if (t.builtIn) return { ok: false, msg: '内置长期班不参与结转' };
+  if (t.status === 'archived') return { ok: false, msg: '该学期已归档' };
+  const classes = oc('classes')
+    .filter(c => c.termId === t.id && !c.removed)
+    .sort((a, b) => (a.sort - b.sort) || (a.id - b.id));
+  const out = classes.map(c => ({
+    cls: c,
+    courses: oc('courses').filter(x => x.clsId === c.id && !x.removed),
+    students: oc('students')
+      .filter(s => !s.removed && s.clsIds.indexOf(c.id) > -1)
+      .map(s => {
+        const en = oc('enrollments').find(e =>
+          e.clsId === c.id && e.studentId === s.id && e.status === 'active');
+        return {
+          student: s,
+          enrollment: en,
+          remain: en ? Math.max(0, (en.totalHours || 0) - (en.usedHours || 0)) : 0
+        };
+      })
+  }));
+  return { ok: true, term: t, classes: out };
+}
+
+/* =====================================================================
+ * 报名（课时账本：孩子 × 班级 × 学期）
+ * ===================================================================*/
+function enrollmentList() { return oc('enrollments'); }
+function enrollmentGet(id) {
+  const x = Number(id);
+  return oc('enrollments').find(e => e.id === x) || null;
+}
+function enrollmentsOfStudent(sid) {
+  const x = Number(sid);
+  return oc('enrollments').filter(e => e.studentId === x);
+}
+function enrollmentsOfClass(clsId) {
+  const x = Number(clsId);
+  return oc('enrollments').filter(e => e.clsId === x);
+}
+// 孩子在某个班的在读报名（唯一）；家长端「剩余 N 课时」的取数点
+function enrollmentOf(clsId, sid) {
+  const c = Number(clsId), s = Number(sid);
+  return oc('enrollments').find(e => e.clsId === c && e.studentId === s && e.status === 'active') || null;
+}
+function enrollmentCreate(data) {
+  const err = deny('term.manage');
+  if (err) return { ok: false, msg: err };
+  const d = data || {};
+  const cls = classRaw(d.clsId);
+  if (!cls) return { ok: false, msg: '班级不存在' };
+  if (!studentRaw(d.studentId)) return { ok: false, msg: '学生不存在' };
+  if (enrollmentOf(cls.id, d.studentId)) return { ok: false, msg: '该学生已在本班在读，请直接调整课时' };
+  const e = schema.normalizeEnrollment({
+    studentId: d.studentId, clsId: cls.id,
+    termId: d.termId || cls.termId,
+    totalHours: d.totalHours, usedHours: d.usedHours,
+    status: d.status, carriedFrom: d.carriedFrom
+  }, org(), now());
+  const ev = schema.validate('enrollment', e);
+  if (ev) return { ok: false, msg: ev };
+  e.id = core.nextId();
+  core.coll('enrollments').push(e);
+  core.persist('enrollments');
+  return { ok: true, item: e };
+}
+function enrollmentUpdate(id, patch) {
+  const err = deny('term.manage');
+  if (err) return { ok: false, msg: err };
+  const e = enrollmentGet(id);
+  if (!e) return { ok: false, msg: '报名不存在' };
+  const next = schema.normalizeEnrollment(Object.assign({}, e, patch), org(), now());
+  const ev = schema.validate('enrollment', next);
+  if (ev) return { ok: false, msg: ev };
+  next.id = e.id; next.updatedAt = now();
+  Object.assign(e, next);
+  core.persist('enrollments');
+  return { ok: true, item: e };
+}
+function enrollmentRemove(id) {
+  const err = deny('term.manage');
+  if (err) return { ok: false, msg: err };
+  const e = enrollmentGet(id);
+  if (!e) return { ok: false, msg: '报名不存在' };
+  e.removed = true; e.updatedAt = now();
+  core.persist('enrollments');
+  return { ok: true };
+}
+// 消课：结转制班级每录一条成果记录 = 消 1 课时。
+// 没有报名关系时自动补一条（未购课 total=0，管理员随后补录购买课时），保证课时账不失忆。
+function consumeHours(rec) {
+  const cls = classRaw(rec.cid);
+  if (!cls || cls.mode !== 'carry') return;
+  let en = enrollmentOf(cls.id, rec.sid);
+  if (!en) {
+    en = schema.normalizeEnrollment({
+      studentId: rec.sid, clsId: cls.id, termId: cls.termId,
+      totalHours: 0, usedHours: 0, status: 'active'
+    }, org(), now());
+    en.id = core.nextId();
+    core.coll('enrollments').push(en);
+  }
+  en.usedHours = (en.usedHours || 0) + 1;
+  en.updatedAt = now();
+  core.persist('enrollments');
+}
+
+/* =====================================================================
  * 班级
  * ===================================================================*/
 function classList() {
@@ -392,7 +572,14 @@ function className(id) { const c = classRaw(id); return c ? c.name : ''; }
 function classCreate(data) {
   const err = deny('class.write');
   if (err) return { ok: false, msg: err };
-  const e = schema.normalizeClass({ name: data && data.name, sort: data && data.sort }, org(), now());
+  const d = data || {};
+  const e = schema.normalizeClass({
+    name: d.name, sort: d.sort,
+    // 不传学期 → 挂到当前进行中的学期（没有则 0，normalizeAll 兜底挂内置长期班）
+    termId: d.termId || ((termActiveList()[0] || {}).id || 0),
+    mode: d.mode,
+    teacherId: d.teacherId
+  }, org(), now());
   const ev = schema.validate('class', e);
   if (ev) return { ok: false, msg: ev };
   e.id = core.nextId();
@@ -433,7 +620,11 @@ function classRemove(id) {
     const i = m.clsIds.indexOf(c.id);
     if (i > -1) { m.clsIds.splice(i, 1); m.updatedAt = t; }
   });
-  core.persist('classes'); core.persist('courses'); core.persist('students'); core.persist('members');
+  // 该班的报名（课时账）一并软删：班没了账跟着走，学生与记录保留
+  oc('enrollments').forEach(en => {
+    if (en.clsId === c.id) { en.removed = true; en.updatedAt = t; }
+  });
+  core.persist('classes'); core.persist('courses'); core.persist('students'); core.persist('members'); core.persist('enrollments');
   return { ok: true };
 }
 
@@ -592,7 +783,11 @@ function studentRemove(id) {
     const i = m.studentIds.indexOf(s.id);
     if (i > -1) { m.studentIds.splice(i, 1); m.updatedAt = t; }
   });
-  core.persist('students'); core.persist('records'); core.persist('members');
+  // 报名（课时账）一并软删
+  oc('enrollments').forEach(en => {
+    if (en.studentId === s.id) { en.removed = true; en.updatedAt = t; }
+  });
+  core.persist('students'); core.persist('records'); core.persist('members'); core.persist('enrollments');
   return { ok: true, records: n };
 }
 
@@ -693,6 +888,8 @@ function recordSave(pick, send) {
   e.createdAt = now(); e.updatedAt = now();
   core.coll('records').push(e);
   core.persist('records');
+  // 结转制班级：每录一节 = 消 1 课时（编辑不重复消课）
+  consumeHours(e);
   return { ok: true, rid: e.id, record: e };
 }
 // 批量标记已发送（单条发送 / 整班统一发送都走这里），返回实际变更条数
@@ -994,6 +1191,17 @@ const db = {
     ofUser: memberOfUser,
     current: memberCurrent,
     create: memberCreate, update: memberUpdate, remove: memberRemove
+  },
+
+  terms: {
+    list: termList, get: termGet, activeList: termActiveList,
+    create: termCreate, update: termUpdate, archive: termArchive,
+    planSettle: planSettle
+  },
+  enrollments: {
+    list: enrollmentList, get: enrollmentGet, ofStudent: enrollmentsOfStudent,
+    ofClass: enrollmentsOfClass, of: enrollmentOf,
+    create: enrollmentCreate, update: enrollmentUpdate, remove: enrollmentRemove
   },
 
   classes: {

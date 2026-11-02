@@ -32,6 +32,7 @@ const FULL = ['owner', 'admin'];
 const ACTIONS = {
   'org.manage':     { roles: ['owner', 'admin'] },
   'member.manage':  { roles: ['owner', 'admin'] },
+  'term.manage':    { roles: ['owner', 'admin'] },   // 学期：新建/启停/结转向导/报名与课时调整
   'class.write':    { roles: ['owner', 'admin'] },
   'course.write':   { roles: ['owner', 'admin'] },
   'student.write':  { roles: ['owner', 'admin', 'teacher'], scoped: true },

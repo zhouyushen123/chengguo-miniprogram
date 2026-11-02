@@ -52,7 +52,7 @@ db.init();
 console.log('\n【迁移：v2 大对象 → v4 实体集合】');
 ok('元信息升到 v4 且带 orgId', () => {
   const s = db.settings();
-  assert.strictEqual(s.version, 4);
+  assert.strictEqual(s.version, 5);
   assert.strictEqual(s.orgId, 'org1');
   assert.strictEqual(s.teacher, '王老师');
 });
@@ -237,7 +237,7 @@ ok('重启后数据一致（说明真的落盘了）', () => {
   assert.strictEqual(db.students.list().length, before.stu);
   assert.strictEqual(db.records.list().length, before.rec);
   assert.strictEqual(db.templates.list().length, before.tpl);
-  assert.strictEqual(db.settings().version, 4);
+  assert.strictEqual(db.settings().version, 5);
 });
 ok('二次 init 不会重复灌演示数据', () => {
   const n1 = db.students.list().length;

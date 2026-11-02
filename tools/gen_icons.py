@@ -219,7 +219,7 @@ ICONS = {
 
 # 按需生成的配色（只做实际用得到的组合，避免文件冗余）
 VARIANTS = {
-    'camera': ['ink', 'orange'],
+    'camera': ['ink', 'orange', 'white'],
     'album': ['ink'],
     'search': ['gray', 'ink'],
     'audio': ['gray', 'orange'],

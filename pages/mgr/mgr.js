@@ -17,7 +17,9 @@ Page({
     classes: [], courses: [], students: [], members: [],
     newCls: '', newCourse: '', courseClsIdx: 0,
     // 学生表单弹层
+    // icoCameraW：压在全品牌色头像块上的相机图标，必须恒为白色，故不走 icons.std()（换肤会覆盖）
     stuForm: null, stuClsSel: [], stuClsChips: [], icoCamera: icons.camera,
+    icoCameraW: '/assets/icons/camera-white.png',
     // 成员表单弹层（chips = 预计算好 on 标记的渲染数组，WXML 不做任何方法调用）
     userForm: null, userClsSel: [], userStuSel: [], userCrsSel: [],
     userClsChips: [], userStuChips: [], userCrsChips: [],

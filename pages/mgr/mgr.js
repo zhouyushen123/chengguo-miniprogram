@@ -28,6 +28,8 @@ Page({
     if (q && q.tab !== undefined) this.setData({ tab: Math.min(+q.tab || 0, 3) });
   },
   onShow() { theme.apply(this); this.refresh(); },
+  // 阻止弹窗内点击冒泡到遮罩层（关闭弹窗）的空处理
+  noop() {},
   refresh() {
     const s = db.settings();
     const classes = db.classes.list();

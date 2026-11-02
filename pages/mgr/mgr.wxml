@@ -100,7 +100,7 @@
 
 <!-- ============ 学生表单弹层 ============ -->
 <view wx:if="{{stuForm}}" class="mask" bindtap="stuCancel">
-  <view class="sheet" catchtap="">
+  <view class="sheet" catchtap="noop">
     <view class="sheet-t">{{stuForm.id?'编辑学生':'添加学生'}}</view>
     <view class="avrow" bindtap="onStuPhoto">
       <view class="ava big">
@@ -126,7 +126,7 @@
 
 <!-- ============ 成员表单弹层 ============ -->
 <view wx:if="{{userForm}}" class="mask" bindtap="userCancel">
-  <view class="sheet" catchtap="">
+  <view class="sheet" catchtap="noop">
     <view class="sheet-t">{{userForm.id ? '编辑成员' : '新增成员'}}</view>
     <input class="input" placeholder="姓名" value="{{userForm.name}}" bindinput="onUserName" />
 

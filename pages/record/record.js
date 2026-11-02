@@ -72,6 +72,8 @@ Page({
   },
   onStuQuery(e) { this.setData({ stuQuery: e.detail.value }); this._applyStuFilter(); },
   toggleStuExpand() { this.setData({ stuExpanded: !this.data.stuExpanded }); this._applyStuFilter(); },
+  // 阻止弹窗内点击冒泡到遮罩层的空处理
+  noop() {},
   onShow() {
     theme.apply(this); // 主题：根类名 + 图标 + 原生 chrome
     // 从模板页返回：应用所选模板与语音状态

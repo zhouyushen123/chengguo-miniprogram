@@ -94,7 +94,7 @@
             class="optrow {{opt.on?'on':''}}" bindtap="tplToggle" data-k="{{di}}:{{oi}}">
         <view class="optcheck">{{opt.on?'✓':''}}</view>
         <view class="opttext">{{opt.t}}</view>
-        <view class="optacts" catchtap="">
+        <view class="optacts" catchtap="noop">
           <text wx:if="{{canTplEdit}}" class="optact" catchtap="tplEdit" data-di="{{di}}" data-oi="{{oi}}">编辑</text>
           <text wx:if="{{canTplEdit}}" class="optact del" catchtap="tplDel" data-di="{{di}}" data-oi="{{oi}}">删除</text>
         </view>

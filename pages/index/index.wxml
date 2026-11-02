@@ -1,168 +1,38 @@
 <view wx:if="{{!isParent}}">
-  <!-- 顶部欢迎 -->
-  <view class="topbar">
-    <view class="hello">{{roleLabel}} · 欢迎回来，{{uName}}</view>
-    <view class="datechip">{{dateStr}}</view>
-  </view>
-
-  <!-- 主操作 + 搜索 -->
-  <view class="card hero">
-    <view class="hero2">
-      <view class="hero-btn primary" hover-class="btn-hover" bindtap="goRecord">
-        <view class="ht">开始录入</view>
-        <view class="hs">选学生 · 打分 · 发家长</view>
-      </view>
-      <view class="hero-btn" hover-class="btn-hover" bindtap="goRecords">
-        <view class="ht">全部记录</view>
-        <view class="hs">按学生查看</view>
-      </view>
+  <scroll-view scroll-x class="clsbar">
+    <view class="clsrow">
+      <view wx:for="{{clsNames}}" wx:key="id" class="chip {{item.id===clsId?'on':''}}" bindtap="pickCls" data-id="{{item.id}}">{{item.name}}</view>
+      <view class="chip" bindtap="goMgr">＋ 管理</view>
     </view>
-    <view class="searchwrap">
-      <view class="searchrow">
-        <image class="sicon" src="{{icoSearch}}" mode="aspectFit" />
-        <input class="sinput" placeholder="搜索学生姓名，如：周" placeholder-class="ph" value="{{q}}" bindinput="onSearch" confirm-type="search" />
-        <image wx:if="{{q}}" class="sclear" src="{{icoClose}}" mode="aspectFit" bindtap="clearSearch" />
-      </view>
-      <view wx:if="{{q}}" class="sresults">
-        <view wx:for="{{results}}" wx:key="id" class="sresult" hover-class="btn-hover" bindtap="goStudent" data-sid="{{item.id}}">
-          <text class="sname">{{item.name}}</text>
-          <text class="smeta">{{item.meta}}</text>
-          <image class="chev" src="{{icoChev}}" mode="aspectFit" />
-        </view>
-        <view wx:if="{{!results.length}}" class="mi" style="padding:20rpx 8rpx">没找到「{{q}}」相关学生</view>
-        <view wx:elif="{{moreCount}}" class="mi smore">还有 {{moreCount}} 位匹配学生，请继续输入缩小范围</view>
-      </view>
-    </view>
-  </view>
-
-  <!-- 统计 -->
-  <view class="stats">
-    <view class="stat" hover-class="btn-hover" bindtap="goMgr">
-      <view class="num">{{clsCount}}</view>
-      <view class="sl">班级 ›</view>
-    </view>
-    <view class="stat" hover-class="btn-hover" bindtap="goMgr">
-      <view class="num">{{stuCount}}</view>
-      <view class="sl">学生 ›</view>
-    </view>
-    <view class="stat" hover-class="btn-hover" bindtap="goRecords">
-      <view class="num {{pending?'warn':''}}">{{pending}}</view>
-      <view class="sl">今日未录入 ›</view>
-    </view>
-  </view>
-
-  <!-- 我的班级 -->
-  <view class="sechead">
-    <text class="sectitle">我的班级</text>
-    <text class="seclink" bindtap="goMgr">管理</text>
-  </view>
-  <view class="clsgrid">
-    <view class="clstile c{{index%3}}" wx:for="{{myClasses}}" wx:key="id" hover-class="btn-hover" bindtap="goCls" data-id="{{item.id}}">
-      <view class="ctname">{{item.name}}</view>
-      <view class="ctmeta">{{item.count}} 名学生</view>
-      <view wx:if="{{item.pending}}" class="ctwarn">今日未录<text class="dot"></text></view>
-    </view>
-  </view>
-  <view wx:if="{{!myClasses.length}}" class="empty">还没有班级，去「我的」里创建</view>
-
-  <!-- 最近成果 -->
-  <view class="sechead">
-    <text class="sectitle">最近成果</text>
-    <text class="seclink" bindtap="goRecords">全部</text>
-  </view>
-  <view class="recgrid">
-    <view class="rectile" wx:for="{{recent}}" wx:key="id" hover-class="btn-hover" bindtap="openRec" data-rid="{{item.id}}" data-sid="{{item.sid}}">
-      <view class="rtname">{{item.name}}</view>
-      <view class="rtmeta">{{item.clsName}} · {{item.sd}} · {{item.score}}分</view>
-    </view>
-  </view>
-  <view wx:if="{{!recent.length}}" class="empty">还没有成果记录，点上面「开始录入」记一条吧</view>
-</view>
-
-<view wx:else>
-  <view class="topbar">
-    <view class="hello">{{roleLabel}} · {{uName}}</view>
-    <view class="datechip">{{dateStr}}</view>
-  </view>
-
-  <!-- 多孩家庭：切换孩子 -->
-  <view wx:if="{{kids.length > 1}}" class="kidchips">
-    <view wx:for="{{kids}}" wx:key="id" class="kchip {{kidId===item.id?'on':''}}" bindtap="pickKid" data-id="{{item.id}}">{{item.name}}</view>
-  </view>
-
-  <!-- 孩子卡 + 统计 -->
-  <view class="card">
-    <view class="pstu">
-      <view class="ava pav">
-        <image wx:if="{{kPhoto}}" src="{{kPhoto}}" mode="aspectFill" />
-        <text wx:else>{{kName[0]}}</text>
-      </view>
+  </scroll-view>
+  <view class="card" wx:for="{{students}}" wx:key="id">
+    <view class="sturow" bindtap="goStudent" data-sid="{{item.id}}">
+      <view class="ava">{{item.name[0]}}</view>
       <view class="stuinfo">
-        <view class="h1">{{kName}}</view>
-        <view class="mi">{{kCls}}</view>
+        <view class="h1">{{item.name}}</view>
+        <view class="mi">{{item.meta}}</view>
       </view>
-      <view class="seclink" bindtap="goKidPage">完整档案 ›</view>
+      <view class="chev">›</view>
     </view>
-    <view wx:if="{{stats}}" class="pstats">
-      <text class="pstat ps-c">{{stats.lessons}} 节课</text>
-      <text class="pstat ps-g">优秀 {{stats.great}} 次</text>
-      <text class="pstat ps-d">{{stats.days}} 个学习日</text>
-    </view>
-    <view wx:if="{{stats && stats.care}}" class="caretip">有 {{stats.care}} 次课需要多鼓励，见下方「需要注意」</view>
-  </view>
-
-  <!-- 最近一次详情 -->
-  <view wx:if="{{kLatest}}" class="card" hover-class="btn-hover" bindtap="openRec" data-rid="{{kLatest.id}}" data-sid="{{kidId}}">
-    <view class="dimhead">
-      <text class="pill pill-o">最近一次</text>
-      <text class="lcourse">{{kLatest.course}}</text>
-      <view class="dhr">
-        <text class="mi">{{kLatest.date}}</text>
-        <text wx:if="{{kLatest.tag}}" class="badge {{kLatest.tcls}}">{{kLatest.tag}}</text>
+    <view wx:if="{{item.latest}}" class="latest">
+      <view class="lrow">
+        <text class="pill" style="background:#59A8FF">最近</text>
+        <text class="mi">{{item.latest.course}} · {{item.latest.date}}</text>
+        <text class="score">{{item.latest.score}}分</text>
       </view>
+      <view class="lnote" wx:if="{{item.latest.note}}">“{{item.latest.note}}”</view>
     </view>
-    <view class="notegroups" wx:if="{{kLatest.noteLines.length}}">
-      <view class="kline" wx:for="{{kLatest.noteLines}}" wx:key="index"><text wx:if="{{item.label}}" class="klabel">{{item.label}}：</text><text class="ktext">{{item.text}}</text></view>
-    </view>
-    <view wx:if="{{latestPhotos.length}}" class="photostrip">
-      <image wx:for="{{latestPhotos}}" wx:key="*this" src="{{item}}" mode="aspectFill" />
-    </view>
-    <view class="mi morelink" wx:if="{{kLatest.pcnt > latestPhotos.length}}">共 {{kLatest.pcnt}} 张照片，点看完整记录 ›</view>
-    <view class="mi" wx:if="{{!kLatest.noteLines.length && !kLatest.pcnt}}">老师还没有写下文字评价</view>
+    <view wx:else class="mi" style="margin-top:12rpx">暂无记录</view>
+    <view class="btn ghost" style="margin-top:16rpx" bindtap="goRecord" data-sid="{{item.id}}">＋ 记录本节成果</view>
   </view>
-  <view wx:elif="{{stats}}" class="card mi">还没有已发布的成果记录，老师发布后就能在这里看到</view>
-
-  <!-- 需要注意：加油/待提高的课 -->
-  <block wx:if="{{kCare.length}}">
-    <view class="sechead"><text class="sectitle">需要注意</text></view>
-    <view class="card">
-      <view class="histr" wx:for="{{kCare}}" wx:key="id" hover-class="btn-hover" bindtap="openRec" data-rid="{{item.id}}" data-sid="{{kidId}}">
-        <text class="badge {{item.tcls}}">{{item.tag}}</text>
-        <view class="hmain">
-          <view class="ht1"><b>{{item.course}}</b></view>
-          <view class="mi">{{item.date}} · {{item.snip}}</view>
-        </view>
-        <image class="chev" src="{{icoChev}}" mode="aspectFit" />
-      </view>
-    </view>
-  </block>
-
-  <!-- 历史记录 -->
-  <view class="sechead">
-    <text class="sectitle">历史记录</text>
-    <text class="seclink" wx:if="{{kidId}}" bindtap="goKidPage">全部</text>
-  </view>
-  <view class="card" wx:if="{{kHistory.length}}">
-    <view class="histr" wx:for="{{kHistory}}" wx:key="id" hover-class="btn-hover" bindtap="openRec" data-rid="{{item.id}}" data-sid="{{kidId}}">
-      <view class="hmain">
-        <view class="ht1"><b>{{item.course}}</b><text wx:if="{{item.tag}}" class="badge sm {{item.tcls}}">{{item.tag}}</text></view>
-        <view class="mi">{{item.date}} · {{item.score}}分{{item.snip?' · '+item.snip:''}}</view>
-      </view>
-      <view wx:if="{{item.pcnt}}" class="hcam"><image class="camico" src="{{icoCam}}" mode="aspectFit" />{{item.pcnt}}</view>
-    </view>
-  </view>
-  <view wx:elif="{{kLatest}}" class="empty">暂无更多历史记录</view>
+  <view wx:if="{{!students.length}}" class="empty">该班级暂无学生，去「我的 → 学生」添加</view>
 </view>
-
-<!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
-<privacy-popup />
+<view wx:else>
+  <view class="card" wx:for="{{kids}}" wx:key="id" bindtap="goStudent" data-sid="{{item.id}}">
+    <view class="sturow">
+      <view class="ava">{{item.name[0]}}</view>
+      <view class="stuinfo"><view class="h1">{{item.name}}</view><view class="mi">{{item.latest}}</view></view>
+      <view class="chev">›</view>
+    </view>
+  </view>
+</view>

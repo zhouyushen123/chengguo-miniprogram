@@ -11,14 +11,14 @@
     "pages/cls/cls"
   ],
   "window": {
-    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarBackgroundColor": "#FDFEFF",
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "橙果·课后成果",
-    "backgroundColor": "#f7f6f3"
+    "backgroundColor": "#F4FAFF"
   },
   "tabBar": {
-    "color": "#9c948a",
-    "selectedColor": "#e8590c",
+    "color": "#93A5BE",
+    "selectedColor": "#59A8FF",
     "list": [
       {
         "pagePath": "pages/index/index",

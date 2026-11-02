@@ -21,8 +21,8 @@
     <view class="recinfo">
       <view class="r1"><b>{{item.name}}</b><text class="mi">{{item.course}} · {{item.date}}</text><text class="score">{{item.score}}分</text></view>
       <view class="chips" style="margin:8rpx 0">
-        <text wx:if="{{item.tag}}" class="pill" style="background:#e8590c">{{item.tag}}</text>
-        <text class="pill" style="background:{{item.sent?'#3a9e5f':'#b8860b'}}">{{item.sent?'已发送':'待发送'}}</text>
+        <text wx:if="{{item.tag}}" class="pill" style="background:#59A8FF">{{item.tag}}</text>
+        <text class="pill" style="background:{{item.sent?'#2BB673':'#C77DD3'}}">{{item.sent?'已发送':'待发送'}}</text>
       </view>
       <view wx:if="{{item.note}}" class="mi note">“{{item.note}}”</view>
       <view class="mi footer"><image class="fico" src="{{icoCamera}}" /> {{item.photoCount}} 张<block wx:if="{{item.hasAudio}}"> · <image class="fico" src="{{icoAudio}}" /> 语音</block></view>

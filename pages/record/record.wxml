@@ -18,7 +18,7 @@
     <view class="sec"><view class="label">课堂评分</view></view>
     <view class="scorerow">
       <view class="scorenum {{score<60?'low':''}}">{{score}}<text class="scoreunit">分</text></view>
-      <slider class="scorebar" min="0" max="100" value="{{score}}" activeColor="#e8590c" backgroundColor="#f0eeea" block-size="24" bindchange="onScore" bindchanging="onScore" />
+      <slider class="scorebar" min="0" max="100" value="{{score}}" activeColor="#59A8FF" backgroundColor="#EFF5FC" block-size="24" bindchange="onScore" bindchanging="onScore" />
     </view>
     <view class="chips tagchips">
       <view wx:for="{{tags}}" wx:key="t" class="chip {{tag===item.t?'on':''}}" bindtap="pickTag" data-t="{{item.t}}">{{item.t}}</view>

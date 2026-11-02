@@ -1,178 +1,21 @@
-/* ---------- 顶部欢迎 ---------- */
-.topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 36rpx 30rpx 24rpx;
+/* ---------- 班级横条 ---------- */
+.clsbar {
+  position: sticky; top: 0; z-index: 40;
+  background: rgba(247, 246, 243, 0.96); backdrop-filter: blur(10px);
+  padding: 20rpx 0 12rpx; white-space: nowrap;
 }
-.hello { font-size: 27rpx; color: #6b655e; font-weight: 600; }
-.datechip {
-  flex: none; font-size: 24rpx; color: #6b655e; font-weight: 600;
-  background: #fff; border-radius: 999rpx; padding: 12rpx 24rpx;
-  box-shadow: 0 4rpx 12rpx rgba(60, 40, 20, 0.06);
-}
-/* ---------- 主操作卡 ---------- */
-.hero2 { display: flex; gap: 20rpx; }
-.hero-btn {
-  flex: 1; border-radius: 22rpx; padding: 28rpx 26rpx; background: #f0eeea;
-  transition: all 0.15s;
-}
-.hero-btn.primary { background: #fdeee2; }
-.ht { font-size: 32rpx; font-weight: 800; color: #232323; }
-.hero-btn.primary .ht { color: #e8590c; }
-.hs { margin-top: 8rpx; font-size: 22rpx; color: #9c948a; }
-/* ---------- 搜索 ---------- */
-.searchwrap { position: relative; z-index: 30; margin-top: 20rpx; }
-.searchrow {
-  display: flex; align-items: center; gap: 14rpx;
-  background: #faf9f7; border: 2rpx solid #e5e2dd; border-radius: 999rpx;
-  padding: 16rpx 26rpx;
-}
-.sicon { width: 30rpx; height: 30rpx; }
-.sinput { flex: 1; font-size: 27rpx; }
-.ph { color: #b8b2aa; }
-.sclear {
-  flex: none; width: 34rpx; height: 34rpx; padding: 5rpx;
-}
-/* 搜索结果：搜索框正下方悬浮弹层 */
-.sresults {
-  position: absolute; left: 0; right: 0; top: calc(100% + 12rpx);
-  background: #fff; border-radius: 24rpx;
-  box-shadow: 0 16rpx 48rpx rgba(60, 40, 20, 0.16);
-  padding: 10rpx 24rpx; max-height: 560rpx; overflow-y: auto;
-}
-.sresult {
-  display: flex; align-items: center; gap: 16rpx;
-  padding: 20rpx 4rpx; border-bottom: 2rpx solid #f3f1ee;
-}
-.sname { font-size: 28rpx; font-weight: 600; color: #33302c; flex: none; }
-.smeta { flex: 1; font-size: 24rpx; color: #b8b2aa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.chev { width: 28rpx; height: 28rpx; flex: none; }
-.sresult .chev { width: 28rpx; height: 28rpx; flex: none; }
-.sresult:last-child { border-bottom: none; }
-.smore { padding: 14rpx 4rpx 18rpx; font-size: 22rpx; color: #b8b2aa; text-align: center; }
-.ava.sm { width: 72rpx; height: 72rpx; font-size: 30rpx; border-radius: 24rpx; }
-/* ---------- 统计 ---------- */
-.stats { display: flex; gap: 20rpx; margin: 0 24rpx 24rpx; }
-.stat {
-  flex: 1; background: #fff; border-radius: 24rpx; padding: 26rpx 0 22rpx;
-  text-align: center; box-shadow: 0 4rpx 16rpx rgba(60, 40, 20, 0.05);
-}
-.num { font-size: 44rpx; font-weight: 800; line-height: 1.2; }
-.num.warn { color: #e8590c; }
-.sl { margin-top: 6rpx; font-size: 23rpx; color: #9c948a; }
-/* ---------- 区块标题 ---------- */
-.sechead {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10rpx 34rpx 18rpx;
-}
-.sectitle { font-size: 30rpx; font-weight: 700; }
-.seclink { font-size: 25rpx; color: #9c948a; font-weight: 500; }
-/* ---------- 班级 / 成果卡片 ---------- */
-.clsitem .sturow, .card .sturow { cursor: pointer; }
+.clsrow { display: inline-flex; gap: 16rpx; padding: 0 24rpx; }
+/* ---------- 学生卡片 ---------- */
+.sturow { display: flex; align-items: center; gap: 22rpx; }
 .stuinfo { flex: 1; min-width: 0; }
-.dot {
-  display: inline-block; width: 12rpx; height: 12rpx; border-radius: 50%;
-  background: #e8590c; margin-left: 10rpx; vertical-align: middle;
+.latest {
+  margin-top: 20rpx; background: #F7FBFF; border-radius: 20rpx; padding: 20rpx 24rpx;
+  border-left: 6rpx solid #59A8FF;
 }
-.oneline {
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+.lrow { display: flex; align-items: center; gap: 12rpx; }
+.score { margin-left: auto; color: #59A8FF; font-weight: 800; font-size: 36rpx; }
+.lnote {
+  margin-top: 12rpx; font-size: 26rpx; color: #5A6B85; line-height: 1.7;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
 }
-/* ---------- 我的班级：三列磁贴 ---------- */
-.clsgrid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16rpx;
-  padding: 0 24rpx 24rpx;
-}
-.clstile {
-  position: relative; background: #fff; border-radius: 20rpx;
-  padding: 24rpx 20rpx 20rpx; overflow: hidden;
-  box-shadow: 0 4rpx 16rpx rgba(60, 40, 20, 0.05);
-}
-.clstile::before {
-  content: ''; position: absolute; left: 20rpx; top: 0;
-  width: 48rpx; height: 6rpx; border-radius: 0 0 6rpx 6rpx;
-}
-.clstile.c0::before { background: #4a7ddc; }
-.clstile.c1::before { background: #3a9e5f; }
-.clstile.c2::before { background: #e8590c; }
-.ctname {
-  font-size: 27rpx; font-weight: 700; color: #33302c;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.ctmeta { margin-top: 8rpx; font-size: 22rpx; color: #9c948a; }
-.ctwarn { margin-top: 6rpx; font-size: 21rpx; color: #e8590c; }
-/* ---------- 最近成果：自适应磁贴（最多一行 5 个，少则拉伸） ---------- */
-.recgrid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(132rpx, 1fr));
-  gap: 14rpx; padding: 0 24rpx 24rpx;
-}
-.rectile {
-  background: #fff; border-radius: 18rpx; padding: 20rpx 10rpx 18rpx;
-  text-align: center; min-width: 0;
-  box-shadow: 0 4rpx 16rpx rgba(60, 40, 20, 0.05);
-}
-.rtname {
-  font-size: 26rpx; font-weight: 700; color: #33302c;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.rtmeta {
-  margin-top: 6rpx; font-size: 19rpx; color: #9c948a; padding: 0 6rpx;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
-/* ---------- 家长端首页：孩子主页 ---------- */
-/* 孩子切换（多孩家庭） */
-.kidchips { display: flex; gap: 14rpx; margin: 0 24rpx 18rpx; flex-wrap: wrap; }
-.kchip {
-  font-size: 26rpx; padding: 12rpx 30rpx; border-radius: 999rpx;
-  background: #fff; color: #4a4a4a; box-shadow: 0 2rpx 8rpx rgba(60,40,20,.05);
-}
-.kchip.on { background: #e8590c; color: #fff; font-weight: 700; }
-
-/* 孩子卡 */
-.pstu { display: flex; align-items: center; gap: 20rpx; }
-.pav { width: 96rpx; height: 96rpx; border-radius: 30rpx; font-size: 38rpx; font-weight: 700;
-  background: linear-gradient(135deg, #f7a23b, #e8590c); color: #fff;
-  display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-.pav image { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
-.pav text { position: relative; }
-.stuinfo { flex: 1; min-width: 0; }
-
-/* 统计徽标：节课绿 / 优秀橙 / 学习日蓝（与学生主页同口径） */
-.pstats { display: flex; gap: 14rpx; margin-top: 22rpx; }
-.pstat { font-size: 23rpx; font-weight: 600; padding: 8rpx 20rpx; border-radius: 999rpx; }
-.ps-c { color: #3a9e5f; background: #e8f3ea; }
-.ps-g { color: #e8590c; background: #fdeee2; }
-.ps-d { color: #5a7bd6; background: #edf1fb; }
-.caretip {
-  margin-top: 18rpx; padding: 14rpx 20rpx; border-radius: 14rpx;
-  background: #fff7ec; border: 2rpx solid #f6dcc0;
-  font-size: 23rpx; color: #8a6d4b;
-}
-
-/* 最近一次详情 */
-.dimhead { display: flex; align-items: center; gap: 14rpx; flex-wrap: wrap; }
-.pill-o { background: #e8590c; }
-.lcourse { font-size: 32rpx; font-weight: 700; }
-.dhr { margin-left: auto; display: flex; align-items: center; gap: 12rpx; }
-.morelink { margin-top: 12rpx; color: #b8b2aa; }
-.notegroups { background: #faf9f7; border-radius: 16rpx; padding: 16rpx 20rpx; margin-top: 16rpx; }
-.kline { display: flex; align-items: flex-start; line-height: 1.7; font-size: 25rpx; }
-.klabel { color: #b8b2aa; flex: none; }
-.ktext { color: #3a3a3a; font-weight: 500; flex: 1; min-width: 0; }
-.photostrip { display: flex; gap: 12rpx; margin-top: 16rpx; }
-.photostrip image { flex: 1; height: 180rpx; border-radius: 12rpx; background: #f5f3f0; min-width: 0; }
-
-/* 评价徽标：优秀绿 / 良好橙 / 加油蓝灰 */
-.badge { font-size: 22rpx; font-weight: 700; padding: 6rpx 18rpx; border-radius: 999rpx; flex: none; }
-.badge.good { color: #3a9e5f; background: #e8f3ea; }
-.badge.mid { color: #e8590c; background: #fdeee2; }
-.badge.low { color: #5a7bd6; background: #edf1fb; }
-.badge.sm { font-size: 20rpx; padding: 4rpx 14rpx; }
-
-/* 需要注意 / 历史列表行 */
-.histr { display: flex; align-items: center; gap: 18rpx; padding: 22rpx 0; border-bottom: 2rpx solid #f5f3f0; }
-.histr:last-child { border-bottom: none; }
-.hmain { flex: 1; min-width: 0; }
-.ht1 { display: flex; align-items: center; gap: 12rpx; }
-.ht1 b { font-size: 29rpx; }
-.hcam { display: flex; align-items: center; gap: 6rpx; font-size: 22rpx; color: #9c948a; flex: none; }
-.camico { width: 28rpx; height: 28rpx; }
+.card .btn.ghost { margin-top: 20rpx; color: #59A8FF; border-color: #A9D6F8; font-weight: 600; }

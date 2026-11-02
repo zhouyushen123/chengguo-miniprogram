@@ -1,8 +1,8 @@
 page {
-  background: #f7f6f3;
+  background: #F4FAFF;
   font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
   font-size: 28rpx;
-  color: #232323;
+  color: #0D1349;
 }
 /* ---------- 卡片体系 ---------- */
 .card {
@@ -10,7 +10,7 @@ page {
   border-radius: 28rpx;
   padding: 28rpx;
   margin: 0 24rpx 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(60, 40, 20, 0.05);
+  box-shadow: 0 4rpx 16rpx rgba(13, 19, 73, 0.05);
 }
 .sec {
   display: flex;
@@ -23,51 +23,51 @@ page {
   width: 8rpx;
   height: 30rpx;
   border-radius: 8rpx;
-  background: linear-gradient(180deg, #f7a23b, #e8590c);
+  background: linear-gradient(180deg, #A2DCFD, #59A8FF);
 }
 .sec .label { margin: 0; }
-.label { font-size: 28rpx; font-weight: 700; color: #232323; margin: 28rpx 0 16rpx; }
+.label { font-size: 28rpx; font-weight: 700; color: #0D1349; margin: 28rpx 0 16rpx; }
 .h1 { font-size: 34rpx; font-weight: 700; }
-.mi { font-size: 24rpx; color: #9c948a; }
+.mi { font-size: 24rpx; color: #93A5BE; }
 /* ---------- 胶囊 ---------- */
 .chips { display: flex; flex-wrap: wrap; gap: 16rpx; }
 .chip {
   font-size: 26rpx;
   padding: 14rpx 32rpx;
   border-radius: 999rpx;
-  background: #f0eeea;
-  color: #4a4a4a;
+  background: #EFF5FC;
+  color: #3A4A63;
   transition: all 0.15s;
 }
 .chip.on {
-  background: #fdeee2;
-  color: #e8590c;
+  background: #E3F1FF;
+  color: #59A8FF;
   font-weight: 700;
-  box-shadow: inset 0 0 0 3rpx #e8590c, 0 4rpx 12rpx rgba(232, 89, 12, 0.15);
+  box-shadow: inset 0 0 0 3rpx #59A8FF, 0 4rpx 12rpx rgba(89, 168, 255, 0.15);
 }
 /* ---------- 按钮 ---------- */
 .btn {
-  background: linear-gradient(135deg, #f7a23b, #e8590c);
+  background: linear-gradient(135deg, #A2DCFD, #59A8FF);
   color: #fff;
   border-radius: 26rpx;
   font-size: 30rpx;
   font-weight: 600;
   padding: 24rpx 0;
   text-align: center;
-  box-shadow: 0 8rpx 20rpx rgba(232, 89, 12, 0.28);
+  box-shadow: 0 8rpx 20rpx rgba(89, 168, 255, 0.28);
 }
 .btn.ghost {
   background: #fff;
-  color: #4a4a4a;
-  border: 2rpx solid #e5e2dd;
+  color: #3A4A63;
+  border: 2rpx solid #DCE8F4;
   font-weight: 500;
   box-shadow: none;
 }
 .btn-hover { opacity: 0.85; transform: scale(0.985); }
 /* ---------- 输入 ---------- */
 .input, .pickerbox {
-  background: #faf9f7;
-  border: 2rpx solid #e5e2dd;
+  background: #F7FBFF;
+  border: 2rpx solid #DCE8F4;
   border-radius: 20rpx;
   padding: 22rpx 26rpx;
   font-size: 28rpx;
@@ -76,17 +76,11 @@ page {
 /* ---------- 头像 ---------- */
 .ava {
   width: 92rpx; height: 92rpx; border-radius: 30rpx;
-  background: linear-gradient(135deg, #f7a23b, #e8590c);
+  background: linear-gradient(135deg, #A2DCFD, #59A8FF);
   color: #fff; font-size: 36rpx; font-weight: 700;
   display: flex; align-items: center; justify-content: center; flex: none;
-  box-shadow: 0 6rpx 14rpx rgba(232, 89, 12, 0.25);
+  box-shadow: 0 6rpx 14rpx rgba(89, 168, 255, 0.25);
 }
 .pill { font-size: 22rpx; padding: 6rpx 18rpx; border-radius: 999rpx; color: #fff; }
-.empty { text-align: center; color: #9c948a; padding: 140rpx 40rpx; font-size: 27rpx; line-height: 1.8; }
-.chev { color: #c9c4bd; font-size: 38rpx; font-weight: 300; }
-/* 橙色大按钮内的白色线性图标（如「＋ 记录本节成果」） */
-.btn { display: flex; align-items: center; justify-content: center; gap: 10rpx; }
-.bico { width: 32rpx; height: 32rpx; }
-/* 下拉选择框：文字 + 统一箭头图标 */
-.pickerbox { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; }
-.pickerbox .xico { width: 26rpx; height: 26rpx; }
+.empty { text-align: center; color: #93A5BE; padding: 140rpx 40rpx; font-size: 27rpx; line-height: 1.8; }
+.chev { color: #B9C8DC; font-size: 38rpx; font-weight: 300; }

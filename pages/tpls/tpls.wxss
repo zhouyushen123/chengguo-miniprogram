@@ -1,17 +1,14 @@
 .wrap { padding-bottom: 160rpx; }
-.tip { margin: 24rpx; color: #9c948a; font-size: 25rpx; }
+.tip { margin: 24rpx; color: #93A5BE; font-size: 25rpx; }
 .dimhead { display: flex; align-items: center; gap: 16rpx; margin-bottom: 16rpx; }
 .dimname { font-size: 29rpx; font-weight: 700; flex: 1; }
-.mini { font-size: 24rpx; padding: 8rpx 20rpx; border-radius: 999rpx; background: #f0eeea; color: #4a4a4a; display: inline-flex; align-items: center; gap: 6rpx; }
-.tico { width: 30rpx; height: 30rpx; }
-.tico.s { width: 24rpx; height: 24rpx; }
-.mini.del { color: #c0564a; }
-.mini.del .tico { width: 26rpx; height: 26rpx; }
-.mini.mic { background: #fdeee2; color: #e8590c; }
-.mini.add { background: #fdeee2; color: #e8590c; }
+.mini { font-size: 24rpx; padding: 8rpx 20rpx; border-radius: 999rpx; background: #EFF5FC; color: #3A4A63; }
+.mini.del { color: #E5647E; }
+.mini.mic { background: #E3F1FF; color: #59A8FF; }
+.mini.add { background: #E3F1FF; color: #59A8FF; }
 .opt { display: flex; align-items: center; gap: 14rpx; margin-bottom: 12rpx; }
-.optmain { flex: 1; font-size: 27rpx; padding: 18rpx 24rpx; border-radius: 20rpx; background: #faf9f7; border: 2rpx solid #e5e2dd; color: #4a4a4a; }
-.optmain.on { background: #fdeee2; border-color: #e8590c; color: #e8590c; font-weight: 600; }
-.footbar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 20rpx; padding: 20rpx 24rpx calc(20rpx + env(safe-area-inset-bottom)); background: #fff; border-top: 2rpx solid #f0eeea; }
+.optmain { flex: 1; font-size: 27rpx; padding: 18rpx 24rpx; border-radius: 20rpx; background: #F7FBFF; border: 2rpx solid #DCE8F4; color: #3A4A63; }
+.optmain.on { background: #E3F1FF; border-color: #59A8FF; color: #59A8FF; font-weight: 600; }
+.footbar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 20rpx; padding: 20rpx 24rpx calc(20rpx + env(safe-area-inset-bottom)); background: #fff; border-top: 2rpx solid #EFF5FC; }
 .footbtn { flex: 1; }
-.prebox { background: #faf9f7; border-radius: 20rpx; padding: 24rpx; font-size: 28rpx; line-height: 1.8; white-space: pre-wrap; }
+.prebox { background: #F7FBFF; border-radius: 20rpx; padding: 24rpx; font-size: 28rpx; line-height: 1.8; white-space: pre-wrap; }

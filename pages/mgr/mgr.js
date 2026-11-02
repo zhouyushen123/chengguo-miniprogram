@@ -16,9 +16,10 @@ Page({
     classes: [], courses: [], students: [], members: [],
     newCls: '', newCourse: '', courseClsIdx: 0,
     // 学生表单弹层
-    stuForm: null, stuClsSel: [], icoCamera: icons.camera,
-    // 成员表单弹层
+    stuForm: null, stuClsSel: [], stuClsChips: [], icoCamera: icons.camera,
+    // 成员表单弹层（chips = 预计算好 on 标记的渲染数组，WXML 不做任何方法调用）
     userForm: null, userClsSel: [], userStuSel: [], userCrsSel: [],
+    userClsChips: [], userStuChips: [], userCrsChips: [],
     roleOpts: ROLE_OPTS
   },
   // 从个人中心带参进入：?tab=3 直达人员管理
@@ -134,10 +135,18 @@ Page({
   editStudent(e) { this.openStuForm(e.currentTarget.dataset.id); },
   openStuForm(id) {
     const s = id ? db.students.get(id) : null;
+    const clsSel = s ? (s.clsIds || []).slice() : [];
     this.setData({
       stuForm: { id: id || null, name: s ? s.name : '', parent: s ? (s.parent || '') : '', wechat: s ? (s.wechat || '') : '', photo: s ? (s.photo || '') : '' },
-      stuClsSel: s ? (s.clsIds || []).slice() : []
+      stuClsSel: clsSel,
+      stuClsChips: this._chips(db.classes.list(), clsSel)
     });
+  },
+  // 把列表 + 选中集合压成带 on 标记的渲染数组。
+  // 为什么不在 WXML 里写 arr.indexOf(id)>=0：WXML 表达式不支持方法调用，
+  // 开发者工具里静默失效，真机渲染层直接抛异常导致点击即崩。
+  _chips(list, sel) {
+    return (list || []).map(c => ({ id: c.id, name: c.name, on: sel.indexOf(c.id) >= 0 }));
   },
   onStuName(e) { this.setData({ 'stuForm.name': e.detail.value }); },
   // 上传学生照片：拍照/相册均可，统一走 media 转存到用户目录
@@ -157,7 +166,7 @@ Page({
   stuClsTgl(e) {
     const id = +e.currentTarget.dataset.id, sel = this.data.stuClsSel.slice();
     const i = sel.indexOf(id); i >= 0 ? sel.splice(i, 1) : sel.push(id);
-    this.setData({ stuClsSel: sel });
+    this.setData({ stuClsSel: sel, stuClsChips: this._chips(db.classes.list(), sel) });
   },
   stuCancel() { this.setData({ stuForm: null }); },
   stuSave() {
@@ -199,22 +208,27 @@ Page({
     if (m) this.openUserForm(m);
   },
   openUserForm(u) {
+    const clsSel = (u.clsIds || []).slice(), crsSel = (u.courseIds || []).slice(), stuSel = (u.studentIds || []).slice();
     this.setData({
       userForm: { id: u.id || null, role: u.role, name: u.name || '' },
-      userClsSel: (u.clsIds || []).slice(),
-      userCrsSel: (u.courseIds || []).slice(),
-      userStuSel: (u.studentIds || []).slice()
+      userClsSel: clsSel, userCrsSel: crsSel, userStuSel: stuSel,
+      userClsChips: this._chips(db.classes.list(), clsSel),
+      userCrsChips: this._chips(db.courses.list(), crsSel),
+      userStuChips: this._chips(db.students.list(), stuSel)
     });
   },
   onUserName(e) { this.setData({ 'userForm.name': e.detail.value }); },
   pickRole(e) { this.setData({ 'userForm.role': e.currentTarget.dataset.k }); },
-  userClsTgl(e) { this._tgl('userClsSel', e); },
-  userCrsTgl(e) { this._tgl('userCrsSel', e); },
-  userStuTgl(e) { this._tgl('userStuSel', e); },
-  _tgl(key, e) {
+  userClsTgl(e) { this._tgl('userClsSel', 'classes', e); },
+  userCrsTgl(e) { this._tgl('userCrsSel', 'courses', e); },
+  userStuTgl(e) { this._tgl('userStuSel', 'students', e); },
+  _tgl(key, srcKey, e) {
     const id = +e.currentTarget.dataset.id, sel = this.data[key].slice();
     const i = sel.indexOf(id); i >= 0 ? sel.splice(i, 1) : sel.push(id);
-    this.setData({ [key]: sel });
+    // 同步重建对应的 chips 渲染数组（userClsSel -> userClsChips）
+    const upd = { [key]: sel };
+    upd[key.replace('Sel', 'Chips')] = this._chips(this.data[srcKey], sel);
+    this.setData(upd);
   },
   userCancel() { this.setData({ userForm: null }); },
   userSave() {

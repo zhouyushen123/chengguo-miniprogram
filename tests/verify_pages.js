@@ -138,7 +138,9 @@ ok('双按钮：编辑带全量字段跳录入页', () => {
   assert.strictEqual(pick.cls, db.records.get(item.id).cid);
 });
 ok('发送给家长：状态落库且按钮变灰', () => {
-  records.onShow();
+  // 重置筛选（切回"全部"，日期/等级归位）：前面用例把日期定在了最新日期桶，
+  // 演示数据固定而真实保存的记录用当天日期，跨天跑测试时该桶里可能没有未发送记录
+  records.pickTab({ currentTarget: { dataset: { i: 0 } } });
   const item = records.data.list.find(r => !r.sent);
   assert.ok(item, '应有未发送记录');
   records.sendRec({ currentTarget: { dataset: { rid: item.id } } });

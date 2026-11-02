@@ -147,7 +147,7 @@
     </view>
   </block>
 
-  <view class="btn" bindtap="goRecord"><image class="bico" src="{{icoPlus}}" mode="aspectFit" />记录本节成果</view>
+  <view class="btn cta" bindtap="goRecord"><image class="bico" src="{{icoPlus}}" mode="aspectFit" />记录本节成果</view>
   <view class="slogan">橙果 · 让每节课都有回音</view>
 </view>
 

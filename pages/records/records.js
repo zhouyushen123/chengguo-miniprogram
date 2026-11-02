@@ -10,6 +10,7 @@ const TAGS = ['待提高', '加油', '良好', '优秀', '最佳'];
 Page({
   data: {
     tabs: [], tab: 0, role: 'teacher',
+    termOpts: ['全部学期'], termIdx: 0,
     dateOpts: ['不限日期'], dateIdx: 0,
     tagOpts: ['全部等级'].concat(TAGS), tagIdx: 0,
     list: [], total: 0, allCount: 0,
@@ -31,13 +32,25 @@ Page({
   },
   // 第一层（班级）过滤。身份权限已由数据层在 list() 里按可见范围过滤过，
   // 页面只做业务维度筛选，不再重复写 role/clsIds 判断。
+  // 第零层（学期）过滤：班级挂了学期，按班级的学期归属筛
   _pool() {
     const t = this.data.tabs[this.data.tab];
     const cls = t === '全部' ? null : db.classes.list().find(c => c.name === t);
     const cid = cls ? cls.id : null;
-    return db.records.list().filter(r => !cid || r.cid === cid);
+    const termId = this.data.termIdx > 0 ? ((this.data._terms || [])[this.data.termIdx - 1] || {}).id : null;
+    return db.records.list().filter(r => {
+      if (cid && r.cid !== cid) return false;
+      if (termId) {
+        const rc = db.classes.get(r.cid);
+        if (!rc || rc.termId !== termId) return false;
+      }
+      return true;
+    });
   },
   refresh() {
+    const terms = db.terms.list();
+    const termOpts = ['全部学期'].concat(terms.map(t => t.name));
+    let termIdx = this.data.termIdx >= termOpts.length ? 0 : this.data.termIdx;
     const pool = this._pool();
     const allCount = pool.length;
     // 第二层：日期选项 = 当前班级下有记录的日期（从新到旧）

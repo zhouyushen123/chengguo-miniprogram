@@ -35,6 +35,7 @@ Page({
       entries.push({ k: 'mgr', t: '学生 / 课程管理', d: '添加学生、班级和课程' });
     }
     if (isManager) {
+      entries.push({ k: 'term', t: '学期管理', d: '开班学期、课时结转与续报' });
       entries.push({ k: 'member', t: '成员管理', d: '角色与数据范围分配' });
       entries.push({ k: 'switch', t: '切换身份', d: '管理员 / 老师 / 学生家长 演示切换' });
     }
@@ -54,6 +55,7 @@ Page({
   tapEntry(e) {
     const k = e.currentTarget.dataset.k;
     if (k === 'mgr') { wx.navigateTo({ url: '/pages/mgr/mgr' }); return; }
+    if (k === 'term') { wx.navigateTo({ url: '/pages/terms/terms' }); return; }
     if (k === 'member') { wx.navigateTo({ url: '/pages/mgr/mgr?tab=3' }); return; }
     if (k === 'switch') { this.switchIdentity(); return; }
     if (k === 'about') { this.showAbout(); return; }

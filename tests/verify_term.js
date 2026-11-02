@@ -1,6 +1,7 @@
 // tests/verify_term.js —— 学期制与课时结转专项验证
 // 覆盖：v4→v5 迁移（内置长期班收编）/ 学期 CRUD / 报名与课时账 / 消课 / 结转向导 / 权限闸门
 const assert = require('assert');
+const demo = require('../utils/demo-data');
 
 /* ---------- 模拟 wx 存储 ---------- */
 const mem = {};
@@ -129,18 +130,19 @@ ok('创建报名：20 课时，重复报名被拦', () => {
   const dup = db.enrollments.create({ studentId: 70, clsId: cls.id, totalHours: 10 });
   assert.ok(!dup.ok && /已在本班在读/.test(dup.msg));
 });
+let firstRid;
 ok('录一条成果记录自动消 1 课时', () => {
   const r = db.records.save({ sid: 70, cls: cls.id, course: '硬笔', score: 90, tag: '优秀', note: '好' }, false);
   assert.ok(r.ok, r.msg);
-  const after = db.enrollments.get(en.id);
-  assert.strictEqual(after.usedHours, 1);
+  firstRid = r.rid;
+  assert.strictEqual(db.enrollments.get(en.id).usedHours, 1);
 });
-ok('编辑记录不重复消课', () => {
-  db.records.save({ rid: r.rid2 || undefined, sid: 70, cls: cls.id, course: '硬笔', score: 92 }, false);
-  // 上面新建了一条新记录（第二次调用没有 rid，是新建）→ 会再消 1；再对第一条做编辑不消
-  const before = db.enrollments.get(en.id).usedHours;
-  db.records.save({ rid: r.rid, sid: 70, cls: cls.id, course: '硬笔', score: 95 }, false);
-  assert.strictEqual(db.enrollments.get(en.id).usedHours, before, '编辑不应消课');
+ok('再录一条消到 2；编辑旧记录不重复消课', () => {
+  const r2 = db.records.save({ sid: 70, cls: cls.id, course: '硬笔', score: 92 }, false);
+  assert.ok(r2.ok, r2.msg);
+  assert.strictEqual(db.enrollments.get(en.id).usedHours, 2, '第二条新建应消课');
+  db.records.save({ rid: firstRid, sid: 70, cls: cls.id, course: '硬笔', score: 95 }, false);
+  assert.strictEqual(db.enrollments.get(en.id).usedHours, 2, '编辑不应消课');
 });
 ok('剩余课时 = total - used', () => {
   const e = db.enrollments.get(en.id);

@@ -1,0 +1,145 @@
+<view class="theme-root {{themeCls}}">
+
+<!-- ============ 学期列表 ============ -->
+<view wx:if="{{mode === 'list'}}">
+  <view class="sechead">
+    <view class="sectitle">学期管理</view>
+    <view class="seclink" bindtap="openCreate">＋ 新建学期</view>
+  </view>
+  <view class="hint">学期 = 开班的时间段。名称随意（春季班 / 暑假班 / 第 N 期都行），排序按日期算。学期结束时用「结束本学期」把班级归档或结转到下期。</view>
+
+  <view wx:for="{{terms}}" wx:key="id" class="card">
+    <view class="trow">
+      <view class="tmain">
+        <view class="t1"><b>{{item.name}}</b><text wx:if="{{item.builtIn}}" class="pill pill-mi">内置</text><text class="pill pill-{{item.status}}">{{item.statusLabel}}</text></view>
+        <view class="t2">{{item.dates}} · {{item.clsCount}} 个班级</view>
+      </view>
+      <view wx:if="{{item.canSettle}}" class="btn ghost sm" hover-class="btn-hover" bindtap="startWizard" data-id="{{item.id}}">结束本学期</view>
+    </view>
+  </view>
+
+  <view class="slogan">橙果 · 让每节课都有回音</view>
+</view>
+
+<!-- ============ 结转向导 ============ -->
+<view wx:if="{{mode === 'wizard' && wz}}">
+  <view class="wzhead">
+    <view class="wzback" bindtap="wzCancel">‹ 退出</view>
+    <view class="wztitle">结束「{{wz.termName}}」</view>
+    <view class="wzsteps">第 {{wz.step}} / 4 步</view>
+  </view>
+
+  <!-- 步骤 1：新学期 + 逐班决策 -->
+  <view wx:if="{{wz.step === 1}}">
+    <view class="card">
+      <view class="wt">① 新学期叫什么？</view>
+      <input class="inp" value="{{wz.newTerm.name}}" placeholder="如：2027 春季班 / 第 38 期" bindinput="onWzTerm" data-k="name" />
+      <view class="chips">
+        <view wx:for="{{sugg}}" wx:key="*this" class="chip {{wz.newTerm.name === item ? 'on' : ''}}" bindtap="wzPickSugg" data-v="{{item}}">{{item}}</view>
+      </view>
+      <view class="lbl">开学日期（选填）</view>
+      <input class="inp" value="{{wz.newTerm.startDate}}" placeholder="YYYY-MM-DD" bindinput="onWzTerm" data-k="startDate" />
+    </view>
+
+    <view class="card">
+      <view class="wt">② 逐班决定去向</view>
+      <view class="hint2">学期制班级随学期结束归档；课时结转班级可延续到新学期，剩余课时带入。</view>
+      <view wx:for="{{wz.classes}}" wx:key="id" class="decrow">
+        <view class="decmain">
+          <view class="dec1">{{item.name}} <text class="mi">{{item.modeLabel}} · {{item.students.length}} 名学生</text></view>
+        </view>
+        <view class="decbtns">
+          <view class="chip {{item.decision === 'end' ? 'on' : ''}}" bindtap="wzDecision" data-cid="{{item.id}}" data-v="end">随期结束</view>
+          <view class="chip {{item.decision === 'carry' ? 'on' : ''}}" bindtap="wzDecision" data-cid="{{item.id}}" data-v="carry">延续下期</view>
+        </view>
+      </view>
+      <view wx:if="{{!wz.classes.length}}" class="empty">这个学期还没有班级</view>
+    </view>
+  </view>
+
+  <!-- 步骤 2：延续班级的课程与老师 -->
+  <view wx:if="{{wz.step === 2}}">
+    <view class="card" wx:for="{{wz.classes}}" wx:for-item="c" wx:key="id">
+      <block wx:if="{{c.decision === 'carry'}}">
+        <view class="wt">{{c.name}} · 延续设置</view>
+        <view class="lbl">带哪些课程去新学期</view>
+        <view class="chips">
+          <view wx:for="{{c.courses}}" wx:for-item="cr" wx:for-index="ci" wx:key="id" class="chip {{cr.sel ? 'on' : ''}}" bindtap="wzCourse" data-ci="{{index}}" data-i="{{ci}}">{{cr.name}}</view>
+          <view wx:if="{{!c.courses.length}}" class="mi">该班没有课程</view>
+        </view>
+        <view class="lbl">新学期主讲老师</view>
+        <picker range="{{wz.staff}}" range-key="name" bindchange="wzTeacher" data-ci="{{index}}">
+          <view class="inp pick">{{c.teacherName || '点击选择老师（必选）'}}</view>
+        </picker>
+      </block>
+    </view>
+    <view wx:if="{{!wz.classes.length}}" class="card empty">上一步没有选择延续的班级，可直接去第 4 步归档</view>
+  </view>
+
+  <!-- 步骤 3：学生结转 -->
+  <view wx:if="{{wz.step === 3}}">
+    <view class="card" wx:for="{{wz.classes}}" wx:for-item="c" wx:key="id">
+      <block wx:if="{{c.decision === 'carry'}}">
+        <view class="wt">{{c.name}} · {{c.students.length}} 名学生</view>
+        <view class="batchrow">
+          <view class="chip" bindtap="wzBatch" data-ci="{{index}}" data-v="re">全部续报</view>
+          <view class="chip" bindtap="wzBatch" data-ci="{{index}}" data-v="churn">全部流失</view>
+        </view>
+        <view wx:for="{{c.students}}" wx:for-item="s" wx:for-index="si" wx:key="sid" class="sturow">
+          <view class="stumain">
+            <view class="stun">{{s.name}}</view>
+            <view class="mi">{{s.hasEn ? ('剩余 ' + s.remain + ' 课时') : '无课时账'}}</view>
+          </view>
+          <view class="decbtns">
+            <view class="chip {{s.act === 're' ? 'on' : ''}}" bindtap="wzAct" data-ci="{{index}}" data-i="{{si}}" data-v="re">续报</view>
+            <view class="chip {{s.act === 'churn' ? 'on' : ''}}" bindtap="wzAct" data-ci="{{index}}" data-i="{{si}}" data-v="churn">流失</view>
+          </view>
+        </view>
+        <view class="sumrow">续报 {{c.reCount}} 人 · 流失 {{c.churnCount}} 人</view>
+      </block>
+    </view>
+    <view wx:if="{{!wz.classes.length}}" class="card empty">没有延续的班级，无需处理学生</view>
+  </view>
+
+  <!-- 步骤 4：确认 -->
+  <view wx:if="{{wz.step === 4}}">
+    <view class="card">
+      <view class="wt">确认执行</view>
+      <view class="hint2">· 延续的班级进入「{{wz.newTerm.name}}」，剩余课时带入，旧报名标记已结转</view>
+      <view class="hint2">· 未续报学生标记流失，档案与成果记录全部保留</view>
+      <view class="hint2">· 「{{wz.termName}}」整体归档，归档后只能查看不能再录入</view>
+      <view class="warnbox">归档后本学期所有班级变为只读，此操作不可撤销。</view>
+    </view>
+  </view>
+
+  <!-- 底部步骤按钮 -->
+  <view class="wzbtns">
+    <view wx:if="{{wz.step > 1}}" class="btn ghost" bindtap="wzStep" data-s="{{wz.step - 1}}">上一步</view>
+    <view wx:if="{{wz.step < 4}}" class="btn" bindtap="wzStep" data-s="{{wz.step + 1}}">下一步</view>
+    <view wx:if="{{wz.step === 4}}" class="btn" bindtap="wzGenerate">确认生成并归档</view>
+  </view>
+</view>
+
+<!-- 新建学期弹层 -->
+<view wx:if="{{showCreate}}" class="mask" catchtap="closeCreate">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-t">新建学期</view>
+    <view class="lbl">学期名称</view>
+    <input class="inp" value="{{form.name}}" placeholder="如：2026 秋季班" bindinput="onF" data-k="name" />
+    <view class="chips">
+      <view wx:for="{{sugg}}" wx:key="*this" class="chip {{form.name === item ? 'on' : ''}}" bindtap="pickSugg" data-v="{{item}}">{{item}}</view>
+    </view>
+    <view class="lbl">开始日期（选填）</view>
+    <input class="inp" value="{{form.startDate}}" placeholder="YYYY-MM-DD" bindinput="onF" data-k="startDate" />
+    <view class="lbl">结束日期（选填）</view>
+    <input class="inp" value="{{form.endDate}}" placeholder="YYYY-MM-DD" bindinput="onF" data-k="endDate" />
+    <view class="row2">
+      <view class="btn ghost" bindtap="closeCreate">取消</view>
+      <view class="btn" bindtap="saveTerm">创建</view>
+    </view>
+  </view>
+</view>
+
+<!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
+<privacy-popup id="privacy" />
+</view>

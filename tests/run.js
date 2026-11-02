@@ -12,6 +12,7 @@ const path = require('path');
 const SUITES = [
   ['verify_db.js', '数据层'],
   ['verify_perm.js', '权限'],
+  ['verify_term.js', '学期与课时'],
   ['verify_p0.js', 'P0 止血'],
   ['verify_pages.js', '页面级']
 ];

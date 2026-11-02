@@ -1,10 +1,16 @@
 /* 筛选区：班级 chip 行 + 日期/等级下拉
    底部不再留白内边距，改用统一的 24rpx 外边距——
    之前是「24rpx 白内边距 + 24rpx 灰间隙」叠成双倍间距，第一张卡看起来悬在半空 */
-.filtbar { background: #fff; padding: 20rpx 0 0; margin-bottom: 24rpx; }
+/* 筛选区：钉在顶部（吸顶），列表从其下方滚过；底部细分割线与导航栏底边视觉一致 */
+.filtbar {
+  position: sticky; top: 0; z-index: 20;
+  background: #fff; padding: 20rpx 0 0; margin-bottom: 24rpx;
+  border-bottom: 2rpx solid var(--line);
+  box-shadow: 0 6rpx 16rpx var(--shadow);
+}
 .clsbar { white-space: nowrap; }
 .clsrow { display: inline-flex; gap: 16rpx; padding: 0 24rpx; }
-.pickers { display: flex; gap: 12rpx; align-items: center; padding: 16rpx 24rpx 4rpx; }
+.pickers { display: flex; gap: 12rpx; align-items: center; padding: 16rpx 24rpx 16rpx; }
 .pkbox {
   font-size: 24rpx; color: var(--sub); background: var(--bg);
   border: 2rpx solid var(--line-2); border-radius: 999rpx; padding: 10rpx 24rpx;

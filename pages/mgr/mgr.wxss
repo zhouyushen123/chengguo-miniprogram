@@ -31,6 +31,8 @@
 .sheet-t { text-align: center; font-size: 34rpx; font-weight: 700; margin-bottom: 28rpx; }
 .row2 { display: flex; gap: 20rpx; margin-top: 28rpx; }
 .row2 .btn { flex: 1; }
+/* 按钮行后紧跟的说明文字：统一 24rpx 标准间距（与卡片间距同标准） */
+.row2 + .mi { margin-top: 24rpx; }
 
 /* 学生表单：照片上传行 */
 .avrow { display: flex; align-items: center; gap: 20rpx; margin-bottom: 20rpx; }

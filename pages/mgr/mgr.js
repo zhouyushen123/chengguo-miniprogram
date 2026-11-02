@@ -16,6 +16,8 @@ Page({
     orgName: '', isManager: false, myRole: '', myRoleLabel: '',
     classes: [], courses: [], students: [], members: [],
     newCls: '', newCourse: '', courseClsIdx: 0,
+    // 新建班级表单：学期 / 模式 / 主讲
+    clsTerms: [], clsTermIdx: 0, clsMode: 'term', clsTeachers: [], clsTeacherIdx: 0,
     // 学生表单弹层
     // icoCameraW：压在全品牌色头像块上的相机图标，必须恒为白色，故不参与主题图标整包（换肤会覆盖）
     stuForm: null, stuClsSel: [], stuClsChips: [], icoCamera: icons.camera,
@@ -34,9 +36,27 @@ Page({
   noop() {},
   refresh() {
     const s = db.settings();
-    const classes = db.classes.list();
+    // 班级视图：补学期名 / 模式 / 主讲，列表直接可读
+    const terms = db.terms.list();
+    const staff = db.members.list()
+      .filter(m => m.role !== 'parent' && m.status === 'active')
+      .map(m => ({ id: m.id, name: m.name || '（未命名）' }));
+    const userNameOf = uid => {
+      const m = db.members.get(uid);
+      return m ? (m.name || '') : '';
+    };
+    const classes = db.classes.list().map(c => ({
+      id: c.id, name: c.name, sort: c.sort,
+      termName: ((terms.find(t => t.id === c.termId)) || {}).name || '',
+      modeLabel: c.mode === 'carry' ? '课时结转' : '学期制',
+      teacherLabel: c.teacherId ? (userNameOf(c.teacherId) || '') : ''
+    }));
     // 只有负责人/管理员能进人员管理；老师进来看不到别人的权限范围
     const isManager = db.auth.isAdmin();
+    // 新建班级表单：学期下拉默认当前进行中学期
+    const actTerms = terms.filter(t => t.status !== 'archived');
+    let clsTermIdx = this.data.clsTermIdx || 0;
+    if (clsTermIdx >= actTerms.length) clsTermIdx = 0;
 
     this.setData({
       orgName: s.orgName,
@@ -49,6 +69,9 @@ Page({
       tab: Math.min(this.data.tab, isManager ? 3 : 2),
       teacher: s.teacher,
       classes,
+      clsTerms: actTerms, clsTermIdx,
+      clsTeachers: [{ id: 0, name: '暂不指派' }].concat(staff),
+      clsTeacherIdx: this.data.clsTeacherIdx || 0,
       courses: db.courses.list().map(c => ({ id: c.id, name: c.name, cls: db.classes.name(c.clsId) })),
       students: db.students.list().map(st => ({
         id: st.id, name: st.name,
@@ -96,9 +119,16 @@ Page({
 
   /* ================= 班级 / 课程 ================= */
   onNewCls(e) { this.setData({ newCls: e.detail.value }); },
+  onClsTerm(e) { this.setData({ clsTermIdx: +e.detail.value }); },
+  onClsMode(e) { this.setData({ clsMode: e.currentTarget.dataset.v }); },
+  onClsTeacher(e) { this.setData({ clsTeacherIdx: +e.detail.value }); },
   addClass() {
     const n = (this.data.newCls || '').trim();
-    const r = db.classes.create({ name: n });
+    const t = (this.data.clsTerms || [])[this.data.clsTermIdx] || {};
+    const tc = (this.data.clsTeachers || [])[this.data.clsTeacherIdx] || { id: 0 };
+    const r = db.classes.create({
+      name: n, termId: t.id, mode: this.data.clsMode || 'term', teacherId: tc.id
+    });
     if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
     this.setData({ newCls: '' }); this.refresh();
   },

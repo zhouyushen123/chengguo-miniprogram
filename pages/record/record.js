@@ -35,7 +35,14 @@ Page({
   },
   onLoad(q) {
     const pick = getApp().globalData.pick || {};
-    const classes = db.classes.list();
+    // 录入入口只开「进行中」学期的班级；编辑已有记录时其班级始终保留（哪怕已归档）
+    const activeIds = db.terms.activeList().map(t => t.id);
+    let classes = db.classes.list().filter(c => activeIds.indexOf(c.termId) > -1);
+    if (pick.cls && !classes.some(c => c.id === pick.cls)) {
+      const old = db.classes.get(pick.cls);
+      if (old) classes = [old].concat(classes);
+    }
+    if (!classes.length) classes = db.classes.list();   // 兜底：一个进行中学期都没有时不至于无班可选
     const clsId = pick.cls || (classes[0] && classes[0].id);
     const courses = db.courses.of(clsId);
     const students = db.students.of(clsId); // 已按姓氏拼音排序

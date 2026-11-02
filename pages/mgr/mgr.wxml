@@ -13,13 +13,31 @@
 <view wx:if="{{tab===0}}" class="wrap">
   <view class="card">
     <view class="sec"><view class="label">添加班级</view></view>
+    <input class="input" placeholder="班级名称" value="{{newCls}}" bindinput="onNewCls" />
+    <view class="clsfrow">
+      <picker mode="selector" range="{{clsTerms}}" range-key="name" value="{{clsTermIdx}}" bindchange="onClsTerm">
+        <view class="pickerbox">学期：{{clsTerms[clsTermIdx].name || '请选择'}} ▾</view>
+      </picker>
+    </view>
+    <view class="clsfrow">
+      <view class="chip {{clsMode === 'term' ? 'on' : ''}}" bindtap="onClsMode" data-v="term">学期制</view>
+      <view class="chip {{clsMode === 'carry' ? 'on' : ''}}" bindtap="onClsMode" data-v="carry">课时结转</view>
+    </view>
+    <view class="clsfrow" wx:if="{{clsMode === 'carry'}}">
+      <view class="hint2">课时结转班：录一节消一课时，学期结束可整班结转到下期（在「学期管理」里操作）。</view>
+    </view>
+    <view class="clsfrow">
+      <picker mode="selector" range="{{clsTeachers}}" range-key="name" value="{{clsTeacherIdx}}" bindchange="onClsTeacher">
+        <view class="pickerbox">主讲老师：{{clsTeachers[clsTeacherIdx].name || '暂不指派'}} ▾</view>
+      </picker>
+    </view>
     <view class="addrow">
-      <input class="input" style="flex:1;margin-bottom:0" placeholder="班级名称" value="{{newCls}}" bindinput="onNewCls" />
-      <view class="btn addbtn" hover-class="btn-hover" bindtap="addClass">添加</view>
+      <view class="btn addbtn" style="flex:1" hover-class="btn-hover" bindtap="addClass">添加班级</view>
     </view>
   </view>
   <view class="card item" wx:for="{{classes}}" wx:key="id">
     <view class="itrow"><view class="ava">{{item.name[0]}}</view><b>{{item.name}}</b></view>
+    <view class="mi">{{item.termName || '未挂学期'}} · {{item.modeLabel}}<text wx:if="{{item.teacherLabel}}"> · 主讲 {{item.teacherLabel}}</text></view>
     <view class="mi del" catchtap="delClass" data-id="{{item.id}}">删除</view>
   </view>
 </view>

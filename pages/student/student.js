@@ -12,6 +12,7 @@ Page({
     filters: [], filt: '全部', total: 0, shown: 0, expandId: 0,
     // 新增：个人卡统计 / 资料入口 / 班级筛选 / 评价汇总
     stats: null, profileFilled: true, clsFilters: [], clsF: 'all', tagCounts: [],
+    hoursRemain: 0, hasCarry: false,
     playing: '', teacher: '', icoPlay: icons.play('#E8590C'), icoPause: icons.pause('#E8590C'),
     icoChev: icons.chevron, icoPlus: icons.plus('#FFFFFF'), icoCam: icons.camera
   },
@@ -81,6 +82,15 @@ Page({
       great: recs.filter(r => TAG_GOOD.indexOf(r.tag) > -1).length,
       days: Object.keys(daySet).length
     };
+    // ---- 剩余课时：结转制班级的 active 报名求和（课时包家庭最关心的数字） ----
+    let hoursRemain = 0, hasCarry = false;
+    db.enrollments.ofStudent(s.id).forEach(en => {
+      if (en.status !== 'active') return;
+      const c = db.classes.get(en.clsId) || db.classes._all().find(x => x.id === en.clsId);
+      if (!c || c.mode !== 'carry') return;
+      hasCarry = true;
+      hoursRemain += Math.max(0, (en.totalHours || 0) - (en.usedHours || 0));
+    });
     // ---- 资料入口：家长资料表单（profile）一个字没填才提示「待填写」 ----
     const p = s.profile || {};
     const profileFilled = ['nick', 'birth', 'school', 'phone', 'wechat', 'level', 'goal', 'note'].some(k => p[k]);
@@ -106,6 +116,7 @@ Page({
     this.setData({
       s: this.stuView(s), rec: null,
       stats, profileFilled, clsFilters, clsF, tagCounts,
+      hoursRemain, hasCarry,
       filters, filt, total: recs.length, shown: list.length,
       latest: deco(list[0] || null),
       // 历史条目带全量字段，行内展开详情用（不再跳新页）

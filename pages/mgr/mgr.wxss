@@ -54,3 +54,9 @@
   flex: none; margin-left: 18rpx; padding: 6rpx 20rpx;
   background: var(--brand); color: #fff; border-radius: 999rpx; font-size: 22rpx;
 }
+
+/* 新建班级表单 */
+.clsfrow { margin-top: 20rpx; display: flex; gap: 14rpx; flex-wrap: wrap; align-items: center; }
+.clsfrow .chip { font-size: 25rpx; }
+.clsfrow .chip.on { background: var(--brand); color: #fff; font-weight: 700; }
+.hint2 { font-size: 24rpx; color: var(--sub); line-height: 1.7; }

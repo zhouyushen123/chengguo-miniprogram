@@ -17,6 +17,7 @@
       <text class="stat st-c">{{stats.lessons}} 节课</text>
       <text class="stat st-g">优秀 {{stats.great}} 次</text>
       <text class="stat st-d">{{stats.days}} 个学习日</text>
+      <text wx:if="{{hasCarry}}" class="stat st-h">剩余 {{hoursRemain}} 课时</text>
     </view>
   </view>
 

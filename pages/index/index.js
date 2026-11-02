@@ -95,12 +95,22 @@ Page({
       days: Object.keys(daySet).length,
       care: recs.filter(r => CARE.indexOf(r.tag) > -1).length
     };
+    // 剩余课时：结转制班级的 active 报名求和（有课时包才显示）
+    let hoursRemain = 0, hasCarry = false;
+    db.enrollments.ofStudent(sid).forEach(en => {
+      if (en.status !== 'active') return;
+      const c = db.classes.get(en.clsId) || db.classes._all().find(x => x.id === en.clsId);
+      if (!c || c.mode !== 'carry') return;
+      hasCarry = true;
+      hoursRemain += Math.max(0, (en.totalHours || 0) - (en.usedHours || 0));
+    });
     const latest = recs[0] ? deco(recs[0]) : null;
     this.setData({
       kName: s.name,
       kPhoto: s.photo || '',
       kCls: (s.clsIds || []).map(db.classes.name).join(' · '),
       stats,
+      hoursRemain, hasCarry,
       kLatest: latest,
       latestPhotos: latest ? ((db.records.get(latest.id) || {}).photos || []).slice(0, 3) : [],
       kHistory: recs.slice(1).map(deco),

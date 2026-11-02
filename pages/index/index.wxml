@@ -108,6 +108,7 @@
       <text class="pstat ps-c">{{stats.lessons}} 节课</text>
       <text class="pstat ps-g">优秀 {{stats.great}} 次</text>
       <text class="pstat ps-d">{{stats.days}} 个学习日</text>
+      <text wx:if="{{hasCarry}}" class="pstat ps-b">剩余 {{hoursRemain}} 课时</text>
     </view>
     <view wx:if="{{stats && stats.care}}" class="caretip">有 {{stats.care}} 次课需要多鼓励，见下方「需要注意」</view>
   </view>

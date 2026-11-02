@@ -76,7 +76,12 @@ Page({
           canSend: db.auth.can('record.send', { record: r })
         };
       });
-    this.setData({ dateOpts, dateIdx, tagOpts, tagIdx, list, total: list.length, allCount });
+    this.setData({ _terms: terms, termOpts, termIdx, dateOpts, dateIdx, tagOpts, tagIdx, list, total: list.length, allCount });
+  },
+  // 学期变化：下层筛选全部归位
+  onTerm(e) {
+    this.setData({ termIdx: +e.detail.value, dateIdx: 0, tagIdx: 0 });
+    this.refresh();
   },
   // 班级变化：下层筛选全部归位
   pickTab(e) {

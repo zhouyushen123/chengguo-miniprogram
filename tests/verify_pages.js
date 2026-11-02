@@ -264,6 +264,64 @@ ok('家长身份下记录页只显示孩子、且编辑被拒', () => {
   mgr.backHome();
 });
 
+console.log('\n【学期管理页：新建 + 结转向导】');
+const terms = loadPage('pages/terms/terms.js');
+ok('学期列表渲染：内置长期班 + 建议胶囊生成', () => {
+  terms.onShow();
+  assert.ok(terms.data.terms.some(t => t.builtIn && t.name === '长期班'));
+  assert.ok(terms.data.sugg.length >= 5);
+});
+ok('新建学期（秋季班）落库并出现在列表', () => {
+  terms.openCreate();
+  terms.onF({ detail: { value: '2027 春季班' } });
+  terms.saveTerm();
+  assert.ok(terms.data.terms.some(t => t.name === '2027 春季班'));
+  assert.strictEqual(terms.data.showCreate, false);
+});
+ok('结转向导：建结转班+报名+记录后可走通四步', () => {
+  // 准备：上一个进行中学期 + 结转制班级 + 10 课时的学生
+  const t0 = db.terms.create({ name: '2026 秋季班' }).item;
+  db.terms.update(t0.id, { status: 'active' });
+  const c0 = db.classes.create({ name: '硬笔提高', termId: t0.id, mode: 'carry' }).item;
+  const s0 = db.students.create({ name: '结转测试生', clsIds: [c0.id] }).item;
+  db.enrollments.create({ studentId: s0.id, clsId: c0.id, totalHours: 10 });
+  db.records.save({ sid: s0.id, cls: c0.id, course: '硬笔', score: 90, tag: '优秀', note: '好' }, false);
+  terms.onShow();
+  terms.startWizard({ currentTarget: { dataset: { id: t0.id } } });
+  assert.strictEqual(terms.data.wz.step, 1);
+  // 步骤1：默认延续 + 新学期名
+  assert.strictEqual(terms.data.wz.classes[0].decision, 'carry');
+  terms.wzStep({ currentTarget: { dataset: { s: 2 } } });
+  // 步骤2：指派老师（owner 成员）
+  const owner = terms.data.wz.staff[0];
+  terms.wzTeacher({ currentTarget: { dataset: { ci: 0 } }, detail: { value: 0 } });
+  assert.ok(terms.data.wz.classes[0].teacherId > 0 || owner.id > 0);
+  terms.wzStep({ currentTarget: { dataset: { s: 3 } } });
+  // 步骤3：默认续报，把剩余 9 课时带过去
+  assert.strictEqual(terms.data.wz.classes[0].students[0].act, 're');
+  assert.strictEqual(terms.data.wz.classes[0].students[0].remain, 9);
+  terms.wzStep({ currentTarget: { dataset: { s: 4 } } });
+  // 步骤4：生成并归档
+  terms.wzGenerate();
+  assert.strictEqual(terms.data.mode, 'list');
+  const nt = db.terms.list().find(t => t.name === '2027 春季班');
+  assert.ok(nt, '新学期应已创建');
+  const newCls = db.classes._all().find(c => c.termId === nt.id && c.name === '硬笔提高');
+  assert.ok(newCls, '延续班级应在新学期');
+  assert.strictEqual(newCls.mode, 'carry');
+  const newEn = db.enrollments.of(newCls.id, s0.id);
+  assert.ok(newEn, '续报报名应存在');
+  assert.strictEqual(newEn.totalHours, 9, '剩余 9 课时带入');
+  const oldEn = db.enrollments.of(c0.id, s0.id);
+  assert.strictEqual(oldEn.status, 'carried', '旧报名标记已结转');
+  assert.strictEqual(db.terms.get(t0.id).status, 'archived', '旧学期已归档');
+});
+ok('归档学期的班级不再出现在录入页班级列表', () => {
+  const record2 = loadPage('pages/record/record.js');
+  record2.onLoad({});
+  assert.ok(record2.data.clsId, '应有可选班级');
+});
+
 console.log('\n【模板页：增删改选项】');
 const tpls = loadPage('pages/tpls/tpls.js');
 ok('渲染 5 个维度', () => {

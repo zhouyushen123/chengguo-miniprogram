@@ -176,3 +176,4 @@
 .ht1 b { font-size: 29rpx; }
 .hcam { display: flex; align-items: center; gap: 6rpx; font-size: 22rpx; color: var(--muted); flex: none; }
 .camico { width: 28rpx; height: 28rpx; }
+.ps-b { color: var(--brand); background: var(--brand-soft); }

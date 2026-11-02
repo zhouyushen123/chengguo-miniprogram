@@ -10,10 +10,37 @@ const schema = require('./schema');
 
 const ORG = schema.DEFAULT_ORG;
 
+// 内置「长期班」学期：老数据升级时自动创建、收编全部历史班级。
+// 它永远进行中、不参与结转向导——老用户升级后行为与升级前完全一致。
+// 同一机构只允许一个 builtIn（重复调用直接复用）。
+function ensureBuiltinTerm(terms, classes, orgId, stamp) {
+  let t = terms.find(x => x.builtIn && !x.removed);
+  if (!t) {
+    t = schema.normalizeTerm({
+      id: coreNextId(terms), name: '长期班', status: 'active', builtIn: true
+    }, orgId, stamp);
+    terms.push(t);
+  }
+  let changed = !!terms.find(x => x === t);
+  classes.forEach(c => {
+    if (!c.termId) { c.termId = t.id; c.updatedAt = stamp; changed = true; }
+  });
+  return { term: t, changed };
+}
+// terms 集合内的自增 id（迁移期尚不能用 core.nextId， hydrate 还没发生）
+function coreNextId(list) {
+  let max = 0;
+  (list || []).forEach(e => { if (e.id > max) max = e.id; });
+  return max + 1;
+}
+
 function buildFresh(stamp) {
+  const terms = [schema.normalizeTerm({
+    id: 1, name: '长期班', status: 'active', builtIn: true
+  }, ORG, stamp)];
   const cls = [
-    schema.normalizeClass({ id: 1, name: '书法班' }, ORG, stamp),
-    schema.normalizeClass({ id: 2, name: '素描班' }, ORG, stamp)
+    schema.normalizeClass({ id: 1, name: '书法班', termId: 1 }, ORG, stamp),
+    schema.normalizeClass({ id: 2, name: '素描班', termId: 1 }, ORG, stamp)
   ];
   const courses = [
     schema.normalizeCourse({ id: 1, name: '楷书', clsId: 1 }, ORG, stamp),
@@ -39,7 +66,7 @@ function buildFresh(stamp) {
       version: schema.VERSION, orgId: ORG, orgName: '我的机构',
       teacher: '测试老师', me: 't1', demoVersion: 0, createdAt: stamp, updatedAt: stamp
     },
-    orgs, members, classes: cls, courses, students: [], records: [], users, templates
+    orgs, members, terms, classes: cls, courses, students: [], enrollments: [], records: [], users, templates
   };
 }
 
@@ -89,6 +116,10 @@ function upgrade(loaded, stamp) {
 
   const members = source.map(m => schema.normalizeMember(m, orgId, stamp));
 
+  // v5：内置「长期班」学期 + 收编全部未挂靠班级（老数据一条不重建）
+  const terms = (loaded.terms || []).map(t => schema.normalizeTerm(t, orgId, stamp));
+  ensureBuiltinTerm(terms, classes, orgId, stamp);
+
   return {
     meta: Object.assign({}, meta, {
       version: schema.VERSION,
@@ -97,9 +128,11 @@ function upgrade(loaded, stamp) {
       updatedAt: stamp
     }),
     orgs, members,
+    terms,
     classes,
     courses: (loaded.courses || []).map(c => schema.normalizeCourse(c, orgId, stamp)),
     students: (loaded.students || []).map(s => schema.normalizeStudent(s, orgId, stamp)),
+    enrollments: (loaded.enrollments || []).map(e => schema.normalizeEnrollment(e, orgId, stamp)),
     records: (loaded.records || []).map(r => schema.normalizeRecord(r, orgId, stamp)),
     users,
     templates: (loaded.templates || []).map(t => schema.normalizeTemplate(t, orgId, stamp))
@@ -201,6 +234,10 @@ function build(loaded) {
 
   const me = users.some(u => u.id === old.me) ? old.me : users[0].id;
 
+  // v5：内置「长期班」学期 + 收编全部班级
+  const terms = [];
+  ensureBuiltinTerm(terms, classes, ORG, stamp);
+
   return {
     meta: {
       version: schema.VERSION, orgId: ORG, orgName: '我的机构',
@@ -211,7 +248,7 @@ function build(loaded) {
       migratedFrom: 'v2'
     },
     orgs, members,
-    classes, courses, students, records, users,
+    terms, classes, courses, students, enrollments: [], records, users,
     templates: buildTemplates(legacy.tpls, stamp)
   };
 }

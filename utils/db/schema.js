@@ -1,12 +1,16 @@
 // utils/db/schema.js —— 主数据模型：实体定义、字段约束、校验规则
 //
-// 八类实体，各自有唯一 id 与归属机构：
+// 十类实体，各自有唯一 id 与归属机构：
 //   org      机构    { id, name, ownerId, status }          一个机构 = 一家校区/一个独立经营单元
 //   member   成员    { id, orgId, userId, role, clsIds[], courseIds[], studentIds[], status }
 //                                                          「某人在这家机构里是谁、能管哪些数据」
-//   class    班级    { id, name, sort }
+//   term     学期    { id, name, startDate, endDate, status, builtIn }   开班的时间段（2026春季班/第N期…）
+//   class    班级    { id, name, sort, termId, mode, teacherId }
+//                                                          mode: term=随学期结束归档 / carry=课时包可结转
 //   course   课程    { id, clsId, name }                    clsId → class.id
 //   student  学生    { id, name, clsIds[], parent, wechat, photo, profile{} }
+//   enrollment 报名  { id, studentId, clsId, termId, totalHours, usedHours, status, carriedFrom }
+//                                                          课时账本：孩子在这个班买了多少课时、上了多少、剩多少
 //   record   课堂记录 { id, sid, cid, courseId, course, date, score, tag, note, photos[], videos[], audio, sent, tid }
 //   user     人员    { id, name }                           人的身份本身，不含权限
 //   template 评价模板 { id, name, options[] }
@@ -20,7 +24,7 @@
 //
 // 公共审计字段（所有实体强制携带）：orgId 归属机构 / createdAt 创建时间 / updatedAt 更新时间 / removed 软删除
 // 软删除的意义：多端同步时"删掉"必须能被同步，硬删会被其它端的历史数据覆盖复活。
-const VERSION = 4;
+const VERSION = 5;
 const DEFAULT_ORG = 'org1';
 
 // 评分五档（与录入页每档代表分对应，用于筛选与统计口径统一）
@@ -34,6 +38,12 @@ const RECORD_TYPES = ['achievement'];
 const ROLES = ['owner', 'admin', 'teacher', 'parent'];
 const MEMBER_STATUS = ['active', 'invited', 'disabled'];
 const ORG_STATUS = ['active', 'suspended'];
+// 学期状态：upcoming 未开始 / active 进行中（录入入口只看它）/ archived 已归档（只读）
+const TERM_STATUS = ['upcoming', 'active', 'archived'];
+// 班级模式：term 随学期结束归档；carry 课时包，没上完结转下期
+const CLASS_MODES = ['term', 'carry'];
+// 报名状态：active 在读 / carried 已结转到新班 / churned 未续报（流失，档案保留）/ refunded 退费
+const ENROLL_STATUS = ['active', 'carried', 'churned', 'refunded'];
 
 // 默认评价模板：维度名 + 该维度下的常用评语选项
 const DEFAULT_TEMPLATES = [
@@ -79,7 +89,40 @@ function normalizeClass(raw, orgId, stamp) {
   return Object.assign({
     id: num(r.id, 0),
     name: str(r.name).trim(),
-    sort: num(r.sort, 0)
+    sort: num(r.sort, 0),
+    termId: num(r.termId, 0),                                  // 归属学期（0 = 未挂靠，normalizeAll 会兜底挂到内置学期）
+    mode: CLASS_MODES.indexOf(r.mode) > -1 ? r.mode : 'term',  // 学期制为默认，老数据无感
+    teacherId: num(r.teacherId, 0)                             // 主讲老师（member id），0 = 未指派
+  }, audit(r, orgId, stamp));
+}
+
+// 学期：开班的时间段。名称完全自由（2026春季班 / 暑假班 / 第N期），排序与计算一律按日期。
+// builtIn: 内置「长期班」——老数据升级时自动创建并收编全部历史班级，不参与结转向导。
+function normalizeTerm(raw, orgId, stamp) {
+  const r = raw || {};
+  return Object.assign({
+    id: num(r.id, 0),
+    name: str(r.name).trim(),
+    startDate: normDate(r.startDate),
+    endDate: normDate(r.endDate),
+    status: TERM_STATUS.indexOf(r.status) > -1 ? r.status : 'upcoming',
+    builtIn: r.builtIn === true
+  }, audit(r, orgId, stamp));
+}
+
+// 报名（课时账本）：孩子 × 班级 × 学期。结转制班级的消费与结转都落在这张表上。
+// carriedFrom 指向上一期的报名 id，续报溯源用。
+function normalizeEnrollment(raw, orgId, stamp) {
+  const r = raw || {};
+  return Object.assign({
+    id: num(r.id, 0),
+    studentId: num(r.studentId, 0),
+    clsId: num(r.clsId, 0),
+    termId: num(r.termId, 0),
+    totalHours: num(r.totalHours, 0),
+    usedHours: num(r.usedHours, 0),
+    status: ENROLL_STATUS.indexOf(r.status) > -1 ? r.status : 'active',
+    carriedFrom: num(r.carriedFrom, 0)
   }, audit(r, orgId, stamp));
 }
 
@@ -183,9 +226,11 @@ function normalize(entity, raw, orgId, stamp) {
   switch (entity) {
     case 'org': return normalizeOrg(raw, stamp);
     case 'member': return normalizeMember(raw, orgId, stamp);
+    case 'term': return normalizeTerm(raw, orgId, stamp);
     case 'class': return normalizeClass(raw, orgId, stamp);
     case 'course': return normalizeCourse(raw, orgId, stamp);
     case 'student': return normalizeStudent(raw, orgId, stamp);
+    case 'enrollment': return normalizeEnrollment(raw, orgId, stamp);
     case 'record': return normalizeRecord(raw, orgId, stamp);
     case 'user': return normalizeUser(raw, orgId, stamp);
     case 'template': return normalizeTemplate(raw, orgId, stamp);
@@ -211,6 +256,17 @@ function validate(entity, e) {
     case 'class':
       if (!e.name) return '班级名称不能为空';
       if (e.name.length > 20) return '班级名称过长';
+      return null;
+    case 'term':
+      if (!e.name) return '学期名称不能为空';
+      if (e.name.length > 20) return '学期名称过长';
+      if (e.startDate && !e.startDate) return '开始日期格式应为 YYYY-MM-DD';
+      if (e.endDate && e.startDate && e.endDate < e.startDate) return '结束日期不能早于开始日期';
+      return null;
+    case 'enrollment':
+      if (!e.studentId) return '报名必须关联学生';
+      if (!e.clsId) return '报名必须关联班级';
+      if (e.totalHours < 0 || e.usedHours < 0) return '课时数不能为负';
       return null;
     case 'course':
       if (!e.name) return '课程名称不能为空';
@@ -242,9 +298,11 @@ function validate(entity, e) {
 }
 
 module.exports = {
-  VERSION, DEFAULT_ORG, TAGS, RECORD_TYPES, ROLES, MEMBER_STATUS, ORG_STATUS, DEFAULT_TEMPLATES,
+  VERSION, DEFAULT_ORG, TAGS, RECORD_TYPES, ROLES, MEMBER_STATUS, ORG_STATUS,
+  TERM_STATUS, CLASS_MODES, ENROLL_STATUS, DEFAULT_TEMPLATES,
   str, num, list, numList, txtList, ymd, normDate,
   normalize, validate,
   normalizeOrg, normalizeMember,
-  normalizeClass, normalizeCourse, normalizeStudent, normalizeRecord, normalizeUser, normalizeTemplate
+  normalizeTerm, normalizeClass, normalizeCourse, normalizeStudent, normalizeEnrollment,
+  normalizeRecord, normalizeUser, normalizeTemplate
 };

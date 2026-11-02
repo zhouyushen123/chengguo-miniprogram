@@ -16,7 +16,8 @@ const META_KEY = 'meta';
 
 // 实体集合（顺序即初始化顺序，被 load 与迁移共用）
 // orgs / members 是机构与成员关系：权限的唯一来源，云端对应 org 表与 member 授权表
-const COLLECTIONS = ['orgs', 'members', 'classes', 'courses', 'students', 'records', 'users', 'templates'];
+// terms / enrollments 是学期与报名（课时账本）：学期制与结转制的载体
+const COLLECTIONS = ['orgs', 'members', 'terms', 'classes', 'courses', 'students', 'enrollments', 'records', 'users', 'templates'];
 
 // v2 遗留的单一大对象（迁移源，保留不动作为兜底备份）
 const LEGACY_DB_KEY = 'chengguo_v2';

@@ -7,8 +7,8 @@ const storage = require('./storage');
 const schema = require('./schema');
 
 const EMPTY = {
-  meta: null, orgs: [], members: [], classes: [], courses: [],
-  students: [], records: [], users: [], templates: []
+  meta: null, orgs: [], members: [], terms: [], classes: [], courses: [],
+  students: [], enrollments: [], records: [], users: [], templates: []
 };
 
 let state = Object.assign({}, EMPTY);
@@ -27,7 +27,7 @@ function hydrate(loaded) {
   state.meta = loaded.meta || null;
   // id 分配器从现有最大值起步，避免系统时间回拨时生成重复 id
   let max = 0;
-  ['classes', 'courses', 'students', 'records', 'templates'].forEach(name => {
+  ['terms', 'classes', 'courses', 'students', 'enrollments', 'records', 'templates'].forEach(name => {
     state[name].forEach(e => { if (typeof e.id === 'number' && e.id > max) max = e.id; });
   });
   lastId = max;

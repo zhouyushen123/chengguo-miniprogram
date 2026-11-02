@@ -26,7 +26,7 @@
 .sheet {
   width: 100%; background: #fff; border-radius: 32rpx 32rpx 0 0;
   padding: 36rpx 32rpx calc(36rpx + env(safe-area-inset-bottom));
-  max-height: 82vh; overflow-y: auto; box-sizing: border-box;
+  max-height: 82vh; overflow-y: scroll; -webkit-overflow-scrolling: touch; box-sizing: border-box;
 }
 .sheet-t { text-align: center; font-size: 34rpx; font-weight: 700; margin-bottom: 28rpx; }
 .row2 { display: flex; gap: 20rpx; margin-top: 28rpx; }

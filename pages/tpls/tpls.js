@@ -6,9 +6,10 @@ const theme = require('../../utils/theme');
 
 Page({
   data: { mode: 'manage', groups: [], sel: [], previewText: '', addingIdx: -1,
+    pvPhotos: [], pvVideos: [], pvAudio: null, hasMedia: false,
     // 模板是机构统一话术：只有负责人/管理员能改，老师与家长只读
     canEdit: false,
-    icoMic: icons.mic('#E8590C'), icoEdit: icons.edit, icoClose: icons.close, icoPlus: icons.plus('#E8590C') },
+    icoMic: icons.mic('#E8590C'), icoEdit: icons.edit, icoClose: icons.close, icoPlus: icons.plus('#E8590C'), icoAudio: icons.audio },
   onLoad(q) {
     this.mode = q.mode || 'manage';
     const pick = getApp().globalData.pick || {};
@@ -18,6 +19,7 @@ Page({
     if (this.mode === 'preview') this.buildPreview();
   },
   onShow() { theme.apply(this); this.render(); },
+  onUnload() { if (this._au) this._au.destroy(); },
   render() {
     const t = db.templates.list();
     this.setData({ groups: t.map((g, i) => ({ id: g.id, n: g.name, i, opts: g.options.map((o, j) => ({ o, j, on: this.sel.includes(i + ':' + j) })) })) });
@@ -117,7 +119,23 @@ Page({
     const s = db.students.get(pick.sid);
     const lines = (pick.note || '').split('\n').filter(Boolean).map(l => '· ' + l);
     const txt = `【橙果·课后成果】${s ? s.name : '—'} 同学今天的${db.classes.name(pick.cls)}·${pick.course || ''}课成果：${pick.score}分${pick.tag ? '（' + pick.tag + '）' : ''}\n${lines.join('\n')}`;
-    this.setData({ previewText: txt });
+    // 媒体随记录一起发送：照片/视频/语音在文本下方单独预览
+    this.setData({
+      previewText: txt,
+      pvPhotos: pick.photos || [], pvVideos: pick.videos || [], pvAudio: pick.audio || null,
+      hasMedia: (pick.photos || []).length > 0 || (pick.videos || []).length > 0 || !!pick.audio
+    });
+  },
+  pvPhoto(e) {
+    const i = +e.currentTarget.dataset.i;
+    wx.previewImage({ current: this.data.pvPhotos[i], urls: this.data.pvPhotos });
+  },
+  pvPlayAudio() {
+    if (!this.data.pvAudio) return;
+    if (this._au) this._au.destroy();
+    this._au = wx.createInnerAudioContext();
+    this._au.src = this.data.pvAudio;
+    this._au.play();
   },
   copyPreview() {
     wx.setClipboardData({ data: this.data.previewText, success: () => wx.showToast({ title: '已复制，可发给家长', icon: 'none' }) });

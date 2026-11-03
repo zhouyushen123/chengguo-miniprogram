@@ -4,6 +4,21 @@
     <view class="label">家长收到的通知文本</view>
     <view class="prebox">{{previewText}}</view>
   </view>
+  <view class="card" style="margin-top:20rpx">
+    <view class="label">随记录一起发送的{{pvPhotos.length ? '照片' : ''}}{{pvPhotos.length && pvVideos.length ? '、' : ''}}{{pvVideos.length ? '视频' : ''}}{{(pvPhotos.length || pvVideos.length) && pvAudio ? '、' : ''}}{{pvAudio ? '语音' : ''}}</view>
+    <view wx:if="{{pvPhotos.length}}" class="pvgrid">
+      <image wx:for="{{pvPhotos}}" wx:key="*this" class="pvph" src="{{item}}" mode="aspectFill" bindtap="pvPhoto" data-i="{{index}}" />
+    </view>
+    <view wx:if="{{pvVideos.length}}" class="pvvideos">
+      <video wx:for="{{pvVideos}}" wx:key="*this" class="pvvideo" src="{{item}}" object-fit="cover" controls show-center-play-btn></video>
+    </view>
+    <view wx:if="{{pvAudio}}" class="pvaudio">
+      <image class="pvaico" src="{{icoAudio}}" mode="aspectFit" />
+      <text class="pvatxt">课堂语音点评</text>
+      <text class="pvaplay" bindtap="pvPlayAudio">播放</text>
+    </view>
+    <view wx:if="{{!hasMedia}}" class="pvhint">本条记录还没添加照片、视频或语音，只有文字内容</view>
+  </view>
   <view class="btn copybtn" bindtap="copyPreview">一键复制，发给家长</view>
 </view>
 

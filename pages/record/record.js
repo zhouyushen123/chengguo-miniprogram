@@ -195,7 +195,11 @@ Page({
   playAudio() { if (this.data.audio) wx.createInnerAudioContext().src = this.data.audio; },
   rmAudio() { this.setData({ audio: null }); this.refreshCan(); },
   preview() {
-    const d = this.data;
+    // 预览页要一并展示照片/视频/语音，跳转前把当前媒体同步进 pick
+    const pick = getApp().globalData.pick || (getApp().globalData.pick = {});
+    pick.photos = this.data.photos.slice();
+    pick.videos = this.data.videos.slice();
+    pick.audio = this.data.audio || null;
     wx.navigateTo({ url: '/pages/tpls/tpls?mode=preview' });
   },
   save(e) {

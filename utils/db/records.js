@@ -47,7 +47,14 @@ function recordSave(pick, send) {
   if (!stu) return { ok: false, msg: '请先选择学生' };
   if (send && !canSend(p)) return { ok: false, msg: '内容还没补齐' };
 
-  const cid = Number(p.cls || p.clsId) || stu.clsIds[0] || 0;
+  // 班级字段在这套代码里有三个名字：页面用 cls，数据模型用 cid，历史调用有 clsId。
+  // 只认其中两个的话，传 cid 会被静默忽略并回落到「学生的第一个班」——
+  // 不报错、不提示，记录直接挂到另一个班上去（和 P1-2 是同一类事故的另一个入口）。
+  // 三个都认，代价为零；都没传才回落到第一个班（快速录入的老路径要保留）。
+  const rawCid = (p.cls !== undefined && p.cls !== null && p.cls !== '') ? p.cls
+    : (p.clsId !== undefined && p.clsId !== null && p.clsId !== '') ? p.clsId
+      : p.cid;
+  const cid = Number(rawCid) || stu.clsIds[0] || 0;
   const rid = Number(p.rid) || 0;
   if (!cid) return { ok: false, msg: '请先选择班级' };
 

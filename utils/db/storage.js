@@ -72,6 +72,37 @@ function makeNs(prefix, tag) {
   // 第 n 片（n 从 1 起）。第一片沿用集合本名，保持与老数据兼容
   const shardKey = (name, n) => (n === 1 ? name : name + '_' + n);
 
+  /* ---------------- 脏片写：没变的片不再落盘 ----------------
+   * 分片只解决了「单 key 装不下」，没解决「每次写都把整个集合重刷一遍」：
+   * 录一条记录，前面几片的内容一个字都没变，却照样进了 setStorageSync。
+   * 实测 2000 条记录时，落盘次数从 2000 次涨到 7287 次（分片越多越糟），
+   * 而 setStorageSync 是同步 IO，真机上每次都是毫秒级的主线程阻塞。
+   *
+   * 这里给每片记一个「上次写进去的内容指纹」，写之前先比：
+   * 一样就跳过，不一样才落盘。追加一条记录时只有最后一片会变，于是回到 1 次 IO。
+   *
+   * 为什么用「内容指纹」而不是「引用比较」或「updatedAt 比较」：
+   *   - 引用比较没用：写路径改的是内存里的同一个对象，引用永远相等；
+   *   - updatedAt 比较会漏写：repairRefs / 迁移这类自愈路径会改字段而不动时间戳。
+   * 指纹用 djb2 + 长度双校验，320 条的片碰撞概率可以忽略；万一真碰撞，
+   * 代价是「这次没写」，而下次任何真实变更都会让指纹失配 —— 不会永久性丢数据。
+   */
+  const PRINT = Object.create(null);   // 片 key → 'hash:len'
+  function printOf(s) {
+    let h = 5381;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+    return h + ':' + s.length;
+  }
+  function writeShard(key, value) {
+    let s;
+    try { s = JSON.stringify(value); } catch (e) { return write(key, value); }  // 环形结构等异常数据，退回原路
+    const p = printOf(s);
+    if (PRINT[key] === p) return true;      // 一字未变，跳过这次同步 IO
+    if (!write(key, value)) return false;
+    PRINT[key] = p;
+    return true;
+  }
+
   // 读一个集合：分片集合逐片读到尽头，普通集合直接读
   function readColl(name) {
     if (!SHARD[name]) {
@@ -92,18 +123,22 @@ function makeNs(prefix, tag) {
   }
 
   function writeColl(name, list) {
-    if (!SHARD[name]) return write(name, list);
+    if (!SHARD[name]) return writeShard(name, list);
     const size = SHARD[name];
     const arr = Array.isArray(list) ? list : [];
     const total = Math.max(1, Math.ceil(arr.length / size));   // 空集合也写第一片，保证"读取时存在"
     let ok = true;
     for (let n = 1; n <= total; n++) {
-      if (!write(shardKey(name, n), arr.slice((n - 1) * size, n * size))) ok = false;
+      if (!writeShard(shardKey(name, n), arr.slice((n - 1) * size, n * size))) ok = false;
     }
     // 清掉上一次留下的多余分片（记录被删/清空后又变少时）
     const idx = read(CHUNK_KEY);
     const old = (idx && idx[name]) || 0;
-    for (let n = total + 1; n <= old; n++) drop(shardKey(name, n));
+    for (let n = total + 1; n <= old; n++) {
+      const k = shardKey(name, n);
+      drop(k);
+      delete PRINT[k];          // 片没了，指纹也要跟着清，否则重新长出这一片时会被误判成"没变"
+    }
     if (old !== total) {
       const next = Object.assign({}, idx || {});
       next[name] = total;
@@ -122,7 +157,7 @@ function makeNs(prefix, tag) {
     if (COLLECTIONS.indexOf(name) < 0) { console.error('[db] 未知集合', tag, name); return false; }
     return writeColl(name, list);
   }
-  function saveMeta(meta) { return write(META_KEY, meta); }
+  function saveMeta(meta) { return writeShard(META_KEY, meta); }
   function removeAll() {
     try {
       COLLECTIONS.forEach(n => {
@@ -131,6 +166,7 @@ function makeNs(prefix, tag) {
       });
       wx.removeStorageSync(prefix + META_KEY);
       wx.removeStorageSync(prefix + CHUNK_KEY);
+      Object.keys(PRINT).forEach(k => { delete PRINT[k]; });   // 清空后指纹失效，否则重建同内容会被跳过
       return true;
     } catch (e) { return false; }
   }

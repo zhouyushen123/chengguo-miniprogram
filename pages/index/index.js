@@ -12,7 +12,9 @@ Page({
     q: '', results: [], moreCount: 0,
     clsCount: 0, stuCount: 0, pending: 0,
     myClasses: [], recent: [],
-    icoSearch: icons.search, icoClose: icons.close, icoChev: icons.chevron, icoCam: icons.camera
+    icoSearch: icons.search, icoClose: icons.close, icoChev: icons.chevron, icoCam: icons.camera,
+    // 首页大卡图标：渐变卡上用白色加号，浅色记录卡用文档图标
+    icoPlusW: icons.plus('#FFFFFF'), icoDoc: icons.doc
   },
   onShow() {
     theme.apply(this); // 主题：根类名 + 图标 + 原生 chrome

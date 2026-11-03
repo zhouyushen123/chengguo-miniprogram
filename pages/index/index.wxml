@@ -6,33 +6,35 @@
     <view class="datechip">{{dateStr}}</view>
   </view>
 
-  <!-- 主操作 + 搜索 -->
-  <view class="card hero">
-    <view class="hero2">
-      <view class="hero-btn primary" hover-class="btn-hover" bindtap="goRecord">
-        <view class="ht">开始录入</view>
-        <view class="hs">选学生 · 打分 · 发家长</view>
+  <!-- 主操作区：左大卡 + 右侧两叠卡（记录入口 / 搜索学生） -->
+  <view class="herog-wrap">
+    <view class="herog">
+      <view class="hgc big" hover-class="btn-hover" bindtap="goRecord">
+        <image class="hgc-ico" src="{{icoPlusW}}" mode="aspectFit" />
+        <view class="hgc-t">开始录入</view>
+        <view class="hgc-s">选学生 · 打分 · 发家长</view>
       </view>
-      <view class="hero-btn" hover-class="btn-hover" bindtap="goRecords">
-        <view class="ht">全部记录</view>
-        <view class="hs">按学生查看</view>
+      <view class="hgc-col">
+        <view class="hgc a" hover-class="btn-hover" bindtap="goRecords">
+          <image class="hgc-ico sm" src="{{icoDoc}}" mode="aspectFit" />
+          <view class="hgc-t sm">全部记录</view>
+          <view class="hgc-s">按学生查看</view>
+        </view>
+        <view class="hgc searchcell">
+          <image class="scico" src="{{icoSearch}}" mode="aspectFit" />
+          <input class="scinput" placeholder="搜索学生姓名" placeholder-class="ph" value="{{q}}" bindinput="onSearch" confirm-type="search" />
+          <image wx:if="{{q}}" class="sclear" src="{{icoClose}}" mode="aspectFit" bindtap="clearSearch" />
+        </view>
       </view>
     </view>
-    <view class="searchwrap">
-      <view class="searchrow">
-        <image class="sicon" src="{{icoSearch}}" mode="aspectFit" />
-        <input class="sinput" placeholder="搜索学生姓名，如：周" placeholder-class="ph" value="{{q}}" bindinput="onSearch" confirm-type="search" />
-        <image wx:if="{{q}}" class="sclear" src="{{icoClose}}" mode="aspectFit" bindtap="clearSearch" />
+    <view wx:if="{{q}}" class="sresults">
+      <view wx:for="{{results}}" wx:key="id" class="sresult" hover-class="btn-hover" bindtap="goStudent" data-sid="{{item.id}}">
+        <text class="sname">{{item.name}}</text>
+        <text class="smeta">{{item.meta}}</text>
+        <image class="chev" src="{{icoChev}}" mode="aspectFit" />
       </view>
-      <view wx:if="{{q}}" class="sresults">
-        <view wx:for="{{results}}" wx:key="id" class="sresult" hover-class="btn-hover" bindtap="goStudent" data-sid="{{item.id}}">
-          <text class="sname">{{item.name}}</text>
-          <text class="smeta">{{item.meta}}</text>
-          <image class="chev" src="{{icoChev}}" mode="aspectFit" />
-        </view>
-        <view wx:if="{{!results.length}}" class="mi" style="padding:20rpx 8rpx">没找到「{{q}}」相关学生</view>
-        <view wx:elif="{{moreCount}}" class="mi smore">还有 {{moreCount}} 位匹配学生，请继续输入缩小范围</view>
-      </view>
+      <view wx:if="{{!results.length}}" class="mi" style="padding:20rpx 8rpx">没找到「{{q}}」相关学生</view>
+      <view wx:elif="{{moreCount}}" class="mi smore">还有 {{moreCount}} 位匹配学生，请继续输入缩小范围</view>
     </view>
   </view>
 

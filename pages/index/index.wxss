@@ -9,25 +9,47 @@
   background: #fff; border-radius: 999rpx; padding: 12rpx 24rpx;
   box-shadow: 0 4rpx 12rpx var(--shadow);
 }
-/* ---------- 主操作卡 ---------- */
-.hero2 { display: flex; gap: 20rpx; }
-.hero-btn {
-  flex: 1; border-radius: 22rpx; padding: 28rpx 26rpx; background: var(--line);
-  transition: all 0.15s;
+/* ---------- 主操作区：不对称大卡（参考卡牌式首页设计） ---------- */
+/* 左：品牌渐变大卡（开始录入）；右上：浅色记录卡；右下：搜索卡；搜索结果悬浮在整个区块下方 */
+.herog-wrap { position: relative; z-index: 30; margin: 0 24rpx 24rpx; }
+.herog { display: flex; gap: 20rpx; }
+.hgc {
+  position: relative; overflow: hidden; border-radius: 28rpx;
+  padding: 30rpx 28rpx; box-sizing: border-box;
 }
-.hero-btn.primary { background: var(--brand-soft); }
-.ht { font-size: 32rpx; font-weight: 800; color: var(--text); }
-.hero-btn.primary .ht { color: var(--brand); }
-.hs { margin-top: 8rpx; font-size: 22rpx; color: var(--muted); }
-/* ---------- 搜索 ---------- */
-.searchwrap { position: relative; z-index: 30; margin-top: 20rpx; }
-.searchrow {
-  display: flex; align-items: center; gap: 14rpx;
-  background: var(--bg); border: 2rpx solid var(--line-2); border-radius: 999rpx;
-  padding: 16rpx 26rpx;
+/* 左大卡：品牌渐变，文案沉底，右上放白色加号图标 + 半透明圆装饰 */
+.hgc.big {
+  flex: 1.15; min-height: 264rpx;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  background: linear-gradient(135deg, var(--brand-a), var(--brand-b));
+  box-shadow: 0 12rpx 28rpx var(--brand-shadow);
 }
-.sicon { width: 30rpx; height: 30rpx; }
-.sinput { flex: 1; font-size: 27rpx; }
+.hgc.big::after {
+  content: ""; position: absolute; right: -44rpx; top: -44rpx;
+  width: 190rpx; height: 190rpx; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+}
+.hgc.big .hgc-t { font-size: 38rpx; font-weight: 800; color: #fff; }
+.hgc.big .hgc-s { margin-top: 8rpx; font-size: 22rpx; color: rgba(255, 255, 255, 0.85); }
+.hgc-ico { position: absolute; right: 22rpx; top: 22rpx; width: 64rpx; height: 64rpx; opacity: 0.95; }
+/* 右列：两卡等高铺满 */
+.hgc-col { flex: 1; display: flex; flex-direction: column; gap: 20rpx; }
+.hgc.a {
+  flex: 1; display: flex; flex-direction: column; justify-content: flex-end;
+  background: var(--brand-soft);
+  box-shadow: 0 8rpx 20rpx var(--shadow);
+}
+.hgc.a .hgc-t { font-size: 30rpx; font-weight: 800; color: var(--brand); }
+.hgc.a .hgc-s { margin-top: 6rpx; font-size: 21rpx; color: var(--muted); }
+.hgc-ico.sm { width: 46rpx; height: 46rpx; top: 24rpx; right: 24rpx; opacity: 0.5; }
+/* 右下：搜索卡（与上面卡片同圆角体系） */
+.hgc.searchcell {
+  flex: 1; display: flex; align-items: center; gap: 14rpx;
+  padding: 0 24rpx; background: #fff; border: 2rpx solid var(--line-2);
+  box-shadow: 0 8rpx 20rpx var(--shadow);
+}
+.scico { width: 32rpx; height: 32rpx; flex: none; }
+.scinput { flex: 1; min-width: 0; font-size: 26rpx; }
 .ph { color: var(--faint); }
 .sclear {
   flex: none; width: 34rpx; height: 34rpx; padding: 5rpx;

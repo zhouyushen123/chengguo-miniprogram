@@ -9,7 +9,7 @@
 - **当前阶段**：④ 评审与重构（工程周期地图）。已完成 MVP 功能闭环，本次为架构体检，尚未进入重构实施。
 - **最后更新时间**：2026-11-01 19:00
 - **代码位置**：`E:\新建文件夹\chengguo-miniprogram`（GitHub 私有仓库 `zhouyushen123/chengguo-miniprogram`）
-- **规模**：约 6700 行（含 demo-data 2367 行），8 个页面，主包 719KB。
+- **规模**：约 6700 行（含 demo-data 2367 行），8 个页面，主包约 0.83MB（上限 2MB）。
 
 ## 2. 技术栈与版本
 
@@ -89,10 +89,10 @@
 |---|---|---|---|
 | 存储适配 | `utils/db/storage.js` | 已完成 | 唯一接触 wx.storage；云端适配器未做 |
 | 实体与校验 | `utils/db/schema.js` | 已完成 | 8 类实体白名单规范化 + 校验 |
-| 内存态与落盘 | `utils/db/core.js` | 已完成 | 全集合水合；全量覆盖写（见 CR-006） |
+| 内存态与落盘 | `utils/db/core.js` | 已完成 | 全集合水合；事务 `tx()` + 落盘结果检查 + 失败回滚 |
 | 版本迁移 | `utils/db/migrate.js` | 已完成 | v2→v4 两条路径，只做加法 |
 | 权限 | `utils/db/permissions.js` | 已完成 | 角色×范围×动作，纯函数 |
-| 仓储 API | `utils/db/index.js` | 进行中 | 952 行，需按实体拆分为 repo（P1） |
+| 仓储 API | `utils/db/index.js` | 已完成 | 门面 165 行，已按领域拆成 11 个模块（`settle.js` 为跨领域事务） |
 | 首页工作台 | `pages/index` | 已完成 | 统计、模糊搜索、最近成果 |
 | 成果录入 | `pages/record` | 已完成 | 媒体采集、模板、五档评分 |
 | 成果列表 | `pages/records` | 已完成 | 三段级联筛选、双按钮 |
@@ -103,7 +103,7 @@
 | 家长端 | — | 未开始 | 目前复用老师端页面 + 权限降级 |
 | 媒体持久化 | `utils/media.js` | **已完成（P0）** | 临时路径统一转存 USER_DATA_PATH；启动自愈存量记录 |
 | 云端同步 | `utils/api.js` + `cloudfunctions/sync` | 半成品 | 旧 openid 模型，与新架构冲突（CR-005） |
-| 自动化测试 | `tests/verify_*.js` | **已完成（P0，已入库）** | 236 项断言，8 个套件，`npm test` 一键跑完；`npm run lint` 另守约定 |
+| 自动化测试 | `tests/verify_*.js` | **已完成（P0，已入库）** | 239 项断言，8 个套件，`npm test` 一键跑完；`npm run lint` 另守约定 |
 
 ## 5. 接口约定
 
@@ -179,11 +179,11 @@ kvUsage()                       // → 本地 key 用量（云端实现返回服
 | 编号 | 位置 | 问题 | 影响 |
 |---|---|---|---|
 | CR-005 | `utils/api.js` + `cloudfunctions/sync/index.js` | 云端是「按 openid 隔离」旧模型，与本地「机构内共享 + member 授权」新模型冲突；`merge()` 只同步 records/profiles | 一旦开云，换设备后学生/班级/课程为空，记录变成指向不存在学生的孤儿数据 |
-| CR-006 | `utils/db/storage.js` | 每次写操作序列化整个集合（全量覆盖写） | 单条录入写全部 records；数据到数千条时明显卡顿并可能触及 1MB key 限额 | ✅ `records` 按 320 条/片分片：老单 key 数据天然当第一片（无需迁移），每片最坏 243KB，离 1MB 有 4 倍余量；写失败会回滚并返回 `SAVE_FAIL`，见 6.7 |
+| CR-006 | `utils/db/storage.js` | 每次写操作序列化整个集合（全量覆盖写） | 单条录入写全部 records；数据到数千条时明显卡顿并可能触及 1MB key 限额 | ✅ 两层都修了：① `records` 按 320 条/片分片，每片最坏 243KB，离 1MB 有 4 倍余量；② 按内容指纹跳过没变的分片（脏片写），追加一条只落 1 片。实测 2000 条时落盘字节 804MB → 125MB、落盘次数 7287 → 2007。写失败会回滚并返回 `SAVE_FAIL`，见 6.7 |
 | CR-007 | `utils/db/permissions.js:132-135` | `if (tid && tid !== actor.userId) return false` —— `tid` 为空时**放行** | 记录缺录入人时"只能改自己录的"规则失效（fail-open） | ✅ 改为 fail-closed：有目标且 `tid` 为空即拒绝；`abilities()` 用空 target 预判时不误伤 |
 | CR-008 | `utils/db/records.js` | `cid` 取自入参且未校验是否属于该学生班级，`validate` 只查非 0 | 记录可挂在学生并不在的班级，污染班级统计与家长可见性 | ✅ 新建与编辑双向校验 `cid ∈ stu.clsIds`；编辑路径另补 `canSeeStudent` / `canSeeClass`（P1-1）；`enrollments` 消课改用 `enrollmentRawOf`，避免"看不到→又补一条 0 课时报名" |
 | CR-009 | `utils/db/maintenance.js` | `init()` 无条件播种，`DEMO_VERSION` 升版即向真实数据追加 45 名演示学生 | 演示数据污染生产库，老师会看到不属于自己的学生 | ✅ 演示数据搬进独立存储命名空间（`chengguo_demo_*`），与真实库物理分离；启动时把老版本混进来的演示行请出去，见 6.6 |
-| CR-010 | `.gitignore` 忽略 `.workbuddy/` | 103 项断言测试不在版本控制内 | 换机/协作即丢失质量网，CI 无法执行 | ✅ 迁到 `tests/` 入库，`npm test` 跑全部 236 项；图标脚本迁到 `tools/` |
+| CR-010 | `.gitignore` 忽略 `.workbuddy/` | 103 项断言测试不在版本控制内 | 换机/协作即丢失质量网，CI 无法执行 | ✅ 迁到 `tests/` 入库，`npm test` 跑全部 239 项；图标脚本迁到 `tools/` |
 | CR-011 | `utils/db/index.js:857 merge()` | 按 `updatedAt` 取新，无墓碑、无冲突记录、无幂等键 | 多端同时编辑必然静默丢数据 | 未修（P2） |
 | CR-012 | `pages/mgr/mgr.js` | 单页 265 行承载机构/班级/课程/学生/成员 5 个分区 | 任何新业务（课表/考勤/收费）都会撑爆此页 | 未修（P1） |
 | CR-013 | `app.js:onLaunch` | `db.init()` 无 try/catch | 迁移或水合抛错即整站白屏，且无恢复入口 | ✅ `init()` 内部兜底：失败降级为**只读 + 空库**，磁盘数据原样保留；`app.js` 弹窗告知，`db.status()` 可查 |
@@ -206,7 +206,7 @@ kvUsage()                       // → 本地 key 用量（云端实现返回服
 4. 软删除 + 审计字段全覆盖。
 5. `schema` 白名单规范化，脏数据不抛错（`str/num/list` 容错）。
 6. 迁移"只做加法"铁律，已修复清空数据地雷并有回归固化。
-7. 236 项断言覆盖到页面级真实模块加载，不是只测数据层（`npm test`，已入库）；另有 `npm run lint` 守住"页面绕开数据层"这类约定漂移。
+7. 239 项断言覆盖到页面级真实模块加载，不是只测数据层（`npm test`，已入库）；另有 `npm run lint` 守住"页面绕开数据层"这类约定漂移。
 
 ## 6.5 P0 修复记录（2026-11-01）
 
@@ -240,7 +240,7 @@ kvUsage()                       // → 本地 key 用量（云端实现返回服
 
 | 项 | 结论 | 落点 |
 |---|---|---|
-| P0-1 记录触顶 1MB 静默丢数据 | ✅ | `storage.js` 分片 + `core.persist` 返回值检查 + `ctx.pushSaved/applyEdit` 写后即落盘即回滚 + `SAVE_FAIL` 文案 |
+| P0-1 记录触顶 1MB 静默丢数据 | ✅ | `storage.js` 分片 + 脏片写（按内容指纹跳过没变的片）+ `core.persist` 返回值检查 + `ctx.pushSaved/applyEdit` 写后即落盘即回滚 + `SAVE_FAIL` 文案 |
 | P0-2 媒体裂图且无清理 | ✅ | `media.persist` 失败返回空串 + `lostCount()`；`scan/prune`（2 小时豁免）+ `db.mediaRefs()` + 「我的 · 存储空间」页 |
 | P0-3 CI 无测试门禁 | ⏸ 暂缓 | 备案未下来只发体验版；**提审前必须补**（`npm test` 步骤 + concurrency + 体积检查） |
 | P1-1/P1-2 写闸门与 cid 归属 | ✅ | 编辑路径补 `canSeeStudent/canSeeClass`；`cid ∈ stu.clsIds` 双向校验 |
@@ -255,9 +255,22 @@ kvUsage()                       // → 本地 key 用量（云端实现返回服
 | P3-1 ~ P3-5 | ✅ | 注释指向 `COLLECTIONS`、删 `fileToText`、`memberNameOf`、`LIMITS` 单份、AppID 走 `MP_APPID` |
 
 新增文件：`utils/db/settle.js`、`pages/storage/storage.*`、`tools/lint.js`、`.editorconfig`、`tests/verify_hardening.js`。
-断言：209 → **236**（新增加固套件 27 项）；`npm run lint` 82 文件 0 提醒；`npm run check` = lint + test。
+断言：209 → **239**（新增加固套件 30 项）；`npm run lint` 82 文件 0 提醒；`npm run check` = lint + test。
 
 **同步修改的工程约束**（`tests/verify_arch.js`）：`classes` 的方法表加 `mode` / `countOfTerm`，`orgs` 加 `checkName`，`terms` 加 `settle`。
+
+### 6.7.1 第二轮复核补充（2026-11-03 晚）
+
+用同一负载把整改前（`520d0a7`）与整改后各跑一遍，量出三个数，补了两处：
+
+| 发现 | 数据 | 处理 |
+|---|---|---|
+| 分片只解决了「单 key 装不下」，**没解决「每次写重刷整个集合」** | 录入 2000 条：落盘次数 2000 → 7287 次，累计写入字节持平（804MB）；3000 条时 2541 → 15610 次 | `storage.js` 加**脏片写**：每片记内容指纹（djb2 + 长度），相同就跳过 `setStorageSync`。改后 2000 条落盘 2007 次 / 125MB（-84%），追加一条只写 1 片 |
+| `recordSave` 只认 `cls` / `clsId`，**传 `cid` 会静默回落到学生的第一个班** | 传 `cid` 指向学生不在的班 → 老逻辑直接放行，不报错 | 三个字段名都认；「班级里没有该学生」这道校验因此不再有后门 |
+
+压测结论（`tests/verify_hardening.js` 已固化其中两条）：3000 条记录下，整改前第 **2542** 条开始写入失败、459 条静默丢失；现在 0 丢失、单 key 峰值 129KB（上限 1024KB）。
+
+**为什么指纹而不是比引用/比 updatedAt**：引用比较无效（写路径改的是同一对象）；`updatedAt` 会漏（`repairRefs`/迁移会改字段不动时间戳）。指纹万一碰撞，代价只是「这次没写」，下次真实变更必然失配，不会永久丢数据。
 
 ---
 
@@ -268,7 +281,7 @@ kvUsage()                       // → 本地 key 用量（云端实现返回服
 - [x] CR-002 全实体列表加 `orgId` 过滤：新增 `core.orgColl()`，读路径全收口（写路径保持全量，避免误删他机构数据）
 - [x] CR-003 / CR-004 修正 CI 路径与 `PROJECT_PATH`
 - [x] CR-007 修 `tid` fail-open
-- [x] CR-010 测试迁入 `tests/`，`npm test` 跑 236 项
+- [x] CR-010 测试迁入 `tests/`，`npm test` 跑 239 项
 - [x] CR-013 启动包兜底 + 降级为只读（**绝不落盘覆盖**，避免读失败变成永久丢失）
 - [x] ADR-009 `record.type` 预留（默认 `achievement`）
 - [x] CR-008 校验 `cid ∈ student.clsIds`（2026-11-03 完成，编辑路径另补 sid/cid 二次过闸门）

@@ -63,7 +63,7 @@
 ├── utils/api.js                      线上同步层（REST，未配置自动降级本地）
 ├── assets/icons/                     线性图标（PNG，由 tools/gen_icons.py 生成）
 ├── pages/index|record|tpls|records|student|cls|profile|mgr
-├── tests/                            回归测试（npm test，236 项断言）
+├── tests/                            回归测试（npm test，239 项断言）
 ├── tools/gen_icons.py                图标生成脚本（改图标后重跑）
 ├── cloudfunctions/sync               云函数（records/profiles 读写，模型待重构）
 └── project.config.json
@@ -80,7 +80,7 @@
 ### 改完代码怎么验
 
 ```bash
-npm test          # 8 个套件：数据层 27 + 权限 45 + 学期 30 + P0 27 + 页面级 53 + 演示隔离 18 + 加固 27 + 架构守卫 9 = 236 项
+npm test          # 8 个套件：数据层 27 + 权限 45 + 学期 30 + P0 27 + 页面级 53 + 演示隔离 18 + 加固 30 + 架构守卫 9 = 239 项
 npm run lint      # 自建自检：页面绕开数据层、写死品牌色、残留 console.log、WXML 函数调用
 npm run check     # lint + test
 ```

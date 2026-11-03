@@ -13,6 +13,7 @@ const mem = {};
 const toasts = [];
 let failKeys = {};                      // key → true 时该 key 写入抛错（模拟超限）
 const files = {};                       // 媒体目录里的文件：path → { size, mtime }
+const writeCount = {};                  // key → 落盘次数（"只写变脏的那一片"要数它）
 
 function fileBytes() {
   let n = 0;
@@ -24,6 +25,7 @@ global.wx = {
   getStorageSync: k => (k in mem ? JSON.parse(JSON.stringify(mem[k])) : ''),
   setStorageSync: (k, v) => {
     if (failKeys[k]) { const e = new Error('setStorageSync:fail exceed storage max size'); e.errCode = 100001; throw e; }
+    writeCount[k] = (writeCount[k] || 0) + 1;
     mem[k] = JSON.parse(JSON.stringify(v));
   },
   removeStorageSync: k => { delete mem[k]; },
@@ -149,6 +151,41 @@ console.log('\n【存储分片：records 超过单片容量自动切片】');
     assert.ok(!mem['chengguo_v3_records_2'] || mem['chengguo_v3_records_2'].length === 0,
       '第二片应已被删除或清空');
   });
+
+  ok('脏片写：内容没变的分片不再落盘（否则每录一条就把整个集合重刷一遍）', () => {
+    const storage = require('../utils/db/storage');
+    const SIZE = storage.SHARD.records;
+    // 先清空并落盘，得到一个指纹已归位的干净基线
+    const all = db.coll('records');
+    all.splice(0, all.length);
+    db.flush();
+    Object.keys(writeCount).forEach(k => { delete writeCount[k]; });
+
+    const list = [];
+    for (let i = 0; i < SIZE + 50; i++) {
+      list.push({ id: 500000 + i, sid: 1, cid: 1, date: '2026-01-01', score: 80, text: '第' + i + '条' });
+    }
+    storage.saveCollection('records', list);
+    assert.strictEqual(writeCount['chengguo_v3_records'], 1, '第一次两片都要写');
+    assert.strictEqual(writeCount['chengguo_v3_records_2'], 1);
+
+    Object.keys(writeCount).forEach(k => { delete writeCount[k]; });
+    list.push({ id: 600000, sid: 1, cid: 1, date: '2026-01-01', score: 80, text: '追加的一条' });
+    storage.saveCollection('records', list);
+    assert.strictEqual(writeCount['chengguo_v3_records'] || 0, 0, '第一片一字未变，不该再写');
+    assert.strictEqual(writeCount['chengguo_v3_records_2'], 1, '只有第二片变了，写它一个就够');
+
+    // 改第一片的某一条：这次应该只写第一片
+    Object.keys(writeCount).forEach(k => { delete writeCount[k]; });
+    list[3].text = '改过的第三条';
+    storage.saveCollection('records', list);
+    assert.strictEqual(writeCount['chengguo_v3_records'], 1, '第一片变了要写');
+    assert.strictEqual(writeCount['chengguo_v3_records_2'] || 0, 0, '第二片没变，不该跟着重刷');
+
+    // 还原：清掉这批测试数据，后面段落自己铺
+    all.splice(0, all.length);
+    db.flush();
+  });
 }
 
 /* =====================================================================
@@ -249,6 +286,21 @@ console.log('\n【权限收口：记录不能挂到学生不在的班】');
     const r = db.records.save({ cls: clsB.id, sid: stuA.id, note: '挂错班' }, false);
     assert.strictEqual(r.ok, false);
     assert.ok(/班级里没有该学生/.test(r.msg), '实际：' + r.msg);
+  });
+
+  ok('传 cid（而不是 cls）也走同一道校验，不再静默回落到第一个班', () => {
+    if (!clsB || stuA.clsIds.indexOf(clsB.id) > -1) return;
+    // 老实现只认 cls / clsId，传 cid 会被忽略并回落到 stu.clsIds[0]：
+    // 不报错、不提示，记录悄悄挂到另一个班 —— 等于给"挂错班"留了后门。
+    const r = db.records.save({ cid: clsB.id, sid: stuA.id, note: '用 cid 传参' }, false);
+    assert.strictEqual(r.ok, false, '传 cid 也必须被拦住');
+    assert.ok(/班级里没有该学生/.test(r.msg), '实际：' + r.msg);
+  });
+
+  ok('传 cid 指向学生所在的班 → 正常保存，且记录落在该班', () => {
+    const r = db.records.save({ cid: clsA.id, sid: stuA.id, note: '用 cid 传对了班' }, false);
+    assert.ok(r.ok, '应保存成功：' + (r && r.msg));
+    assert.strictEqual(r.record.cid, clsA.id, '记录的 cid 应是传入的那个班');
   });
 
   ok('编辑记录：把 cid 改到学生不在的班 → 拒绝', () => {

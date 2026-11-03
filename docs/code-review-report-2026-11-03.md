@@ -4,7 +4,7 @@
 > 审查范围：全仓库（`pages/` 11 页、`utils/` 14 个模块 + `utils/db/` 13 个模块、`components/`、`cloudfunctions/`、`server/`、`tests/` 7 套、`deploy.js`、`.github/workflows/`）
 > 规模：12,384 行 JS/WXML/WXSS；55 个 JS 文件
 > 基线：`npm test` 全绿，209 项断言（数据层 27 / 权限 45 / 学期 30 / P0 27 / 页面级 53 / 演示隔离 18 / 架构守卫 9）
-> 整改后：**236 项断言**（加固套件 20 → 27），`npm run lint` 82 文件 0 提醒
+> 整改后：**239 项断言**（加固套件 20 → 30），`npm run lint` 82 文件 0 提醒
 > 配套标准：`docs/code-review-standard.md`
 > **审查阶段未改任何代码**；同日按审查意见完成整改，逐条状态见各节标题后的标记与文末「九、整改记录」。
 
@@ -52,9 +52,12 @@
 ### 🔴 P0-1 记录集合触顶 1MB 后静默丢数据 ✅ 已修
 
 > **怎么修的**：`storage.js` 把 `records` 按 320 条/片切开（`chengguo_v3_records`、`_records_2`…），读取靠"片没填满就停"，老版本的单 key 全量数据天然当第一片用（`length !== size` 即视为完整集合），**不需要数据迁移**；`chunks` 记各集合分片数，用来回收多余片。写路径全部改成 `pushSaved` / `applyEdit`：写内存 → 立刻落盘 → 失败还原并返回 `SAVE_FAIL`（"本地存储空间不足，这次没能保存。请到「我的 · 存储空间」清理后重试"）。`db.health()` 暴露 `lastFail`，存储页把"上次写失败"显示出来。
-> **断言**：`tests/verify_hardening.js` —— 单片写满自动开第二片、重启读回顺序一致、老数据不截断、写失败不留幽灵记录、失败被记进健康度、空间恢复后能正常保存。
+>
+> **第二轮复核补的一刀**：分片只解决了"单 key 装不下"，没解决"每条记录都把整个集合重刷一遍"——实测 2000 条时落盘次数从 2000 涨到 7287。所以每片再记一个**内容指纹**（djb2 + 长度），相同就跳过 `setStorageSync`：追加一条只写 1 片，2000 条时落盘 2007 次 / 125MB（比整改前的 804MB 降 84%）。用指纹而不是比引用（写路径改的是同一对象）或比 `updatedAt`（自愈/迁移会改字段不动时间戳）；万一碰撞，代价只是"这次没写"，下次真实变更必然失配，不会永久丢数据。
+> **断言**：`tests/verify_hardening.js` —— 单片写满自动开第二片、重启读回顺序一致、老数据不截断、写失败不留幽灵记录、失败被记进健康度、空间恢复后能正常保存、**改第一片只写第一片 / 改第二片只写第二片**。
+> **压测（同一负载跑整改前后的代码）**：3000 条记录时，整改前第 2542 条开始写入失败、459 条静默丢失、单 key 顶在 1023.8KB；现在 0 丢失、单 key 峰值 129KB。
 
-**位置**：`utils/db/storage.js:43-52`、`utils/db/core.js:84-90`、`utils/db/records.js:92,105`
+**位置**：`utils/db/storage.js:75-140`（分片 + 脏片写）、`utils/db/core.js:84-90`、`utils/db/records.js:54,105`
 
 **现象**：
 每个集合整表存一个 key（`chengguo_v3_records`）。微信硬限制是**单个 key 最大 1MB**、总量 10MB（官方 `wx.setStorageSync` 文档明确）。超限时 `setStorageSync` 抛错，`write()` catch 后返回 `false`，`saveCollection` 返回 `false`，`core.persist` 返回 `false` —— 而 `records.js` 里三处 `core.persist('records')` **没有一个看返回值**，函数继续 `return { ok: true }`，页面弹"已保存，icon: success"。
@@ -101,7 +104,7 @@
 ### 🔴 P0-3 部署流水线无测试门禁：push 即上传，测试红了照样发版 ⏸ 暂缓（项目方决定）
 
 > **状态**：按要求**暂不实施**。原因：微信备案未下来，当前只上传测试体验版，测试门禁的收益暂时让位于迭代速度。
-> **但这件事不能忘**：等备案下来、准备提交审核之前，必须把下面三步补回去，否则 236 项断言等于"提交前想起来跑一次"。
+> **但这件事不能忘**：等备案下来、准备提交审核之前，必须把下面三步补回去，否则 239 项断言等于"提交前想起来跑一次"。
 > **附带已修（与本项相邻）**：`deploy.js` 不再写死 `wx_your_appid`，改为 `MP_APPID` 环境变量 > `project.config.json`；`deploy.yml` 去掉 `sed` 改源码注入 AppID 的写法（那种方式哪天匹配不上是静默的，会用错 appid 上传）。
 > **上线前待办（3 步，约 30 分钟）**：① 在「安装依赖」之后、「写入上传密钥」之前插入 `run: npm test`；② 加 `concurrency: { group: deploy, cancel-in-progress: true }`；③ 加主包体积检查（当前实测 0.85MB / 2MB）。
 
@@ -318,7 +321,7 @@ if (q.data.length) await records.doc(q.data[0]._id).update({ data: doc });  // �
 
 ## 四、P2 · 建议 ✅ 全部已修
 
-> 逐条落地情况：P2-1 复用单个 `innerAudioContext` 并在 `onUnload` 销毁；P2-2 自愈不再拿"当前登录人"回填 `tid`（改为"该班主讲老师 → 机构唯一在职教职工 → 留空"三级降级，见下方说明）；P2-3 全量规范化改为按"规范化口径版本"`meta.normStamp` 触发，平时只做结构性兜底；P2-4 记录页页签改为 `tabs` + `tabIds` 双数组，筛选按班级 id；P2-5 申请页机构名校验改为共用 `db.orgs.checkName()`（与机构表写入同一份规则）；P2-6 只有非正式版才自动复制到剪贴板；P2-7 家长资料按字段限长（昵称 20 / 备注 500 / 整包 2KB，超长静默截断而不是报错）；P2-8 自建 `tools/lint.js`（82 文件 0 提醒），`npm run check` = lint + test；P2-9 补了"写入失败 / 容量边界 / 媒体失败 / 事务回滚 / 连点"等 27 项加固断言。
+> 逐条落地情况：P2-1 复用单个 `innerAudioContext` 并在 `onUnload` 销毁；P2-2 自愈不再拿"当前登录人"回填 `tid`（改为"该班主讲老师 → 机构唯一在职教职工 → 留空"三级降级，见下方说明）；P2-3 全量规范化改为按"规范化口径版本"`meta.normStamp` 触发，平时只做结构性兜底；P2-4 记录页页签改为 `tabs` + `tabIds` 双数组，筛选按班级 id；P2-5 申请页机构名校验改为共用 `db.orgs.checkName()`（与机构表写入同一份规则）；P2-6 只有非正式版才自动复制到剪贴板；P2-7 家长资料按字段限长（昵称 20 / 备注 500 / 整包 2KB，超长静默截断而不是报错）；P2-8 自建 `tools/lint.js`（82 文件 0 提醒），`npm run check` = lint + test；P2-9 补了"写入失败 / 容量边界 / 媒体失败 / 事务回滚 / 连点"等 30 项加固断言。
 >
 > **P2-2 为什么不是"用机构默认老师"**：`tid` 里存的是 `user.id`，而 `class.teacherId` 存的是 `member.id`，两者不能直接搬。所以回填顺序是：该班主讲老师（换成 userId）→ 机构里唯一的在职教职工（单人工作室归属没有歧义）→ 都不满足就留空（fail-closed，只有负责人/管理员能改）。宁可让负责人来改，也不伪造一个归属。
 
@@ -371,7 +374,7 @@ if (q.data.length) await records.doc(q.data[0]._id).update({ data: doc });  // �
 
 ## 八、给下一个审查者的三条提醒
 
-1. **先跑 `npm test`，再读代码**。236 项绿了才有资格讨论风格；红了先看是不是自己环境问题（`tests/fixture.js` 的 `richSeed` 是必需的）。顺手 `npm run lint`，它会拦住"页面绕开数据层"这类约定漂移。
+1. **先跑 `npm test`，再读代码**。239 项绿了才有资格讨论风格；红了先看是不是自己环境问题（`tests/fixture.js` 的 `richSeed` 是必需的）。顺手 `npm run lint`，它会拦住"页面绕开数据层"这类约定漂移。
 2. **改 `utils/db/` 的任何文件，都当成改地基**。这五个文件（`schema/core/storage/permissions/migrate`）是 LAYER 表的 level 0，动它们要连带看 `verify_arch` + `verify_db` + `verify_perm` 三套。
 3. **别相信注释里的清单，只相信 `COLLECTIONS` / `ACTIONS` / `LAYER` 这三张表**。注释会腐烂，表会被断言检查。
 
@@ -387,11 +390,12 @@ if (q.data.length) await records.doc(q.data[0]._id).update({ data: doc });  // �
 | `pages/storage/storage.*` | 「我的 · 存储空间」：设备存储用量、照片视频占用、可清理数量、一键清理 |
 | `tools/lint.js` | 自建自检：品牌色硬编码、`console.log` 残留、`require` 未用、WXML 函数调用、页面调 `_all`/`raw`/`coll`、页面直接读写存储、缩进/行尾/末尾换行 |
 | `.editorconfig` | 统一 2 空格 / LF / 末尾换行 |
-| `tests/verify_hardening.js` | 加固回归 27 项（分片、落盘失败、媒体清理、权限收口、事务回滚、连点、存储页、自愈归属、文本限长） |
+| `tests/verify_hardening.js` | 加固回归 30 项（分片与脏片写、落盘失败、媒体清理、权限收口、cid 传参、事务回滚、连点、存储页、自愈归属、文本限长） |
 
 ### 改动要点（按文件）
 
-- `utils/db/storage.js`：`records` 分片（320 条/片）+ 老数据兼容 + 片回收 + `kvUsage()`。
+- `utils/db/storage.js`：`records` 分片（320 条/片）+ 老数据兼容 + 片回收 + `kvUsage()` + **脏片写**（按内容指纹跳过没变的分片，追加一条只落 1 片）。
+- `utils/db/records.js`：`cid` / `cls` / `clsId` 三个字段名都认（原来只认后两个，传 `cid` 会被静默回落到学生的第一个班）。
 - `utils/db/core.js`：`SAVE_FAIL` 文案、`tx()` 事务、`realData()`、`health()`、`lastFail`、`setColl` 可回滚。
 - `utils/db/ctx.js`：`pushSaved()` / `applyEdit()` 两个"写内存 + 立即落盘 + 失败还原"的工具。
 - `utils/db/records.js`、`classes.js`、`students.js`、`identity.js`、`terms.js`、`courses.js`、`templates.js`、`org.js`：写路径统一走上面两个工具；跨集合的写走 `core.tx`。
@@ -421,9 +425,9 @@ if (q.data.length) await records.doc(q.data[0]._id).update({ data: doc });  // �
 | P0 止血 | 27 | 27 |
 | 页面级 | 53 | 53 |
 | 演示隔离 | 18 | 18 |
-| 加固 | —— | **27**（新增套件） |
+| 加固 | —— | **30**（新增套件；含脏片写、cid 传参两项复核补充） |
 | 架构守卫 | 9 | 9 |
-| **合计** | **209** | **236** |
+| **合计** | **209** | **239** |
 
 ### 仍然开着的三件事
 

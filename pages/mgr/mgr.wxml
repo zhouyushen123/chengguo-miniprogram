@@ -125,7 +125,7 @@
       </view>
     </view>
     <view style="display:flex;align-items:center">
-      <text wx:if="{{item.cur}}" class="pill" style="background:var(--ok)">当前</text>
+      <text wx:if="{{item.cur}}" class="pill" style="background:var(--sent)">当前</text>
       <view class="mi act" catchtap="switchMe" data-id="{{item.id}}">切换</view>
       <view class="mi act" catchtap="editUser" data-id="{{item.id}}">分配</view>
       <view wx:if="{{item.role!=='owner'}}" class="mi del" catchtap="delUser" data-id="{{item.id}}">移除</view>

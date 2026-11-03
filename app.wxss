@@ -32,6 +32,7 @@ page {
   --faint: #B8B2AA;   /* 占位 / 箭头 */
   /* 语义色（两主题通用，蓝主题略调冷） */
   --ok: #3A9E5F;  --ok-soft: #E8F3EA;
+  --sent: #07C160;  /* 已发送/当前 等实心状态胶囊：微信绿（两主题统一） */
   --warn: #B8860B;  /* 待发送等中间态 */
   --info: #5A7BD6;  --info-soft: #EDF1FB;
   --danger: #C0564A;

@@ -23,7 +23,7 @@
   font-size: 25rpx; color: var(--sub); font-weight: 500;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.stile.s-rec { background: var(--ok); color: #fff; font-weight: 600; }
+.stile.s-rec { background: var(--sent); color: #fff; font-weight: 600; }
 .stile.s-sent { background: #4a7ddc; color: #fff; font-weight: 600; }
 
 .hint { margin-top: 16rpx; font-size: 24rpx; color: var(--faint); text-align: center; }
@@ -31,7 +31,7 @@
 .legend { display: flex; align-items: center; gap: 24rpx; margin-top: 20rpx; }
 .lg { display: flex; align-items: center; gap: 8rpx; font-size: 22rpx; color: var(--muted); }
 .dot { width: 20rpx; height: 20rpx; border-radius: 6rpx; }
-.dot.dg { background: var(--ok); }
+.dot.dg { background: var(--sent); }
 .dot.db { background: #4a7ddc; }
 .dot.dn { background: var(--line); border: 2rpx solid var(--line-2); }
 .lg.tip { margin-left: auto; }

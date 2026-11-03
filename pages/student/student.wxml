@@ -45,7 +45,7 @@
       </view>
     </view>
     <view class="chips" style="margin:12rpx 0">
-      <text class="pill" style="background:{{rec.sent?'var(--ok)':'var(--warn)'}}">{{rec.sent?'已发送':'待发送'}}</text>
+      <text class="pill" style="background:{{rec.sent?'var(--sent)':'var(--warn)'}}">{{rec.sent?'已发送':'待发送'}}</text>
     </view>
     <view class="photogrid {{photoCls}}">
       <image wx:for="{{photoUrls}}" wx:key="*this" src="{{item}}" mode="{{photoCls==='pg1'?'aspectFit':'aspectFill'}}" bindtap="previewPhoto" data-i="{{index}}" />
@@ -82,7 +82,7 @@
         </view>
       </view>
       <view class="chips" style="margin:12rpx 0">
-        <text class="pill" style="background:{{latest.sent?'var(--ok)':'var(--warn)'}}">{{latest.sent?'已发送':'待发送'}}</text>
+        <text class="pill" style="background:{{latest.sent?'var(--sent)':'var(--warn)'}}">{{latest.sent?'已发送':'待发送'}}</text>
       </view>
       <view wx:if="{{!photoUrls.length && !videoUrls.length}}" class="mi nofarm">本次还没有拍照片或录音 📷</view>
       <view class="photogrid {{photoCls}}">
@@ -125,7 +125,7 @@
         <!-- 行内展开：照片/视频在前，课程评价在后 -->
         <view wx:if="{{expandId===item.id}}" class="histdetail">
           <view class="chips" style="margin:0 0 12rpx">
-            <text class="pill" style="background:{{item.sent?'var(--ok)':'var(--warn)'}}">{{item.sent?'已发送':'待发送'}}</text>
+            <text class="pill" style="background:{{item.sent?'var(--sent)':'var(--warn)'}}">{{item.sent?'已发送':'待发送'}}</text>
           </view>
           <view class="photogrid {{item.pcls}}" wx:if="{{item.photos.length}}">
             <image wx:for="{{item.photos}}" wx:for-item="ph" wx:key="*this" src="{{ph}}" mode="{{item.pcls==='pg1'?'aspectFit':'aspectFill'}}" />

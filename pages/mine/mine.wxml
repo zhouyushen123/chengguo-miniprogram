@@ -1,8 +1,6 @@
 <view class="theme-root {{themeCls}}">
 <view class="hero"></view>
 
-<view class="page-title">我的</view>
-
 <!-- 身份条：预览他人身份时可一键切回 -->
 <view wx:if="{{canSwitchHome}}" class="idbar">
   <text>正在以「{{name}} · {{roleLabel}}」身份预览</text>

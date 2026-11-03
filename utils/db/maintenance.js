@@ -26,7 +26,9 @@ function init() {
       : migrate.build(loaded);
     core.hydrate(data);
 
-    const changed = normalizeAll();
+    // 全量规范化很贵：每条实体都要 JSON.stringify 两遍比对，记录上千条时是启动耗时大头。
+    // 只在"规范化口径变了"时跑全量——靠 meta.normStamp 记住口径版本，改 normalizeXxx 时递增它。
+    const changed = normalizeAll(core.meta().normStamp !== NORM_STAMP);
     const purged = purgeSeed();          // 老版本混在真实库里的演示数据 → 请出去（演示包里另有一份）
     ensureDemo();                        // 演示数据包：缺了就按 demo-data 建，版本变了就重建
     const repaired = repairRefs();
@@ -52,27 +54,37 @@ function status() {
   return { ready: inited, degraded: !!bootError, error: bootError, readOnly: core.isReadOnly() };
 }
 
+// 规范化口径版本：改了 schema.normalizeXxx 的字段/默认值就 +1，老库下次启动会重跑一次全量
+const NORM_STAMP = schema.VERSION + '/2';
+
 // 把库里所有实体按当前 schema 过一遍（补默认字段、修正日期格式、丢弃未知字段）
-function normalizeAll() {
+// full=false 时跳过昂贵的逐条比对，只做下面几件"每次都必须做"的结构性兜底
+function normalizeAll(full) {
   let changed = false;
-  const each = (name, fn) => {
-    const list = core.coll(name);
-    for (let i = 0; i < list.length; i++) {
-      const next = fn(list[i], org(), now());
-      if (JSON.stringify(next) !== JSON.stringify(list[i])) { list[i] = next; changed = true; }
-    }
-  };
-  each('orgs', x => schema.normalizeOrg(x, now()));
-  each('members', schema.normalizeMember);
-  each('terms', schema.normalizeTerm);
-  each('classes', schema.normalizeClass);
-  each('courses', schema.normalizeCourse);
-  each('students', schema.normalizeStudent);
-  each('enrollments', schema.normalizeEnrollment);
-  each('records', schema.normalizeRecord);
-  each('users', schema.normalizeUser);
-  each('templates', schema.normalizeTemplate);
+  if (full) {
+    const each = (name, fn) => {
+      const list = core.coll(name);
+      for (let i = 0; i < list.length; i++) {
+        const next = fn(list[i], org(), now());
+        if (JSON.stringify(next) !== JSON.stringify(list[i])) { list[i] = next; changed = true; }
+      }
+    };
+    each('orgs', x => schema.normalizeOrg(x, now()));
+    each('members', schema.normalizeMember);
+    each('terms', schema.normalizeTerm);
+    each('classes', schema.normalizeClass);
+    each('courses', schema.normalizeCourse);
+    each('students', schema.normalizeStudent);
+    each('enrollments', schema.normalizeEnrollment);
+    each('records', schema.normalizeRecord);
+    each('users', schema.normalizeUser);
+    each('templates', schema.normalizeTemplate);
+  }
   const m = core.meta();
+  if (m.normStamp !== NORM_STAMP) {
+    core.updateMeta({ normStamp: NORM_STAMP });
+    changed = true;
+  }
   if (!m.version) {
     core.updateMeta({
       version: schema.VERSION, orgId: m.orgId || schema.DEFAULT_ORG,
@@ -98,9 +110,12 @@ function normalizeAll() {
 // 引用完整性自愈：老记录缺班级/缺课程/缺录入老师时按学生与班级回填
 function repairRefs() {
   let changed = 0;
-  const me = core.meta().me || '';
   const students = core.coll('students');
   const courses = core.coll('courses');
+  const classes = core.coll('classes');
+  // 在职教职工（不含家长、不含已停用），用于上面 tid 的可信回填
+  const staff = core.coll('members')
+    .filter(m => m.role !== 'parent' && m.status === 'active' && m.userId);
   core.coll('records').forEach(r => {
     if (r.removed) return;
     if (!r.cid) {
@@ -111,8 +126,19 @@ function repairRefs() {
       const c = courses.find(x => x.clsId === r.cid && x.name === r.course && !x.removed);
       if (c) { r.courseId = c.id; changed++; }
     }
-    // tid 必须有值：为空会让"只能改自己录的"这条规则失效
-    if (!r.tid && me) { r.tid = me; changed++; }
+    // tid 必须有值：为空会让"只能改自己录的"这条规则失效。
+    // 但绝不能拿"当前登录人"回填——启动时可能恰好是家长身份，
+    // 那样历史记录会被记成家长录入，而 own 规则下老师从此改不了这条记录。
+    // 可信来源按优先级：① 该班主讲老师（teacherId 是 member.id，tid 存的是 user.id，要换）
+    // ② 机构里唯一的在职教职工（单人工作室就是这种情况，归属没有歧义）
+    // ③ 都不满足就留空：宁可让负责人/管理员来改，也不伪造一个归属。
+    if (!r.tid) {
+      const c = classes.find(x => x.id === r.cid);
+      const owner = c && c.teacherId ? staff.find(m => m.id === c.teacherId) : null;
+      const solo = staff.length === 1 ? staff[0] : null;
+      const from = (owner && owner.userId) || (solo && solo.userId) || '';
+      if (from) { r.tid = from; changed++; }
+    }
   });
   return changed > 0;
 }

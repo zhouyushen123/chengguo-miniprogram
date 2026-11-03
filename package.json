@@ -4,7 +4,11 @@
   "private": true,
   "scripts": {
     "deploy": "node deploy.js",
-    "test": "node tests/run.js"
+    "test": "node tests/run.js",
+    "lint": "node tools/lint.js",
+    "check": "node tools/lint.js && node tests/run.js"
   },
-  "dependencies": { "miniprogram-ci": "^2.1.9" }
+  "dependencies": {
+    "miniprogram-ci": "^2.1.9"
+  }
 }

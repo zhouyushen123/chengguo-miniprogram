@@ -22,6 +22,18 @@ function classGet(id) {
 }
 function className(id) { const c = classRaw(id); return c ? c.name : ''; }
 
+// 只回答"这个班是不是结转制"，不把班级实体交出去。
+// 页面算剩余课时需要这个判定，但不需要班名/老师名——给实体等于顺带泄露了不该看的班。
+function classMode(id) { const c = classRaw(id); return c ? c.mode : ''; }
+
+// 某个学期下有几个班（学期页的统计数字）。
+// 用的是"当前身份可见"的班级，不是全量：老师看到的应该是自己带的班有几个。
+function classCountOfTerm(termId) {
+  const a = actor();
+  const t = Number(termId);
+  return oc('classes').filter(c => !c.removed && c.termId === t && perms.canSeeClass(a, c.id)).length;
+}
+
 function classCreate(data) {
   const err = deny('class.write');
   if (err) return { ok: false, msg: err };
@@ -82,4 +94,7 @@ function classRemove(id) {
   });
 }
 
-module.exports = { classList, classRaw, classGet, className, classCreate, classUpdate, classRemove };
+module.exports = {
+  classList, classRaw, classGet, className, classMode, classCountOfTerm,
+  classCreate, classUpdate, classRemove
+};

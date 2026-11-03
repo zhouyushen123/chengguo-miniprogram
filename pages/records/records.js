@@ -18,8 +18,12 @@ Page({
   },
   onShow() {
     theme.apply(this); // 主题：根类名 + 图标 + 原生 chrome
-    const tabs = ['全部'].concat(db.classes.list().map(c => c.name));
-    // 从首页班级卡跳入：定位到对应班级页签
+    // 页签与班级 id 一一对应（tabIds[0] = null 表示「全部」）。
+    // 以前是「按班级名反查 id」，遇到两个同名班（"书法班"跨学期重名很常见）会串到别的班去。
+    const cls = db.classes.list();
+    const tabs = ['全部'].concat(cls.map(c => c.name));
+    const tabIds = [null].concat(cls.map(c => c.id));
+    // 从首页班级卡跳入：定位到对应班级页签（首页传的是名字，按 id 再校准一次）
     const preset = getApp().globalData.recTab;
     let tab = this.data.tab;
     if (preset) {
@@ -27,16 +31,14 @@ Page({
       if (i > 0) tab = i;
       getApp().globalData.recTab = null;
     }
-    this.setData({ tabs, tab: Math.min(tab, tabs.length - 1), role: db.auth.role() });
+    this.setData({ tabs, tabIds, tab: Math.min(tab, tabs.length - 1), role: db.auth.role() });
     this.refresh();
   },
   // 第一层（班级）过滤。身份权限已由数据层在 list() 里按可见范围过滤过，
   // 页面只做业务维度筛选，不再重复写 role/clsIds 判断。
   // 第零层（学期）过滤：班级挂了学期，按班级的学期归属筛
   _pool() {
-    const t = this.data.tabs[this.data.tab];
-    const cls = t === '全部' ? null : db.classes.list().find(c => c.name === t);
-    const cid = cls ? cls.id : null;
+    const cid = (this.data.tabIds || [])[this.data.tab];
     const termId = this.data.termIdx > 0 ? ((this.data._terms || [])[this.data.termIdx - 1] || {}).id : null;
     return db.records.list().filter(r => {
       if (cid && r.cid !== cid) return false;

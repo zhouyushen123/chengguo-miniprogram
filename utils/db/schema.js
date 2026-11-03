@@ -29,6 +29,10 @@ const DEFAULT_ORG = 'org1';
 
 // 评分五档（与录入页每档代表分对应，用于筛选与统计口径统一）
 const TAGS = ['待提高', '加油', '良好', '优秀', '最佳'];
+
+// 单条记录的媒体数量上限。以前页面里写死一份、这里写死一份，改一处必忘另一处，
+// 于是出现"界面上限 9 张、校验上限 9 张"看着一致但实际已经不同步的情况。只留一份。
+const LIMITS = { photos: 9, videos: 3 };
 // 记录类型（ADR-009：留字段不留逻辑）
 // 现在只有一种「成果」，但字段先落下去。将来加考勤/作业/缴费时，只是往这个数组里加值
 // 并写对应的 domain 逻辑，不需要再改表结构、不需要迁移历史数据。
@@ -286,8 +290,8 @@ function validate(entity, e) {
       if (!e.cid) return '记录必须关联班级';
       if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date)) return '记录日期格式应为 YYYY-MM-DD';
       if (!(e.score >= 0 && e.score <= 100)) return '分数应在 0-100 之间';
-      if (e.photos.length > 9) return '照片最多 9 张';
-      if (e.videos.length > 3) return '视频最多 3 个';
+      if (e.photos.length > LIMITS.photos) return '照片最多 ' + LIMITS.photos + ' 张';
+      if (e.videos.length > LIMITS.videos) return '视频最多 ' + LIMITS.videos + ' 个';
       return null;
     case 'user':
       if (!e.name) return '人员姓名不能为空';
@@ -302,7 +306,7 @@ function validate(entity, e) {
 }
 
 module.exports = {
-  VERSION, DEFAULT_ORG, TAGS, RECORD_TYPES, ROLES, MEMBER_STATUS, ORG_STATUS,
+  VERSION, DEFAULT_ORG, TAGS, LIMITS, RECORD_TYPES, ROLES, MEMBER_STATUS, ORG_STATUS,
   TERM_STATUS, CLASS_MODES, ENROLL_STATUS, DEFAULT_TEMPLATES,
   str, num, list, numList, txtList, ymd, normDate,
   normalize, validate,

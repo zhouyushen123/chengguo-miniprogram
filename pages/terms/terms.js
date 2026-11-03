@@ -28,7 +28,8 @@ Page({
       dates: [t.startDate, t.endDate].filter(Boolean).join(' ~ ') || '未设置起止日期',
       status: t.status, statusLabel: STATUS_LABEL[t.status] || t.status,
       builtIn: !!t.builtIn,
-      clsCount: db.classes._all().filter(c => !c.removed && c.termId === t.id).length,
+      // 班级数由数据层按当前身份可见范围算，页面不碰全量
+      clsCount: db.classes.countOfTerm(t.id),
       canSettle: t.status === 'active' && !t.builtIn
     }));
     const y = new Date().getFullYear();

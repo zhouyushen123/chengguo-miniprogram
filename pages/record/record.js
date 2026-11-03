@@ -5,10 +5,10 @@ const icons = require('../../utils/icons');
 const media = require('../../utils/media');
 const theme = require('../../utils/theme');
 
-// 媒体限制：单个文件 50MB，视频最多 3 个，照片最多 9 张
+// 媒体限制：单个文件 50MB；照片/视频张数取数据层那一份（db.LIMITS），不在这里再写一遍
 const MAX_FILE = 50 * 1024 * 1024;
-const MAX_PHOTOS = 9;
-const MAX_VIDEOS = 3;
+const MAX_PHOTOS = db.LIMITS.photos;
+const MAX_VIDEOS = db.LIMITS.videos;
 
 // 评分五档阶梯：待提高（最差）→ 加油（稍差）→ 良好 → 优秀 → 最佳
 // anchor 为点击该档时自动填入的代表分
@@ -200,7 +200,19 @@ Page({
     this.rec.start({ format: 'mp3', duration: 60000 });
     this.setData({ recording: true });
   },
-  playAudio() { if (this.data.audio) wx.createInnerAudioContext().src = this.data.audio; },
+  // 播放语音：复用同一个 innerAudioContext。
+  // 以前每点一次就 new 一个，连点十次就有十个实例在后台挂着、且从不 destroy()。
+  playAudio() {
+    if (!this.data.audio) return;
+    if (!this._audioCtx) this._audioCtx = wx.createInnerAudioContext();
+    this._audioCtx.stop();          // 上一次还没播完就重播，不要叠着放
+    this._audioCtx.src = this.data.audio;
+    this._audioCtx.play();
+  },
+  onUnload() {
+    if (this._audioCtx) { this._audioCtx.destroy(); this._audioCtx = null; }
+    if (this.rec && this.data.recording) this.rec.stop();
+  },
   rmAudio() { this.setData({ audio: null }); this.refreshCan(); },
   preview() {
     // 预览页要一并展示照片/视频/语音，跳转前把当前媒体同步进 pick

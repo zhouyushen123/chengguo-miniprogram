@@ -88,8 +88,7 @@ Page({
     let hoursRemain = 0, hasCarry = false;
     db.enrollments.ofStudent(s.id).forEach(en => {
       if (en.status !== 'active') return;
-      const c = db.classes.get(en.clsId) || db.classes._all().find(x => x.id === en.clsId);
-      if (!c || c.mode !== 'carry') return;
+      if (db.classes.mode(en.clsId) !== 'carry') return;
       hasCarry = true;
       hoursRemain += Math.max(0, (en.totalHours || 0) - (en.usedHours || 0));
     });

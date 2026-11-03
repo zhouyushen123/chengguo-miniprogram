@@ -8,7 +8,7 @@
 }
 .meter-bar {
   height: 100%; border-radius: 999rpx;
-  background: linear-gradient(90deg, var(--brand), var(--brand-2, var(--brand)));
+  background: linear-gradient(90deg, var(--brand-a), var(--brand-b));
   transition: width .3s;
 }
 
@@ -23,6 +23,8 @@
 
 /* ---------- 区块标题 + 右侧小字 ---------- */
 .sec { display: flex; align-items: baseline; justify-content: space-between; }
+/* 全局 .label 带 28rpx 上边距，卡片内部的区块标题不需要 */
+.sec .label { margin: 0; }
 .sechint { font-size: 23rpx; color: var(--faint); }
 
 .hint { margin-top: 14rpx; font-size: 23rpx; color: var(--muted); line-height: 1.65; }

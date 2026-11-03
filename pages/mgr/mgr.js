@@ -48,8 +48,10 @@ Page({
     const staff = db.members.list()
       .filter(m => m.role !== 'parent' && m.status === 'active')
       .map(m => ({ id: m.id, name: m.name || '（未命名）' }));
-    const userNameOf = uid => {
-      const m = db.members.get(uid);
+    // 主讲老师姓名：teacherId 存的是 member.id（不是 user.id），所以查 members。
+    // 旧名字叫 userNameOf，容易让人以为该去 users 里找，改专业一点。
+    const memberNameOf = memberId => {
+      const m = db.members.get(memberId);
       return m ? (m.name || '') : '';
     };
     // 各班在读人数（班级卡展开前的概览数字）
@@ -59,7 +61,7 @@ Page({
       id: c.id, name: c.name, sort: c.sort,
       termName: ((terms.find(t => t.id === c.termId)) || {}).name || '',
       modeLabel: c.mode === 'carry' ? '课时结转' : '学期制',
-      teacherLabel: c.teacherId ? (userNameOf(c.teacherId) || '') : '',
+      teacherLabel: c.teacherId ? (memberNameOf(c.teacherId) || '') : '',
       stuN: stuNOf(c.id)
     }));
     // 只有负责人/管理员能进人员管理；老师进来看不到别人的权限范围

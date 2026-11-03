@@ -115,8 +115,8 @@ Page({
     let hoursRemain = 0, hasCarry = false;
     db.enrollments.ofStudent(sid).forEach(en => {
       if (en.status !== 'active') return;
-      const c = db.classes.get(en.clsId) || db.classes._all().find(x => x.id === en.clsId);
-      if (!c || c.mode !== 'carry') return;
+      // 只问一句"是不是结转制"，不取班级实体：班级不可见时也不该被顺带读出来
+      if (db.classes.mode(en.clsId) !== 'carry') return;
       hasCarry = true;
       hoursRemain += Math.max(0, (en.totalHours || 0) - (en.usedHours || 0));
     });

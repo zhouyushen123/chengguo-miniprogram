@@ -71,6 +71,8 @@ const db = {
   org, nextId: core.nextId,
   TAGS: schema.TAGS,
   TYPES: schema.RECORD_TYPES,
+  // 单条记录的媒体数量上限（页面计数与写入校验共用这一份，别再各写一套）
+  LIMITS: schema.LIMITS,
 
   auth: {
     actor,
@@ -123,8 +125,11 @@ const db = {
 
   classes: {
     list: classes.classList, get: classes.classGet, name: classes.className,
+    // 页面要的"只读判定/计数"走这两个：不返回实体，不会顺带把看不见的班名带出去
+    mode: classes.classMode, countOfTerm: classes.classCountOfTerm,
     create: classes.classCreate, update: classes.classUpdate, remove: classes.classRemove,
-    // 不过滤权限，但仍限当前机构（内部/调试用，页面不要用）
+    // 不过滤权限，但仍限当前机构。只允许 tests/ 与数据层内部用：
+    // 页面用它会绕过可见性（get 返回 null 时又从这里捞出来），lint 已禁 pages/ 出现 ._all(
     _all: () => ctx.oc('classes')
   },
   courses: {

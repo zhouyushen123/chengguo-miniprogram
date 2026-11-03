@@ -4,7 +4,7 @@
     <view class="label">家长收到的通知文本</view>
     <view class="prebox">{{previewText}}</view>
   </view>
-  <view class="btn" bindtap="copyPreview">一键复制，发给家长</view>
+  <view class="btn copybtn" bindtap="copyPreview">一键复制，发给家长</view>
 </view>
 
 <view wx:else class="wrap">

@@ -15,3 +15,5 @@
 .footbar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 20rpx; padding: 20rpx 24rpx calc(20rpx + env(safe-area-inset-bottom)); background: #fff; border-top: 2rpx solid var(--line); }
 .footbtn { flex: 1; }
 .prebox { background: var(--bg); border-radius: 20rpx; padding: 24rpx; font-size: 28rpx; line-height: 1.8; white-space: pre-wrap; }
+/* 预览页的复制按钮：裸 .btn 没有边距会通栏，与卡片左右边距（24rpx）对齐 */
+.copybtn { margin: 0 24rpx; }

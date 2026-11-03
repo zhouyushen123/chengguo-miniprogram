@@ -14,13 +14,22 @@ Page({
     myClasses: [], recent: [],
     icoSearch: icons.search, icoClose: icons.close, icoChev: icons.chevron, icoCam: icons.camera,
     // 首页大卡图标：渐变卡上用白色加号，浅色记录卡用文档图标
-    icoPlusW: icons.plus('#FFFFFF'), icoDoc: icons.doc
+    icoPlusW: icons.plus('#FFFFFF'), icoDoc: icons.doc,
+    // 自定义导航栏：状态栏高度（px）+ 标题（跟机构名）
+    statusBarH: 20, navTitle: '橙果'
+  },
+  onLoad() {
+    // 自定义导航要自己腾出状态栏的空间；取不到时用常见默认值兜底
+    try {
+      const wi = wx.getWindowInfo ? wx.getWindowInfo() : null;
+      if (wi && wi.statusBarHeight) this.setData({ statusBarH: wi.statusBarHeight });
+    } catch (e) { /* 测试环境无此 API */ }
   },
   onShow() {
     theme.apply(this); // 主题：根类名 + 图标 + 原生 chrome
     // 导航栏标题跟随机构名称（在「我的-成员管理」里设置）；未设置时兜底「橙果」
     const org = db.settings().orgName;
-    wx.setNavigationBarTitle({ title: org || '橙果' });
+    this.setData({ navTitle: org || '橙果' });
     const u = db.users.current() || { role: 'teacher', name: '' };
     const d = new Date();
     const dateStr = (d.getMonth() + 1) + '月' + d.getDate() + '日 周' + '日一二三四五六'[d.getDay()];

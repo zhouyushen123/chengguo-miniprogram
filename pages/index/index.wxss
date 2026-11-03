@@ -1,7 +1,14 @@
 /* ---------- 顶部欢迎 ---------- */
+/* ---------- 自定义导航栏：标题靠左（原生导航标题只能居中） ---------- */
+.cnav { padding-left: 34rpx; padding-right: 220rpx; }
+.cnav-t {
+  font-size: 34rpx; font-weight: 800; color: var(--text);
+  line-height: 44px; /* 与右上角胶囊等高，垂直居中对齐 */
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 36rpx 30rpx 28rpx;
+  padding: 6rpx 30rpx 28rpx;
 }
 .hello { font-size: 27rpx; color: var(--sub); font-weight: 600; }
 .datechip {

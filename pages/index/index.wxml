@@ -1,4 +1,8 @@
 <view class="theme-root {{themeCls}}">
+<!-- 自定义导航栏：标题靠左（原生导航标题只能居中），需避开右上角胶囊 -->
+<view class="cnav" style="padding-top:{{statusBarH}}px">
+  <view class="cnav-t">{{navTitle}}</view>
+</view>
 <view wx:if="{{!isParent}}">
   <!-- 顶部欢迎 -->
   <view class="topbar">

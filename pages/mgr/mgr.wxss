@@ -61,6 +61,31 @@
 .clsfrow .chip.on { background: var(--brand); color: #fff; font-weight: 700; }
 .hint2 { font-size: 24rpx; color: var(--sub); line-height: 1.7; }
 
+/* ---------- 班级页签：底部固定添加栏 + 卡片展开成员名单 ---------- */
+.clswrap { padding-bottom: 170rpx; }
+/* 添加班级固定栏：与学生页的 stufab 同款（页面底部 + 安全区） */
+.clsfab {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: var(--bg); border-top: 2rpx solid var(--line);
+}
+.clsfab .btn { width: 100%; }
+/* 班级卡：整卡可点展开，头部行（头像+信息+箭头+删除）+ 展开区 */
+.clsrow { display: flex; align-items: center; }
+.clshd { flex: 1; min-width: 0; }
+.clscaret { flex: none; color: var(--sub); font-size: 26rpx; padding: 10rpx 4rpx 10rpx 16rpx; transition: transform .15s; }
+.clscaret.up { transform: rotate(180deg); }
+.clsexp { margin-top: 20rpx; border-top: 2rpx solid var(--line); padding-top: 20rpx; }
+.clsexp-input {
+  background: var(--bg); border: 2rpx solid var(--line-2); border-radius: 999rpx;
+  padding: 12rpx 26rpx; font-size: 25rpx; margin-bottom: 8rpx;
+}
+.clsmem { display: flex; align-items: center; gap: 16rpx; padding: 14rpx 4rpx; border-bottom: 2rpx solid var(--line); }
+.clsmem:last-child { border-bottom: none; }
+.clsmem .ava { width: 56rpx; height: 56rpx; font-size: 24rpx; border-radius: 18rpx; }
+.memname { font-size: 27rpx; font-weight: 600; }
+.memchev { width: 28rpx; height: 28rpx; flex: none; }
+
 /* ---------- 学生标签页：筛选区（吸顶）+ 底部固定添加按钮 ---------- */
 /* 列表加底部留白，避免最后一张卡被固定的添加按钮压住 */
 .stuwrap { padding-bottom: 170rpx; }

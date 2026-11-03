@@ -24,6 +24,9 @@ Page({
     icoCameraW: '/assets/icons/camera-white.png',
     // 学生筛选：模糊搜索（姓名/家长/微信号）+ 入学年份 + 性别；stuYears 由现有学生倒推
     stuQ: '', stuYears: [{ y: 0, name: '全部' }], stuYearIdx: 0, stuGender: '', stuCount: 0,
+    // 班级页签：卡片展开看本班学生（clsExpand=展开的班级 id，0=全部收起）
+    clsExpand: 0, clsStuQ: '', clsStus: [], clsFormOpen: false,
+    icoChev: icons.chevron,
     // 学生表单：入学年份选择器（未填 + 近 13 年，倒序）
     enrollYearOpts: [{ y: 0, name: '未填' }], stuEnrollYearIdx: 0,
     // 成员表单弹层（chips = 预计算好 on 标记的渲染数组，WXML 不做任何方法调用）
@@ -49,11 +52,15 @@ Page({
       const m = db.members.get(uid);
       return m ? (m.name || '') : '';
     };
+    // 各班在读人数（班级卡展开前的概览数字）
+    const stuList = db.students.list();
+    const stuNOf = cid => stuList.reduce((n, st) => n + ((st.clsIds || []).indexOf(cid) >= 0 ? 1 : 0), 0);
     const classes = db.classes.list().map(c => ({
       id: c.id, name: c.name, sort: c.sort,
       termName: ((terms.find(t => t.id === c.termId)) || {}).name || '',
       modeLabel: c.mode === 'carry' ? '课时结转' : '学期制',
-      teacherLabel: c.teacherId ? (userNameOf(c.teacherId) || '') : ''
+      teacherLabel: c.teacherId ? (userNameOf(c.teacherId) || '') : '',
+      stuN: stuNOf(c.id)
     }));
     // 只有负责人/管理员能进人员管理；老师进来看不到别人的权限范围
     const isManager = db.auth.isAdmin();
@@ -115,8 +122,37 @@ Page({
       }) : [],
       courseClsIdx: Math.min(this.data.courseClsIdx, Math.max(0, classes.length - 1))
     });
+    // 展开的班级被删掉后要收回展开态，避免指向不存在的班
+    if (this.data.clsExpand && !classes.some(c => c.id === this.data.clsExpand)) {
+      this.setData({ clsExpand: 0, clsStuQ: '' });
+    }
     this._applyStuFilter(stuAll);
+    this._applyClsMembers();
   },
+  /* ================= 班级：展开看本班学生 ================= */
+  // 点班级卡展开/收起；展开时列出该班学生，输入框实时筛选（姓名/家长）
+  onClsTap(e) {
+    const id = +e.currentTarget.dataset.id;
+    const next = this.data.clsExpand === id ? 0 : id;
+    this.setData({ clsExpand: next, clsStuQ: '' });
+    this._applyClsMembers();
+  },
+  onClsStuQ(e) { this.setData({ clsStuQ: e.detail.value }); this._applyClsMembers(); },
+  _applyClsMembers() {
+    const cid = this.data.clsExpand;
+    if (!cid) { this.setData({ clsStus: [] }); return; }
+    const q = (this.data.clsStuQ || '').trim().toLowerCase();
+    const all = db.students.list()
+      .filter(st => (st.clsIds || []).indexOf(cid) >= 0)
+      .map(st => ({ id: st.id, name: st.name, parent: st.parent || '' }));
+    const shown = q
+      ? all.filter(s => (s.name + ' ' + s.parent).toLowerCase().indexOf(q) >= 0)
+      : all;
+    this.setData({ clsStus: shown });
+  },
+  /* ================= 添加班级：底部固定入口 + 弹层表单 ================= */
+  openClsForm() { this.setData({ clsFormOpen: true }); },
+  closeClsForm() { this.setData({ clsFormOpen: false }); },
   /* ================= 学生筛选 ================= */
   // 统一过滤入口：模糊匹配 姓名/家长/微信号 + 入学年份 + 性别（未知=尚未补录）
   _applyStuFilter(all) {
@@ -169,7 +205,8 @@ Page({
       name: n, termId: t.id, mode: this.data.clsMode || 'term', teacherId: tc.id
     });
     if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
-    this.setData({ newCls: '' }); this.refresh();
+    this.setData({ newCls: '', clsFormOpen: false }); this.refresh();
+    wx.showToast({ title: '已添加', icon: 'success' });
   },
   delClass(e) {
     const id = +e.currentTarget.dataset.id;

@@ -220,6 +220,18 @@ ok('空名称班级被拒并提示', () => {
   assert.strictEqual(mgr.data.classes.length, before);
   assert.ok(toasts[toasts.length - 1].indexOf('不能为空') > -1);
 });
+ok('班级卡展开：本班学生列表与筛选', () => {
+  mgr.onClsTap({ currentTarget: { dataset: { id: 1 } } });
+  assert.strictEqual(mgr.data.clsExpand, 1);
+  assert.ok(mgr.data.clsStus.length > 0);
+  const k = mgr.data.clsStus[0].name[0];
+  mgr.onClsStuQ({ detail: { value: k } });
+  assert.ok(mgr.data.clsStus.every(s => s.name.indexOf(k) >= 0 || (s.parent || '').indexOf(k) >= 0));
+  mgr.onClsStuQ({ detail: { value: '' } });
+  mgr.onClsTap({ currentTarget: { dataset: { id: 1 } } });
+  assert.strictEqual(mgr.data.clsExpand, 0);
+  assert.strictEqual(mgr.data.clsStus.length, 0);
+});
 ok('新增学生（带班级）', () => {
   const before = mgr.data.students.length;
   mgr.addStudent();

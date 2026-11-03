@@ -23,9 +23,8 @@
   <view class="recrow" bindtap="openRec" data-rid="{{item.id}}" data-sid="{{item.sid}}">
     <image wx:if="{{item.photo}}" class="thumb" src="{{item.photo}}" mode="aspectFill" />
     <view class="recinfo">
-      <view class="r1"><b>{{item.name}}</b><text class="mi">{{item.course}} · {{item.date}}</text><text class="score">{{item.score}}分</text></view>
+      <view class="r1"><b>{{item.name}}</b><text class="mi">{{item.course}} · {{item.date}}</text><text class="scoretag">{{item.score}}分{{item.tag ? ' · ' + item.tag : ''}}</text></view>
       <view class="chips" style="margin:8rpx 0">
-        <text wx:if="{{item.tag}}" class="pill" style="background:var(--brand)">{{item.tag}}</text>
         <text class="pill" style="background:{{item.sent?'var(--ok)':'var(--warn)'}}">{{item.sent?'已发送':'待发送'}}</text>
       </view>
       <view wx:if="{{item.note}}" class="mi note">“{{item.note}}”</view>

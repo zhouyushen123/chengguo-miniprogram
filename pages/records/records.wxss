@@ -23,7 +23,13 @@
 .thumb { width: 160rpx; height: 160rpx; border-radius: 16rpx; flex: none; }
 .recinfo { flex: 1; }
 .r1 { display: flex; align-items: center; gap: 12rpx; }
-.score { margin-left: auto; color: var(--brand); font-weight: 800; font-size: 32rpx; }
+/* 分数与评价合并成一个胶囊标签（如「85分 · 良好」），右上角对齐 */
+.scoretag {
+  margin-left: auto; flex: none;
+  color: var(--brand); background: var(--brand-soft);
+  font-weight: 800; font-size: 26rpx;
+  padding: 8rpx 20rpx; border-radius: 999rpx;
+}
 .note { margin-top: 6rpx; }
 .footer { margin-top: 6rpx; display: flex; align-items: center; gap: 6rpx; }
 .fico { width: 26rpx; height: 26rpx; }

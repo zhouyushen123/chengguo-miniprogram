@@ -3,10 +3,8 @@
   <!-- 个人卡：头像 + 姓名 + 班级/家长 + 三项统计 -->
   <view class="card">
     <view class="sturow">
-      <view class="ava">
-        <image wx:if="{{s.photo}}" src="{{s.photo}}" mode="aspectFill" />
-        <text wx:else>{{s.name[0]}}</text>
-      </view>
+      <image wx:if="{{s.photo}}" class="stuava" src="{{s.photo}}" mode="aspectFill" />
+      <view wx:else class="stuava stub">{{s.name[0]}}</view>
       <view class="stuinfo">
         <view class="h1">{{s.name}}</view>
         <view class="mi">{{s.meta}}{{s.parent?' · 家长：'+s.parent:''}}{{s.wechat?' · 微信 '+s.wechat:''}}</view>
@@ -34,12 +32,12 @@
     </view>
   </template>
 
-  <!-- 照片轮播：自动播放；手指按住暂停，松手后多等 2.5 秒再继续（避免刚松手就翻页） -->
+  <!-- 照片轮播：自动播放；宽度铺满、高度按真实宽高比自适应（pswH 由 JS 计算） -->
   <template name="photoswiper">
-    <swiper class="pswiper" autoplay="{{swAuto}}" interval="4000" circular="{{photoUrls.length > 1}}"
+    <swiper class="pswiper" style="height:{{pswH}}rpx" autoplay="{{swAuto}}" interval="4000" circular="{{photoUrls.length > 1}}"
       indicator-dots="{{photoUrls.length > 1}}" bindtouchstart="swTouchStart" bindtouchend="swTouchEnd">
       <swiper-item wx:for="{{photoUrls}}" wx:key="*this">
-        <image src="{{item}}" mode="aspectFit" bindtap="previewPhoto" data-i="{{index}}" />
+        <image src="{{item}}" mode="widthFix" bindtap="previewPhoto" data-i="{{index}}" />
       </swiper-item>
     </swiper>
   </template>
@@ -47,7 +45,6 @@
   <!-- 指定记录（从记录列表点入） -->
   <view wx:if="{{rec}}" class="card">
     <view class="dimhead">
-      <text class="pill pill-o">本次</text>
       <text class="lcourse">{{rec.course}}</text>
       <view class="dhr">
         <text class="mi">{{rec.clsName}} · {{rec.date}}</text>
@@ -57,7 +54,7 @@
     <view class="chips" style="margin:12rpx 0">
       <text class="pill" style="background:{{rec.sent?'var(--sent)':'var(--warn)'}}">{{rec.sent?'已发送':'待发送'}}</text>
     </view>
-    <template is="photoswiper" wx:if="{{photoUrls.length}}" data="{{photoUrls, swAuto}}" />
+    <template is="photoswiper" wx:if="{{photoUrls.length}}" data="{{photoUrls, swAuto, pswH}}" />
     <view class="videolist">
       <video wx:for="{{videoUrls}}" wx:key="*this" class="vplayer" src="{{item}}" object-fit="cover" controls show-center-play-btn></video>
     </view>
@@ -93,7 +90,7 @@
         <text class="pill" style="background:{{latest.sent?'var(--sent)':'var(--warn)'}}">{{latest.sent?'已发送':'待发送'}}</text>
       </view>
       <view wx:if="{{!photoUrls.length && !videoUrls.length}}" class="mi nofarm">本次还没有拍照片或录音 📷</view>
-      <template is="photoswiper" wx:if="{{photoUrls.length}}" data="{{photoUrls, swAuto}}" />
+      <template is="photoswiper" wx:if="{{photoUrls.length}}" data="{{photoUrls, swAuto, pswH}}" />
       <view class="videolist">
         <video wx:for="{{videoUrls}}" wx:key="*this" class="vplayer" src="{{item}}" object-fit="cover" controls show-center-play-btn></video>
       </view>

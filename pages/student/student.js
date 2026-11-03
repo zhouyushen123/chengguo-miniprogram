@@ -9,6 +9,8 @@ const tagCls = t => !t ? '' : TAG_GOOD.indexOf(t) > -1 ? 'good' : t === '良好'
 Page({
   data: {
     s: null, tab: 0, latest: null, history: [], rec: null, photoUrls: [], videoUrls: [], photoCls: '',
+    // 照片轮播高度（rpx）：按真实宽高比自适应，加载失败回落 660
+    pswH: 660,
     // 照片轮播：swAuto=自动播放开关（手指按住暂停，松手延迟恢复）；_swTimer 挂 this 上不进 data
     swAuto: true,
     filters: [], filt: '全部', total: 0, shown: 0, expandId: 0,
@@ -76,6 +78,7 @@ Page({
         photoCls: pgCls(((rec || {}).photos || []).length),
         filters: [], filt: '全部', total: 0, shown: 0, teacher: tname(rec)
       });
+      this._sizePhotos((rec || {}).photos || []);
       return;
     }
 
@@ -129,6 +132,20 @@ Page({
       videoUrls: (list[0] || {}).videos || [],
       photoCls: pgCls(((list[0] || {}).photos || []).length),
       teacher: tname(list[0])
+    });
+    this._sizePhotos((list[0] || {}).photos || []);
+  },
+  // 照片轮播自适应：按真实宽高比算高度（宽度铺满卡片内容区 646rpx），取各图最高者并封顶；
+  // 单图失败不影响整体，全失败回落默认 660rpx
+  _sizePhotos(urls) {
+    const W = 646; // 750 - 左右卡片边距 24*2 - 卡片内边距 28*2
+    if (!urls || !urls.length) { this.setData({ pswH: 660 }); return; }
+    Promise.all(urls.map(u => new Promise(res => {
+      wx.getImageInfo({ src: u, success: r => res({ w: r.width, h: r.height }), fail: () => res(null) });
+    }))).then(list => {
+      const hs = list.filter(Boolean).map(d => Math.round(W * d.h / d.w));
+      const h = hs.length ? Math.min(Math.max.apply(null, hs), 1100) : 660;
+      this.setData({ pswH: h });
     });
   },
   // 语音条：替代原生 audio 组件（那会显示"未知歌曲"），播放老师的课堂语音

@@ -257,7 +257,10 @@ Page({
   openStuForm(id, preCls) {
     const s = id ? db.students.get(id) : null;
     const clsSel = s ? (s.clsIds || []).slice() : (preCls || []);
-    const year = s ? (s.enrollYear || 0) : 0;
+    // 入学年份：编辑沿用原值；新建默认当年（绝大多数学生就是今年入的，
+    // 让最常见的情况零操作；「未填」仍是可选项，排在列表最后）
+    const nowY = new Date().getFullYear();
+    const year = s ? (s.enrollYear || 0) : nowY;
     this.setData({
       stuForm: { id: id || null, name: s ? s.name : '', gender: s ? (s.gender || '') : '', enrollYear: year, parent: s ? (s.parent || '') : '', wechat: s ? (s.wechat || '') : '', photo: s ? (s.photo || '') : '' },
       stuClsSel: clsSel,

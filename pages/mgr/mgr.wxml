@@ -160,12 +160,12 @@
       <input class="input vin-in" placeholder="学生姓名" value="{{stuForm.name}}" bindinput="onStuName" />
       <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuForm.name" />
     </view>
-    <view class="label">性别（可不填，记为「未知」）</view>
-    <view class="chips" style="margin-bottom:20rpx">
-      <view class="chip {{stuForm.gender==='男'?'on':''}}" bindtap="onStuGenderSet" data-v="男">男</view>
-      <view class="chip {{stuForm.gender==='女'?'on':''}}" bindtap="onStuGenderSet" data-v="女">女</view>
+    <view class="label">性别</view>
+    <view class="gswitch" style="margin-bottom:20rpx">
+      <view class="gopt {{stuForm.gender==='男'?'on':''}}" bindtap="onStuGenderSet" data-v="男">男</view>
+      <view class="gopt {{stuForm.gender==='女'?'on':''}}" bindtap="onStuGenderSet" data-v="女">女</view>
     </view>
-    <view class="label">入学年份（可不填）</view>
+    <view class="label">入学年份</view>
     <view class="clsfrow" style="margin-bottom:20rpx">
       <picker mode="selector" range="{{enrollYearOpts}}" range-key="name" value="{{stuEnrollYearIdx}}" bindchange="onStuEnrollYear">
         <view class="pickerbox">入学年份：{{enrollYearOpts[stuEnrollYearIdx].name}} ▾</view>
@@ -180,7 +180,10 @@
       <input class="input vin-in" placeholder="家长称呼（如：张珊珊/妈妈）" value="{{stuForm.parent}}" bindinput="onStuParent" />
       <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuForm.parent" />
     </view>
-    <input class="input" placeholder="家长微信号（方便沟通）" value="{{stuForm.wechat}}" bindinput="onStuWechat" />
+    <view class="vin">
+      <input class="input vin-in" placeholder="家长微信号（方便沟通）" value="{{stuForm.wechat}}" bindinput="onStuWechat" />
+      <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuForm.wechat" />
+    </view>
     <view class="row2">
       <view class="btn ghost" hover-class="btn-hover" bindtap="stuCancel">取消</view>
       <view class="btn" hover-class="btn-hover" bindtap="stuSave">保存</view>

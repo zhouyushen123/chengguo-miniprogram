@@ -1,0 +1,61 @@
+/* 机构入驻申请 / 机构信息设置 */
+.wrap { padding-bottom: 40rpx; }
+
+/* ---------- 顶部说明 ---------- */
+.intro { background: var(--brand-soft); }
+.it1 { font-size: 34rpx; font-weight: 800; color: var(--text); }
+.it2 { margin-top: 10rpx; font-size: 26rpx; color: var(--text-2); line-height: 1.7; }
+.isteps { display: flex; gap: 14rpx; margin-top: 20rpx; }
+.istep {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8rpx;
+  background: var(--card); border-radius: 16rpx; padding: 18rpx 8rpx;
+  font-size: 22rpx; color: var(--text-2);
+}
+.isn {
+  width: 36rpx; height: 36rpx; border-radius: 50%;
+  background: var(--brand); color: #fff;
+  font-size: 22rpx; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ---------- 表单 ---------- */
+.req { color: var(--danger); margin-left: 6rpx; }
+.pkar { color: var(--faint); font-size: 24rpx; }
+
+/* ---------- 协议 ---------- */
+.agree { display: flex; align-items: flex-start; gap: 14rpx; margin: 24rpx 30rpx 0; }
+.abox {
+  flex: none; width: 34rpx; height: 34rpx; margin-top: 4rpx;
+  border-radius: 8rpx; border: 2rpx solid var(--line-2); background: var(--card);
+  font-size: 22rpx; font-weight: 700; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+.abox.on { background: var(--brand); border-color: var(--brand); }
+.atxt { flex: 1; font-size: 24rpx; color: var(--sub); line-height: 1.6; }
+
+.applybtn { margin: 24rpx 24rpx 0; }
+.applybtn.ghost { margin-top: 16rpx; }
+.hint3 { margin: 14rpx 30rpx 0; font-size: 23rpx; color: var(--muted); line-height: 1.6; }
+.slogan { margin-top: 26rpx; text-align: center; font-size: 24rpx; color: var(--faint); }
+
+/* ---------- 成功态 ---------- */
+.donecard { text-align: center; padding-top: 40rpx; padding-bottom: 34rpx; }
+.dok {
+  width: 96rpx; height: 96rpx; margin: 0 auto 18rpx; border-radius: 50%;
+  background: var(--sent); color: #fff;
+  font-size: 48rpx; font-weight: 700; line-height: 96rpx;
+}
+.dt1 { font-size: 34rpx; font-weight: 800; color: var(--text); }
+.dt2 { margin-top: 10rpx; font-size: 25rpx; color: var(--sub); line-height: 1.6; padding: 0 10rpx; }
+.dno {
+  display: inline-block; margin-top: 20rpx;
+  background: var(--brand-soft); color: var(--brand);
+  font-size: 26rpx; font-weight: 700; letter-spacing: 1rpx;
+  padding: 10rpx 26rpx; border-radius: 999rpx;
+}
+.drow { display: flex; align-items: flex-start; gap: 20rpx; padding: 14rpx 0; border-bottom: 2rpx solid var(--chip); }
+.drow:last-child { border-bottom: none; }
+.dk { flex: none; width: 150rpx; font-size: 26rpx; color: var(--sub); }
+.dv { flex: 1; font-size: 27rpx; color: var(--text); font-weight: 600; word-break: break-all; }
+.tips { background: var(--chip); }
+.tip { font-size: 25rpx; color: var(--text-2); line-height: 1.7; }

@@ -1,0 +1,90 @@
+<view class="theme-root {{themeCls}}">
+
+  <!-- ============ 提交成功 / 机构资料已保存 ============ -->
+  <view wx:if="{{done}}" class="wrap">
+    <view class="card donecard">
+      <view class="dok">✓</view>
+      <view class="dt1">{{doneStatus === 'active' ? '机构信息已生效' : '入驻申请已提交'}}</view>
+      <view class="dt2">{{doneStatus === 'active' ? '机构名称已更新，家人和老师看到的就是这个名字' : '当前身份没有机构管理权限，请把申请单号发给机构负责人开通'}}</view>
+      <view class="dno">{{done.no}}</view>
+    </view>
+
+    <view class="card">
+      <view class="label" style="margin-top:0">申请资料</view>
+      <view class="drow"><text class="dk">机构名称</text><text class="dv">{{done.name}}</text></view>
+      <view class="drow"><text class="dk">机构类型</text><text class="dv">{{done.type}}</text></view>
+      <view wx:if="{{done.regionText}}" class="drow"><text class="dk">所在地区</text><text class="dv">{{done.regionText}}</text></view>
+      <view class="drow"><text class="dk">联系人</text><text class="dv">{{done.contact}} · {{done.phone}}</text></view>
+      <view class="drow"><text class="dk">学员规模</text><text class="dv">{{done.scale}}</text></view>
+      <view wx:if="{{doneCourses}}" class="drow"><text class="dk">课程方向</text><text class="dv">{{doneCourses}}</text></view>
+      <view wx:if="{{done.invite}}" class="drow"><text class="dk">邀请码</text><text class="dv">{{done.invite}}</text></view>
+    </view>
+
+    <view class="card tips">
+      <view class="tip">接下来：建立班级 → 添加学生 → 每节课录一条成果，家长在微信里就能看到。</view>
+    </view>
+
+    <view class="btn applybtn" hover-class="btn-hover" bindtap="goMgr">去建班级和学生</view>
+    <view class="btn ghost applybtn" hover-class="btn-hover" bindtap="backEdit">修改机构资料</view>
+    <view class="slogan" bindtap="goHome">返回首页 ›</view>
+  </view>
+
+  <!-- ============ 表单 ============ -->
+  <view wx:else class="wrap">
+    <view wx:if="{{!isEdit}}" class="card intro">
+      <view class="it1">机构入驻</view>
+      <view class="it2">填好机构资料就能开始用：建班级 → 加学生 → 每节课记一条成果，家长在微信里看孩子的每一点进步。</view>
+      <view class="isteps">
+        <view class="istep"><text class="isn">1</text>填机构资料</view>
+        <view class="istep"><text class="isn">2</text>开通机构空间</view>
+        <view class="istep"><text class="isn">3</text>建班级加学生</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="label" style="margin-top:0">机构名称<text class="req">*</text></view>
+      <input class="input" placeholder="如：橙果书法学堂" placeholder-class="ph" value="{{form.name}}" bindinput="onName" maxlength="30" />
+
+      <view class="label">机构类型<text class="req">*</text></view>
+      <view class="chips">
+        <view wx:for="{{types}}" wx:key="*this" class="chip {{form.type===item?'on':''}}" bindtap="pickType" data-v="{{item}}">{{item}}</view>
+      </view>
+
+      <view class="label">所在地区</view>
+      <picker mode="region" value="{{form.region}}" bindchange="onRegion">
+        <view class="pickerbox"><text class="{{form.regionText?'':'ph'}}">{{form.regionText || '选择省 / 市 / 区'}}</text><text class="pkar">▾</text></view>
+      </picker>
+
+      <view class="label">联系人<text class="req">*</text></view>
+      <input class="input" placeholder="机构负责人姓名" placeholder-class="ph" value="{{form.contact}}" bindinput="onContact" maxlength="20" />
+
+      <view class="label">手机号<text class="req">*</text></view>
+      <input class="input" type="number" placeholder="接收开通通知的手机号" placeholder-class="ph" value="{{form.phone}}" bindinput="onPhone" maxlength="11" />
+
+      <view class="label">学员规模</view>
+      <view class="chips">
+        <view wx:for="{{scales}}" wx:key="*this" class="chip {{form.scale===item?'on':''}}" bindtap="onScale" data-v="{{item}}">{{item}}</view>
+      </view>
+
+      <view class="label">课程方向（可多选）</view>
+      <view class="chips">
+        <view wx:for="{{courseChips}}" wx:key="name" class="chip {{item.on?'on':''}}" bindtap="toggleCourse" data-v="{{item.name}}">{{item.name}}</view>
+      </view>
+
+      <view class="label">邀请码（可选）</view>
+      <input class="input" placeholder="有邀请码可优先开通" placeholder-class="ph" value="{{form.invite}}" bindinput="onInvite" maxlength="20" />
+    </view>
+
+    <view class="agree" bindtap="toggleAgree">
+      <view class="abox {{agreed?'on':''}}">{{agreed ? '✓' : ''}}</view>
+      <view class="atxt">我已阅读并同意《用户协议》与《隐私政策》，并确认以上资料真实有效</view>
+    </view>
+
+    <view class="btn applybtn" hover-class="btn-hover" bindtap="submit">{{isEdit ? '保存机构信息' : '提交入驻申请'}}</view>
+    <view wx:if="{{isEdit && !canManage}}" class="hint3">当前身份没有机构管理权限，提交后只生成申请单，由负责人开通</view>
+    <view class="slogan">橙果 · 让每节课都有回音</view>
+  </view>
+
+  <!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
+  <privacy-popup />
+</view>

@@ -9,7 +9,8 @@
     "pages/terms/terms",
     "pages/mine/mine",
     "pages/tpls/tpls",
-    "pages/cls/cls"
+    "pages/cls/cls",
+    "pages/apply/apply"
   ],
   "window": {
     "navigationBarBackgroundColor": "#ffffff",

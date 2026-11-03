@@ -56,7 +56,10 @@ Page({
     // 照片网格自适应：1 张铺满整行，2 张对半，3 张及以上三列
     const pgCls = n => n >= 3 ? 'pg3' : n === 2 ? 'pg2' : n === 1 ? 'pg1' : '';
     // 记录的可读视图：班级名 + 评价分档配色 + 照片数 + 评价首行摘要（历史行用）
+    // null 入参直接返回 null：零记录学生的 list[0]、rid 找不到记录时都会传 null 进来，
+    // 不设防会在 onLoad 阶段抛异常 → 白屏 + 错误陷阱弹「内容已复制」
     const deco = r => {
+      if (!r) return null;
       const x = withLines(r);
       const first = (x.noteLines && x.noteLines[0]) || null;
       let snip = first ? (first.text || first.label) : '';

@@ -189,6 +189,22 @@ ok('最近一条 + 历史列表 + 老师名都取得到', () => {
   assert.ok(student.data.teacher, '语音条需要老师名');
   assert.ok(Array.isArray(student.data.history));
 });
+ok('零记录学生进详情不白屏（deco(null) 曾抛异常 → 白屏+错误复制）', () => {
+  const created = db.students.create({ name: '零记录学生', clsIds: [] });
+  assert.ok(created.ok, '建学生失败：' + created.msg);
+  const p2 = loadPage('pages/student/student.js');
+  p2.onLoad({ id: String(created.item.id) });
+  p2.onShow();
+  assert.ok(p2.data.s && p2.data.s.name === '零记录学生', '页面应正常渲染出学生');
+  assert.strictEqual(p2.data.latest, null);
+  assert.strictEqual(p2.data.total, 0);
+  // rid 指向不存在/不可见的记录时同样要稳
+  const p3 = loadPage('pages/student/student.js');
+  p3.onLoad({ rid: '999999', sid: String(created.item.id) });
+  p3.onShow();
+  assert.strictEqual(p3.data.rec, null);
+  db.students.remove(created.item.id);   // 清理，免得影响后续"学生总数 45"的断言
+});
 ok('历史条目行内展开（不跳页）', () => {
   const h = student.data.history[0];
   assert.ok(h, '应有历史记录');

@@ -1,13 +1,15 @@
-/* 顶部暖色渐变，呼应个人中心设计稿 */
+/* 顶部暖色渐变，呼应个人中心设计稿。
+   注意 z-index：.hero 是绝对定位，若不压层级会画在非定位的 .card 之上，
+   表现为"卡片上蒙了一层蓝/橙"，文字发花。让它待在卡片下面，只做背景装饰。 */
 .hero {
   position: absolute; left: 0; top: 0; width: 100%; height: 220rpx;
   background: linear-gradient(180deg, var(--brand-tint), var(--brand-tint-0));
-  pointer-events: none;
+  pointer-events: none; z-index: 0;
 }
 .page-title { font-size: 40rpx; font-weight: 700; margin: 20rpx 32rpx 28rpx; }
 
 /* ---------- 个人卡片 ---------- */
-.usercard { display: flex; align-items: center; gap: 26rpx; padding: 32rpx 28rpx; }
+.usercard { display: flex; align-items: center; gap: 26rpx; padding: 32rpx 28rpx; position: relative; z-index: 1; }
 .usercard .ava {
   width: 108rpx; height: 108rpx; border-radius: 34rpx; flex: none;
   background: linear-gradient(135deg, var(--brand-a), var(--brand));
@@ -25,12 +27,17 @@
 }
 
 /* ---------- 管理统计层：五维概览 ---------- */
-.statcard { padding: 28rpx 12rpx 16rpx; }
+.statcard { padding: 26rpx 12rpx 22rpx; position: relative; z-index: 1; }
 .statrow { display: flex; }
-.stat5 { flex: 1; text-align: center; padding: 6rpx 0; }
-.s5n { font-size: 38rpx; font-weight: 800; color: var(--text); line-height: 1.2; }
-.s5t { margin-top: 6rpx; font-size: 23rpx; color: var(--muted); }
-.stat5-d { margin-top: 14rpx; text-align: center; font-size: 21rpx; color: var(--faint); }
+.stat5 { flex: 1; text-align: center; padding: 4rpx 0; }
+/* 数字底下的浅色小方块：给"可点"一个视觉抓手，比纯数字更像按钮 */
+.s5box {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 76rpx; height: 58rpx; padding: 0 14rpx; box-sizing: border-box;
+  background: var(--brand-soft); border-radius: 16rpx;
+}
+.s5n { font-size: 32rpx; font-weight: 800; color: var(--brand); line-height: 1; }
+.s5t { margin-top: 10rpx; font-size: 22rpx; color: var(--muted); }
 
 /* ---------- 入口列表 ---------- */
 .menucard { padding: 8rpx 28rpx; }

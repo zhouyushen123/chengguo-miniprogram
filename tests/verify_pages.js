@@ -487,4 +487,69 @@ ok('全站图标引用与 assets/icons 一一对应', () => {
   assert.deepStrictEqual(missing, [], missing.join('; '));
 });
 
+console.log('\n【机构入驻申请】');
+const applyUtil = require('../utils/apply');
+// 上面「重启持久化」用例清过 db 模块缓存，页面持有的是新实例，这里必须拿同一份
+const dbNow = require('../utils/db');
+const applyPage = loadPage('pages/apply/apply.js');
+ok('我的页：未入驻时入口是「机构入驻申请」', () => {
+  mine.onShow();
+  const e = mine.data.entries.find(x => x.k === 'apply');
+  assert.ok(e, '应有入驻入口');
+  assert.strictEqual(e.t, '机构入驻申请');
+});
+ok('入驻表单：空机构名被拦', () => {
+  applyPage.onShow();
+  applyPage.onName({ detail: { value: '  ' } });
+  applyPage.onContact({ detail: { value: '王校长' } });
+  applyPage.onPhone({ detail: { value: '13800001111' } });
+  applyPage.toggleAgree();
+  applyPage.submit();
+  assert.strictEqual(toasts[toasts.length - 1], '请填写机构名称');
+  assert.strictEqual(applyUtil.get(), null, '校验不过不应落单');
+});
+ok('入驻表单：手机号格式不对被拦', () => {
+  applyPage.onName({ detail: { value: '橙果书法学堂' } });
+  applyPage.onPhone({ detail: { value: '12345' } });
+  applyPage.submit();
+  assert.strictEqual(toasts[toasts.length - 1], '请填写正确的 11 位手机号');
+});
+ok('入驻表单：未勾选协议被拦', () => {
+  applyPage.onPhone({ detail: { value: '13800001111' } });
+  applyPage.toggleAgree(); // 取消勾选
+  applyPage.submit();
+  assert.strictEqual(toasts[toasts.length - 1], '请先勾选同意协议');
+});
+ok('入驻提交成功：生成申请单 + 机构名落库 + 课程方向多选', () => {
+  applyPage.toggleAgree();
+  applyPage.pickType({ currentTarget: { dataset: { v: '培训机构' } } });
+  applyPage.onRegion({ detail: { value: ['湖南省', '长沙市', '岳麓区'] } });
+  applyPage.onScale({ currentTarget: { dataset: { v: '50–200 人' } } });
+  applyPage.toggleCourse({ currentTarget: { dataset: { v: '书法' } } });
+  applyPage.toggleCourse({ currentTarget: { dataset: { v: '美术' } } });
+  applyPage.submit();
+  const rec = applyUtil.get();
+  assert.ok(rec && /^CG\d{12}$/.test(rec.no), '单号格式应为 CG+年月日+4位');
+  assert.strictEqual(rec.name, '橙果书法学堂');
+  assert.deepStrictEqual(rec.courses, ['书法', '美术']);
+  assert.strictEqual(rec.regionText, '湖南省 长沙市 岳麓区');
+  assert.strictEqual(rec.status, 'active'); // 当前身份是负责人，直接生效
+  assert.strictEqual(dbNow.settings().orgName, '橙果书法学堂', '机构名应同步落库');
+  assert.ok(applyPage.data.done, '应切到成功态');
+});
+ok('我的页：已有申请单后入口变「机构信息」并带上类型与地区', () => {
+  mine.onShow();
+  const e = mine.data.entries.find(x => x.k === 'apply');
+  assert.strictEqual(e.t, '机构信息');
+  assert.strictEqual(e.d, '培训机构 · 湖南省 长沙市 岳麓区');
+});
+ok('入驻页二次进入：表单回填已提交资料', () => {
+  const p2 = loadPage('pages/apply/apply.js');
+  p2.onShow();
+  assert.strictEqual(p2.data.isEdit, true);
+  assert.strictEqual(p2.data.form.name, '橙果书法学堂');
+  assert.strictEqual(p2.data.form.phone, '13800001111');
+  assert.ok(p2.data.courseChips.filter(c => c.on).length === 2);
+});
+
 console.log('\n全部 ' + pass + ' 项页面级断言通过');

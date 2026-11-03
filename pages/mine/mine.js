@@ -1,5 +1,6 @@
 const db = require('../../utils/db');
 const theme = require('../../utils/theme');
+const apply = require('../../utils/apply');
 
 Page({
   data: {
@@ -49,6 +50,13 @@ Page({
         );
       }
     }
+    // 机构信息：没提交过入驻申请时是「入驻申请」入口，提交过就是机构资料维护
+    const appRec = apply.get();
+    entries.push({
+      k: 'apply',
+      t: appRec ? '机构信息' : '机构入驻申请',
+      d: appRec ? (appRec.type + (appRec.regionText ? ' · ' + appRec.regionText : '')) : '填写机构名称、类型与联系方式'
+    });
     if (isManager) {
       entries.push({ k: 'term', t: '学期管理', d: '开班学期、课时结转与续报' });
       entries.push({ k: 'switch', t: '切换身份', d: '管理员 / 老师 / 学生家长 演示切换' });
@@ -69,6 +77,7 @@ Page({
   },
   tapEntry(e) {
     const k = e.currentTarget.dataset.k;
+    if (k === 'apply') { wx.navigateTo({ url: '/pages/apply/apply' }); return; }
     if (k === 'term') { wx.navigateTo({ url: '/pages/terms/terms' }); return; }
     if (k === 'switch') { this.switchIdentity(); return; }
     if (k === 'about') { this.showAbout(); return; }

@@ -36,16 +36,16 @@
 .row2 { display: flex; gap: 20rpx; margin-bottom: 20rpx; }
 .row2 .btn { flex: 1; }
 .hint { text-align: center; font-size: 25rpx; color: var(--muted); background: var(--line); border-radius: 18rpx; padding: 20rpx; }
-/* ---------- 卡内留言输入条（与照片/语音同卡） ---------- */
-.notebar {
-  display: flex; align-items: center; gap: 14rpx;
+/* ---------- 卡内课堂评价：多行文本域 + 模板/语音工具行 ---------- */
+/* 输入从单行 input 换成 textarea：评价内容较长，需要大面积书写与换行阅读 */
+.notearea {
   margin-top: 16rpx;
+  background: var(--bg); border: 2rpx solid var(--line-2); border-radius: 20rpx;
+  padding: 22rpx 26rpx;
 }
-.noteinput {
-  flex: 1; min-width: 0; height: 76rpx; line-height: 76rpx;
-  background: #fff; border: 2rpx solid var(--line-2); border-radius: 999rpx;
-  padding: 0 30rpx; font-size: 28rpx;
-}
+.noteta { width: 100%; min-height: 160rpx; font-size: 28rpx; line-height: 1.7; }
+.notetools { display: flex; align-items: center; gap: 14rpx; margin-top: 16rpx; }
+.notecnt { flex: 1; font-size: 22rpx; color: var(--faint); text-align: right; }
 .ph { color: var(--faint); }
 .barbtn {
   flex: none; font-size: 26rpx; font-weight: 600; color: var(--text-2);

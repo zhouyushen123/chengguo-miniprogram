@@ -119,6 +119,16 @@ function canSeeRecord(actor, record) {
   return has(actor.visClsIds, record.cid);
 }
 
+// 报名（课时账本）可见性：家长看自己孩子的账，老师看自己带的班上的账。
+// 课时数字会直接出现在家长端（"还剩 N 节课"），读路径不能只看写权限——
+// 以前 enrollmentList 直接返回全机构，任何身份都能拿到别人家的课时与缴费情况。
+function canSeeEnrollment(actor, en) {
+  if (!actor || !en) return false;
+  if (actor.all) return true;
+  if (actor.role === 'parent') return has(actor.visStuIds, en.studentId);
+  return has(actor.visClsIds, en.clsId);
+}
+
 /* ---------------- 动作判定 ---------------- */
 // target 视动作而定：{ clsId } / { student } / { record } / undefined
 function can(actor, action, target) {
@@ -187,5 +197,5 @@ function abilities(actor) {
 
 module.exports = {
   ROLES, ROLE_LABEL, FULL, ACTIONS,
-  actorOf, can, canSeeClass, canSeeStudent, canSeeRecord, denyReason, abilities
+  actorOf, can, canSeeClass, canSeeStudent, canSeeRecord, canSeeEnrollment, denyReason, abilities
 };

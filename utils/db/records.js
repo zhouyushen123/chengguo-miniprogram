@@ -49,20 +49,34 @@ function recordSave(pick, send) {
 
   const cid = Number(p.cls || p.clsId) || stu.clsIds[0] || 0;
   const rid = Number(p.rid) || 0;
+  if (!cid) return { ok: false, msg: '请先选择班级' };
 
-  // 权限：编辑看「只能改自己录的」，新建看「班级在范围内」
-  // 两条都必须过 ctx.deny 这道闸门（不要直接 perms.can：演示模式只读、降级只读
-  // 这些"全局规则"都挂在闸门上，绕过它就等于给自己开了后门）
+  // 【记录 ↔ 班级 ↔ 学生 三者必须自洽】
+  // 不校验 cid 归属会有两个真问题：① 记录的 cid 指向学生并不在的班，班级统计、
+  // 家长可见性（按 cid 判定）都会错；② 结转制班级录课时会按 (cid, sid) 找不到报名
+  // 而自动补一条 totalHours:0 的账 —— 账上凭空多一个"欠 1 节课"的孩子。
+  const cls = oc('classes').find(c => c.id === cid);
+  if (!cls) return { ok: false, msg: '班级不存在' };
+  const a = actor();
+
   if (rid) {
     const r0 = oc('records').find(y => y.id === rid);
     if (!r0) return { ok: false, msg: '记录不存在' };
     const err = deny('record.update', { record: r0 });
     if (err) return { ok: false, msg: err };
+    // 【只校验老对象是不够的】闸门看的是 r0 的归属，通过之后把 sid/cid 换成别人的，
+    // 就能把记录搬到看不见的学生/班级上。新的目标同样要过一遍范围校验。
+    if (!perms.canSeeStudent(a, stu)) return { ok: false, msg: '该学生不在你的管理范围内' };
+    if (!perms.canSeeClass(a, cid)) return { ok: false, msg: '该班级不在你的管理范围内' };
+    // 改了班级才要求"学生在这个班里"；班级没变时放行，否则学生转班后连历史记录都改不了
+    if (cid !== r0.cid && stu.clsIds.indexOf(cid) < 0) {
+      return { ok: false, msg: '这个班级里没有该学生' };
+    }
   } else {
     const err = deny('record.create', { clsId: cid });
     if (err) return { ok: false, msg: err };
-    const a = actor();
     if (!perms.canSeeStudent(a, stu)) return { ok: false, msg: '该学生不在你的管理范围内' };
+    if (stu.clsIds.indexOf(cid) < 0) return { ok: false, msg: '这个班级里没有该学生' };
   }
 
   const course = schema.str(p.course).trim();
@@ -88,8 +102,10 @@ function recordSave(pick, send) {
     const ev = schema.validate('record', next);
     if (ev) return { ok: false, msg: ev };
     next.id = r.id; next.tid = r.tid || core.meta().me || ''; next.updatedAt = now();
+    const backup = Object.assign({}, r);
     Object.assign(r, next);
-    core.persist('records');
+    // 落盘失败 → 把内存改回去，不能让界面显示"已保存"而磁盘上没有
+    if (!core.persist('records')) { Object.assign(r, backup); return { ok: false, msg: core.SAVE_FAIL }; }
     return { ok: true, rid: r.id, record: r };
   }
 
@@ -101,32 +117,47 @@ function recordSave(pick, send) {
   if (ev) return { ok: false, msg: ev };
   e.id = core.nextId();
   e.createdAt = now(); e.updatedAt = now();
-  core.coll('records').push(e);
-  core.persist('records');
+  const arr = core.coll('records');
+  arr.push(e);
+  if (!core.persist('records')) {
+    const i = arr.indexOf(e);
+    if (i > -1) arr.splice(i, 1);
+    return { ok: false, msg: core.SAVE_FAIL };
+  }
   // 结转制班级：每录一节 = 消 1 课时（编辑不重复消课）
-  enrollments.consumeHours(e);
+  const hr = enrollments.consumeHours(e);
+  if (hr && hr.ok === false) return { ok: true, rid: e.id, record: e, warn: hr.msg };
   return { ok: true, rid: e.id, record: e };
 }
 // 批量标记已发送（单条发送 / 整班统一发送都走这里），返回实际变更条数
 function recordMarkSent(ids) {
   const list = (Array.isArray(ids) ? ids : [ids]).map(Number);
-  let n = 0; const t = now();
-  let denied = 0;
+  const touched = [];
+  let denied = 0; const t = now();
   oc('records').forEach(r => {
     if (r.sent || list.indexOf(r.id) < 0) return;
     if (deny('record.send', { record: r })) { denied++; return; }
-    r.sent = true; r.updatedAt = t; n++;
+    touched.push({ r, prev: r.updatedAt });
+    r.sent = true; r.updatedAt = t;
   });
-  if (n) core.persist('records');
-  return { count: n, denied };
+  if (!touched.length) return { count: 0, denied };
+  if (!core.persist('records')) {
+    touched.forEach(x => { x.r.sent = false; x.r.updatedAt = x.prev; });
+    return { count: 0, denied, ok: false, msg: core.SAVE_FAIL };
+  }
+  return { count: touched.length, denied };
 }
 function recordRemove(id) {
   const r = oc('records').find(y => y.id === Number(id));
   if (!r) return { ok: false, msg: '记录不存在' };
   const err = deny('record.delete', { record: r });
   if (err) return { ok: false, msg: err };
+  const prev = { removed: r.removed, updatedAt: r.updatedAt };
   r.removed = true; r.updatedAt = now();
-  core.persist('records');
+  if (!core.persist('records')) {
+    r.removed = prev.removed; r.updatedAt = prev.updatedAt;
+    return { ok: false, msg: core.SAVE_FAIL };
+  }
   return { ok: true };
 }
 

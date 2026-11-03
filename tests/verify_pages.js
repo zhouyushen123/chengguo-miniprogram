@@ -103,8 +103,11 @@ ok('保存后落到规范字段，并出现在首页最近成果', () => {
   assert.strictEqual(index.data.recent[0].clsName, '书法班');
 });
 ok('编辑入口回填：课程定位正确（不再默认第一门课）', () => {
-  const r = db.records.save({ cls: 2, sid: 110, course: '素描', note: '素描课', photos: ['x.jpg'] }, true).record;
-  appInst.globalData.pick = { cls: 2, sid: 110, course: '素描', score: r.score, note: r.note, photos: r.photos, rid: r.id };
+  // 必须用素描班里的学生：记录带 cid∈学生班级 的强校验，随便挑一个书法班的学生录素描班
+  // 正是这个校验要拦的情况（以前能过，记录会挂到学生并不在的班上）
+  const s2 = db.students.of(2)[0];
+  const r = db.records.save({ cls: 2, sid: s2.id, course: '素描', note: '素描课', photos: ['x.jpg'] }, true).record;
+  appInst.globalData.pick = { cls: 2, sid: s2.id, course: '素描', score: r.score, note: r.note, photos: r.photos, rid: r.id };
   record.onLoad({});
   assert.strictEqual(record.data.course, '素描');
   assert.strictEqual(record.data.clsId, 2);

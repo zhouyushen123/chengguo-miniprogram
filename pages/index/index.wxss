@@ -98,15 +98,16 @@
 .oneline {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-/* ---------- 我的班级：三列磁贴 ---------- */
+/* ---------- 区块大卡：一个区块一张卡，内部条目为浅底格子（不再各自浮起） ---------- */
+.panel { padding: 20rpx; margin-bottom: 32rpx; }
+/* ---------- 我的班级：卡内条目（列宽自适应，一两个班时自动铺满不空栏） ---------- */
 .clsgrid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16rpx;
-  padding: 0 24rpx 32rpx;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180rpx, 1fr));
+  gap: 16rpx;
 }
 .clstile {
-  position: relative; background: #fff; border-radius: 20rpx;
+  position: relative; background: var(--bg); border-radius: 16rpx;
   padding: 24rpx 20rpx 20rpx; overflow: hidden;
-  box-shadow: 0 4rpx 16rpx var(--shadow);
 }
 .clstile::before {
   content: ''; position: absolute; left: 20rpx; top: 0;
@@ -121,15 +122,14 @@
 }
 .ctmeta { margin-top: 8rpx; font-size: 22rpx; color: var(--muted); }
 .ctwarn { margin-top: 6rpx; font-size: 21rpx; color: var(--brand); }
-/* ---------- 最近成果：自适应磁贴（最多一行 5 个，少则拉伸） ---------- */
+/* ---------- 最近成果：卡内自适应条目（一行最多 5 个，少则拉伸） ---------- */
 .recgrid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(132rpx, 1fr));
-  gap: 14rpx; padding: 0 24rpx 32rpx;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120rpx, 1fr));
+  gap: 14rpx;
 }
 .rectile {
-  background: #fff; border-radius: 18rpx; padding: 20rpx 10rpx 18rpx;
+  background: var(--bg); border-radius: 14rpx; padding: 20rpx 10rpx 18rpx;
   text-align: center; min-width: 0;
-  box-shadow: 0 4rpx 16rpx var(--shadow);
 }
 .rtname {
   font-size: 26rpx; font-weight: 700; color: var(--text-2);

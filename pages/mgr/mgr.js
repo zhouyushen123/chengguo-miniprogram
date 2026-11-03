@@ -34,11 +34,6 @@ Page({
   // 从个人中心带参进入：?tab=3 直达人员管理
   onLoad(q) {
     if (q && q.tab !== undefined) this.setData({ tab: Math.min(+q.tab || 0, 3) });
-    // 入学年份选项：未填 + 近 13 年（含当年），倒序新→旧
-    const nowY = new Date().getFullYear();
-    const opts = [{ y: 0, name: '未填' }];
-    for (let y = nowY; y >= nowY - 12; y--) opts.push({ y, name: y + ' 年' });
-    this.setData({ enrollYearOpts: opts });
   },
   onShow() { theme.apply(this); this.refresh(); },
   // 阻止弹窗内点击冒泡到遮罩层（关闭弹窗）的空处理
@@ -81,6 +76,10 @@ Page({
     let stuYearIdx = this.data.stuYearIdx;
     if (stuYearIdx >= stuYears.length) stuYearIdx = 0;
     this._stuAll = stuAll;
+    // 入学年份选项：未填 + 近 13 年（含当年），倒序新→旧（放 refresh 里兜底，不依赖 onLoad 时序）
+    const nowY = new Date().getFullYear();
+    const enrollYearOpts = [{ y: 0, name: '未填' }];
+    for (let y = nowY; y >= nowY - 12; y--) enrollYearOpts.push({ y, name: y + ' 年' });
 
     this.setData({
       orgName: s.orgName,
@@ -96,7 +95,7 @@ Page({
       clsTerms: actTerms, clsTermIdx,
       clsTeachers: [{ id: 0, name: '暂不指派' }].concat(staff),
       clsTeacherIdx: this.data.clsTeacherIdx || 0,
-      stuYears, stuYearIdx,
+      stuYears, stuYearIdx, enrollYearOpts,
       courses: db.courses.list().map(c => ({ id: c.id, name: c.name, cls: db.classes.name(c.clsId) })),
       members: isManager ? db.members.list().map(m => {
         const v = db.members.view(m);

@@ -32,7 +32,7 @@ function boot(seed) {
 function v3Seed() {
   const t = Date.now();
   return {
-    'chengguo_v3_meta': { version: 3, orgId: 'org1', teacher: '周老师', me: 't1', demoVersion: 5, createdAt: t, updatedAt: t },
+    'chengguo_v3_meta': { version: 3, orgId: 'org1', teacher: '周老师', me: 't1', demoVersion: 6, createdAt: t, updatedAt: t },
     'chengguo_v3_classes': [
       { id: 1, name: '书法班', sort: 0, orgId: 'org1', createdAt: t, updatedAt: t, removed: false },
       { id: 2, name: '素描班', sort: 1, orgId: 'org1', createdAt: t, updatedAt: t, removed: false }

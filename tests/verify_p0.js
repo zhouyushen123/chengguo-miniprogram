@@ -88,7 +88,7 @@ console.log('\n【CR-001 媒体持久化】');
     const t = Date.now();
     // 预置一份"升级前"的库：meta 已是 v4（不会再走迁移），记录里是临时路径
     const seed = {
-      'chengguo_v3_meta': { version: 4, orgId: 'org1', orgName: '我的机构', teacher: '周老师', me: 't1', demoVersion: 5, createdAt: t, updatedAt: t },
+      'chengguo_v3_meta': { version: 4, orgId: 'org1', orgName: '我的机构', teacher: '周老师', me: 't1', demoVersion: 6, createdAt: t, updatedAt: t },
       'chengguo_v3_orgs': [{ id: 'org1', name: '我的机构', ownerId: 't1', status: 'active', orgId: 'org1', createdAt: t, updatedAt: t, removed: false }],
       'chengguo_v3_users': [{ id: 't1', name: '周老师', role: 'owner', orgId: 'org1', createdAt: t, updatedAt: t, removed: false }],
       'chengguo_v3_members': [{ id: 1, orgId: 'org1', userId: 't1', role: 'owner', name: '周老师', clsIds: [], courseIds: [], studentIds: [], status: 'active', createdAt: t, updatedAt: t, removed: false }],
@@ -115,7 +115,7 @@ console.log('\n【CR-001 媒体持久化】');
   ok('源文件已丢失时保留原路径，不清空引用', () => {
     const t = Date.now();
     const seed = {
-      'chengguo_v3_meta': { version: 4, orgId: 'org1', orgName: '我的机构', teacher: '周老师', me: 't1', demoVersion: 5, createdAt: t, updatedAt: t },
+      'chengguo_v3_meta': { version: 4, orgId: 'org1', orgName: '我的机构', teacher: '周老师', me: 't1', demoVersion: 6, createdAt: t, updatedAt: t },
       'chengguo_v3_orgs': [{ id: 'org1', name: '我的机构', ownerId: 't1', status: 'active', orgId: 'org1', createdAt: t, updatedAt: t, removed: false }],
       'chengguo_v3_users': [{ id: 't1', name: '周老师', role: 'owner', orgId: 'org1', createdAt: t, updatedAt: t, removed: false }],
       'chengguo_v3_members': [{ id: 1, orgId: 'org1', userId: 't1', role: 'owner', name: '周老师', clsIds: [], courseIds: [], studentIds: [], status: 'active', createdAt: t, updatedAt: t, removed: false }],

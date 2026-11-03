@@ -69,7 +69,7 @@
     </view>
     <view class="sfrow2">
       <picker mode="selector" range="{{stuYears}}" range-key="name" value="{{stuYearIdx}}" bindchange="onStuYear">
-        <view class="pkbox">年份：{{stuYears[stuYearIdx].name || '全部'}} ▾</view>
+        <view class="pkbox">入学：{{stuYears[stuYearIdx].name || '全部'}} ▾</view>
       </picker>
       <view class="chip {{stuGender===''?'on':''}}" bindtap="onStuGender" data-v="">全部</view>
       <view class="chip {{stuGender==='男'?'on':''}}" bindtap="onStuGender" data-v="男">男</view>
@@ -82,7 +82,7 @@
     <view bindtap="goStudentPage" data-id="{{item.id}}">
       <view class="itrow"><view class="ava">{{item.name[0]}}</view>
         <view><b>{{item.name}}</b><text wx:if="{{item.gender}}" class="gtag">{{item.gender}}</text>
-        <view class="mi">{{item.cls}}{{item.parent?' · 家长 '+item.parent:''}}{{item.wechat?' · 微信 '+item.wechat:''}}</view></view>
+        <view class="mi">{{item.cls}}{{item.year?' · '+item.year+' 年入学':''}}{{item.parent?' · 家长 '+item.parent:''}}{{item.wechat?' · 微信 '+item.wechat:''}}</view></view>
       </view>
     </view>
     <view style="display:flex;align-items:center">
@@ -150,6 +150,12 @@
     <view class="chips" style="margin-bottom:20rpx">
       <view class="chip {{stuForm.gender==='男'?'on':''}}" bindtap="onStuGenderSet" data-v="男">男</view>
       <view class="chip {{stuForm.gender==='女'?'on':''}}" bindtap="onStuGenderSet" data-v="女">女</view>
+    </view>
+    <view class="label">入学年份（可不填）</view>
+    <view class="clsfrow" style="margin-bottom:20rpx">
+      <picker mode="selector" range="{{enrollYearOpts}}" range-key="name" value="{{stuEnrollYearIdx}}" bindchange="onStuEnrollYear">
+        <view class="pickerbox">入学年份：{{enrollYearOpts[stuEnrollYearIdx].name}} ▾</view>
+      </picker>
     </view>
     <view class="label">加入班级（可多选）</view>
     <view class="chips" style="margin-bottom:20rpx">

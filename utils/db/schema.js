@@ -142,6 +142,8 @@ function normalizeStudent(raw, orgId, stamp) {
     name: str(r.name).trim(),
     // 性别：仅 男/女 两种取值，空串表示未知（历史数据与未填写的都归入未知，便于筛选补录）
     gender: ['男', '女'].indexOf(r.gender) > -1 ? r.gender : '',
+    // 入学年份：机构视角的入学时间（区别于建档时间），0 表示未填；筛选「按年份看学员」用
+    enrollYear: num(r.enrollYear, 0),
     clsIds: numList(r.clsIds),
     parent: str(r.parent).trim(),
     wechat: str(r.wechat).trim(),

@@ -251,7 +251,7 @@ ok('学生筛选：性别未知归桶 + 表单补录后可筛出', () => {
   assert.ok(mgr.data.students.some(x => x.id === first.id));
   mgr.onStuGender({ currentTarget: { dataset: { v: '' } } });
 });
-ok('学生筛选：录入年份选项由数据倒推且过滤正确', () => {
+ok('学生筛选：入学年份选项由数据倒推且过滤正确', () => {
   assert.ok(mgr.data.stuYears.length >= 1 && mgr.data.stuYears[0].name === '全部');
   if (mgr.data.stuYears.length > 1) {
     mgr.onStuYear({ detail: { value: 1 } });
@@ -259,6 +259,19 @@ ok('学生筛选：录入年份选项由数据倒推且过滤正确', () => {
     assert.ok(mgr.data.students.every(x => x.year === y));
     mgr.onStuYear({ detail: { value: 0 } });
   }
+});
+ok('学生表单：入学年份选择器保存并落库', () => {
+  const first = mgr._stuAll[0];
+  mgr.editStudent({ currentTarget: { dataset: { id: first.id } } });
+  // 选项结构：[未填, 2026, 2025, ...]，取第 2 项（最近一年）
+  const opt = mgr.data.enrollYearOpts[1];
+  mgr.onStuEnrollYear({ detail: { value: 1 } });
+  assert.strictEqual(mgr.data.stuForm.enrollYear, opt.y);
+  mgr.stuSave();
+  assert.strictEqual(db.students.get(first.id).enrollYear, opt.y);
+  // 筛选该年份应能找到该学生
+  mgr.onStuYear({ detail: { value: 0 } });
+  assert.ok(mgr.data.stuYears.some(x => x.y === opt.y));
 });
 ok('删除学生同时清掉其记录', () => {
   const s = db.students.create({ name: '待删', clsIds: [1] }).item;

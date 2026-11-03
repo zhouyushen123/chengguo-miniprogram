@@ -207,7 +207,11 @@ function seedDemo() {
   const kept = core.coll('students').filter(s =>
     !(s.demo || OLD_DEMO_IDS.indexOf(s.id) > -1 || demoIds[s.id]));
   const addedStudents = demo.DEMO_STUDENTS.map(s =>
-    schema.normalizeStudent(Object.assign({}, s, { clsIds: s.clsIds.slice() }), org(), now()));
+    schema.normalizeStudent(Object.assign({}, s, {
+      clsIds: s.clsIds.slice(),
+      // 入学年份按 id 确定性铺开（2022–2025），让「按年份筛选」在演示数据上立即可见
+      enrollYear: 2022 + (s.id % 4)
+    }), org(), now()));
   core.setColl('students', kept.concat(addedStudents));
 
   const addedRecords = demo.DEMO_RECORDS.map(r =>

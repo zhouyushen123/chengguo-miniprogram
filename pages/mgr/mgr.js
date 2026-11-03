@@ -22,8 +22,10 @@ Page({
     // icoCameraW：压在全品牌色头像块上的相机图标，必须恒为白色，故不参与主题图标整包（换肤会覆盖）
     stuForm: null, stuClsSel: [], stuClsChips: [], icoCamera: icons.camera,
     icoCameraW: '/assets/icons/camera-white.png',
-    // 学生筛选：模糊搜索（姓名/家长/微信号）+ 录入年份 + 性别；stuYears 由现有学生倒推
+    // 学生筛选：模糊搜索（姓名/家长/微信号）+ 入学年份 + 性别；stuYears 由现有学生倒推
     stuQ: '', stuYears: [{ y: 0, name: '全部' }], stuYearIdx: 0, stuGender: '', stuCount: 0,
+    // 学生表单：入学年份选择器（未填 + 近 13 年，倒序）
+    enrollYearOpts: [{ y: 0, name: '未填' }], stuEnrollYearIdx: 0,
     // 成员表单弹层（chips = 预计算好 on 标记的渲染数组，WXML 不做任何方法调用）
     userForm: null, userClsSel: [], userStuSel: [], userCrsSel: [],
     userClsChips: [], userStuChips: [], userCrsChips: [],
@@ -32,6 +34,11 @@ Page({
   // 从个人中心带参进入：?tab=3 直达人员管理
   onLoad(q) {
     if (q && q.tab !== undefined) this.setData({ tab: Math.min(+q.tab || 0, 3) });
+    // 入学年份选项：未填 + 近 13 年（含当年），倒序新→旧
+    const nowY = new Date().getFullYear();
+    const opts = [{ y: 0, name: '未填' }];
+    for (let y = nowY; y >= nowY - 12; y--) opts.push({ y, name: y + ' 年' });
+    this.setData({ enrollYearOpts: opts });
   },
   onShow() { theme.apply(this); this.refresh(); },
   // 阻止弹窗内点击冒泡到遮罩层（关闭弹窗）的空处理
@@ -60,18 +67,15 @@ Page({
     let clsTermIdx = this.data.clsTermIdx || 0;
     if (clsTermIdx >= actTerms.length) clsTermIdx = 0;
 
-    // 学生列表：附加性别与录入年份（筛选用），真正的过滤在 _applyStuFilter
-    const stuAll = db.students.list().map(st => {
-      const d = st.createdAt ? new Date(st.createdAt) : null;
-      return {
-        id: st.id, name: st.name,
-        cls: (st.clsIds || []).map(db.classes.name).join('、') || '未加入班级',
-        parent: st.parent || '', wechat: st.wechat || '',
-        gender: st.gender || '',
-        year: d ? d.getFullYear() : 0
-      };
-    });
-    // 年份选项由现有学生的录入时间倒推；数据变化后原选中年份可能已不存在，回退到「全部」
+    // 学生列表：附加性别与入学年份（筛选用），真正的过滤在 _applyStuFilter
+    const stuAll = db.students.list().map(st => ({
+      id: st.id, name: st.name,
+      cls: (st.clsIds || []).map(db.classes.name).join('、') || '未加入班级',
+      parent: st.parent || '', wechat: st.wechat || '',
+      gender: st.gender || '',
+      year: st.enrollYear || 0
+    }));
+    // 年份选项由现有学生的入学年份倒推；数据变化后原选中年份可能已不存在，回退到「全部」
     const ys = Array.from(new Set(stuAll.map(s => s.year).filter(y => y > 0))).sort((a, b) => b - a);
     const stuYears = [{ y: 0, name: '全部' }].concat(ys.map(y => ({ y, name: y + ' 年' })));
     let stuYearIdx = this.data.stuYearIdx;
@@ -115,7 +119,7 @@ Page({
     this._applyStuFilter(stuAll);
   },
   /* ================= 学生筛选 ================= */
-  // 统一过滤入口：模糊匹配 姓名/家长/微信号 + 录入年份 + 性别（未知=尚未补录）
+  // 统一过滤入口：模糊匹配 姓名/家长/微信号 + 入学年份 + 性别（未知=尚未补录）
   _applyStuFilter(all) {
     const list = all || this._stuAll || [];
     const q = (this.data.stuQ || '').trim().toLowerCase();
@@ -207,10 +211,12 @@ Page({
   openStuForm(id) {
     const s = id ? db.students.get(id) : null;
     const clsSel = s ? (s.clsIds || []).slice() : [];
+    const year = s ? (s.enrollYear || 0) : 0;
     this.setData({
-      stuForm: { id: id || null, name: s ? s.name : '', gender: s ? (s.gender || '') : '', parent: s ? (s.parent || '') : '', wechat: s ? (s.wechat || '') : '', photo: s ? (s.photo || '') : '' },
+      stuForm: { id: id || null, name: s ? s.name : '', gender: s ? (s.gender || '') : '', enrollYear: year, parent: s ? (s.parent || '') : '', wechat: s ? (s.wechat || '') : '', photo: s ? (s.photo || '') : '' },
       stuClsSel: clsSel,
-      stuClsChips: this._chips(db.classes.list(), clsSel)
+      stuClsChips: this._chips(db.classes.list(), clsSel),
+      stuEnrollYearIdx: Math.max(0, this.data.enrollYearOpts.findIndex(o => o.y === year))
     });
   },
   // 把列表 + 选中集合压成带 on 标记的渲染数组。
@@ -224,6 +230,11 @@ Page({
   onStuGenderSet(e) {
     const v = e.currentTarget.dataset.v || '';
     this.setData({ 'stuForm.gender': (this.data.stuForm || {}).gender === v ? '' : v });
+  },
+  // 表单里的入学年份：选中项同步到 stuForm，保存时落库
+  onStuEnrollYear(e) {
+    const idx = +e.detail.value, o = this.data.enrollYearOpts[idx] || { y: 0 };
+    this.setData({ stuEnrollYearIdx: idx, 'stuForm.enrollYear': o.y });
   },
   // 上传学生照片：拍照/相册均可，统一走 media 转存到用户目录
   onStuPhoto() {
@@ -249,7 +260,7 @@ Page({
     const f = this.data.stuForm, sel = this.data.stuClsSel;
     const n = (f.name || '').trim();
     const payload = {
-      name: n, clsIds: sel.slice(), gender: f.gender || '',
+      name: n, clsIds: sel.slice(), gender: f.gender || '', enrollYear: f.enrollYear || 0,
       parent: (f.parent || '').trim(), wechat: (f.wechat || '').trim(), photo: f.photo || ''
     };
     const r = f.id ? db.students.update(f.id, payload) : db.students.create(payload);

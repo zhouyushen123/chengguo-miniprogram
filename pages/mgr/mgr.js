@@ -22,6 +22,8 @@ Page({
     // icoCameraW：压在全品牌色头像块上的相机图标，必须恒为白色，故不参与主题图标整包（换肤会覆盖）
     stuForm: null, stuClsSel: [], stuClsChips: [], icoCamera: icons.camera,
     icoCameraW: '/assets/icons/camera-white.png',
+    // 学生筛选：模糊搜索（姓名/家长/微信号）+ 录入年份 + 性别；stuYears 由现有学生倒推
+    stuQ: '', stuYears: [{ y: 0, name: '全部' }], stuYearIdx: 0, stuGender: '', stuCount: 0,
     // 成员表单弹层（chips = 预计算好 on 标记的渲染数组，WXML 不做任何方法调用）
     userForm: null, userClsSel: [], userStuSel: [], userCrsSel: [],
     userClsChips: [], userStuChips: [], userCrsChips: [],
@@ -58,6 +60,24 @@ Page({
     let clsTermIdx = this.data.clsTermIdx || 0;
     if (clsTermIdx >= actTerms.length) clsTermIdx = 0;
 
+    // 学生列表：附加性别与录入年份（筛选用），真正的过滤在 _applyStuFilter
+    const stuAll = db.students.list().map(st => {
+      const d = st.createdAt ? new Date(st.createdAt) : null;
+      return {
+        id: st.id, name: st.name,
+        cls: (st.clsIds || []).map(db.classes.name).join('、') || '未加入班级',
+        parent: st.parent || '', wechat: st.wechat || '',
+        gender: st.gender || '',
+        year: d ? d.getFullYear() : 0
+      };
+    });
+    // 年份选项由现有学生的录入时间倒推；数据变化后原选中年份可能已不存在，回退到「全部」
+    const ys = Array.from(new Set(stuAll.map(s => s.year).filter(y => y > 0))).sort((a, b) => b - a);
+    const stuYears = [{ y: 0, name: '全部' }].concat(ys.map(y => ({ y, name: y + ' 年' })));
+    let stuYearIdx = this.data.stuYearIdx;
+    if (stuYearIdx >= stuYears.length) stuYearIdx = 0;
+    this._stuAll = stuAll;
+
     this.setData({
       orgName: s.orgName,
       isManager,
@@ -72,12 +92,8 @@ Page({
       clsTerms: actTerms, clsTermIdx,
       clsTeachers: [{ id: 0, name: '暂不指派' }].concat(staff),
       clsTeacherIdx: this.data.clsTeacherIdx || 0,
+      stuYears, stuYearIdx,
       courses: db.courses.list().map(c => ({ id: c.id, name: c.name, cls: db.classes.name(c.clsId) })),
-      students: db.students.list().map(st => ({
-        id: st.id, name: st.name,
-        cls: (st.clsIds || []).map(db.classes.name).join('、') || '未加入班级',
-        parent: st.parent || '', wechat: st.wechat || ''
-      })),
       members: isManager ? db.members.list().map(m => {
         const v = db.members.view(m);
         return {
@@ -96,7 +112,27 @@ Page({
       }) : [],
       courseClsIdx: Math.min(this.data.courseClsIdx, Math.max(0, classes.length - 1))
     });
+    this._applyStuFilter(stuAll);
   },
+  /* ================= 学生筛选 ================= */
+  // 统一过滤入口：模糊匹配 姓名/家长/微信号 + 录入年份 + 性别（未知=尚未补录）
+  _applyStuFilter(all) {
+    const list = all || this._stuAll || [];
+    const q = (this.data.stuQ || '').trim().toLowerCase();
+    const y = ((this.data.stuYears || [])[this.data.stuYearIdx] || {}).y || 0;
+    const g = this.data.stuGender || '';
+    const shown = list.filter(st => {
+      if (q && ((st.name + ' ' + st.parent + ' ' + st.wechat).toLowerCase().indexOf(q) < 0)) return false;
+      if (y && st.year !== y) return false;
+      if (g === '未知') { if (st.gender) return false; }
+      else if (g && st.gender !== g) return false;
+      return true;
+    });
+    this.setData({ students: shown, stuCount: list.length });
+  },
+  onStuQ(e) { this.setData({ stuQ: e.detail.value }); this._applyStuFilter(); },
+  onStuYear(e) { this.setData({ stuYearIdx: +e.detail.value }); this._applyStuFilter(); },
+  onStuGender(e) { this.setData({ stuGender: e.currentTarget.dataset.v || '' }); this._applyStuFilter(); },
   pickTab(e) { this.setData({ tab: +e.currentTarget.dataset.i }); },
   // 预览他人身份后回到自己：没有这个出口，切到家长就再也回不来了
   backHome() {
@@ -172,7 +208,7 @@ Page({
     const s = id ? db.students.get(id) : null;
     const clsSel = s ? (s.clsIds || []).slice() : [];
     this.setData({
-      stuForm: { id: id || null, name: s ? s.name : '', parent: s ? (s.parent || '') : '', wechat: s ? (s.wechat || '') : '', photo: s ? (s.photo || '') : '' },
+      stuForm: { id: id || null, name: s ? s.name : '', gender: s ? (s.gender || '') : '', parent: s ? (s.parent || '') : '', wechat: s ? (s.wechat || '') : '', photo: s ? (s.photo || '') : '' },
       stuClsSel: clsSel,
       stuClsChips: this._chips(db.classes.list(), clsSel)
     });
@@ -184,6 +220,11 @@ Page({
     return (list || []).map(c => ({ id: c.id, name: c.name, on: sel.indexOf(c.id) >= 0 }));
   },
   onStuName(e) { this.setData({ 'stuForm.name': e.detail.value }); },
+  // 表单里的性别：再点一次已选中的取消（记为未知）
+  onStuGenderSet(e) {
+    const v = e.currentTarget.dataset.v || '';
+    this.setData({ 'stuForm.gender': (this.data.stuForm || {}).gender === v ? '' : v });
+  },
   // 上传学生照片：拍照/相册均可，统一走 media 转存到用户目录
   onStuPhoto() {
     wx.chooseMedia({
@@ -208,7 +249,7 @@ Page({
     const f = this.data.stuForm, sel = this.data.stuClsSel;
     const n = (f.name || '').trim();
     const payload = {
-      name: n, clsIds: sel.slice(),
+      name: n, clsIds: sel.slice(), gender: f.gender || '',
       parent: (f.parent || '').trim(), wechat: (f.wechat || '').trim(), photo: f.photo || ''
     };
     const r = f.id ? db.students.update(f.id, payload) : db.students.create(payload);

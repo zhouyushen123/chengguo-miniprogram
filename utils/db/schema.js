@@ -140,6 +140,8 @@ function normalizeStudent(raw, orgId, stamp) {
   return Object.assign({
     id: num(r.id, 0),
     name: str(r.name).trim(),
+    // 性别：仅 男/女 两种取值，空串表示未知（历史数据与未填写的都归入未知，便于筛选补录）
+    gender: ['男', '女'].indexOf(r.gender) > -1 ? r.gender : '',
     clsIds: numList(r.clsIds),
     parent: str(r.parent).trim(),
     wechat: str(r.wechat).trim(),

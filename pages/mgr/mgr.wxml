@@ -61,14 +61,27 @@
 </view>
 
 <!-- ============ 学生 ============ -->
-<view wx:if="{{tab===2}}" class="wrap">
-  <view class="card">
-    <view class="btn" hover-class="btn-hover" bindtap="addStudent">＋ 添加学生</view>
+<view wx:if="{{tab===2}}" class="wrap stuwrap">
+  <!-- 筛选区：吸顶钉住，列表从其下方滚过；模糊搜索 + 录入年份 + 性别 -->
+  <view class="stufilter">
+    <view class="sfrow">
+      <input class="sfinput" placeholder="搜索姓名 / 家长 / 微信号" value="{{stuQ}}" bindinput="onStuQ" confirm-type="search" />
+    </view>
+    <view class="sfrow2">
+      <picker mode="selector" range="{{stuYears}}" range-key="name" value="{{stuYearIdx}}" bindchange="onStuYear">
+        <view class="pkbox">年份：{{stuYears[stuYearIdx].name || '全部'}} ▾</view>
+      </picker>
+      <view class="chip {{stuGender===''?'on':''}}" bindtap="onStuGender" data-v="">全部</view>
+      <view class="chip {{stuGender==='男'?'on':''}}" bindtap="onStuGender" data-v="男">男</view>
+      <view class="chip {{stuGender==='女'?'on':''}}" bindtap="onStuGender" data-v="女">女</view>
+      <view class="chip {{stuGender==='未知'?'on':''}}" bindtap="onStuGender" data-v="未知">未知</view>
+    </view>
+    <view class="sfcount">共 {{stuCount}} 人，当前显示 {{students.length}} 人</view>
   </view>
   <view class="card item" wx:for="{{students}}" wx:key="id">
     <view bindtap="goStudentPage" data-id="{{item.id}}">
       <view class="itrow"><view class="ava">{{item.name[0]}}</view>
-        <view><b>{{item.name}}</b>
+        <view><b>{{item.name}}</b><text wx:if="{{item.gender}}" class="gtag">{{item.gender}}</text>
         <view class="mi">{{item.cls}}{{item.parent?' · 家长 '+item.parent:''}}{{item.wechat?' · 微信 '+item.wechat:''}}</view></view>
       </view>
     </view>
@@ -77,6 +90,11 @@
       <view class="mi del" catchtap="delStudent" data-id="{{item.id}}">删除</view>
     </view>
   </view>
+  <view wx:if="{{!students.length}}" class="card empty">没有符合条件的学生，试试放宽筛选</view>
+</view>
+<!-- 添加学生：固定钉在页面底部，列表再长也始终可点 -->
+<view wx:if="{{tab===2}}" class="stufab">
+  <view class="btn" hover-class="btn-hover" bindtap="addStudent">＋ 添加学生</view>
 </view>
 
 <!-- ============ 成员管理（负责人/管理员可见） ============ -->
@@ -128,6 +146,11 @@
       <text class="mi">{{stuForm.photo?'点击更换照片':'上传学生照片（选填）'}}</text>
     </view>
     <input class="input" placeholder="学生姓名" value="{{stuForm.name}}" bindinput="onStuName" />
+    <view class="label">性别（可不填，记为「未知」）</view>
+    <view class="chips" style="margin-bottom:20rpx">
+      <view class="chip {{stuForm.gender==='男'?'on':''}}" bindtap="onStuGenderSet" data-v="男">男</view>
+      <view class="chip {{stuForm.gender==='女'?'on':''}}" bindtap="onStuGenderSet" data-v="女">女</view>
+    </view>
     <view class="label">加入班级（可多选）</view>
     <view class="chips" style="margin-bottom:20rpx">
       <view wx:for="{{stuClsChips}}" wx:key="id" class="chip {{item.on?'on':''}}" bindtap="stuClsTgl" data-id="{{item.id}}">{{item.name}}</view>

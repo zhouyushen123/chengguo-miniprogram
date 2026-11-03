@@ -7,6 +7,8 @@ Page({
     name: '', roleLabel: '', orgName: '', meta: '', avaChar: '',
     isManager: false, canSwitchHome: false, homeName: '',
     hasDemo: false,
+    // 管理统计层（学生/班级/课程/家长/老师）
+    statItems: [],
     // 入口列表
     entries: []
   },
@@ -30,13 +32,25 @@ Page({
       : '';
     const isManager = db.auth.isAdmin();
     const entries = [];
-    // 家长不需要管理班级课程，入口整体隐藏
+    // 统计层：先给「学生/班级/课程/家长/老师」五个维度概览，点进去才是增删改查（管理页对应页签）
+    // 老师身份看不到成员（人员）页签，所以家长/老师两项仅负责人/管理员可见
+    const statItems = [];
     if (!db.auth.isParent()) {
-      entries.push({ k: 'mgr', t: '学生 / 课程管理', d: '添加学生、班级和课程' });
+      statItems.push(
+        { k: 'stu', n: db.students.list().length, t: '学生', tab: 2 },
+        { k: 'cls', n: db.classes.list().length, t: '班级', tab: 0 },
+        { k: 'crs', n: db.courses.list().length, t: '课程', tab: 1 }
+      );
+      if (isManager) {
+        const roles = db.members.list().map(m => m.role);
+        statItems.push(
+          { k: 'parent', n: roles.filter(r => r === 'parent').length, t: '家长', tab: 3 },
+          { k: 'teacher', n: roles.filter(r => r !== 'parent').length, t: '老师', tab: 3 }
+        );
+      }
     }
     if (isManager) {
       entries.push({ k: 'term', t: '学期管理', d: '开班学期、课时结转与续报' });
-      entries.push({ k: 'member', t: '成员管理', d: '角色与数据范围分配' });
       entries.push({ k: 'switch', t: '切换身份', d: '管理员 / 老师 / 学生家长 演示切换' });
     }
     entries.push({ k: 'about', t: '关于橙果', d: '这是什么、怎么用' });
@@ -49,16 +63,19 @@ Page({
       canSwitchHome: s.canSwitchHome,
       homeName: ((db.users.get(s.homeMe) || {}).name) || '',
       hasDemo: (s.demoVersion || 0) > 0,
+      statItems,
       entries
     });
   },
   tapEntry(e) {
     const k = e.currentTarget.dataset.k;
-    if (k === 'mgr') { wx.navigateTo({ url: '/pages/mgr/mgr' }); return; }
     if (k === 'term') { wx.navigateTo({ url: '/pages/terms/terms' }); return; }
-    if (k === 'member') { wx.navigateTo({ url: '/pages/mgr/mgr?tab=3' }); return; }
     if (k === 'switch') { this.switchIdentity(); return; }
     if (k === 'about') { this.showAbout(); return; }
+  },
+  // 统计卡点按：跳到管理页对应页签（0班级 1课程 2学生 3人员）
+  tapStat(e) {
+    wx.navigateTo({ url: '/pages/mgr/mgr?tab=' + (+e.currentTarget.dataset.tab || 0) });
   },
   // 演示切换：从成员列表选一个人，以他的身份看全 App
   switchIdentity() {
@@ -88,7 +105,7 @@ Page({
   showAbout() {
     wx.showModal({
       title: '关于橙果',
-      content: '橙果是课后机构用的「成果记录」工具：老师把每节课孩子的照片、语音点评和成长记录下来，家长在手机上就能看到孩子的每一点进步。\n\n第一次使用：先在「学生 / 课程管理」里建好班级、课程和学生，再在「记录」页给孩子录成果。',
+      content: '橙果是课后机构用的「成果记录」工具：老师把每节课孩子的照片、语音点评和成长记录下来，家长在手机上就能看到孩子的每一点进步。\n\n第一次使用：在「我的」页点上面的统计（学生 / 班级 / 课程）建好基础数据，再在「记录」页给孩子录成果。',
       showCancel: false,
       confirmText: '知道了'
     });

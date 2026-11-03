@@ -18,6 +18,14 @@
 .uc-name { font-size: 34rpx; font-weight: 700; margin-bottom: 8rpx; }
 .uc-meta { font-size: 24rpx; color: var(--muted); line-height: 1.5; }
 
+/* ---------- 管理统计层：五维概览 ---------- */
+.statcard { padding: 28rpx 12rpx 16rpx; }
+.statrow { display: flex; }
+.stat5 { flex: 1; text-align: center; padding: 6rpx 0; }
+.s5n { font-size: 38rpx; font-weight: 800; color: var(--text); line-height: 1.2; }
+.s5t { margin-top: 6rpx; font-size: 23rpx; color: var(--muted); }
+.stat5-d { margin-top: 14rpx; text-align: center; font-size: 21rpx; color: var(--faint); }
+
 /* ---------- 入口列表 ---------- */
 .menucard { padding: 8rpx 28rpx; }
 .mrow {

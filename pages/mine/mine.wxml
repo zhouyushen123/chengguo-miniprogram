@@ -19,6 +19,17 @@
   </view>
 </view>
 
+<!-- 管理统计层：五个维度概览，点按进入对应管理页签做增删改查 -->
+<view wx:if="{{statItems.length}}" class="card statcard">
+  <view class="statrow">
+    <view wx:for="{{statItems}}" wx:key="k" class="stat5" hover-class="mrow-hover" bindtap="tapStat" data-tab="{{item.tab}}">
+      <view class="s5n">{{item.n}}</view>
+      <view class="s5t">{{item.t}}</view>
+    </view>
+  </view>
+  <view class="stat5-d">点按进入对应管理</view>
+</view>
+
 <!-- 功能入口 -->
 <view class="card menucard">
   <view wx:for="{{entries}}" wx:key="k" class="mrow" hover-class="mrow-hover" bindtap="tapEntry" data-k="{{item.k}}">

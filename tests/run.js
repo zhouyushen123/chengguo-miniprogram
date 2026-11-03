@@ -1,9 +1,12 @@
 // tests/run.js —— 回归总入口：node tests/run.js
 //
-// 三套断言各管一层，缺一不可：
-//   verify_db     数据层：迁移、字段约束、软删除、重启后数据是否还在
-//   verify_perm   权限：角色×范围、fail-closed、跨机构隔离
-//   verify_pages  页面级：把真实页面模块加载起来跑，能抓到"数据层没问题但页面会崩"的情况
+// 多套断言各管一层，缺一不可：
+//   verify_db      数据层：迁移、字段约束、软删除、重启后数据是否还在
+//   verify_perm    权限：角色×范围、fail-closed、跨机构隔离
+//   verify_term    学期与课时：结转、报名账本、消课
+//   verify_p0      P0 止血：关键回归点
+//   verify_pages   页面级：把真实页面模块加载起来跑，能抓到"数据层没问题但页面会崩"的情况
+//   verify_arch    架构守卫：依赖无环且严格下行、页面不绕过数据层、API 面完整、文件规模
 //
 // 退出码非 0 表示有套件失败，可直接用于 CI 卡点。
 const { spawnSync } = require('child_process');
@@ -14,7 +17,8 @@ const SUITES = [
   ['verify_perm.js', '权限'],
   ['verify_term.js', '学期与课时'],
   ['verify_p0.js', 'P0 止血'],
-  ['verify_pages.js', '页面级']
+  ['verify_pages.js', '页面级'],
+  ['verify_arch.js', '架构守卫']
 ];
 
 let failed = 0;

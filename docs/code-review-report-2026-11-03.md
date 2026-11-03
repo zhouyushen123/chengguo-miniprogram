@@ -374,7 +374,7 @@ if (q.data.length) await records.doc(q.data[0]._id).update({ data: doc });  // �
 
 ## 八、给下一个审查者的三条提醒
 
-1. **先跑 `npm test`，再读代码**。239 项绿了才有资格讨论风格；红了先看是不是自己环境问题（`tests/fixture.js` 的 `richSeed` 是必需的）。顺手 `npm run lint`，它会拦住"页面绕开数据层"这类约定漂移。
+1. **先跑 `npm test`，再读代码**。240 项绿了才有资格讨论风格；红了先看是不是自己环境问题（`tests/fixture.js` 的 `richSeed` 是必需的）。顺手 `npm run lint`，它会拦住"页面绕开数据层"这类约定漂移。
 2. **改 `utils/db/` 的任何文件，都当成改地基**。这五个文件（`schema/core/storage/permissions/migrate`）是 LAYER 表的 level 0，动它们要连带看 `verify_arch` + `verify_db` + `verify_perm` 三套。
 3. **别相信注释里的清单，只相信 `COLLECTIONS` / `ACTIONS` / `LAYER` 这三张表**。注释会腐烂，表会被断言检查。
 

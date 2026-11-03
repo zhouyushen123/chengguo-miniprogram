@@ -183,7 +183,7 @@ kvUsage()                       // → 本地 key 用量（云端实现返回服
 | CR-007 | `utils/db/permissions.js:132-135` | `if (tid && tid !== actor.userId) return false` —— `tid` 为空时**放行** | 记录缺录入人时"只能改自己录的"规则失效（fail-open） | ✅ 改为 fail-closed：有目标且 `tid` 为空即拒绝；`abilities()` 用空 target 预判时不误伤 |
 | CR-008 | `utils/db/records.js` | `cid` 取自入参且未校验是否属于该学生班级，`validate` 只查非 0 | 记录可挂在学生并不在的班级，污染班级统计与家长可见性 | ✅ 新建与编辑双向校验 `cid ∈ stu.clsIds`；编辑路径另补 `canSeeStudent` / `canSeeClass`（P1-1）；`enrollments` 消课改用 `enrollmentRawOf`，避免"看不到→又补一条 0 课时报名" |
 | CR-009 | `utils/db/maintenance.js` | `init()` 无条件播种，`DEMO_VERSION` 升版即向真实数据追加 45 名演示学生 | 演示数据污染生产库，老师会看到不属于自己的学生 | ✅ 演示数据搬进独立存储命名空间（`chengguo_demo_*`），与真实库物理分离；启动时把老版本混进来的演示行请出去，见 6.6 |
-| CR-010 | `.gitignore` 忽略 `.workbuddy/` | 103 项断言测试不在版本控制内 | 换机/协作即丢失质量网，CI 无法执行 | ✅ 迁到 `tests/` 入库，`npm test` 跑全部 239 项；图标脚本迁到 `tools/` |
+| CR-010 | `.gitignore` 忽略 `.workbuddy/` | 103 项断言测试不在版本控制内 | 换机/协作即丢失质量网，CI 无法执行 | ✅ 迁到 `tests/` 入库，`npm test` 跑全部 240 项；图标脚本迁到 `tools/` |
 | CR-011 | `utils/db/index.js:857 merge()` | 按 `updatedAt` 取新，无墓碑、无冲突记录、无幂等键 | 多端同时编辑必然静默丢数据 | 未修（P2） |
 | CR-012 | `pages/mgr/mgr.js` | 单页 265 行承载机构/班级/课程/学生/成员 5 个分区 | 任何新业务（课表/考勤/收费）都会撑爆此页 | 未修（P1） |
 | CR-013 | `app.js:onLaunch` | `db.init()` 无 try/catch | 迁移或水合抛错即整站白屏，且无恢复入口 | ✅ `init()` 内部兜底：失败降级为**只读 + 空库**，磁盘数据原样保留；`app.js` 弹窗告知，`db.status()` 可查 |
@@ -255,7 +255,7 @@ kvUsage()                       // → 本地 key 用量（云端实现返回服
 | P3-1 ~ P3-5 | ✅ | 注释指向 `COLLECTIONS`、删 `fileToText`、`memberNameOf`、`LIMITS` 单份、AppID 走 `MP_APPID` |
 
 新增文件：`utils/db/settle.js`、`pages/storage/storage.*`、`tools/lint.js`、`.editorconfig`、`tests/verify_hardening.js`。
-断言：209 → **239**（新增加固套件 30 项）；`npm run lint` 82 文件 0 提醒；`npm run check` = lint + test。
+断言：209 → **240**（新增加固套件 30 项）；`npm run lint` 82 文件 0 提醒；`npm run check` = lint + test。
 
 **同步修改的工程约束**（`tests/verify_arch.js`）：`classes` 的方法表加 `mode` / `countOfTerm`，`orgs` 加 `checkName`，`terms` 加 `settle`。
 
@@ -281,7 +281,7 @@ kvUsage()                       // → 本地 key 用量（云端实现返回服
 - [x] CR-002 全实体列表加 `orgId` 过滤：新增 `core.orgColl()`，读路径全收口（写路径保持全量，避免误删他机构数据）
 - [x] CR-003 / CR-004 修正 CI 路径与 `PROJECT_PATH`
 - [x] CR-007 修 `tid` fail-open
-- [x] CR-010 测试迁入 `tests/`，`npm test` 跑 239 项
+- [x] CR-010 测试迁入 `tests/`，`npm test` 跑 240 项
 - [x] CR-013 启动包兜底 + 降级为只读（**绝不落盘覆盖**，避免读失败变成永久丢失）
 - [x] ADR-009 `record.type` 预留（默认 `achievement`）
 - [x] CR-008 校验 `cid ∈ student.clsIds`（2026-11-03 完成，编辑路径另补 sid/cid 二次过闸门）

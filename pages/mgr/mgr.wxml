@@ -79,10 +79,10 @@
       <picker mode="selector" range="{{stuYears}}" range-key="name" value="{{stuYearIdx}}" bindchange="onStuYear">
         <view class="pkbox">入学：{{stuYears[stuYearIdx].name || '全部'}} ▾</view>
       </picker>
-      <view class="chip {{stuGender===''?'on':''}}" bindtap="onStuGender" data-v="">全部</view>
-      <view class="chip {{stuGender==='男'?'on':''}}" bindtap="onStuGender" data-v="男">男</view>
-      <view class="chip {{stuGender==='女'?'on':''}}" bindtap="onStuGender" data-v="女">女</view>
-      <view class="chip {{stuGender==='未知'?'on':''}}" bindtap="onStuGender" data-v="未知">未知</view>
+      <view class="gswitch">
+        <view class="gopt {{stuGender==='男'?'on':''}}" bindtap="onStuGender" data-v="男">男</view>
+        <view class="gopt {{stuGender==='女'?'on':''}}" bindtap="onStuGender" data-v="女">女</view>
+      </view>
     </view>
     <view class="sfcount">共 {{stuCount}} 人，当前显示 {{students.length}} 人</view>
   </view>

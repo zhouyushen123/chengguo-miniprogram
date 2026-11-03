@@ -174,7 +174,12 @@ Page({
   },
   onStuQ(e) { this.setData({ stuQ: e.detail.value }); this._applyStuFilter(); },
   onStuYear(e) { this.setData({ stuYearIdx: +e.detail.value }); this._applyStuFilter(); },
-  onStuGender(e) { this.setData({ stuGender: e.currentTarget.dataset.v || '' }); this._applyStuFilter(); },
+  onStuGender(e) {
+    const v = e.currentTarget.dataset.v || '';
+    // 二段开关：再点已选中的那段 = 取消筛选（显示全部，含没填性别的）
+    this.setData({ stuGender: this.data.stuGender === v ? '' : v });
+    this._applyStuFilter();
+  },
   pickTab(e) { this.setData({ tab: +e.currentTarget.dataset.i }); },
   // 预览他人身份后回到自己：没有这个出口，切到家长就再也回不来了
   backHome() {

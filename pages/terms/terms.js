@@ -1,6 +1,7 @@
 // pages/terms/terms.js —— 学期管理：学期列表 / 新建 / 结束本学期（四步结转向导）
 const db = require('../../utils/db');
 const theme = require('../../utils/theme');
+const voice = require('../../utils/voice');
 
 const STATUS_LABEL = { upcoming: '未开始', active: '进行中', archived: '已归档' };
 const MODE_LABEL = { term: '学期制', carry: '课时结转' };
@@ -202,5 +203,8 @@ Page({
     });
   },
   // 阻止弹层内点击冒泡到遮罩层的空处理
-  noop() {}
+  noop() {},
+  // 语音输入：点输入框右端的麦克风说话，再点一次结束
+  onMic(e) { voice.dictate(this, e.currentTarget.dataset.k); },
+  onHide() { voice.stop(this); }
 });

@@ -2,6 +2,7 @@ const db = require('../../utils/db');
 const icons = require('../../utils/icons');
 const media = require('../../utils/media');
 const theme = require('../../utils/theme');
+const voice = require('../../utils/voice');
 
 // 角色选项目：负责人不在新建时出现（一个机构只能有一个，靠「移交」转移）
 const ROLE_OPTS = [
@@ -404,5 +405,8 @@ Page({
     if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
     this.refresh();
     wx.showToast({ title: '已切换为 ' + (res.item.name || '') + '（' + (m.roleLabel || '') + '）', icon: 'none' });
-  }
+  },
+  // 语音输入：点输入框右端的麦克风说话，再点一次结束（utils/voice.js）
+  onMic(e) { voice.dictate(this, e.currentTarget.dataset.k); },
+  onHide() { voice.stop(this); } // 离开页面别让麦克风一直开着
 });

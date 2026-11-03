@@ -46,6 +46,12 @@
   "usingComponents": {
     "privacy-popup": "/components/privacy/privacy"
   },
+  "plugins": {
+    "WechatSI": { "version": "0.3.5", "provider": "wx069ba97219f66d99" }
+  },
+  "permission": {
+    "scope.record": { "desc": "点击输入框的麦克风说话，把语音转成文字填入" }
+  },
   "__usePrivacyCheck__": true,
   "sitemapLocation": "sitemap.json",
   "style": "v2"

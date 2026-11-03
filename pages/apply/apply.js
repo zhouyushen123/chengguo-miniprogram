@@ -1,6 +1,7 @@
 const db = require('../../utils/db');
 const theme = require('../../utils/theme');
 const apply = require('../../utils/apply');
+const voice = require('../../utils/voice');
 
 // 表单选项：固定集合，避免自由输入导致口径混乱（后续可从服务端下发）
 const TYPES = ['培训机构', '学校', '幼儿园', '个人工作室'];
@@ -123,5 +124,8 @@ Page({
   },
   backEdit() { this.setData({ done: null }); },
   goHome() { wx.switchTab({ url: '/pages/index/index' }); },
-  goMgr() { wx.navigateTo({ url: '/pages/mgr/mgr' }); }
+  goMgr() { wx.navigateTo({ url: '/pages/mgr/mgr' }); },
+  // 语音输入：点输入框右端的麦克风说话，再点一次结束
+  onMic(e) { voice.dictate(this, e.currentTarget.dataset.k); },
+  onHide() { voice.stop(this); }
 });

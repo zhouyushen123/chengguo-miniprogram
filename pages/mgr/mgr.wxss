@@ -57,6 +57,8 @@
 
 /* 新建班级表单 */
 .clsfrow { margin-top: 20rpx; display: flex; gap: 14rpx; flex-wrap: wrap; align-items: center; }
+/* 表单里的下拉框占满整行，与输入框左右边缘对齐（筛选条里的胶囊下拉不受影响） */
+.clsfrow > picker { flex: 1; min-width: 0; }
 .clsfrow .chip { font-size: 25rpx; }
 .clsfrow .chip.on { background: var(--brand); color: #fff; font-weight: 700; }
 .hint2 { font-size: 24rpx; color: var(--sub); line-height: 1.7; }

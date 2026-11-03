@@ -3,9 +3,15 @@
   <view class="tip">请家长填写孩子的资料，提交后老师端即可查看</view>
   <view class="card">
     <view class="label">基本信息</view>
-    <input class="input" placeholder="{{fields[0].ph}}" value="{{f.nick}}" bindinput="onInput" data-k="nick" />
+    <view class="vin">
+      <input class="input vin-in" placeholder="{{fields[0].ph}}" value="{{f.nick}}" bindinput="onInput" data-k="nick" />
+      <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="f.nick" />
+    </view>
     <input class="input" placeholder="{{fields[1].ph}}" value="{{f.birth}}" bindinput="onInput" data-k="birth" />
-    <input class="input" placeholder="{{fields[2].ph}}" value="{{f.school}}" bindinput="onInput" data-k="school" />
+    <view class="vin">
+      <input class="input vin-in" placeholder="{{fields[2].ph}}" value="{{f.school}}" bindinput="onInput" data-k="school" />
+      <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="f.school" />
+    </view>
   </view>
   <view class="card">
     <view class="label">家长联系方式</view>
@@ -14,9 +20,18 @@
   </view>
   <view class="card">
     <view class="label">学习情况</view>
-    <input class="input" placeholder="{{fields[5].ph}}" value="{{f.level}}" bindinput="onInput" data-k="level" />
-    <input class="input" placeholder="{{fields[6].ph}}" value="{{f.goal}}" bindinput="onInput" data-k="goal" />
-    <input class="input" placeholder="{{fields[7].ph}}" value="{{f.note}}" bindinput="onInput" data-k="note" />
+    <view class="vin">
+      <input class="input vin-in" placeholder="{{fields[5].ph}}" value="{{f.level}}" bindinput="onInput" data-k="level" />
+      <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="f.level" />
+    </view>
+    <view class="vin">
+      <input class="input vin-in" placeholder="{{fields[6].ph}}" value="{{f.goal}}" bindinput="onInput" data-k="goal" />
+      <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="f.goal" />
+    </view>
+    <view class="vin">
+      <input class="input vin-in" placeholder="{{fields[7].ph}}" value="{{f.note}}" bindinput="onInput" data-k="note" />
+      <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="f.note" />
+    </view>
   </view>
   <view class="btn" style="margin:0 24rpx" bindtap="submit">保存并提交</view>
 </view>

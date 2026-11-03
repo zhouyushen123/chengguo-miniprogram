@@ -24,7 +24,10 @@
     </view>
     <!-- 展开：本班学生筛选 + 名单 -->
     <view wx:if="{{clsExpand===item.id}}" class="clsexp">
-      <input class="clsexp-input" placeholder="筛选本班学生（姓名 / 家长）" placeholder-class="ph" value="{{clsStuQ}}" bindinput="onClsStuQ" />
+      <view class="vin">
+        <input class="clsexp-input vin-in" placeholder="筛选本班学生（姓名 / 家长）" placeholder-class="ph" value="{{clsStuQ}}" bindinput="onClsStuQ" />
+        <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="clsStuQ" />
+      </view>
       <view class="clsmem" wx:for="{{clsStus}}" wx:for-item="s" wx:key="id" bindtap="goStudentPage" data-id="{{s.id}}">
         <view class="ava">{{s.name[0]}}</view>
         <view class="memname">{{s.name}}</view>
@@ -49,7 +52,10 @@
       <view class="pickerbox">所属班级：{{classes[courseClsIdx].name || '请先添加班级'}} ▾</view>
     </picker>
     <view class="addrow">
-      <input class="input" style="flex:1;margin-bottom:0" placeholder="课程名称" value="{{newCourse}}" bindinput="onNewCourse" />
+      <view class="vin" style="flex:1;min-width:0">
+        <input class="input vin-in" style="margin-bottom:0" placeholder="课程名称" value="{{newCourse}}" bindinput="onNewCourse" />
+        <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="newCourse" />
+      </view>
       <view class="btn addbtn" hover-class="btn-hover" bindtap="addCourse">添加</view>
     </view>
   </view>
@@ -64,7 +70,10 @@
   <!-- 筛选区：吸顶钉住，列表从其下方滚过；模糊搜索 + 录入年份 + 性别 -->
   <view class="stufilter">
     <view class="sfrow">
-      <input class="sfinput" placeholder="搜索姓名 / 家长 / 微信号" value="{{stuQ}}" bindinput="onStuQ" confirm-type="search" />
+      <view class="vin">
+        <input class="sfinput vin-in" placeholder="搜索姓名 / 家长 / 微信号" value="{{stuQ}}" bindinput="onStuQ" confirm-type="search" />
+        <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuQ" />
+      </view>
     </view>
     <view class="sfrow2">
       <picker mode="selector" range="{{stuYears}}" range-key="name" value="{{stuYearIdx}}" bindchange="onStuYear">
@@ -101,7 +110,10 @@
   <view class="card">
     <view class="sec"><view class="label">机构名称</view></view>
     <view class="addrow">
-      <input class="input" style="flex:1;margin-bottom:0" placeholder="机构名称" value="{{orgName}}" bindinput="onOrgName" />
+      <view class="vin" style="flex:1;min-width:0">
+        <input class="input vin-in" style="margin-bottom:0" placeholder="机构名称" value="{{orgName}}" bindinput="onOrgName" />
+        <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="orgName" />
+      </view>
       <view class="btn addbtn" hover-class="btn-hover" bindtap="saveOrg">保存</view>
     </view>
     <view class="mi" style="margin-top:12rpx">当前身份：{{myRoleLabel}}。同一机构内的数据互相隔离，不同机构之间完全不可见。</view>
@@ -144,7 +156,10 @@
       </view>
       <text class="mi">{{stuForm.photo?'点击更换照片':'上传学生照片（选填）'}}</text>
     </view>
-    <input class="input" placeholder="学生姓名" value="{{stuForm.name}}" bindinput="onStuName" />
+    <view class="vin">
+      <input class="input vin-in" placeholder="学生姓名" value="{{stuForm.name}}" bindinput="onStuName" />
+      <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuForm.name" />
+    </view>
     <view class="label">性别（可不填，记为「未知」）</view>
     <view class="chips" style="margin-bottom:20rpx">
       <view class="chip {{stuForm.gender==='男'?'on':''}}" bindtap="onStuGenderSet" data-v="男">男</view>
@@ -161,7 +176,10 @@
       <view wx:for="{{stuClsChips}}" wx:key="id" class="chip {{item.on?'on':''}}" bindtap="stuClsTgl" data-id="{{item.id}}">{{item.name}}</view>
     </view>
     <view class="label">家长联系方式</view>
-    <input class="input" placeholder="家长称呼（如：张珊珊/妈妈）" value="{{stuForm.parent}}" bindinput="onStuParent" />
+    <view class="vin">
+      <input class="input vin-in" placeholder="家长称呼（如：张珊珊/妈妈）" value="{{stuForm.parent}}" bindinput="onStuParent" />
+      <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuForm.parent" />
+    </view>
     <input class="input" placeholder="家长微信号（方便沟通）" value="{{stuForm.wechat}}" bindinput="onStuWechat" />
     <view class="row2">
       <view class="btn ghost" hover-class="btn-hover" bindtap="stuCancel">取消</view>
@@ -174,7 +192,10 @@
 <view wx:if="{{userForm}}" class="mask" bindtap="userCancel">
   <view class="sheet" catchtap="noop">
     <view class="sheet-t">{{userForm.id ? '编辑成员' : '新增成员'}}</view>
-    <input class="input" placeholder="姓名" value="{{userForm.name}}" bindinput="onUserName" />
+    <view class="vin">
+      <input class="input vin-in" placeholder="姓名" value="{{userForm.name}}" bindinput="onUserName" />
+      <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="userForm.name" />
+    </view>
 
     <view class="label">角色</view>
     <view class="chips" style="margin-bottom:16rpx">
@@ -215,7 +236,10 @@
 <view wx:if="{{clsFormOpen}}" class="mask" bindtap="closeClsForm">
   <view class="sheet" catchtap="noop">
     <view class="sheet-t">添加班级</view>
-    <input class="input" placeholder="班级名称" value="{{newCls}}" bindinput="onNewCls" />
+    <view class="vin">
+      <input class="input vin-in" placeholder="班级名称" value="{{newCls}}" bindinput="onNewCls" />
+      <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="newCls" />
+    </view>
     <view class="clsfrow">
       <picker mode="selector" range="{{clsTerms}}" range-key="name" value="{{clsTermIdx}}" bindchange="onClsTerm">
         <view class="pickerbox">学期：{{clsTerms[clsTermIdx].name || '请选择'}} ▾</view>
@@ -224,6 +248,9 @@
     <view class="clsfrow">
       <view class="chip {{clsMode === 'term' ? 'on' : ''}}" bindtap="onClsMode" data-v="term">学期制</view>
       <view class="chip {{clsMode === 'carry' ? 'on' : ''}}" bindtap="onClsMode" data-v="carry">课时结转</view>
+    </view>
+    <view class="clsfrow" wx:if="{{clsMode === 'term'}}">
+      <view class="hint2">学期制班：按学期上课与统计，学期结束后默认随学期归档（如需延续到下期，可在「学期管理」里整班结转）。</view>
     </view>
     <view class="clsfrow" wx:if="{{clsMode === 'carry'}}">
       <view class="hint2">课时结转班：录一节消一课时，学期结束可整班结转到下期（在「学期管理」里操作）。</view>

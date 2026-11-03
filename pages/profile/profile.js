@@ -1,5 +1,6 @@
 const db = require('../../utils/db');
 const theme = require('../../utils/theme');
+const voice = require('../../utils/voice');
 
 Page({
   data: { fields: [
@@ -34,5 +35,8 @@ Page({
     require('../../utils/api').pushRecord({ type: 'profile', sid: r.item.id, profile: r.item.profile });
     wx.showToast({ title: '资料已提交', icon: 'success' });
     setTimeout(() => wx.navigateBack(), 800);
-  }
+  },
+  // 语音输入：点输入框右端的麦克风说话，再点一次结束
+  onMic(e) { voice.dictate(this, e.currentTarget.dataset.k); },
+  onHide() { voice.stop(this); }
 });

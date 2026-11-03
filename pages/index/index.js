@@ -18,6 +18,9 @@ Page({
   },
   onShow() {
     theme.apply(this); // 主题：根类名 + 图标 + 原生 chrome
+    // 导航栏标题跟随机构名称（在「我的-成员管理」里设置）；未设置时兜底「橙果」
+    const org = db.settings().orgName;
+    wx.setNavigationBarTitle({ title: org || '橙果' });
     const u = db.users.current() || { role: 'teacher', name: '' };
     const d = new Date();
     const dateStr = (d.getMonth() + 1) + '月' + d.getDate() + '日 周' + '日一二三四五六'[d.getDay()];

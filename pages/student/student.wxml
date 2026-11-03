@@ -46,13 +46,11 @@
   <view wx:if="{{rec}}" class="card">
     <view class="dimhead">
       <text class="lcourse">{{rec.course}}</text>
+      <text class="pill" style="background:{{rec.sent?'var(--sent)':'var(--warn)'}}">{{rec.sent?'已发送':'待发送'}}</text>
       <view class="dhr">
         <text class="mi">{{rec.clsName}} · {{rec.date}}</text>
         <text wx:if="{{rec.tag}}" class="badge {{rec.tcls}}">{{rec.tag}}</text>
       </view>
-    </view>
-    <view class="chips" style="margin:12rpx 0">
-      <text class="pill" style="background:{{rec.sent?'var(--sent)':'var(--warn)'}}">{{rec.sent?'已发送':'待发送'}}</text>
     </view>
     <template is="photoswiper" wx:if="{{photoUrls.length}}" data="{{photoUrls, swAuto, pswH}}" />
     <view class="videolist">
@@ -81,13 +79,11 @@
       <view class="dimhead">
         <text class="pill pill-o">{{filt==='全部'?'最近一次':filt}}</text>
         <text class="lcourse">{{latest.course}}</text>
+        <text class="pill" style="background:{{latest.sent?'var(--sent)':'var(--warn)'}}">{{latest.sent?'已发送':'待发送'}}</text>
         <view class="dhr">
           <text class="mi">{{latest.clsName}} · {{latest.date}}</text>
           <text wx:if="{{latest.tag}}" class="badge {{latest.tcls}}">{{latest.tag}}</text>
         </view>
-      </view>
-      <view class="chips" style="margin:12rpx 0">
-        <text class="pill" style="background:{{latest.sent?'var(--sent)':'var(--warn)'}}">{{latest.sent?'已发送':'待发送'}}</text>
       </view>
       <view wx:if="{{!photoUrls.length && !videoUrls.length}}" class="mi nofarm">本次还没有拍照片或录音 📷</view>
       <template is="photoswiper" wx:if="{{photoUrls.length}}" data="{{photoUrls, swAuto, pswH}}" />

@@ -12,7 +12,7 @@
   <view class="ava">{{avaChar}}</view>
   <view class="uc-txt">
     <view class="uc-name">{{name}}</view>
-    <view class="uc-meta">{{roleLabel}}<text wx:if="{{orgName}}"> · {{orgName}}</text></view>
+    <view class="uc-meta">{{roleLabel}}<text wx:if="{{orgName}}"> · {{orgName}}</text><text wx:if="{{sandbox}}" class="uc-demo">演示</text></view>
     <view wx:if="{{meta}}" class="uc-meta">{{meta}}</view>
   </view>
 </view>
@@ -51,9 +51,6 @@
     </view>
   </view>
 </view>
-
-<!-- 危险操作：仅负责人/管理员可见 -->
-<view wx:if="{{isManager && hasDemo}}" class="card danger" hover-class="mrow-hover" bindtap="clearDemo">清空演示数据</view>
 
 <view class="slogan">橙果 · 让每节课都有回音</view>
 

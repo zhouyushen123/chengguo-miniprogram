@@ -3,6 +3,11 @@
 <view class="cnav" style="padding-top:{{statusBarH}}px">
   <view class="cnav-t">{{navTitle}}</view>
 </view>
+<!-- 演示数据提示：现在看的是样板间，看够了点右边开始用自己的一摊 -->
+<view wx:if="{{sandbox}}" class="demobar">
+  <text class="demobar-t">演示数据 · 只看不改</text>
+  <text class="demobar-btn" hover-class="btn-hover" bindtap="startReal">开始使用</text>
+</view>
 <view wx:if="{{!isParent}}">
   <!-- 顶部欢迎 -->
   <view class="topbar">

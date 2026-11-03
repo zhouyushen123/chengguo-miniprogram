@@ -556,4 +556,38 @@ ok('入驻页二次进入：表单回填已提交资料', () => {
   assert.ok(p2.data.courseChips.filter(c => c.on).length === 2);
 });
 
+
+/* =============================== 演示数据（独立的一套） =============================== */
+console.log('\n【演示数据】');
+// 「重启持久化」用例清过 db 模块缓存，页面分别持有新旧两个实例：
+// 首页是老实例、我的页是新实例，所以两边都要切（真机上只有一份）
+const setDemo = on => { (on ? [db, dbNow] : [db, dbNow]).forEach(x => (on ? x.demo.enter() : x.demo.exit())); };
+ok('演示模式：首页出现横幅，录入入口被拦下', () => {
+  setDemo(true);
+  assert.strictEqual(db.settings().sandbox, true);
+  appInst.globalData.pick = null;
+  index.onShow();
+  assert.strictEqual(index.data.sandbox, true, '应显示演示横幅');
+  assert.strictEqual(index.data.navTitle, '演示机构');
+  index.goRecord();
+  assert.strictEqual(appInst.globalData.pick, null, '演示模式下不该进录入页');
+  assert.strictEqual(toasts.pop(), '演示数据只看不改，点上方「开始使用」');
+});
+ok('演示模式：我的页入口变「退出演示数据」，并带演示徽标', () => {
+  mine.onShow();
+  assert.strictEqual(mine.data.sandbox, true);
+  const e = mine.data.entries.find(x => x.k === 'demo');
+  assert.ok(e, '应有演示数据入口');
+  assert.strictEqual(e.t, '退出演示数据');
+});
+ok('退出演示：横幅消失，回到自己的机构数据', () => {
+  setDemo(false);
+  index.onShow();
+  assert.strictEqual(index.data.sandbox, false);
+  assert.strictEqual(index.data.stuCount, db.students.list().length, '回到真实库后看到的是自己的学生');
+  mine.onShow();
+  assert.strictEqual(mine.data.sandbox, false);
+  assert.strictEqual(mine.data.entries.find(x => x.k === 'demo').t, '看演示数据');
+});
+
 console.log('\n全部 ' + pass + ' 项页面级断言通过');

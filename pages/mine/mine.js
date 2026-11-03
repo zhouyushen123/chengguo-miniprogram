@@ -7,7 +7,7 @@ Page({
     // 个人卡片
     name: '', roleLabel: '', orgName: '', meta: '', avaChar: '',
     isManager: false, canSwitchHome: false, homeName: '',
-    hasDemo: false,
+    sandbox: false,
     // 管理统计层（学生/班级/课程/家长/老师）
     statItems: [],
     // 入口列表
@@ -50,6 +50,12 @@ Page({
         );
       }
     }
+    // 演示数据：能看、能重置，但改不了（样板间）
+    entries.push({
+      k: 'demo',
+      t: s.sandbox ? '退出演示数据' : '看演示数据',
+      d: s.sandbox ? '当前看的是示例数据，只看不改' : '一整套示例学生与记录，随便翻'
+    });
     // 机构信息：没提交过入驻申请时是「入驻申请」入口，提交过就是机构资料维护
     const appRec = apply.get();
     entries.push({
@@ -70,7 +76,7 @@ Page({
       meta, isManager,
       canSwitchHome: s.canSwitchHome,
       homeName: ((db.users.get(s.homeMe) || {}).name) || '',
-      hasDemo: (s.demoVersion || 0) > 0,
+      sandbox: !!s.sandbox,
       statItems,
       entries
     });
@@ -81,6 +87,7 @@ Page({
     if (k === 'term') { wx.navigateTo({ url: '/pages/terms/terms' }); return; }
     if (k === 'switch') { this.switchIdentity(); return; }
     if (k === 'about') { this.showAbout(); return; }
+    if (k === 'demo') { this.demoMenu(); return; }
   },
   // 统计卡点按：跳到管理页对应页签（0班级 1课程 2学生 3人员）
   tapStat(e) {
@@ -119,17 +126,27 @@ Page({
       confirmText: '知道了'
     });
   },
-  clearDemo() {
-    wx.showModal({
-      title: '清空演示数据？',
-      content: '所有标记为「演示」的学生和成果记录会被删除，你自己录入的真实数据不受影响。',
-      confirmColor: '#c0564a',
+  // 演示数据：独立的一套数据。进去看、看够了退出来，自己录的东西全程不受影响
+  demoMenu() {
+    if (!db.demo.active()) {
+      const r = db.demo.enter();
+      if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
+      this.refresh();
+      wx.showToast({ title: '已进入演示数据（只看不改）', icon: 'none' });
+      return;
+    }
+    wx.showActionSheet({
+      itemList: ['退出演示，回到我的机构', '重置演示数据'],
       success: r => {
-        if (!r.confirm) return;
-        const res = db.demoClear();
-        if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
-        const n = res.item.records + res.item.students;
-        wx.showToast({ title: n ? ('已清空 ' + n + ' 条演示数据') : '没有演示数据', icon: 'none' });
+        if (r.tapIndex === 0) {
+          db.demo.exit();
+          this.refresh();
+          wx.showToast({ title: '已回到你的机构', icon: 'none' });
+          return;
+        }
+        const res = db.demo.reset();
+        this.refresh();
+        wx.showToast({ title: res.ok ? '演示数据已重置' : '重置失败', icon: 'none' });
       }
     });
   }

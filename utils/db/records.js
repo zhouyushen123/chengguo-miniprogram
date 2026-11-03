@@ -51,16 +51,17 @@ function recordSave(pick, send) {
   const rid = Number(p.rid) || 0;
 
   // 权限：编辑看「只能改自己录的」，新建看「班级在范围内」
+  // 两条都必须过 ctx.deny 这道闸门（不要直接 perms.can：演示模式只读、降级只读
+  // 这些"全局规则"都挂在闸门上，绕过它就等于给自己开了后门）
   if (rid) {
     const r0 = oc('records').find(y => y.id === rid);
     if (!r0) return { ok: false, msg: '记录不存在' };
     const err = deny('record.update', { record: r0 });
     if (err) return { ok: false, msg: err };
   } else {
+    const err = deny('record.create', { clsId: cid });
+    if (err) return { ok: false, msg: err };
     const a = actor();
-    if (!perms.can(a, 'record.create', { clsId: cid })) {
-      return { ok: false, msg: perms.denyReason(a, 'record.create') };
-    }
     if (!perms.canSeeStudent(a, stu)) return { ok: false, msg: '该学生不在你的管理范围内' };
   }
 
@@ -108,13 +109,12 @@ function recordSave(pick, send) {
 }
 // 批量标记已发送（单条发送 / 整班统一发送都走这里），返回实际变更条数
 function recordMarkSent(ids) {
-  const a = actor();
   const list = (Array.isArray(ids) ? ids : [ids]).map(Number);
   let n = 0; const t = now();
   let denied = 0;
   oc('records').forEach(r => {
     if (r.sent || list.indexOf(r.id) < 0) return;
-    if (!perms.can(a, 'record.send', { record: r })) { denied++; return; }
+    if (deny('record.send', { record: r })) { denied++; return; }
     r.sent = true; r.updatedAt = t; n++;
   });
   if (n) core.persist('records');

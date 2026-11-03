@@ -173,7 +173,7 @@ removeCollection(name)          // → boolean
 | CR-006 | `utils/db/storage.js:56` | 每次写操作序列化整个集合（全量覆盖写） | 单条录入写全部 records；数据到数千条时明显卡顿并可能触及 1MB key 限额 |
 | CR-007 | `utils/db/permissions.js:132-135` | `if (tid && tid !== actor.userId) return false` —— `tid` 为空时**放行** | 记录缺录入人时"只能改自己录的"规则失效（fail-open） | ✅ 改为 fail-closed：有目标且 `tid` 为空即拒绝；`abilities()` 用空 target 预判时不误伤 |
 | CR-008 | `utils/db/index.js:574` | `cid` 取自入参且未校验是否属于该学生班级，`validate` 只查非 0 | 记录可挂在学生并不在的班级，污染班级统计与家长可见性 | 未修（P1） |
-| CR-009 | `utils/db/index.js:144 seedDemo()` | `init()` 无条件播种，`DEMO_VERSION` 升版即向真实数据追加 45 名演示学生 | 演示数据污染生产库，老师会看到不属于自己的学生 | 未修（P1） |
+| CR-009 | `utils/db/maintenance.js` | `init()` 无条件播种，`DEMO_VERSION` 升版即向真实数据追加 45 名演示学生 | 演示数据污染生产库，老师会看到不属于自己的学生 | ✅ 演示数据搬进独立存储命名空间（`chengguo_demo_*`），与真实库物理分离；启动时把老版本混进来的演示行请出去，见 6.6 |
 | CR-010 | `.gitignore` 忽略 `.workbuddy/` | 103 项断言测试不在版本控制内 | 换机/协作即丢失质量网，CI 无法执行 | ✅ 迁到 `tests/` 入库，`npm test` 跑全部 130 项；图标脚本迁到 `tools/` |
 | CR-011 | `utils/db/index.js:857 merge()` | 按 `updatedAt` 取新，无墓碑、无冲突记录、无幂等键 | 多端同时编辑必然静默丢数据 | 未修（P2） |
 | CR-012 | `pages/mgr/mgr.js` | 单页 265 行承载机构/班级/课程/学生/成员 5 个分区 | 任何新业务（课表/考勤/收费）都会撑爆此页 | 未修（P1） |
@@ -197,7 +197,7 @@ removeCollection(name)          // → boolean
 4. 软删除 + 审计字段全覆盖。
 5. `schema` 白名单规范化，脏数据不抛错（`str/num/list` 容错）。
 6. 迁移"只做加法"铁律，已修复清空数据地雷并有回归固化。
-7. 130 项断言覆盖到页面级真实模块加载，不是只测数据层（`npm test`，已入库）。
+7. 209 项断言覆盖到页面级真实模块加载，不是只测数据层（`npm test`，已入库）。
 
 ## 6.5 P0 修复记录（2026-11-01）
 
@@ -212,6 +212,19 @@ removeCollection(name)          // → boolean
 | 测试入库 | `tests/`（新增）、`tools/gen_icons.py` | 测试与图标脚本都属于资产，`.workbuddy/` 只留临时产物 |
 | record.type | `utils/db/schema.js` | 白名单归一，非法值不报错只归位（避免旧数据被拒） |
 
+## 6.6 演示数据隔离（2026-11-03）
+
+| 项 | 改动文件 | 关键决定 |
+|---|---|---|
+| 物理分离 | `utils/db/storage.js` | 新增第二套命名空间 `chengguo_demo_*`（与真实库 `chengguo_v3_*` 同构）。**不用"同表加 demo 标记"**：标记法的隔离靠每处查询都记得 `!demo`，新增统计/筛选/导出一漏就混；换一套 key 是结构性的，演示数据怎么重播都碰不到真实数据 |
+| 两套内存态 | `utils/db/core.js` | `realState` / `demoState` 各自持有独立数组，`setMode()` 只换指针不搬数据；`persist()` 在演示态直接返回（演示改动只留在内存，重启即复原） |
+| 演示包自足 | `utils/db/maintenance.js buildDemoData()` | 用 `migrate.buildFresh()` 的骨架 + `demo-data.js` 的学生/记录拼出**完整的一套世界**（机构/学期/班级/课程/成员/模板都有），否则权限层看不到东西 |
+| 模式由用户点 | `resolveMode()` | 优先级：`meta.sandbox` 显式选择 > 本次启动刚清掉演示数据 > 真实机构。**不按"库是空的"猜**——老师刚清空学生准备重录时被弹回样板间会以为库坏了 |
+| 演示态只读 | `utils/db/ctx.js deny()` | 闸门最前面一条：演示模式下所有写返回"演示数据只读，点「开始使用」后再录入"。顺带暴露了 `recordSave` 绕过闸门直接 `perms.can` 的历史写法，已一并收口 |
+| 老数据清理 | `purgeSeed()` | 老版本把演示行混在真实库里（靠 `demo` 标记区分），启动时一次性清出；挂在演示学生上的记录一并清（学生都没了，留着就是无主记录） |
+| 公开 API | `db.demo.{active,available,enter,exit,reset}` | 页面只管开关与显示，不知道底层是两套 key。`reset()` 重建演示包，真实数据一字不动 |
+| 回归 | `tests/verify_demo.js`（新增 18 项） | 磁盘级验证：真实 key 里零演示行、演示态零落盘、重启/重置/升版后真实数据一字不差 |
+
 ## 7. 待办
 
 ### P0 止血（不动架构，先让数据不丢）—— **2026-11-01 完成**
@@ -223,13 +236,13 @@ removeCollection(name)          // → boolean
 - [x] CR-013 启动包兜底 + 降级为只读（**绝不落盘覆盖**，避免读失败变成永久丢失）
 - [x] ADR-009 `record.type` 预留（默认 `achievement`）
 - [ ] CR-008 校验 `cid ∈ student.clsIds`（顺延 P1，与 repo 拆分一起做）
-- [ ] CR-009 演示数据隔离（顺延 P1，与 `DEMO_MODE` 开关一起做）
+- [x] CR-009 演示数据隔离：独立存储命名空间 + `db.demo` 开关 + 演示态只读（2026-11-03，见 6.6）
 
 ### P1 划边界（改结构不改功能）
 - [ ] 拆 `utils/db/index.js` 为 `core/repo/{class,course,student,record,member,template}.js`
 - [ ] 引入 `domain/` 应用层，页面只调用例，不直接调 repo
 - [ ] 拆 `pages/mgr` 为「我的」+「管理」两个页面
-- [ ] 演示数据移出主包，与生产数据分离（`DEMO_MODE` 开关）
+- [ ] 演示数据移出主包（`demo-data.js` 2367 行仍在主包内，考虑分包/在线拉取）
 - [ ] `domain/activities` 注册表骨架（接住 `record.type`）
 - [ ] CR-008 / CR-009
 

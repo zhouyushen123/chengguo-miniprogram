@@ -6,6 +6,18 @@
   line-height: 44px; /* 与右上角胶囊等高，垂直居中对齐 */
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* ---------- 演示数据横幅：品牌浅底细条，右侧一个实心小按钮 ---------- */
+.demobar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 0 24rpx 18rpx; padding: 14rpx 16rpx 14rpx 24rpx;
+  background: var(--brand-tint); border: 2rpx solid var(--brand-border);
+  border-radius: 16rpx;
+}
+.demobar-t { font-size: 24rpx; font-weight: 700; color: var(--brand); }
+.demobar-btn {
+  flex: none; font-size: 23rpx; font-weight: 800; color: #fff;
+  background: var(--brand); border-radius: 999rpx; padding: 8rpx 24rpx;
+}
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 6rpx 30rpx 28rpx;

@@ -16,7 +16,9 @@ Page({
     // 首页大卡图标：渐变卡上用白色加号，浅色记录卡用文档图标
     icoPlusW: icons.plus('#FFFFFF'), icoDoc: icons.doc,
     // 自定义导航栏：状态栏高度（px）+ 标题（跟机构名）
-    statusBarH: 20, navTitle: '橙果'
+    statusBarH: 20, navTitle: '橙果',
+    // 演示数据：独立的一套数据，只看不改（横幅在导航栏下方，随时能一键开始使用）
+    sandbox: false
   },
   onLoad() {
     // 自定义导航要自己腾出状态栏的空间；取不到时用常见默认值兜底
@@ -28,8 +30,8 @@ Page({
   onShow() {
     theme.apply(this); // 主题：根类名 + 图标 + 原生 chrome
     // 导航栏标题跟随机构名称（在「我的-成员管理」里设置）；未设置时兜底「橙果」
-    const org = db.settings().orgName;
-    this.setData({ navTitle: org || '橙果' });
+    const st = db.settings();
+    this.setData({ navTitle: st.orgName || '橙果', sandbox: !!st.sandbox });
     const u = db.users.current() || { role: 'teacher', name: '' };
     const d = new Date();
     const dateStr = (d.getMonth() + 1) + '月' + d.getDate() + '日 周' + '日一二三四五六'[d.getDay()];
@@ -156,12 +158,32 @@ Page({
   },
   clearSearch() { this.setData({ q: '', results: [], moreCount: 0 }); },
   goRecord() {
+    // 演示数据是样板间：进去录入也存不下来，不如在这里就说清楚
+    if (db.demo.active()) {
+      wx.showToast({ title: '演示数据只看不改，点上方「开始使用」', icon: 'none' });
+      return;
+    }
     // 进入录入页前给一个默认班级（已在可见范围内），避免无权限班被当默认值传下去
     const vis = db.classes.list();
     getApp().globalData.pick = { cls: vis[0] ? vis[0].id : null, sid: null, score: 85, photos: [], audio: null, tag: '', note: '', rid: null, course: '' };
     wx.navigateTo({ url: '/pages/record/record' });
   },
   goRecords() { wx.switchTab({ url: '/pages/records/records' }); },
+  // 开始使用：退出演示，回到自己的机构（演示数据不删，随时能再看）
+  startReal() {
+    wx.showModal({
+      title: '开始使用',
+      content: '将回到你自己的机构。示例数据不会被删除，之后在「我的」里随时能再看。',
+      confirmText: '开始使用',
+      confirmColor: '#E8590C',
+      success: r => {
+        if (!r.confirm) return;
+        db.demo.exit();
+        this.onShow();
+        wx.showToast({ title: '已回到你的机构', icon: 'none' });
+      }
+    });
+  },
   goCls(e) { wx.navigateTo({ url: '/pages/cls/cls?id=' + e.currentTarget.dataset.id }); },
   // mgr 已从 tab 降为二级页，只能 navigateTo（switchTab 会静默失败）
   goMgr() { wx.navigateTo({ url: '/pages/mgr/mgr' }); },

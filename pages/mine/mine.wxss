@@ -17,6 +17,12 @@
 }
 .uc-name { font-size: 34rpx; font-weight: 700; margin-bottom: 8rpx; }
 .uc-meta { font-size: 24rpx; color: var(--muted); line-height: 1.5; }
+/* 演示模式徽标：跟在身份后面的一颗小胶囊，提醒现在看的是样板间 */
+.uc-demo {
+  display: inline-block; margin-left: 10rpx; padding: 2rpx 12rpx;
+  font-size: 20rpx; font-weight: 700; color: var(--brand);
+  background: var(--brand-soft); border-radius: 999rpx;
+}
 
 /* ---------- 管理统计层：五维概览 ---------- */
 .statcard { padding: 28rpx 12rpx 16rpx; }
@@ -41,12 +47,6 @@
   width: 18rpx; height: 18rpx; flex: none;
   border-top: 4rpx solid var(--faint); border-right: 4rpx solid var(--faint);
   transform: rotate(45deg);
-}
-
-/* ---------- 危险操作 ---------- */
-.danger {
-  color: var(--danger); font-weight: 700; text-align: center;
-  font-size: 30rpx; padding: 30rpx 0;
 }
 
 .slogan { text-align: center; color: var(--faint); font-size: 24rpx; margin-top: 56rpx; }

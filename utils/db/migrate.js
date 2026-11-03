@@ -64,7 +64,7 @@ function buildFresh(stamp) {
   return {
     meta: {
       version: schema.VERSION, orgId: ORG, orgName: '我的机构',
-      teacher: '测试老师', me: 't1', demoVersion: 0, createdAt: stamp, updatedAt: stamp
+      teacher: '测试老师', me: 't1', createdAt: stamp, updatedAt: stamp
     },
     orgs, members, terms, classes: cls, courses, students: [], enrollments: [], records: [], users, templates
   };
@@ -243,7 +243,6 @@ function build(loaded) {
       version: schema.VERSION, orgId: ORG, orgName: '我的机构',
       teacher: old.teacher || '测试老师',
       me,
-      demoVersion: Number(old.demoVersion) || 0,
       createdAt: stamp, updatedAt: stamp,
       migratedFrom: 'v2'
     },

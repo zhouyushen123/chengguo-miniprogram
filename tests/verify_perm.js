@@ -286,7 +286,7 @@ console.log('\n【8】全新安装（无任何历史数据）');
     const r = db.students.create({ name: '张三', clsIds: [1] });
     assert.strictEqual(r.ok, false);
     assert.ok(r.msg.indexOf('演示') > -1, '应提示这是演示数据，实际：' + r.msg);
-    assert.strictEqual(db.students.list().length, demo.DEMO_STUDENTS.length, '拦下来才不会有条"临时学生"');
+    assert.strictEqual(db.students.list().length, 45, '拦下来才不会有条"临时学生"');
     db.demo.exit();
   });
 }

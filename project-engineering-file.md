@@ -20,9 +20,9 @@
 | AppID | wxd1c22bef24e8dff2 | project.config.json |
 | 云函数根 | `cloudfunctions/`（已配置，未部署） | project.config.json |
 | 云开发 | **未开通**（需微信认证；`utils/api.js` `CLOUD_ENABLED=false`） | 代码确认 |
-| CI 工具 | miniprogram-ci ^2.1.9（当前 CI 配置有误，见 CR-003/004） | package.json |
-| 数据持久化 | `wx.setStorageSync`，8 个 key，前缀 `chengguo_v3_` | utils/db/storage.js |
-| 本地存储限额 | 单 key 1MB / 总量 10MB（⚠️ 需以微信官方文档核实） | — |
+| CI 工具 | miniprogram-ci ^2.1.9（路径问题已修 CR-003/004；**测试门禁仍未加**，备案下来后补） | package.json |
+| 数据持久化 | `wx.setStorageSync`，前缀 `chengguo_v3_`；`records` 按 320 条/片分片（P0-1） | utils/db/storage.js |
+| 本地存储限额 | 单 key 1MB / 总量 10MB（已按官方文档核实，分片即为绕开单 key 限制） | 微信官方文档 |
 | 运行时依赖 | **零第三方依赖**（图标为预渲染 PNG，拼音为内置表） | 代码确认 |
 
 ## 3. 架构决策记录（ADR）

@@ -6,16 +6,6 @@ try { plugin = requirePlugin('WechatSI'); } catch (e) { plugin = null; }
 
 const available = () => !!plugin;
 
-// 从录音文件识别文字（录音需为 mp3/aac，时长 <30s 内效果最佳）
-function fileToText(filePath) {
-  return new Promise((resolve, reject) => {
-    if (!plugin) return reject(new Error('同声传译插件未配置'));
-    plugin.getRecordRecognitionManager || null;
-    // 插件不支持直接识别已有文件，采用「边录边转」流式接口；此方法返回提示
-    reject(new Error('请使用 stream 模式（start/stop）'));
-  });
-}
-
 // 流式识别：start() 开始，stop() 结束并取全文
 function createRecognizer(handlers) {
   if (!plugin) {
@@ -32,4 +22,6 @@ function createRecognizer(handlers) {
     stop() { try { mgr.stop(); } catch (e) {} }
   };
 }
-module.exports = { available, createRecognizer, fileToText };
+// 只提供流式识别。「识别已有录音文件」这条路径插件不支持，以前留了个永远 reject 的
+// fileToText 占位，容易被人当可用接口调用，已删除。
+module.exports = { available, createRecognizer };

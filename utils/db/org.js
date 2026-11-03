@@ -21,4 +21,11 @@ function orgUpdate(patch) {
   return { ok: true, item: o };
 }
 
-module.exports = { orgCurrent, orgUpdate };
+// 机构名的合法性判定，只回错误文案（空串=通过）。
+// 申请页（还没权限写机构表）与设置页（真要写）共用这一份，
+// 免得两边各写一套长度规则，一边改了另一边忘了。
+function orgCheckName(name) {
+  return schema.validate('org', { name: schema.str(name).trim() }) || '';
+}
+
+module.exports = { orgCurrent, orgUpdate, orgCheckName };

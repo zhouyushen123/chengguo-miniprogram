@@ -8,14 +8,21 @@
 const ci = require('miniprogram-ci');
 const path = require('path');
 
-const APPID = 'wx_your_appid'; // ← 必填（CI 下由 deploy.yml 用 Secret 注入）
+// AppID 的取法：环境变量 MP_APPID（CI 用 Secret 注入）> project.config.json 里的 appid。
+// 以前这里写死 'wx_your_appid' 靠 CI 覆盖，结果本地 `node deploy.js` 永远直接退出，
+// 看起来像"脚本坏了"，而真正的 appid 明明就在 project.config.json 里。
+const CONF = (() => { try { return require('./project.config.json'); } catch (e) { return {}; } })();
+const APPID = process.env.MP_APPID || CONF.appid || '';
 const KEY_PATH = path.join(__dirname, 'private.key');
 // 仓库根目录就是小程序根目录：这里必须是 __dirname，
 // 写成 '..' 会指向仓库的上一级，上传时找不到 app.json 直接失败。
 const PROJECT_PATH = __dirname;
 
 (async () => {
-  if (APPID.startsWith('wx_your')) { console.error('请先把 APPID 改成你的小程序 AppID'); process.exit(1); }
+  if (!APPID || APPID.startsWith('wx_your')) {
+    console.error('找不到 AppID：请在 project.config.json 填好 appid，或用 MP_APPID 环境变量传入');
+    process.exit(1);
+  }
   const project = new ci.Project({
     appid: APPID,
     type: 'miniProgram',

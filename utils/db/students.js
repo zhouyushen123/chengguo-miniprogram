@@ -74,13 +74,36 @@ function studentUpdate(id, patch) {
   if (!applyEdit('students', s, next)) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true, item: s };
 }
+// 家长资料各字段的长度上限。profile 是家长唯一能自由写的文本，
+// 不设上限等于把"单条记录体积可控"这条护栏从侧面拆掉（它和记录存在同一份存储里）。
+const PROFILE_MAX = { nick: 20, birth: 12, school: 30, phone: 20, wechat: 30, level: 20, goal: 200, note: 500 };
+const PROFILE_OTHER_MAX = 100;      // 未登记的字段也别放过
+const PROFILE_TOTAL_MAX = 2048;     // 整包上限：8 个字段都写满也不该到 2KB
+
+// 超长就截断，不报错：家长写不出"保存失败但不知道哪里错"的体验。
+// 截断顺序稳定（按字段名），结果可复现，不会因为对象键顺序不同而随机丢字。
+function sanitizeProfile(raw) {
+  const out = {};
+  let budget = PROFILE_TOTAL_MAX;
+  Object.keys(raw || {}).sort().forEach(k => {
+    const max = PROFILE_MAX[k] || PROFILE_OTHER_MAX;
+    let v = schema.str(raw[k]).trim();
+    if (!v) return;
+    v = v.slice(0, Math.min(max, Math.max(0, budget)));
+    if (!v) return;
+    budget -= v.length;
+    out[k] = v;
+  });
+  return out;
+}
+
 function studentUpdateProfile(id, profile) {
   const s = studentRaw(id);
   if (!s) return { ok: false, msg: '学生不存在' };
   // 家长可填自己孩子的资料；老师需在范围内
   const err = deny('profile.write', { student: s });
   if (err) return { ok: false, msg: err };
-  const prof = Object.assign({}, profile, { submittedAt: schema.ymd() });
+  const prof = Object.assign(sanitizeProfile(profile), { submittedAt: schema.ymd() });
   if (!applyEdit('students', s, { profile: prof, updatedAt: now() })) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true, item: s };
 }

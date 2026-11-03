@@ -43,11 +43,11 @@ jobs:
 
       - name: 自动上传新版本
         env:
-          APPID: ${{ secrets.MINI_APPID }}
-        run: |
-          # 用 Secrets 注入 AppID（避免把 AppID 写死在仓库里）
-          sed -i "s/const APPID = '.*';/const APPID = '${APPID}';/" deploy.js
-          node deploy.js "${{ steps.ver.outputs.version }}"
+          # 用 Secrets 注入 AppID（避免把 AppID 写死在仓库里）。
+          # deploy.js 自己读 MP_APPID，不再用 sed 改源码：改源码的方式会随脚本一起腐烂，
+          # 而"改不动"的那天是静默的——sed 匹配不到只报个提示，上传却用错 appid。
+          MP_APPID: ${{ secrets.MINI_APPID }}
+        run: node deploy.js "${{ steps.ver.outputs.version }}"
 
       # 可选：自动部署云函数（需要先开通云开发并配置腾讯云密钥 Secrets：TENCENT_SECRET_ID / TENCENT_SECRET_KEY）
       # - name: 部署云函数 sync

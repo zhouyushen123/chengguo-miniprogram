@@ -82,6 +82,9 @@ Page({
   _validate(f) {
     const name = (f.name || '').trim();
     if (!name) return '请填写机构名称';
+    // 长度口径与机构表写入共用一份（schema.validate('org')），不在两个地方各写一套
+    const nameErr = db.orgs.checkName(name);
+    if (nameErr) return nameErr;
     if (name.length < 2) return '机构名称至少 2 个字';
     if (!(f.contact || '').trim()) return '请填写联系人姓名';
     if (!PHONE_RE.test((f.phone || '').trim())) return '请填写正确的 11 位手机号';

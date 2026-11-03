@@ -395,4 +395,107 @@ console.log('\n【保存防重 + 存储空间页】');
   });
 }
 
+console.log('\n【第二批：读路径不越权 / 自愈不伪造归属 / 文本有上限】');
+{
+  const fs = require('fs');
+  const readSrc = rel => fs.readFileSync(path.join(__dirname, '..', rel), 'utf8');
+
+  ok('班级"是不是结转制"由数据层回答，页面拿不到班级实体', () => {
+    const d = restart();
+    const list = d.classes.list();
+    const carry = list.find(c => c.mode === 'carry');
+    assert.ok(carry, '夹具里应有一个结转制班级');
+    assert.strictEqual(d.classes.mode(carry.id), 'carry');
+    assert.strictEqual(d.classes.mode(999999), '', '不存在的班返回空串，不抛错');
+  });
+
+  ok('学期班级数按当前身份可见范围统计，老师看到的只是自己的班', () => {
+    const d = restart();
+    const cls = d.classes.list()[0];
+    // 造一个只有 1 个班的老师身份
+    const m = d.members.create({ role: 'teacher', name: '只带一个班的老师', clsIds: [cls.id] });
+    assert.ok(m.ok, m.msg);
+    const asTeacher = d.auth.member();
+    // 直接切当前身份：meta.me 指向这个老师对应的 user
+    mem['chengguo_v3_meta'].me = m.item.userId;
+    const t = restart();
+    const termId = cls.termId;
+    assert.strictEqual(t.classes.countOfTerm(termId), 1, '老师只应数到自己的 1 个班');
+    // 换回负责人（不受范围限制）后数字应大于 1
+    mem['chengguo_v3_meta'].me = asTeacher.userId;
+    const back = restart();
+    assert.ok(back.classes.countOfTerm(termId) >= 1);
+  });
+
+  ok('同名班级不再串（记录页按班级 id 筛，不按名字反查）', () => {
+    const d = restart();
+    const base = d.classes.list()[0];
+    const dup = d.classes.create({ name: base.name, termId: base.termId });
+    assert.ok(dup.ok, dup.msg);
+    const stu = d.students.of(base.id)[0];
+    // 给重名班也挂一个学生，才能往里写记录
+    d.students.update(stu.id, { clsIds: stu.clsIds.concat([dup.item.id]) });
+    const r = d.records.save({ cls: dup.item.id, sid: stu.id, course: '楷书', note: '重名班记录' }, false);
+    assert.ok(r.ok, r.msg);
+
+    const page = loadPage('pages/records/records.js');
+    getApp().globalData.recTab = null;
+    page.onShow();
+    const idx = page.data.tabIds.indexOf(dup.item.id);
+    assert.ok(idx > 0, '页签里应能找到重名班的 id');
+    page.setData({ tab: idx });
+    const pool = page._pool();
+    assert.ok(pool.length > 0, '应筛出这个班的记录');
+    assert.ok(pool.every(x => x.cid === dup.item.id), '筛出来的必须全是这个班的（按名字反查时会被另一个同名班串走）');
+  });
+
+  ok('缺录入老师的记录不会归给"当前登录人"（家长身份下启动也不伪造成家长）', () => {
+    // 两个教职工 → 归属不唯一 → 不能猜；班级也没主讲老师
+    const d = restart();
+    d.members.create({ role: 'teacher', name: '第二位老师', clsIds: [d.classes.list()[0].id] });
+    const cls = d.classes.list()[0];
+    const stu = d.students.of(cls.id)[0];
+    // 直接构造一条历史记录（没有 tid），绕过保存时的自动填充
+    mem['chengguo_v3_records'] = [{
+      id: 880001, sid: stu.id, cid: cls.id, date: '2026-10-01', score: 80, tag: '良好',
+      note: '历史数据', orgId: 'org1', removed: false, createdAt: 1, updatedAt: 1
+    }];
+    delete mem['chengguo_v3_records_2'];
+    // 假装这次是在家长身份下启动的
+    const parent = d.members.list().find(m => m.role === 'parent');
+    if (parent) mem['chengguo_v3_meta'].me = parent.userId;
+
+    const fresh = restart();
+    const rec = fresh.coll('records').find(x => x.id === 880001);
+    assert.ok(rec, '记录应还在');
+    assert.strictEqual(rec.tid || '', '', '不能把历史记录记到当前登录人名下');
+  });
+
+  ok('家长资料超长会被截断（不写进无界文本，也不报错）', () => {
+    const d = restart();
+    const stu = d.students.list()[0];
+    const res = d.students.updateProfile(stu.id, { nick: '昵称'.repeat(30), note: 'x'.repeat(5000), goal: 'y'.repeat(1000) });
+    assert.ok(res.ok, res.msg);
+    const p = res.item.profile;
+    assert.ok(p.nick.length <= 20, '昵称应被截到 20 字以内，实际 ' + p.nick.length);
+    assert.ok(p.note.length <= 500, '备注应被截到 500 字以内，实际 ' + p.note.length);
+    assert.ok(p.goal.length <= 200, '目标应被截到 200 字以内，实际 ' + p.goal.length);
+    assert.ok(p.submittedAt, '提交时间应照常写上');
+  });
+
+  ok('正式版不静默覆盖用户剪贴板', () => {
+    const src = readSrc('app.js');
+    assert.ok(/if \(!isRelease\) wx\.setClipboardData/.test(src), '自动复制应只在非正式版发生');
+  });
+
+  ok('上传脚本从 project.config.json 取 AppID，CI 不再 sed 改源码', () => {
+    const deploy = readSrc('deploy.js');
+    assert.ok(!/const APPID = 'wx_your_appid'/.test(deploy), '不应再写死占位 AppID');
+    assert.ok(/process\.env\.MP_APPID/.test(deploy), '应支持用环境变量注入');
+    const yml = readSrc('.github/workflows/deploy.yml');
+    assert.ok(!/sed -i "s\/const APPID/.test(yml), 'CI 不该再靠改源码注入 AppID');
+    assert.ok(/MP_APPID:/.test(yml), 'CI 应通过 MP_APPID 传入');
+  });
+}
+
 console.log('\n全部 ' + pass + ' 项加固断言通过');

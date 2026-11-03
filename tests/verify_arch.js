@@ -180,11 +180,11 @@ ok('各分组的方法都在且可调用（拆文件时漏搬会在这里暴露�
   const EXPECT = {
     auth: ['actor', 'member', 'can', 'abilities', 'canSeeClass', 'canSeeStudent', 'canSeeRecord',
       'denyReason', 'role', 'roleLabel', 'isOwner', 'isAdmin', 'isTeacher', 'isParent'],
-    orgs: ['current', 'update', 'get', 'list'],
+    orgs: ['current', 'update', 'checkName', 'get', 'list'],
     members: ['list', 'view', 'get', 'ofUser', 'current', 'create', 'update', 'remove'],
     terms: ['list', 'get', 'activeList', 'create', 'update', 'archive', 'planSettle', 'settle'],
     enrollments: ['list', 'get', 'ofStudent', 'ofClass', 'of', 'create', 'update', 'remove'],
-    classes: ['list', 'get', 'name', 'create', 'update', 'remove', '_all'],
+    classes: ['list', 'get', 'name', 'mode', 'countOfTerm', 'create', 'update', 'remove', '_all'],
     courses: ['list', 'of', 'get', 'create', 'update', 'remove'],
     students: ['list', 'of', 'get', 'search', 'name', 'create', 'update', 'updateProfile', 'remove'],
     records: ['list', 'ofStudent', 'ofClass', 'get', 'latest', 'save', 'markSent', 'remove'],

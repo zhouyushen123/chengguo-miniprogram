@@ -8,6 +8,7 @@
       <view class="p-li">· <text class="p-strong">手机号、微信号</text>：仅在你填写学生资料时收集，用于老师与家长沟通</view>
       <view class="p-li">· <text class="p-strong">头像与昵称</text>：用于在机构内展示你的身份</view>
       <view class="p-p">以上信息仅保存在你的设备与所属机构内，未经你的同意不会提供给第三方。</view>
+      <view class="p-p"><text class="p-strong">关于孩子（未成年人）的信息</text>：孩子的姓名、照片与课堂记录由老师在课堂上采集，家长端只能查看自己孩子的记录。若你是孩子的监护人，请确认你已同意我们按上述方式处理孩子的信息；如不同意，请不要继续使用，并可联系机构删除已采集的内容。</view>
       <view class="p-link" bindtap="openDetail">查看《橙果隐私保护指引》</view>
     </view>
     <view class="p-btns">

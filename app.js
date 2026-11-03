@@ -36,21 +36,26 @@ App({
     });
   },
 
-  // 错误陷阱：逻辑层未捕获异常 / 未处理的 Promise 拒绝 → 弹窗展示 + 自动复制到剪贴板。
-  // 同一分钟内只弹一次，错误全文落盘（cg_last_error），开发调试时可从 vConsole 查看。
+  // 错误陷阱：逻辑层未捕获异常 / 未处理的 Promise 拒绝 → 弹窗展示 + 错误全文落盘（cg_last_error）。
+  // 同一分钟内只弹一次，开发调试时可从 vConsole 查看。
+  // 【不要静默覆盖剪贴板】用户可能刚复制了微信号/地址准备粘贴，被一段堆栈冲掉是真实的伤害。
+  // 所以只在非正式版（开发/体验）自动复制；正式版把错误留在「关于 · 最近错误」里，要复制由用户自己点。
   setupErrorTrap() {
+    const isRelease = (() => {
+      try { return wx.getAccountInfoSync().miniProgram.envVersion === 'release'; } catch (e) { return true; }
+    })();
     const report = (kind, msg) => {
       const text = '[' + kind + '] ' + msg;
       console.error('[error-trap]', text);
       try {
         wx.setStorageSync('cg_last_error', { at: Date.now(), text: String(text).slice(0, 2000) });
-        wx.setClipboardData({ data: String(text).slice(0, 500), fail: () => {} });
+        if (!isRelease) wx.setClipboardData({ data: String(text).slice(0, 500), fail: () => {} });
       } catch (e) { /* 落盘失败不再抛 */ }
       const now = Date.now();
       if (this._lastErrAt && now - this._lastErrAt < 60 * 1000) return;
       this._lastErrAt = now;
       wx.showModal({
-        title: '程序出现异常（已自动复制错误）',
+        title: isRelease ? '程序出现异常' : '程序出现异常（已自动复制错误）',
         content: String(msg).slice(0, 300) || '未知错误',
         confirmText: '知道了',
         showCancel: false

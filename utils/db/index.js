@@ -95,7 +95,7 @@ const db = {
   },
 
   orgs: {
-    current: orgs.orgCurrent, update: orgs.orgUpdate,
+    current: orgs.orgCurrent, update: orgs.orgUpdate, checkName: orgs.orgCheckName,
     get: id => ctx.oc('orgs').find(o => o.id === String(id)) || null,
     list: () => ctx.oc('orgs')
   },

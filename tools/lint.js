@@ -96,6 +96,28 @@ walk(path.join(ROOT, 'pages')).concat(walk(path.join(ROOT, 'components')))
     }
   });
 
+/* ---------------- 6. 页面不许调用内部接口 _all() ---------------- */
+// db.classes._all() 标着"页面不要用"，因为它不过权限。历史上三处页面拿它当"兜底查询"
+// （get() 返回 null 时再从这里捞一次），正好把权限过滤绕过去。语义需要的东西
+// 请让数据层提供只读判定（如 classes.mode / classes.countOfTerm），而不是把实体端出来。
+walk(path.join(ROOT, 'pages')).filter(f => f.endsWith('.js')).forEach(f => {
+  const src = fs.readFileSync(f, 'utf8');
+  const hit = src.split('\n').findIndex(l => /\._all\s*\(/.test(l) && !/^\s*\/\//.test(l));
+  if (hit > -1) errors.push(rel(f) + ':' + (hit + 1) + ': 页面调用了内部接口 _all()，请改用数据层的只读判定');
+});
+
+/* ---------------- 7. 页面不许直接读写 wx 存储 ---------------- */
+// "全项目只有 storage.js 碰 wx.setStorageSync"是数据层的核心约定（分片、失败回滚都在那里）。
+// 页面绕过它读写，就等于绕过了分片与失败回滚。
+walk(path.join(ROOT, 'pages'))
+  .concat(walk(path.join(ROOT, 'components')))
+  .filter(f => f.endsWith('.js'))
+  .forEach(f => {
+    const src = fs.readFileSync(f, 'utf8');
+    const hit = src.split('\n').findIndex(l => /wx\.(set|get|remove)Storage(Sync)?\s*[({]/.test(l) && !/^\s*\/\//.test(l));
+    if (hit > -1) errors.push(rel(f) + ':' + (hit + 1) + ': 页面直接读写存储，请走 utils/db');
+  });
+
 /* ---------------- 汇总 ---------------- */
 warns.forEach(w => console.log('  ⚠ ' + w));
 if (errors.length) {

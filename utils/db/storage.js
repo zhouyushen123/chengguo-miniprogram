@@ -3,8 +3,8 @@
 // 【唯一的落盘位置】全项目只有这个文件碰 wx.setStorageSync / wx.getStorageSync。
 //
 // 【两套命名空间：真实数据与演示数据磁盘级分离】
-//   真实：chengguo_v3_orgs / _members / _classes / _courses / _students / _records / _users / _templates
-//   演示：chengguo_demo_orgs / _members / ...（结构一模一样，key 前缀不同）
+//   真实：chengguo_v3_<集合名>    演示：chengguo_demo_<集合名>（结构一模一样，key 前缀不同）
+//   集合名以 COLLECTIONS 为准，这里不再抄一遍清单——抄过的那份已经腐烂过一次。
 // 为什么不用"同表加 demo 标记"：标记法的隔离靠每一处查询都记得 `!demo` 来维持，
 // 新增一个统计、一个筛选、一次导出，漏写一次演示数据就混进真实数据里；
 // 而"换一套 key"是结构性的——演示数据再怎么重播、清空、改造，物理上都碰不到真实数据。

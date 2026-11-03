@@ -4,8 +4,9 @@
 > 审查范围：全仓库（`pages/` 11 页、`utils/` 14 个模块 + `utils/db/` 13 个模块、`components/`、`cloudfunctions/`、`server/`、`tests/` 7 套、`deploy.js`、`.github/workflows/`）
 > 规模：12,384 行 JS/WXML/WXSS；55 个 JS 文件
 > 基线：`npm test` 全绿，209 项断言（数据层 27 / 权限 45 / 学期 30 / P0 27 / 页面级 53 / 演示隔离 18 / 架构守卫 9）
+> 整改后：**236 项断言**（加固套件 20 → 27），`npm run lint` 82 文件 0 提醒
 > 配套标准：`docs/code-review-standard.md`
-> **本次审查未修改任何代码。**
+> **审查阶段未改任何代码**；同日按审查意见完成整改，逐条状态见各节标题后的标记与文末「九、整改记录」。
 
 ---
 
@@ -23,9 +24,35 @@
 
 ---
 
+## 一·补 整改状态总览
+
+审查当天即按意见整改。**除 P0-3 由项目方决定暂缓外，全部落地**：
+
+| 项 | 状态 | 一句话 |
+|---|---|---|
+| P0-1 记录触顶静默丢数据 | ✅ 已修 | `records` 分片存储 + 所有写路径检查落盘结果 + 失败回滚 + 可见提示 |
+| P0-2 媒体裂图且无清理 | ✅ 已修 | 转存失败不再留假路径 + 孤儿文件扫描/清理 + 新增「存储空间」页 |
+| P0-3 CI 无测试门禁 | ⏸ 暂缓 | 备案未下来、当前只发体验版；**正式上线前必须补上**（见该节末尾） |
+| P1-1 编辑路径不校验新目标 | ✅ 已修 | 新 `sid`/`cid` 二次过闸门 |
+| P1-2 `cid` 不属于该学生 | ✅ 已修 | 新建与编辑双向校验 `cid ∈ stu.clsIds` |
+| P1-3 `enrollments` 读路径不过权限 | ✅ 已修 | 读按身份过滤，内部另开 raw 版 |
+| P1-4 页面用 `_all()` 绕权限 | ✅ 已修 | 数据层给只读判定（`mode`/`countOfTerm`），lint 禁页面出现 `_all()` |
+| P1-5 结转非原子 | ✅ 已修 | 下沉 `settle.js` + `core.tx` 事务，失败整体回滚 |
+| P1-6 保存零防重 | ✅ 已修 | 同步锁 + 按钮 busy 态 |
+| P1-7 服务端/云函数鉴权缺口 | ✅ 已修 | token + 按 openid 分文件 + 确定性 `_id` + 分页 + 上传白名单 |
+| P1-8 主包体积 | ✅ 已缓解 | `packOptions.ignore` 排除非运行目录；按文件字节实测 **0.85MB / 2MB** |
+| P1-9 合规 | ◐ 部分 | 隐私弹窗补「监护人同意」表述；`msgSecCheck` 待备案与云环境确定后接 |
+| P2-1 ~ P2-9 | ✅ 已修 | 音频上下文复用、自愈不伪造归属、规范化按口径版本跑、筛选按 id、申请页共用校验、正式版不覆盖剪贴板、资料字段限长、自建 lint、失败路径断言 |
+| P3-1 ~ P3-5 | ✅ 已修 | 头注释指向 `COLLECTIONS`、删死函数、命名正名、上限只留一份、AppID 从配置读 |
+
+---
+
 ## 二、P0 · 阻断（修复前不建议发版）
 
-### 🔴 P0-1 记录集合触顶 1MB 后静默丢数据
+### 🔴 P0-1 记录集合触顶 1MB 后静默丢数据 ✅ 已修
+
+> **怎么修的**：`storage.js` 把 `records` 按 320 条/片切开（`chengguo_v3_records`、`_records_2`…），读取靠"片没填满就停"，老版本的单 key 全量数据天然当第一片用（`length !== size` 即视为完整集合），**不需要数据迁移**；`chunks` 记各集合分片数，用来回收多余片。写路径全部改成 `pushSaved` / `applyEdit`：写内存 → 立刻落盘 → 失败还原并返回 `SAVE_FAIL`（"本地存储空间不足，这次没能保存。请到「我的 · 存储空间」清理后重试"）。`db.health()` 暴露 `lastFail`，存储页把"上次写失败"显示出来。
+> **断言**：`tests/verify_hardening.js` —— 单片写满自动开第二片、重启读回顺序一致、老数据不截断、写失败不留幽灵记录、失败被记进健康度、空间恢复后能正常保存。
 
 **位置**：`utils/db/storage.js:43-52`、`utils/db/core.js:84-90`、`utils/db/records.js:92,105`
 
@@ -47,7 +74,10 @@
 
 ---
 
-### 🔴 P0-2 媒体目录触顶 200MB 后静默裂图，且没有清理入口
+### 🔴 P0-2 媒体目录触顶 200MB 后静默裂图，且没有清理入口 ✅ 已修
+
+> **怎么修的**：`media.persist()` 失败返回空串并累加 `lostCount()`，录入页汇总成"N 个没能保存"如实提示（不再留一条几个月后才爆的假路径）；新增 `media.scan(refs)` / `media.prune(refs)`，引用集合来自 `db.mediaRefs()`（跨机构、含已软删记录），**2 小时内新建的文件豁免**（`KEEP_RECENT_MS`），避免把用户刚拍还没保存的图删掉。新增「我的 · 存储空间」页：设备存储用量 + 照片视频占用、可清理数量、一键清理。
+> **断言**：转存失败返回空串且计数 +1、成功文件能被 scan 统计、清理只删无引用且非新建文件、引用集合含照片/视频/语音、存储页数值与清理动作。
 
 **位置**：`utils/media.js:60-77`、`pages/record/record.js:142-158`
 
@@ -68,7 +98,12 @@
 
 ---
 
-### 🔴 P0-3 部署流水线无测试门禁：push 即上传，测试红了照样发版
+### 🔴 P0-3 部署流水线无测试门禁：push 即上传，测试红了照样发版 ⏸ 暂缓（项目方决定）
+
+> **状态**：按要求**暂不实施**。原因：微信备案未下来，当前只上传测试体验版，测试门禁的收益暂时让位于迭代速度。
+> **但这件事不能忘**：等备案下来、准备提交审核之前，必须把下面三步补回去，否则 236 项断言等于"提交前想起来跑一次"。
+> **附带已修（与本项相邻）**：`deploy.js` 不再写死 `wx_your_appid`，改为 `MP_APPID` 环境变量 > `project.config.json`；`deploy.yml` 去掉 `sed` 改源码注入 AppID 的写法（那种方式哪天匹配不上是静默的，会用错 appid 上传）。
+> **上线前待办（3 步，约 30 分钟）**：① 在「安装依赖」之后、「写入上传密钥」之前插入 `run: npm test`；② 加 `concurrency: { group: deploy, cancel-in-progress: true }`；③ 加主包体积检查（当前实测 0.85MB / 2MB）。
 
 **位置**：`.github/workflows/deploy.yml:13-45`
 
@@ -95,7 +130,9 @@
 
 ## 三、P1 · 应修
 
-### 🟡 P1-1 记录编辑路径不校验新目标（写闸门只校验了"老对象"）
+### 🟡 P1-1 记录编辑路径不校验新目标（写闸门只校验了"老对象"）✅ 已修
+
+> 编辑分支补上 `perms.canSeeStudent(a, stu)` 与 `perms.canSeeClass(a, cid)`；`cid` 变化时还要过 `cid ∈ stu.clsIds`。断言：老师 A 编辑自己的记录、把 `sid` 改到 B 班学生 → 必须拒绝。
 
 **位置**：`utils/db/records.js:44-66`
 
@@ -124,7 +161,9 @@ if (rid) {
 
 ---
 
-### 🟡 P1-2 `cid` 不校验是否属于该学生，会污染班级统计与课时账
+### 🟡 P1-2 `cid` 不校验是否属于该学生，会污染班级统计与课时账 ✅ 已修
+
+> `records.save` 新建与编辑双向校验 `cid ∈ stu.clsIds`（"这个班级里没有该学生"）；同时 `enrollments` 的消课与重复校验改用 `enrollmentRawOf`，避免"看不到那条报名 → 又自动补一条 `totalHours:0`"的二次伤害。
 
 **位置**：`utils/db/records.js:50`、`utils/db/enrollments.js:73-88`
 
@@ -140,7 +179,9 @@ if (rid) {
 
 ---
 
-### 🟡 P1-3 `enrollments` 读路径完全不过权限（与"读也过滤"的承诺不一致）
+### 🟡 P1-3 `enrollments` 读路径完全不过权限（与"读也过滤"的承诺不一致）✅ 已修
+
+> 新增 `perms.canSeeEnrollment(actor, en)`：负责人/管理员全见、家长按 `studentId`、老师按 `clsId`。`enrollmentList()` 走过滤；内部需要不过滤的地方改用 `enrollmentRaw(id)` / `enrollmentRawOf(clsId, sid)`，函数名就把"这是内部版本"写明。
 
 **位置**：`utils/db/enrollments.js:10-27`
 
@@ -152,7 +193,9 @@ if (rid) {
 
 ---
 
-### 🟡 P1-4 页面在用 `_all()` 这类标注"页面不要用"的内部接口
+### 🟡 P1-4 页面在用 `_all()` 这类标注"页面不要用"的内部接口 ✅ 已修
+
+> 数据层补两个"只回结论、不回实体"的方法：`classes.mode(id)`（是不是结转制）、`classes.countOfTerm(termId)`（按当前身份可见范围计数）。三处页面改用它俩；`_all()` 保留给 `tests/` 与数据层内部，并由 `tools/lint.js` 禁止 `pages/` 出现 `._all(`。断言：同名班级不再串、学期班级数按身份可见范围算。
 
 **位置**：`pages/index/index.js:118`、`pages/student/student.js:91`、`pages/terms/terms.js:31`
 
@@ -168,7 +211,9 @@ const c = db.classes.get(en.clsId) || db.classes._all().find(x => x.id === en.cl
 
 ---
 
-### 🟡 P1-5 结转向导非原子：15 处写操作，中途失败留下半结转的学期
+### 🟡 P1-5 结转向导非原子：15 处写操作，中途失败留下半结转的学期 ✅ 已修
+
+> 新建 `utils/db/settle.js`（L6 跨领域事务），15 处写操作收进 `core.tx`：快照 → 逐步写 → 统一落盘，任一步失败整体回滚。页面只剩 UI 与防重。踩到的坑记在代码里：新学期必须显式 `status: 'active'`（`termCreate` 默认会把已有进行中学期时的新学期建成 `upcoming`，结果结转完没有进行中的班）。断言：结转成功新学期 active + 旧学期归档；结转中途失败旧学期原状、不留半成品。
 
 **位置**：`pages/terms/terms.js:170-215`
 
@@ -185,7 +230,9 @@ const c = db.classes.get(en.clsId) || db.classes._all().find(x => x.id === en.cl
 
 ---
 
-### 🟡 P1-6 保存类操作零防重：连点两次就是两条记录、扣两次课时
+### 🟡 P1-6 保存类操作零防重：连点两次就是两条记录、扣两次课时 ✅ 已修
+
+> 录入页 `save()` 加同步锁 `this._saving`（`setData` 是异步的，靠 `disabled` 兜不住 800ms 窗口）+ `saving` 数据态，按钮文案切「保存中…」并 `.busy` 降透明度。断言：连点两次只产生一条记录。
 
 **位置**：`pages/record/record.js:205-218`（以及全站：`grep -rn "saving\|disabled\|loading" pages/` 只匹配到 `status !== 'disabled'`）
 
@@ -208,7 +255,10 @@ this._saving = true;   // 成功/失败都要复位，或在 navigateBack 前不
 
 ---
 
-### 🟡 P1-7 `server/` 与云函数存在鉴权缺口（上云前必须处理）
+### 🟡 P1-7 `server/` 与云函数存在鉴权缺口（上云前必须处理）✅ 已修
+
+> **云函数**：文档 `_id` 改成确定性的 `OPENID + '_' + id`，`doc().set()` 天然 upsert——越权覆盖别人的文档在结构上不可能发生，不再依赖"查一遍再决定"；`fetchAll` 分页（100/页，上限 5000 行）并回 `truncated` 标记；`pick()` 白名单字段返回，不把整条文档抛给前端。
+> **server/**：重写成有鉴权的原型——Bearer token、按 openid 分文件、原子写（tmp + rename）、`jscode2session` 换 openid（未配 APPID/SECRET 时返回 503，而不是发一个随机 id 假装登录）、上传限扩展名与 50MB。
 
 **位置**：`server/server.js`（整份）、`cloudfunctions/sync/index.js:13-28`
 
@@ -233,7 +283,10 @@ if (q.data.length) await records.doc(q.data[0]._id).update({ data: doc });  // �
 
 ---
 
-### 🟡 P1-8 主包 1.7MB / 上限 2MB，资产占 823KB
+### 🟡 P1-8 主包 1.7MB / 上限 2MB，资产占 823KB ✅ 已缓解
+
+> `project.config.json` 的 `packOptions.ignore` 排除了 `tests/` `docs/` `server/` `tools/` `README.md` 等非运行目录（旧数字 1.7MB 里包含它们）。按文件字节实测现在 **0.85MB / 2MB**：`assets/icons` 348KB、`pages` 212KB、`utils` 201KB、`assets/tabbar` 38KB、`images` 22KB。
+> 图标 webp 化**没做**：它需要设计侧按三套主题统一重出图，属视觉工作量而非代码问题；余量 1.15MB，再加一套主题（约 +110KB）仍安全，等真的接近上限再做。
 
 **位置**：`assets/icons`（711KB，57 项）、`assets/tabbar`（112KB）
 
@@ -248,7 +301,10 @@ if (q.data.length) await records.doc(q.data[0]._id).update({ data: doc });  // �
 
 ---
 
-### 🟡 P1-9 合规：UGC 内容安全缺失、未成年人信息无监护人同意流程
+### 🟡 P1-9 合规：UGC 内容安全缺失、未成年人信息无监护人同意流程 ◐ 部分已修
+
+> **已做**：隐私弹窗补「关于孩子（未成年人）的信息」一段——说明孩子的姓名/照片/课堂记录由老师采集、家长端只能看自己孩子、监护人须同意否则请勿使用并可要求机构删除。
+> **未做**：`msgSecCheck`（文本）/ `imgSecCheck`（图片）。这不是纯客户端代码，要云开发环境 + 调用额度 + 审核类目确定后才有意义；现在塞一个"调不通就放行"的空壳，反而会让人以为已经接好了。**与 P0-3 一起列进"上线前必办"清单**。
 
 **位置**：全站（`grep -rn "msgSecCheck\|imgSecCheck"` 零结果）
 
@@ -260,7 +316,11 @@ if (q.data.length) await records.doc(q.data[0]._id).update({ data: doc });  // �
 
 ---
 
-## 四、P2 · 建议
+## 四、P2 · 建议 ✅ 全部已修
+
+> 逐条落地情况：P2-1 复用单个 `innerAudioContext` 并在 `onUnload` 销毁；P2-2 自愈不再拿"当前登录人"回填 `tid`（改为"该班主讲老师 → 机构唯一在职教职工 → 留空"三级降级，见下方说明）；P2-3 全量规范化改为按"规范化口径版本"`meta.normStamp` 触发，平时只做结构性兜底；P2-4 记录页页签改为 `tabs` + `tabIds` 双数组，筛选按班级 id；P2-5 申请页机构名校验改为共用 `db.orgs.checkName()`（与机构表写入同一份规则）；P2-6 只有非正式版才自动复制到剪贴板；P2-7 家长资料按字段限长（昵称 20 / 备注 500 / 整包 2KB，超长静默截断而不是报错）；P2-8 自建 `tools/lint.js`（82 文件 0 提醒），`npm run check` = lint + test；P2-9 补了"写入失败 / 容量边界 / 媒体失败 / 事务回滚 / 连点"等 27 项加固断言。
+>
+> **P2-2 为什么不是"用机构默认老师"**：`tid` 里存的是 `user.id`，而 `class.teacherId` 存的是 `member.id`，两者不能直接搬。所以回填顺序是：该班主讲老师（换成 userId）→ 机构里唯一的在职教职工（单人工作室归属没有歧义）→ 都不满足就留空（fail-closed，只有负责人/管理员能改）。宁可让负责人来改，也不伪造一个归属。
 
 | # | 位置 | 问题 | 建议 |
 |---|---|---|---|
@@ -276,13 +336,13 @@ if (q.data.length) await records.doc(q.data[0]._id).update({ data: doc });  // �
 
 ---
 
-## 五、P3 · nit（不必单独修，顺手即可）
+## 五、P3 · nit（不必单独修，顺手即可）✅ 已修
 
-- `utils/db/storage.js` 文件头把集合列表写了一遍（`_orgs/_members/_classes/...`），漏了 `terms`/`enrollments`/`orgs`，与 `COLLECTIONS` 已经不同步——**注释里的清单是最容易腐烂的东西**，建议只指向 `COLLECTIONS`。
-- `utils/stt.js:fileToText` 是个永远 reject 的死函数（注释已说明），可以删掉，减少误用。
-- `pages/mgr/mgr.js:51-54` `userNameOf` 的命名暗示它拿 user，实际取的是 member 的名字（`db.members.get`），容易误导后来者去改 `users`。
-- `pages/record/record.js:9-11` 的 `MAX_FILE/MAX_PHOTOS/MAX_VIDEOS` 与 `schema.validate('record')` 里的 9/3 重复定义，改一处必忘另一处。
-- `deploy.js:11` `APPID = 'wx_your_appid'` 与 `project.config.json` 里的真实 appid 不一致，靠 CI 注入覆盖——本地跑 `node deploy.js` 会直接退出，容易让人误判"CI 坏了"。
+- ✅ `utils/db/storage.js` 文件头不再抄集合清单，改为"集合名以 `COLLECTIONS` 为准"（抄过的那份已经腐烂过一次）。
+- ✅ `utils/stt.js:fileToText` 已删除，只留流式识别。
+- ✅ `pages/mgr/mgr.js` 的 `userNameOf` → `memberNameOf`，并注释"teacherId 存的是 member.id"，防止后来者去改 `users`。
+- ✅ 照片/视频上限只留一份：`schema.LIMITS`，页面通过 `db.LIMITS` 取。
+- ✅ `deploy.js` 的 AppID 改为 `MP_APPID` 环境变量 > `project.config.json`，本地 `node deploy.js` 不再必然退出。
 
 ---
 
@@ -298,7 +358,7 @@ if (q.data.length) await records.doc(q.data[0]._id).update({ data: doc });  // �
 
 ---
 
-## 七、修复顺序建议
+## 七、修复顺序建议（除"本周"的 P0-3 外均已按此执行）
 
 | 时间 | 做什么 | 为什么这个顺序 |
 |---|---|---|
@@ -311,6 +371,62 @@ if (q.data.length) await records.doc(q.data[0]._id).update({ data: doc });  // �
 
 ## 八、给下一个审查者的三条提醒
 
-1. **先跑 `npm test`，再读代码**。209 项绿了才有资格讨论风格；红了先看是不是自己环境问题（`tests/fixture.js` 的 `richSeed` 是必需的）。
+1. **先跑 `npm test`，再读代码**。236 项绿了才有资格讨论风格；红了先看是不是自己环境问题（`tests/fixture.js` 的 `richSeed` 是必需的）。顺手 `npm run lint`，它会拦住"页面绕开数据层"这类约定漂移。
 2. **改 `utils/db/` 的任何文件，都当成改地基**。这五个文件（`schema/core/storage/permissions/migrate`）是 LAYER 表的 level 0，动它们要连带看 `verify_arch` + `verify_db` + `verify_perm` 三套。
 3. **别相信注释里的清单，只相信 `COLLECTIONS` / `ACTIONS` / `LAYER` 这三张表**。注释会腐烂，表会被断言检查。
+
+---
+
+## 九、整改记录（2026-11-03）
+
+### 新增文件
+
+| 文件 | 作用 |
+|---|---|
+| `utils/db/settle.js` | 结转向导的落地动作，15 处写操作收进一个 `core.tx` 事务（LAYER = 6） |
+| `pages/storage/storage.*` | 「我的 · 存储空间」：设备存储用量、照片视频占用、可清理数量、一键清理 |
+| `tools/lint.js` | 自建自检：品牌色硬编码、`console.log` 残留、`require` 未用、WXML 函数调用、页面调 `_all()`、页面直接读写存储、缩进/行尾/末尾换行 |
+| `.editorconfig` | 统一 2 空格 / LF / 末尾换行 |
+| `tests/verify_hardening.js` | 加固回归 27 项（分片、落盘失败、媒体清理、权限收口、事务回滚、连点、存储页、自愈归属、文本限长） |
+
+### 改动要点（按文件）
+
+- `utils/db/storage.js`：`records` 分片（320 条/片）+ 老数据兼容 + 片回收 + `kvUsage()`。
+- `utils/db/core.js`：`SAVE_FAIL` 文案、`tx()` 事务、`realData()`、`health()`、`lastFail`、`setColl` 可回滚。
+- `utils/db/ctx.js`：`pushSaved()` / `applyEdit()` 两个"写内存 + 立即落盘 + 失败还原"的工具。
+- `utils/db/records.js`、`classes.js`、`students.js`、`identity.js`、`terms.js`、`courses.js`、`templates.js`、`org.js`：写路径统一走上面两个工具；跨集合的写走 `core.tx`。
+- `utils/db/permissions.js`：`canSeeEnrollment()`。
+- `utils/db/enrollments.js`：读路径过滤 + `enrollmentRaw` / `enrollmentRawOf` 内部版本。
+- `utils/db/maintenance.js`：`mediaRefs()`；`repairRefs` 的 `tid` 三级降级回填；`normalizeAll` 按 `meta.normStamp` 触发。
+- `utils/db/classes.js` / `index.js`：`mode()` / `countOfTerm()` / `orgs.checkName()` / `LIMITS`。
+- `utils/media.js`：转存失败返回空串 + `lostCount()`；`scan()` / `prune()` / 2 小时豁免。
+- `utils/theme.js`：`brand()` / `danger()`，`DANGER` 色表。
+- `server/server.js`：Bearer 鉴权、按 openid 分文件、原子写、`jscode2session`、上传白名单。
+- `cloudfunctions/sync/index.js`：确定性 `_id`、`doc().set()` upsert、分页、字段白名单。
+- `pages/record`：媒体失败提示、录音两路都失败如实提示、`_saving` 同步锁、音频上下文复用。
+- `pages/mgr`：`memberNameOf` 正名，角色头像渐变移入 WXSS（极简/蓝主题能跟着变）。
+- `pages/index` / `pages/student` / `pages/terms` / `pages/records` / `pages/apply`：按 P1-4 / P2-4 / P2-5 调整。
+- `app.js`：错误陷阱只在非正式版自动复制剪贴板。
+- `components/privacy`：补「关于孩子（未成年人）的信息」。
+- `project.config.json`：`packOptions.ignore` 排除 `tests/` `docs/` `server/` `tools/` 等。
+- `deploy.js` + `.github/workflows/deploy.yml`：AppID 走 `MP_APPID`，不再 sed 改源码。
+
+### 断言数量变化
+
+| 套件 | 审查时 | 现在 |
+|---|---|---|
+| 数据层 | 27 | 27 |
+| 权限 | 45 | 45 |
+| 学期与课时 | 30 | 30 |
+| P0 止血 | 27 | 27 |
+| 页面级 | 53 | 53 |
+| 演示隔离 | 18 | 18 |
+| 加固 | —— | **27**（新增套件） |
+| 架构守卫 | 9 | 9 |
+| **合计** | **209** | **236** |
+
+### 仍然开着的三件事
+
+1. **P0-3 CI 测试门禁**——等备案下来、准备提审时补（3 步见该节）。
+2. **P1-9 内容安全（`msgSecCheck` / `imgSecCheck`）**——需要云环境与审核类目确定，与 P0-3 同期。
+3. **技术债**：`utils/demo-data.js` 2367 行仍在主包内（体积只 48KB，是"清洁问题"不是"体积问题"，建议分包或按需构建）；入驻申请单只存本机（`utils/apply.js`），上云后要走服务端且不落明文日志。

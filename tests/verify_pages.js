@@ -461,21 +461,26 @@ console.log('\n【图标资产：引用即存在，且函数式图标可调用�
 console.log('\n【我的页：管理统计层】');
 const mine = loadPage('pages/mine/mine.js');
 mine.onShow();
-ok('统计层五维数据齐备，旧的直通入口已移除', () => {
-  assert.strictEqual(mine.data.statItems.length, 5);
-  assert.deepStrictEqual(mine.data.statItems.map(x => x.k), ['stu', 'cls', 'crs', 'parent', 'teacher']);
-  assert.strictEqual(mine.data.statItems.find(x => x.k === 'stu').n, db.students.list().length);
-  assert.strictEqual(mine.data.statItems.find(x => x.k === 'cls').n, db.classes.list().length);
+ok('统计层两行三列、六维数据齐备（上行学生/家长/老师，下行班级/课程/学期）', () => {
+  assert.strictEqual(mine.data.statRows.length, 2);
+  assert.deepStrictEqual(mine.data.statRows[0].map(x => x.k), ['stu', 'parent', 'teacher']);
+  assert.deepStrictEqual(mine.data.statRows[1].map(x => x.k), ['cls', 'crs', 'term']);
+  const flat = mine.data.statRows.flat();
+  assert.strictEqual(flat.find(x => x.k === 'stu').n, db.students.list().length);
+  assert.strictEqual(flat.find(x => x.k === 'cls').n, db.classes.list().length);
+  assert.strictEqual(flat.find(x => x.k === 'term').n, db.terms.list().length);
+  assert.ok(flat.every(x => x.k !== 'term' || x.tab === null), '学期不走管理页页签');
   assert.ok(!mine.data.entries.some(e => e.k === 'mgr' || e.k === 'member'));
 });
-ok('统计点按跳转到管理页对应页签', () => {
+ok('统计点按跳转到管理页对应页签，学期进独立学期管理页', () => {
   const navs = [];
   const old = global.wx.navigateTo;
   global.wx.navigateTo = o => { navs.push(o.url); };
   mine.tapStat({ currentTarget: { dataset: { tab: 2 } } });
   mine.tapStat({ currentTarget: { dataset: { tab: 3 } } });
+  mine.tapStat({ currentTarget: { dataset: { tab: null, k: 'term' } } });
   global.wx.navigateTo = old;
-  assert.deepStrictEqual(navs, ['/pages/mgr/mgr?tab=2', '/pages/mgr/mgr?tab=3']);
+  assert.deepStrictEqual(navs, ['/pages/mgr/mgr?tab=2', '/pages/mgr/mgr?tab=3', '/pages/terms/terms']);
 });
 
 ok('全站图标引用与 assets/icons 一一对应', () => {

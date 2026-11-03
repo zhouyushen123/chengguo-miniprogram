@@ -8,8 +8,8 @@ Page({
     name: '', roleLabel: '', orgName: '', meta: '', avaChar: '',
     isManager: false, canSwitchHome: false, homeName: '',
     sandbox: false,
-    // 管理统计层（学生/班级/课程/家长/老师）
-    statItems: [],
+    // 管理统计层（两行三列：上行「学生·家长·老师」机构的人，下行「班级·课程·学期」教学组织）
+    statRows: [],
     // 入口列表
     entries: []
   },
@@ -33,21 +33,25 @@ Page({
       : '';
     const isManager = db.auth.isAdmin();
     const entries = [];
-    // 统计层：先给「学生/班级/课程/家长/老师」五个维度概览，点进去才是增删改查（管理页对应页签）
-    // 老师身份看不到成员（人员）页签，所以家长/老师两项仅负责人/管理员可见
-    const statItems = [];
+    // 统计层：两行三列。上行是机构里的人（学生/家长/老师），下行是教学组织（班级/课程/学期）；
+    // 家长/老师/学期仅负责人/管理员可见（与人员页签、学期管理入口的可见性一致）。
+    // 学期不走管理页页签，点按进独立的学期管理页（k='term'，无 tab）
+    const statRows = [];
     if (!db.auth.isParent()) {
-      statItems.push(
-        { k: 'stu', n: db.students.list().length, t: '学生', tab: 2 },
-        { k: 'cls', n: db.classes.list().length, t: '班级', tab: 0 },
-        { k: 'crs', n: db.courses.list().length, t: '课程', tab: 1 }
-      );
+      const stu = { k: 'stu', n: db.students.list().length, t: '学生', tab: 2 };
+      const cls = { k: 'cls', n: db.classes.list().length, t: '班级', tab: 0 };
+      const crs = { k: 'crs', n: db.courses.list().length, t: '课程', tab: 1 };
       if (isManager) {
         const roles = db.members.list().map(m => m.role);
-        statItems.push(
-          { k: 'parent', n: roles.filter(r => r === 'parent').length, t: '家长', tab: 3 },
-          { k: 'teacher', n: roles.filter(r => r !== 'parent').length, t: '老师', tab: 3 }
+        statRows.push(
+          [stu,
+            { k: 'parent', n: roles.filter(r => r === 'parent').length, t: '家长', tab: 3 },
+            { k: 'teacher', n: roles.filter(r => r !== 'parent').length, t: '老师', tab: 3 }],
+          [cls, crs,
+            { k: 'term', n: db.terms.list().length, t: '学期', tab: null }]
         );
+      } else {
+        statRows.push([stu, cls, crs]);
       }
     }
     // 演示数据：能看、能重置，但改不了（样板间）
@@ -79,7 +83,7 @@ Page({
       canSwitchHome: s.canSwitchHome,
       homeName: ((db.users.get(s.homeMe) || {}).name) || '',
       sandbox: !!s.sandbox,
-      statItems,
+      statRows,
       entries
     });
   },
@@ -92,8 +96,9 @@ Page({
     if (k === 'demo') { this.demoMenu(); return; }
     if (k === 'storage') { wx.navigateTo({ url: '/pages/storage/storage' }); return; }
   },
-  // 统计卡点按：跳到管理页对应页签（0班级 1课程 2学生 3人员）
+  // 统计卡点按：学期进独立学期管理页，其余跳管理页对应页签（0班级 1课程 2学生 3人员）
   tapStat(e) {
+    if (e.currentTarget.dataset.k === 'term') { wx.navigateTo({ url: '/pages/terms/terms' }); return; }
     wx.navigateTo({ url: '/pages/mgr/mgr?tab=' + (+e.currentTarget.dataset.tab || 0) });
   },
   // 演示切换：从成员列表选一个人，以他的身份看全 App

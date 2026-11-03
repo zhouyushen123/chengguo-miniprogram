@@ -26,9 +26,10 @@
   background: var(--brand-soft); border-radius: 999rpx;
 }
 
-/* ---------- 管理统计层：五维概览 ---------- */
+/* ---------- 管理统计层：两行三列（上行人 / 下行教学组织） ---------- */
 .statcard { padding: 26rpx 12rpx 22rpx; position: relative; z-index: 1; }
 .statrow { display: flex; }
+.statrow + .statrow { margin-top: 22rpx; }
 .stat5 { flex: 1; text-align: center; padding: 4rpx 0; }
 /* 数字底下的浅色小方块：给"可点"一个视觉抓手，比纯数字更像按钮 */
 .s5box {

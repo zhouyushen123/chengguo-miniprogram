@@ -17,10 +17,10 @@
   </view>
 </view>
 
-<!-- 管理统计层：五个维度概览，点按进入对应管理页签做增删改查 -->
-<view wx:if="{{statItems.length}}" class="card statcard">
-  <view class="statrow">
-    <view wx:for="{{statItems}}" wx:key="k" class="stat5" hover-class="mrow-hover" bindtap="tapStat" data-tab="{{item.tab}}">
+<!-- 管理统计层：两行三列——上行「学生·家长·老师」（机构的人），下行「班级·课程·学期」（教学组织），点按进入对应管理页 -->
+<view wx:if="{{statRows.length}}" class="card statcard">
+  <view class="statrow" wx:for="{{statRows}}" wx:for-item="row" wx:for-index="ri" wx:key="*this">
+    <view wx:for="{{row}}" wx:key="k" class="stat5" hover-class="mrow-hover" bindtap="tapStat" data-tab="{{item.tab}}" data-k="{{item.k}}">
       <view class="s5box"><text class="s5n">{{item.n}}</text></view>
       <view class="s5t">{{item.t}}</view>
     </view>

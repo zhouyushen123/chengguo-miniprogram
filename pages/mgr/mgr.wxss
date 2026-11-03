@@ -106,32 +106,40 @@
 /* ---------- 学生标签页：筛选区（吸顶）+ 底部固定添加按钮 ---------- */
 /* 列表加底部留白，避免最后一张卡被固定的添加按钮压住 */
 .stuwrap { padding-bottom: 170rpx; }
-/* 筛选区：钉在顶部，列表从其下方滚过；底部分割线与导航栏底边视觉一致。
-   左右留 24rpx——与页签、卡片（.card margin 0 24rpx）保持同一条边距线 */
+/* 筛选区：钉在顶部，列表从其下方滚过。灰色吸底带只负责滚动遮挡，
+   内容全部收进白色圆角卡片，与页签、列表卡片同一套视觉，不再有白胶囊浮在灰条上的断裂感 */
 .stufilter {
   position: sticky; top: 0; z-index: 20;
-  background: var(--bg); padding: 12rpx 24rpx 16rpx; margin-bottom: 4rpx;
-  border-bottom: 2rpx solid var(--line);
+  background: var(--bg); padding: 8rpx 24rpx 16rpx; margin-bottom: 4rpx;
 }
-.sfinput {
+.sfcard {
+  background: #fff; border-radius: 28rpx; padding: 24rpx;
+  box-shadow: 0 4rpx 16rpx var(--shadow);
+}
+/* 行内搜索框：与入学、男/女同一行，排在性别开关之后 */
+.sfsearch { flex: 1; min-width: 220rpx; }
+.sfin {
   box-sizing: border-box; width: 100%;
-  background: #fff; border: 2rpx solid var(--line-2); border-radius: 999rpx;
-  padding: 20rpx 28rpx; font-size: 27rpx; margin-bottom: 16rpx;
+  background: var(--bg); border: 2rpx solid var(--line-2); border-radius: 999rpx;
+  padding: 12rpx 64rpx 12rpx 24rpx; font-size: 24rpx;
 }
 .sfrow2 { display: flex; flex-wrap: wrap; gap: 12rpx; align-items: center; }
 /* 性别筛选：男/女 二段开关。再点已选中的那段 = 取消筛选（回到全部，含未填性别的） */
 .gswitch {
-  display: inline-flex; gap: 4rpx; padding: 4rpx;
+  display: inline-flex; gap: 4rpx; padding: 4rpx; flex: none;
   background: #fff; border: 2rpx solid var(--line-2); border-radius: 999rpx;
 }
-.gswitch .gopt { font-size: 24rpx; color: var(--sub); padding: 8rpx 30rpx; border-radius: 999rpx; }
+.gswitch .gopt { font-size: 24rpx; color: var(--sub); padding: 8rpx 24rpx; border-radius: 999rpx; }
 .gswitch .gopt.on { background: var(--brand); color: #fff; font-weight: 700; }
 .pkbox {
-  font-size: 24rpx; color: var(--sub); background: #fff;
-  border: 2rpx solid var(--line-2); border-radius: 999rpx; padding: 10rpx 24rpx;
-  white-space: nowrap; display: inline-flex; align-items: center; gap: 8rpx;
+  font-size: 24rpx; color: var(--sub); background: var(--bg);
+  border: 2rpx solid var(--line-2); border-radius: 999rpx; padding: 10rpx 20rpx;
+  white-space: nowrap; display: inline-flex; align-items: center; gap: 8rpx; flex: none;
 }
 .sfcount { margin-top: 14rpx; font-size: 22rpx; color: var(--sub); }
+/* 学生卡片右侧操作区：固定宽度不被长文字挤压（左侧文字区 flex:1 + min-width:0 自行换行） */
+.stuacts { display: flex; align-items: center; flex: none; }
+.stuacts .act { flex: none; }
 /* 名字旁的性别小徽标 */
 .gtag {
   display: inline-block; margin-left: 12rpx; padding: 2rpx 14rpx;

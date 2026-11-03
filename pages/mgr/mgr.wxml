@@ -68,35 +68,36 @@
 
 <!-- ============ 学生 ============ -->
 <view wx:if="{{tab===2}}" class="wrap stuwrap">
-  <!-- 筛选区：吸顶钉住，列表从其下方滚过；模糊搜索 + 录入年份 + 性别 -->
+  <!-- 筛选区：吸顶钉住，列表从其下方滚过；整块收进白色卡片（与页签、列表卡片同一套视觉）。
+       行内顺序：入学 → 男/女 → 搜索（含麦克风） -->
   <view class="stufilter">
-    <view class="sfrow">
-      <view class="vin">
-        <input class="sfinput vin-in" placeholder="搜索姓名 / 家长 / 微信号" value="{{stuQ}}" bindinput="onStuQ" confirm-type="search" />
-        <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuQ" />
+    <view class="sfcard">
+      <view class="sfrow2">
+        <picker mode="selector" range="{{stuYears}}" range-key="name" value="{{stuYearIdx}}" bindchange="onStuYear">
+          <view class="pkbox">入学：{{stuYears[stuYearIdx].name || '全部'}} ▾</view>
+        </picker>
+        <view class="gswitch">
+          <view class="gopt {{stuGender==='男'?'on':''}}" bindtap="onStuGender" data-v="男">男</view>
+          <view class="gopt {{stuGender==='女'?'on':''}}" bindtap="onStuGender" data-v="女">女</view>
+        </view>
+        <view class="vin sfsearch">
+          <input class="sfin vin-in" placeholder="搜索姓名 / 家长" value="{{stuQ}}" bindinput="onStuQ" confirm-type="search" />
+          <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuQ" />
+        </view>
       </view>
+      <view class="sfcount">共 {{stuCount}} 人，当前显示 {{students.length}} 人</view>
     </view>
-    <view class="sfrow2">
-      <picker mode="selector" range="{{stuYears}}" range-key="name" value="{{stuYearIdx}}" bindchange="onStuYear">
-        <view class="pkbox">入学：{{stuYears[stuYearIdx].name || '全部'}} ▾</view>
-      </picker>
-      <view class="gswitch">
-        <view class="gopt {{stuGender==='男'?'on':''}}" bindtap="onStuGender" data-v="男">男</view>
-        <view class="gopt {{stuGender==='女'?'on':''}}" bindtap="onStuGender" data-v="女">女</view>
-      </view>
-    </view>
-    <view class="sfcount">共 {{stuCount}} 人，当前显示 {{students.length}} 人</view>
   </view>
   <view class="card item" wx:for="{{students}}" wx:key="id">
-    <view bindtap="goStudentPage" data-id="{{item.id}}">
+    <view style="flex:1;min-width:0" bindtap="goStudentPage" data-id="{{item.id}}">
       <view class="itrow">
         <image wx:if="{{item.photo}}" class="stuava" src="{{item.photo}}" mode="aspectFill" />
         <view wx:else class="stuava stub">{{item.name[0]}}</view>
-        <view><b>{{item.name}}</b><text wx:if="{{item.gender}}" class="gtag">{{item.gender}}</text>
+        <view style="min-width:0"><b>{{item.name}}</b><text wx:if="{{item.gender}}" class="gtag">{{item.gender}}</text>
         <view class="mi">{{item.cls}}{{item.year?' · '+item.year+' 年入学':''}}{{item.parent?' · 家长 '+item.parent:''}}{{item.wechat?' · 微信 '+item.wechat:''}}</view></view>
       </view>
     </view>
-    <view style="display:flex;align-items:center">
+    <view class="stuacts">
       <view class="mi act" catchtap="editStudent" data-id="{{item.id}}">编辑</view>
       <view class="mi del" catchtap="delStudent" data-id="{{item.id}}">删除</view>
     </view>

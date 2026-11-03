@@ -48,6 +48,10 @@ function loadPage(rel) {
   return page;
 }
 
+// 页面联调需要一份"有内容"的真实库：用演示数据集铺一份去掉 demo 标记的种子数据，
+// 等价于"这位老师自己录了这些学生和记录"（真实库不该自带演示数据）。
+const seedFixture = require('./fixture').richSeed();
+Object.keys(seedFixture).forEach(k => { mem[k] = seedFixture[k]; });
 const db = require('../utils/db');
 db.init();
 

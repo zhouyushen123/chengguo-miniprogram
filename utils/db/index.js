@@ -15,7 +15,7 @@
 // 列表查询默认已按当前身份过滤（老师只见自己班、家长只见自己孩子且仅已发布）。
 // 页面不要再自己写 role === 'parent' 之类的判断——规则只在 permissions.js 定义一次。
 // 需要绕过身份过滤做统计时，用 oc(name)（仍限当前机构）；确实需要跨机构全量才用 core.coll。
-// 注意：写操作与启动维护（normalizeAll / repairRefs / seedDemo / merge）必须用 core.coll，
+// 注意：写操作与启动维护（normalizeAll / repairRefs / 演示数据包 / merge）必须用 core.coll，
 // 否则 setColl 这类覆盖写会把他机构的数据一起抹掉。
 //
 // 【目录结构】本文件只是门面（对外 API 的组装与文档），实现按领域拆在同目录下：
@@ -60,7 +60,9 @@ const db = {
   settings: identity.settings, setTeacher: identity.setTeacher,
   today, canSend: records.canSend, merge: maintenance.merge,
   me: identity.me, isParent: identity.isParent,
-  demoClear: maintenance.demoClear,
+  // 演示数据：独立的第二套数据（磁盘上另一组 key），只能看不能改。
+  // active() 决定页面要不要显示「演示数据」横幅，enter/exit 只切指针、不搬数据。
+  demo: maintenance.demo,
   org, nextId: core.nextId,
   TAGS: schema.TAGS,
   TYPES: schema.RECORD_TYPES,

@@ -191,7 +191,8 @@ function settings() {
     role: (a && a.role) || '',
     roleLabel: (a && a.roleLabel) || '',
     memberId: (a && a.memberId) || 0,
-    demoVersion: m.demoVersion || 0,
+    // 当前是不是在看演示数据（演示包是独立的一套数据，只能看不能改）
+    sandbox: core.isSandbox(),
     version: m.version
   };
 }

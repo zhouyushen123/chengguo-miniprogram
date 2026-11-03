@@ -38,7 +38,10 @@ function actor() {
 }
 
 // 写操作统一闸门：返回 null 表示放行，否则返回可直接 toast 的文案
+// 【演示模式】全部写操作在这里一次性拦掉。演示数据是"样板间"：能点能看能翻，
+// 但不能改——否则老师会以为自己录的东西存下来了，而它在退出演示时就没了。
 function deny(action, target) {
+  if (core.isSandbox()) return '演示数据只读，点「开始使用」后再录入';
   const a = actor();
   if (perms.can(a, action, target)) return null;
   return perms.denyReason(a, action);

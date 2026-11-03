@@ -32,11 +32,13 @@ function fakeFs(store) {
   };
 }
 
+// 默认夹具：一份"老师自己录的"真实数据（45 学生 + 记录）。演示数据已搬到独立存储，
+// 真实库不再自带演示行，所以流程类用例需要显式铺这份数据。
 function boot(seed, fsStore) {
   Object.keys(require.cache).forEach(k => {
     if (k.indexOf(path.join(ROOT, 'utils')) === 0) delete require.cache[k];
   });
-  const mem = seed || {};
+  const mem = seed || require('./fixture').richSeed();
   const fsMock = fakeFs(fsStore);
   global.wx = {
     env: { USER_DATA_PATH: USR },

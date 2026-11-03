@@ -11,8 +11,10 @@ global.wx = {
 };
 
 const demo = require('../utils/demo-data');
-const students = demo.DEMO_STUDENTS.map(s => Object.assign({}, s));
-const records = demo.DEMO_RECORDS.map(r => Object.assign({}, r));
+// 夹具模拟的是"老师自己录的学生和记录"：演示数据现在住在独立的存储里（storage.demo），
+// 真实库不该带 demo 标记 —— 带着会被启动时的 purgeSeed 当成历史演示数据清出去。
+const students = demo.DEMO_STUDENTS.map(s => { const x = Object.assign({}, s); delete x.demo; return x; });
+const records = demo.DEMO_RECORDS.map(r => { const x = Object.assign({}, r); delete x.demo; return x; });
 // 故意制造三处脏数据：缺班级 / 日期没补零 / 缺录入老师
 records[0].cid = undefined;
 records[1].date = '2026-11-1';

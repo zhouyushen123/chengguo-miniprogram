@@ -9,10 +9,10 @@ const core = require('./core');
 const migrate = require('./migrate');
 const media = require('../media');
 const demo = require('../demo-data');
-const { now, org, oc, deny, memberCurrentOfRole } = require('./ctx');
+const { now, org, oc } = require('./ctx');
 
 /* =====================================================================
- * 启动：加载 → 迁移 → 规范化 → 演示数据 → 引用修复 → 媒体自愈
+ * 启动：加载 → 迁移 → 规范化 → 演示数据包 → 引用修复 → 媒体自愈 → 决定看哪套数据
  * ===================================================================*/
 let inited = false;
 let bootError = '';
@@ -27,17 +27,18 @@ function init() {
     core.hydrate(data);
 
     const changed = normalizeAll();
-    const seeded = seedDemo();
+    const purged = purgeSeed();          // 老版本混在真实库里的演示数据 → 请出去（演示包里另有一份）
+    ensureDemo();                        // 演示数据包：缺了就按 demo-data 建，版本变了就重建
     const repaired = repairRefs();
     const mediaFixed = repairMedia();
-    if (changed || seeded || repaired || mediaFixed || !loaded.meta || loaded.meta.version !== schema.VERSION) {
-      core.flushAll();
-    }
+    resolveMode(purged);                 // 该进演示还是回真实机构
+    if (changed || purged || repaired || mediaFixed) core.flushAll();
   } catch (e) {
     // 启动失败不能让整页白屏，也不能把坏状态写回磁盘：
     // 降级成"内存空库 + 只读"，磁盘数据原样保留，页面照常渲染空态。
     bootError = (e && e.message) || '数据加载失败';
     core.setReadOnly(true);
+    core.setMode('real');
     if (!core.isReady()) {
       try { core.hydrate(migrate.buildFresh(Date.now())); } catch (e2) { /* 连兜底都失败就只能空着 */ }
     }
@@ -146,70 +147,148 @@ function repairMedia() {
   return n > 0;
 }
 
-// 演示数据：版本变了才整批替换（演示学生与演示记录一起换，真实数据不动）
-function seedDemo() {
-  if (core.meta().demoVersion === demo.DEMO_VERSION) return false;
-  const demoIds = {};
-  demo.DEMO_STUDENTS.forEach(s => { demoIds[s.id] = 1; });
-  const OLD_DEMO_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]; // 早期种子与第一版演示学生
+/* =====================================================================
+ * 演示数据
+ *
+ * 【设计】演示数据不是"真实库里打了标记的行"，而是磁盘上另一套 key（storage.demo）里的
+ * 完整一套数据：机构、学期、班级、课程、成员、学生、记录全都有。当前看哪一套由
+ * core.setMode('real' | 'demo') 决定，切换只换指针，不搬数据。
+ *
+ * 好处：
+ *   1. 重播/清空/改造演示数据，物理上碰不到真实数据 —— 不再依赖 demoVersion 这个开关
+ *   2. 不需要每一处查询都记得过滤 demo 标记，也就不会漏
+ *   3. 演示模式下写操作被 ctx.deny 拦下（样板间能看不许改），误操作不会留在真实数据里
+ * ===================================================================*/
+const DEMO_ORG_NAME = '演示机构';
 
-  core.setColl('records', core.coll('records').filter(r => !r.demo));
-  const kept = core.coll('students').filter(s =>
-    !(s.demo || OLD_DEMO_IDS.indexOf(s.id) > -1 || demoIds[s.id]));
-  const addedStudents = demo.DEMO_STUDENTS.map(s =>
-    schema.normalizeStudent(Object.assign({}, s, {
-      clsIds: s.clsIds.slice(),
-      // 入学年份按 id 确定性铺开（2022–2025），让「按年份筛选」在演示数据上立即可见
-      enrollYear: 2022 + (s.id % 4)
-    }), org(), now()));
-  core.setColl('students', kept.concat(addedStudents));
+// 用 buildFresh 的默认骨架 + demo-data 的学生与记录拼出整套演示数据：
+// 骨架里已经带了书法班/素描班、楷书/素描、负责人与家长账号、默认评价模板，
+// 演示学生正好挂在这两个班上，一份数据就能把 App 每个页面填满。
+function buildDemoData() {
+  const stamp = now();
+  const d = migrate.buildFresh(stamp);
+  const o = schema.DEFAULT_ORG;
+  d.meta = Object.assign({}, d.meta, {
+    orgName: DEMO_ORG_NAME, demoVersion: demo.DEMO_VERSION,
+    // 演示包自己的 meta 永远是"真实库"，它不会嵌套切模式
+    sandbox: false, createdAt: stamp, updatedAt: stamp
+  });
+  d.orgs = d.orgs.map(x => Object.assign({}, x, { name: DEMO_ORG_NAME }));
 
-  const addedRecords = demo.DEMO_RECORDS.map(r =>
-    schema.normalizeRecord(Object.assign({ tid: core.meta().me }, r), org(), now()));
-  core.setColl('records', core.coll('records').concat(addedRecords));
+  d.students = demo.DEMO_STUDENTS.map(s => schema.normalizeStudent(Object.assign({}, s, {
+    clsIds: s.clsIds.slice(),
+    // 入学年份按 id 确定性铺开（2022–2025），让「按年份筛选」在演示数据上立即可见
+    enrollYear: 2022 + (s.id % 4)
+  }), o, stamp));
+  d.records = demo.DEMO_RECORDS.map(r =>
+    schema.normalizeRecord(Object.assign({ tid: d.meta.me }, r), o, stamp));
 
   // 家长演示账号绑第一个孩子：权限在 member 上，不在 user 上
-  const p = memberCurrentOfRole('parent');
+  const p = d.members.find(m => m.role === 'parent');
   if (p) {
     p.studentIds = [demo.DEMO_STUDENTS[0].id];
     if (p.status === 'invited') p.status = 'active';
-    p.updatedAt = now();
-    core.persist('members');
+    p.updatedAt = stamp;
   }
-
-  // 演示老师若没有任何班级分工，给他全部班级（否则 fail-closed 下看不到东西）
-  const t = memberCurrentOfRole('teacher');
-  if (t && !t.clsIds.length) {
-    t.clsIds = oc('classes').map(c => c.id);
-    t.updatedAt = now();
-    core.persist('members');
+  // 演示老师拿到全部班级：fail-closed 下不分配就什么都看不到
+  const t = d.members.find(m => m.role !== 'parent');
+  if (t) {
+    t.clsIds = d.classes.map(c => c.id);
+    t.updatedAt = stamp;
   }
+  return d;
+}
 
-  core.updateMeta({ demoVersion: demo.DEMO_VERSION });
+function writeDemoPackage(d) {
+  storage.demo.removeAll();   // 先清干净：删掉已经不存在的实体，避免旧 key 残留
+  storage.COLLECTIONS.forEach(n => storage.demo.saveCollection(n, d[n]));
+  storage.demo.saveMeta(d.meta);
+}
+
+// 演示包就绪：磁盘上有且版本一致就直接用，否则按当前 demo-data 重建
+function ensureDemo() {
+  const saved = storage.demo.load();
+  const usable = saved.meta
+    && saved.meta.demoVersion === demo.DEMO_VERSION
+    && (saved.students.length || saved.records.length);
+  if (usable) { core.hydrateDemo(saved); return false; }
+  const built = buildDemoData();
+  writeDemoPackage(built);
+  core.hydrateDemo(built);
   return true;
 }
 
-// 清空演示数据：只删带 demo 标记的记录与学生，真实数据不动。
-// 只清数据、不重置 demoVersion——否则下次启动演示数据又会长回来。
-function demoClear() {
-  const err = deny('member.manage');
-  if (err) return { ok: false, msg: err };
-  const rec = core.coll('records');
+// 老版本把演示数据直接灌进了真实库（靠 demoVersion 区分）。现在它们已经有独立的家，
+// 真实库里那些带 demo 标记的学生与记录要一次性清出去 —— 不清就变成"看起来像真实数据"
+// 的幽灵行：统计、导出、家长绑定都会把它算进去。
+function purgeSeed() {
   const stu = core.coll('students');
-  const nr = rec.filter(r => !r.demo);
-  const ns = stu.filter(s => !s.demo);
-  const rm = { records: rec.length - nr.length, students: stu.length - ns.length };
-  if (!rm.records && !rm.students) return { ok: true, item: rm };
-  core.setColl('records', nr);
-  core.setColl('students', ns);
-  return { ok: true, item: rm };
+  const rec = core.coll('records');
+  const seeded = stu.filter(s => s.demo);
+  if (!seeded.length && !rec.some(r => r.demo)) return false;
+  const ids = {};
+  seeded.forEach(s => { ids[s.id] = 1; });
+  // 挂在演示学生上的记录一并清掉：没有学生，留着就是一条无主记录
+  const keepRec = rec.filter(r => !r.demo && !ids[r.sid]);
+  core.setColl('students', stu.filter(s => !s.demo));
+  core.setColl('records', keepRec);
+  core.coll('members').forEach(m => {
+    const next = (m.studentIds || []).filter(sid => !ids[sid]);
+    if (next.length !== (m.studentIds || []).length) { m.studentIds = next; m.updatedAt = now(); }
+  });
+  core.persist('members');
+  return true;
 }
+
+// 决定启动后看哪一套。
+// 优先级：用户显式选择（meta.sandbox）> 本次启动刚清掉演示数据（那就还给他演示视图）> 真实机构。
+// 为什么不在"库是空的"时候自动进演示：空库不等于"想看样板间"——老师刚清空学生准备
+// 重新录入时被弹回演示模式，会以为自己的库坏了。模式由用户点，不由猜测。
+function resolveMode(justPurged) {
+  const m = core.realMeta();
+  let sandbox = m.sandbox;
+  if (typeof sandbox !== 'boolean') {
+    sandbox = !!justPurged;
+    core.updateRealMeta({ sandbox });
+  }
+  core.setMode(sandbox ? 'demo' : 'real');
+  return core.isSandbox();
+}
+
+/* ---------------- 演示模式的对外开关 ---------------- */
+const demoApi = {
+  active: () => core.isSandbox(),
+  available: () => core.isDemoReady(),
+  // 进演示：只切指针 + 记住选择，真实数据一个字节都不动
+  enter() {
+    if (!core.isDemoReady()) return { ok: false, msg: '演示数据还没准备好，请重启小程序' };
+    core.setMode('demo');
+    core.updateRealMeta({ sandbox: true });
+    return { ok: true };
+  },
+  // 回真实机构。哪怕真实库是空的也留在真实模式：用户既然点了"开始使用"，
+  // 就不该下次打开又被塞回演示样板间。
+  exit() {
+    core.setMode('real');
+    core.updateRealMeta({ sandbox: false });
+    return { ok: true };
+  },
+  // 重置：把演示包按当前 demo-data 重建（演示时乱点的痕迹一并消失），真实数据不受影响
+  reset() {
+    const built = buildDemoData();
+    writeDemoPackage(built);
+    core.hydrateDemo(built);
+    if (core.isSandbox()) core.setMode('demo');
+    return { ok: true, item: { students: built.students.length, records: built.records.length } };
+  }
+};
 
 // 云端拉取结果合并（按 updatedAt 取新，只处理记录与学生资料）
 // 【机构归属】外部数据一律强制打上当前机构：normalize 时 audit 优先用 raw.orgId，
 // 若云端带回来的是别的 orgId，记录会入库却永远读不出来（幽灵数据）。
+// 【演示模式】合并只写真实库：demo 态的落盘本来就是关掉的，这里显式跳过免得白跑。
 function merge(remote) {
-  if (!remote) return false;
+  if (!remote || core.isSandbox()) return false;
   const o = org();
   let changed = false;
   const own = raw => !(raw && raw.orgId && raw.orgId !== o);
@@ -232,5 +311,5 @@ function merge(remote) {
 
 module.exports = {
   init, status, normalizeAll, repairRefs, repairMedia,
-  seedDemo, demoClear, merge
+  buildDemoData, ensureDemo, purgeSeed, resolveMode, demo: demoApi, merge
 };

@@ -263,12 +263,31 @@ console.log('\n【8】全新安装（无任何历史数据）');
     assert.strictEqual(db.classes.list().length, 2);
     assert.strictEqual(db.settings().role, 'owner');
   });
-  ok('演示数据入库 45 学生', () => assert.strictEqual(db.students.list().length, 45));
-  ok('负责人能看到全部记录', () => assert.ok(db.records.list().length > 0));
-  ok('家长演示账号已绑定孩子', () => {
+  ok('真实库是干净的：一条演示数据都不混在里面', () => {
+    assert.strictEqual(db.students.list().length, 0);
+    assert.strictEqual(db.records.list().length, 0);
+    assert.strictEqual(db.settings().sandbox, false, '全新安装默认进真实机构，不是演示样板间');
+  });
+  ok('演示数据是独立的一份：进演示能看到 45 学生 + 记录', () => {
+    assert.strictEqual(db.demo.available(), true, '演示包应随安装生成');
+    db.demo.enter();
+    assert.strictEqual(db.settings().sandbox, true);
+    assert.strictEqual(db.students.list().length, 45);
+    assert.ok(db.records.list().length > 0);
     const p = db.members.list().find(m => m.role === 'parent');
-    assert.ok(p.studentIds.length > 0, '应绑定至少一个孩子');
+    assert.ok(p && p.studentIds.length > 0, '演示家长应绑定一个孩子');
     assert.strictEqual(p.status, 'active');
+    db.demo.exit();
+    assert.strictEqual(db.students.list().length, 0, '退出演示必须回到自己的库');
+    assert.strictEqual(db.settings().sandbox, false);
+  });
+  ok('演示模式只读：写操作被拦在闸门上', () => {
+    db.demo.enter();
+    const r = db.students.create({ name: '张三', clsIds: [1] });
+    assert.strictEqual(r.ok, false);
+    assert.ok(r.msg.indexOf('演示') > -1, '应提示这是演示数据，实际：' + r.msg);
+    assert.strictEqual(db.students.list().length, demo.DEMO_STUDENTS.length, '拦下来才不会有条"临时学生"');
+    db.demo.exit();
   });
 }
 

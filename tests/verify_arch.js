@@ -168,9 +168,9 @@ global.wx = {
 const db = require('../utils/db');
 
 ok('顶层导出与关键分组齐全', () => {
-  ['init', 'status', 'settings', 'today', 'canSend', 'merge', 'me', 'isParent', 'demoClear', 'org', 'nextId']
+  ['init', 'status', 'settings', 'today', 'canSend', 'merge', 'me', 'isParent', 'org', 'nextId']
     .forEach(k => assert.strictEqual(typeof db[k], 'function', '缺少 db.' + k));
-  ['auth', 'orgs', 'members', 'terms', 'enrollments', 'classes', 'courses', 'students', 'records', 'users', 'templates']
+  ['auth', 'orgs', 'members', 'terms', 'enrollments', 'classes', 'courses', 'students', 'records', 'users', 'templates', 'demo']
     .forEach(k => assert.ok(db[k] && typeof db[k] === 'object', '缺少分组 db.' + k));
   assert.ok(db.TAGS && db.TYPES, '缺少常量 TAGS / TYPES');
 });
@@ -188,6 +188,7 @@ ok('各分组的方法都在且可调用（拆文件时漏搬会在这里暴露�
     students: ['list', 'of', 'get', 'search', 'name', 'create', 'update', 'updateProfile', 'remove'],
     records: ['list', 'ofStudent', 'ofClass', 'get', 'latest', 'save', 'markSent', 'remove'],
     users: ['list', 'get', 'name', 'current', 'switchTo', 'switchHome', 'create', 'update', 'remove'],
+    demo: ['active', 'available', 'enter', 'exit', 'reset'],
     templates: ['list', 'get', 'create', 'update', 'remove', 'addOption', 'updateOption', 'removeOption', 'replaceAll']
   };
   const missing = [];

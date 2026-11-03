@@ -210,6 +210,8 @@ page {
   display: flex; align-items: center; justify-content: center; flex: none;
   box-shadow: 0 6rpx 14rpx var(--brand-shadow-soft);
 }
+/* ---------- 页脚标语：全局统一居中 ---------- */
+.slogan { text-align: center; color: var(--faint); font-size: 24rpx; margin: 40rpx 0 20rpx; }
 .pill { font-size: 22rpx; padding: 6rpx 18rpx; border-radius: 999rpx; color: #fff; }
 /* ---------- 统一说明条：淡黄底 + 浅边框，全 App 解释/说明类文字统一用 ---------- */
 /* 只定盒子样式不带外边距：卡内、页级、弹层里各自配合并类控制间距 */

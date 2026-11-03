@@ -36,7 +36,6 @@
 .applybtn { margin: 24rpx 24rpx 0; }
 .applybtn.ghost { margin-top: 16rpx; }
 .hint3 { margin: 14rpx 30rpx 0; font-size: 23rpx; color: var(--muted); line-height: 1.6; }
-.slogan { margin-top: 26rpx; text-align: center; font-size: 24rpx; color: var(--faint); }
 
 /* ---------- 成功态 ---------- */
 .donecard { text-align: center; padding-top: 40rpx; padding-bottom: 34rpx; }

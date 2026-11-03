@@ -26,11 +26,8 @@
 .pill-archived { color: var(--muted); background: var(--chip); }
 .pill-mi { color: var(--sub); background: var(--chip); }
 
-.hint { font-size: 24rpx; color: var(--muted); line-height: 1.6; margin: 0 24rpx 20rpx; }
+.hint { font-size: 24rpx; color: var(--muted); line-height: 1.6; margin: 20rpx 24rpx 20rpx; }
 .hint2 { font-size: 25rpx; color: var(--sub); line-height: 1.8; }
-.sechead { display: flex; align-items: center; justify-content: space-between; margin: 0 24rpx 16rpx; }
-.sectitle { font-size: 34rpx; font-weight: 700; color: var(--text); }
-.seclink { font-size: 26rpx; color: var(--brand); font-weight: 600; }
 
 /* 表单 */
 .lbl { font-size: 25rpx; color: var(--sub); margin: 22rpx 0 10rpx; }

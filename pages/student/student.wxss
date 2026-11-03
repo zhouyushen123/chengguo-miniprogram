@@ -123,7 +123,6 @@
 .hcam { display: flex; align-items: center; gap: 6rpx; font-size: 22rpx; color: var(--muted); }
 .camico { width: 28rpx; height: 28rpx; }
 
-.slogan { text-align: center; color: var(--faint); font-size: 24rpx; margin: 40rpx 0 20rpx; }
 /* 底部主按钮：与卡片左右边距对齐（卡片是 margin 0 24rpx，按钮是裸 .btn 需自己补） */
 .cta { margin: 0 24rpx; }
 .st-h { color: var(--brand); background: var(--brand-soft); }

@@ -88,7 +88,7 @@
 
     <view class="btn applybtn" hover-class="btn-hover" bindtap="submit">{{isEdit ? '保存机构信息' : '提交入驻申请'}}</view>
     <view wx:if="{{isEdit && !canManage}}" class="hint3 note">当前身份没有机构管理权限，提交后只生成申请单，由负责人开通</view>
-    <view class="slogan">橙果 · 让每节课都有回音</view>
+    <view class="slogan">橙果 · 让每一次进步都被看见</view>
   </view>
 
   <!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->

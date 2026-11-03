@@ -56,7 +56,6 @@
   transform: rotate(45deg);
 }
 
-.slogan { text-align: center; color: var(--faint); font-size: 24rpx; margin-top: 56rpx; }
 
 /* ---------- 身份预览条（与管理页一致） ---------- */
 .idbar {

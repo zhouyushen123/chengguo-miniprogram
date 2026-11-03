@@ -2,9 +2,6 @@
 
 <!-- ============ 学期列表 ============ -->
 <view wx:if="{{mode === 'list'}}" class="listwrap">
-  <view class="sechead">
-    <view class="sectitle">学期管理</view>
-  </view>
   <view class="hint note">学期 = 开班的时间段。名称随意（春季班 / 暑假班 / 第 N 期都行），排序按日期算。学期结束时用「结束本学期」把班级归档或结转到下期。</view>
 
   <view wx:for="{{terms}}" wx:key="id" class="card">
@@ -17,7 +14,7 @@
     </view>
   </view>
 
-  <view class="slogan">橙果 · 让每节课都有回音</view>
+  <view class="slogan">橙果 · 让每一次进步都被看见</view>
 </view>
 
 <!-- 新建学期：固定钉在页面底部，点开弹层填表单 -->

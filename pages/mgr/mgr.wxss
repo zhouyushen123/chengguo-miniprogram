@@ -26,9 +26,15 @@
 .sheet {
   width: 100%; background: #fff; border-radius: 32rpx 32rpx 0 0;
   padding: 36rpx 32rpx calc(36rpx + env(safe-area-inset-bottom));
-  max-height: 82vh; overflow-y: scroll; -webkit-overflow-scrolling: touch; box-sizing: border-box;
+  max-height: 88vh; overflow-y: scroll; -webkit-overflow-scrolling: touch; box-sizing: border-box;
 }
-.sheet-t { text-align: center; font-size: 34rpx; font-weight: 700; margin-bottom: 28rpx; }
+/* 标题吸顶：弹窗内容超高可滚时，标题钉在顶部不跟着滚走，
+   负外边距把吸顶背景顶到弹窗最上沿，盖住滚动到标题下方的内容 */
+.sheet-t {
+  position: sticky; top: 0; z-index: 5; background: #fff;
+  margin: -36rpx -32rpx 0; padding: 36rpx 32rpx 24rpx;
+  text-align: center; font-size: 34rpx; font-weight: 700;
+}
 .row2 { display: flex; gap: 20rpx; margin-top: 28rpx; }
 .row2 .btn { flex: 1; }
 /* 卡片内的按钮行：上方只留卡片自身的 28rpx 内边距（此前 28+28 双倍叠间距） */

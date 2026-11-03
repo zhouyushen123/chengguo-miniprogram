@@ -14,7 +14,7 @@
   <view class="card clsitem" wx:for="{{classes}}" wx:key="id">
     <view class="clsrow">
       <view class="clshd" bindtap="onClsTap" data-id="{{item.id}}">
-        <view class="itrow"><view class="ava">{{item.name[0]}}</view>
+        <view class="itrow"><view class="clsbar"></view>
           <view><b>{{item.name}}</b>
           <view class="mi">{{item.termName || '未挂学期'}} · {{item.modeLabel}}<text wx:if="{{item.teacherLabel}}"> · 主讲 {{item.teacherLabel}}</text> · {{item.stuN}} 人</view></view>
         </view>
@@ -29,7 +29,8 @@
         <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="clsStuQ" />
       </view>
       <view class="clsmem" wx:for="{{clsStus}}" wx:for-item="s" wx:key="id" bindtap="goStudentPage" data-id="{{s.id}}">
-        <view class="ava">{{s.name[0]}}</view>
+        <image wx:if="{{s.photo}}" class="stuava" src="{{s.photo}}" mode="aspectFill" />
+        <view wx:else class="stuava stub">{{s.name[0]}}</view>
         <view class="memname">{{s.name}}</view>
         <view class="mi" style="flex:1;text-align:right">{{s.parent ? '家长 '+s.parent : '未填家长'}}</view>
         <image class="memchev" src="{{icoChev}}" mode="aspectFit" />
@@ -88,7 +89,9 @@
   </view>
   <view class="card item" wx:for="{{students}}" wx:key="id">
     <view bindtap="goStudentPage" data-id="{{item.id}}">
-      <view class="itrow"><view class="ava">{{item.name[0]}}</view>
+      <view class="itrow">
+        <image wx:if="{{item.photo}}" class="stuava" src="{{item.photo}}" mode="aspectFill" />
+        <view wx:else class="stuava stub">{{item.name[0]}}</view>
         <view><b>{{item.name}}</b><text wx:if="{{item.gender}}" class="gtag">{{item.gender}}</text>
         <view class="mi">{{item.cls}}{{item.year?' · '+item.year+' 年入学':''}}{{item.parent?' · 家长 '+item.parent:''}}{{item.wechat?' · 微信 '+item.wechat:''}}</view></view>
       </view>

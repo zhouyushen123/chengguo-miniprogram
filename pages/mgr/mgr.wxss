@@ -16,6 +16,11 @@
 .del { color: var(--danger); font-size: 25rpx; padding: 10rpx 0 10rpx 24rpx; flex: none; }
 .act { color: var(--brand); font-size: 25rpx; font-weight: 600; padding: 10rpx 0 10rpx 24rpx; }
 .itrow { display: flex; align-items: center; gap: 20rpx; }
+/* 班级条目标识：大圆形色块改为窄圆角竖杠，弱化装饰、突出名称 */
+.clsbar { width: 8rpx; height: 52rpx; border-radius: 6rpx; background: linear-gradient(180deg, var(--brand-a), var(--brand-b)); flex: none; }
+/* 学生头像缩略图：小尺寸圆角方块；无照片时浅底首字占位（不再是实色色块） */
+.stuava { width: 64rpx; height: 64rpx; border-radius: 18rpx; flex: none; }
+.stuava.stub { background: var(--brand-soft); color: var(--brand); font-size: 26rpx; font-weight: 600; display: flex; align-items: center; justify-content: center; }
 .itrow .ava { width: 76rpx; height: 76rpx; font-size: 30rpx; }
 /* ---------- 底部弹层 ---------- */
 .mask {
@@ -90,7 +95,6 @@
 }
 .clsmem { display: flex; align-items: center; gap: 16rpx; padding: 14rpx 4rpx; border-bottom: 2rpx solid var(--line); }
 .clsmem:last-child { border-bottom: none; }
-.clsmem .ava { width: 56rpx; height: 56rpx; font-size: 24rpx; border-radius: 18rpx; }
 .memname { font-size: 27rpx; font-weight: 600; }
 .memchev { width: 28rpx; height: 28rpx; flex: none; }
 .clsexp-add {

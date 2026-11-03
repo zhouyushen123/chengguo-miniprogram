@@ -22,7 +22,8 @@
 //   ctx.js          底座：now / org / oc / actor / deny（不依赖任何领域，杜绝 require 循环）
 //   org.js          机构
 //   identity.js     成员 + 账号（user 与 member 是一体两面，合在一起才不会有环）
-//   terms.js        学期与结转向导
+//   terms.js        学期与结转（数据准备）
+//   settle.js       结转向导的落地动作（跨领域事务）
 //   classes.js      班级            courses.js    课程
 //   students.js     学生            enrollments.js 报名（课时账本）
 //   records.js      课堂记录        templates.js  评价模板
@@ -42,6 +43,7 @@ const courses = require('./courses');
 const students = require('./students');
 const enrollments = require('./enrollments');
 const records = require('./records');
+const settle = require('./settle');
 const templates = require('./templates');
 const maintenance = require('./maintenance');
 
@@ -55,8 +57,11 @@ const db = {
   init: maintenance.init,
   status: maintenance.status,
   raw: core.data,
+  real: core.realData,          // 真实库（与演示模式无关，设备级维护用）
   coll: core.coll,
   flush: core.flushAll,
+  health: core.health,          // 存储健康度：用量、上次落盘失败
+  mediaRefs: maintenance.mediaRefs,   // 库里引用着的媒体路径（清理垃圾文件用）
   settings: identity.settings, setTeacher: identity.setTeacher,
   today, canSend: records.canSend, merge: maintenance.merge,
   me: identity.me, isParent: identity.isParent,
@@ -105,7 +110,8 @@ const db = {
   terms: {
     list: terms.termList, get: terms.termGet, activeList: terms.termActiveList,
     create: terms.termCreate, update: terms.termUpdate, archive: terms.termArchive,
-    planSettle: terms.planSettle
+    // 结转向导：planSettle 取数据、settle 落地（后者是一个事务，失败整体回滚）
+    planSettle: terms.planSettle, settle: settle.settle
   },
   enrollments: {
     list: enrollments.enrollmentList, get: enrollments.enrollmentGet,

@@ -1,6 +1,6 @@
 // utils/db/templates.js —— 评价模板（机构统一话术）
 // 依赖：ctx（底座）。模板是独立聚合，不依赖任何其他领域模块。
-const { now, org, oc, deny } = require('./ctx');
+const { now, org, oc, deny, pushSaved, applyEdit } = require('./ctx');
 const core = require('./core');
 const schema = require('./schema');
 
@@ -21,8 +21,7 @@ function tplCreate(data) {
   const ev = schema.validate('template', e);
   if (ev) return { ok: false, msg: ev };
   e.id = core.nextId();
-  core.coll('templates').push(e);
-  core.persist('templates');
+  if (!pushSaved('templates', e)) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true, item: e };
 }
 function tplUpdate(id, patch) {
@@ -34,8 +33,7 @@ function tplUpdate(id, patch) {
   const ev = schema.validate('template', next);
   if (ev) return { ok: false, msg: ev };
   next.id = t.id; next.updatedAt = now();
-  Object.assign(t, next);
-  core.persist('templates');
+  if (!applyEdit('templates', t, next)) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true, item: t };
 }
 function tplRemove(id) {
@@ -43,8 +41,7 @@ function tplRemove(id) {
   if (err) return { ok: false, msg: err };
   const t = tplGet(id);
   if (!t) return { ok: false, msg: '模板不存在' };
-  t.removed = true; t.updatedAt = now();
-  core.persist('templates');
+  if (!applyEdit('templates', t, { removed: true, updatedAt: now() })) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true };
 }
 function tplAddOption(id, text) {
@@ -55,8 +52,8 @@ function tplAddOption(id, text) {
   if (!t) return { ok: false, msg: '模板不存在' };
   if (!v) return { ok: false, msg: '内容不能为空' };
   if (t.options.indexOf(v) > -1) return { ok: false, msg: '已有相同选项' };
-  t.options.push(v); t.updatedAt = now();
-  core.persist('templates');
+  const opts = t.options.concat([v]);
+  if (!applyEdit('templates', t, { options: opts, updatedAt: now() })) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true, item: t, index: t.options.length - 1 };
 }
 function tplUpdateOption(id, index, text) {
@@ -67,8 +64,8 @@ function tplUpdateOption(id, index, text) {
   if (!t) return { ok: false, msg: '模板不存在' };
   if (!v) return { ok: false, msg: '内容不能为空' };
   if (index < 0 || index >= t.options.length) return { ok: false, msg: '选项不存在' };
-  t.options[index] = v; t.updatedAt = now();
-  core.persist('templates');
+  const opts = t.options.slice(); opts[index] = v;
+  if (!applyEdit('templates', t, { options: opts, updatedAt: now() })) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true, item: t };
 }
 function tplRemoveOption(id, index) {
@@ -77,8 +74,8 @@ function tplRemoveOption(id, index) {
   const t = tplGet(id);
   if (!t) return { ok: false, msg: '模板不存在' };
   if (index < 0 || index >= t.options.length) return { ok: false, msg: '选项不存在' };
-  t.options.splice(index, 1); t.updatedAt = now();
-  core.persist('templates');
+  const opts = t.options.slice(); opts.splice(index, 1);
+  if (!applyEdit('templates', t, { options: opts, updatedAt: now() })) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true };
 }
 // 整表覆盖（兼容旧接口 saveTpls 用）
@@ -93,7 +90,7 @@ function tplReplaceAll(list) {
     if (!e.id) e.id = core.nextId();
     return e;
   });
-  core.setColl('templates', next);
+  if (!core.setColl('templates', next)) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true };
 }
 

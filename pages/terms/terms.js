@@ -169,51 +169,27 @@ Page({
   wzGenerate() {
     const chk = this.wzReady();
     if (!chk.ok) { wx.showToast({ title: chk.issues[0], icon: 'none' }); return; }
+    if (this._settling) return;
+    this._settling = true;
     const wz = this.data.wz;
-    let reN = 0, churnN = 0, clsN = 0;
-    const carry = chk.carry;
-
-    if (carry.length) {
-      // 新学期：已有同名进行中学期就直接用，否则创建
-      let nt = db.terms.list().find(t => t.name === wz.newTerm.name.trim() && t.status !== 'archived');
-      if (!nt) {
-        const r = db.terms.create({ name: wz.newTerm.name.trim(), startDate: wz.newTerm.startDate });
-        if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
-        nt = r.item;
-      }
-      carry.forEach(c => {
-        const rc = db.classes.create({ name: c.name, termId: nt.id, mode: 'carry', teacherId: c.teacherId });
-        if (!rc.ok) return;
-        clsN++;
-        const newId = rc.item.id;
-        // 复制勾选的课程到新班
-        c.courses.filter(x => x.sel).forEach(x => { db.courses.create({ name: x.name, clsId: newId }); });
-        c.students.forEach(s => {
-          if (s.act === 're') {
-            // 续报：加入新班 + 剩余课时带入 + 溯源旧报名
-            const stu = db.students.get(s.sid);
-            if (stu && stu.clsIds.indexOf(newId) < 0) {
-              db.students.update(s.sid, { clsIds: stu.clsIds.concat([newId]) });
-            }
-            const er = db.enrollments.create({
-              studentId: s.sid, clsId: newId,
-              totalHours: s.remain, usedHours: 0, carriedFrom: s.enId || 0
-            });
-            if (er.ok) reN++;
-            if (s.enId) db.enrollments.update(s.enId, { status: 'carried' });
-          } else {
-            churnN++;
-            if (s.enId) db.enrollments.update(s.enId, { status: 'churned' });
-          }
-        });
-      });
-    }
-    // 旧学期归档（只读）
-    db.terms.archive(wz.termId);
+    // 落库动作整体交给数据层的 settle()：它把这些写操作包在一个事务里，
+    // 中途任何一步失败都整体回滚，旧学期保持原状，老师可以直接重来一次。
+    // 以前这里是页面顺序调十几个 db 方法，失败就留下"新班建了一半、旧学期已归档"的现场。
+    const res = db.terms.settle({
+      termId: wz.termId,
+      newTerm: wz.newTerm,
+      // chk.carry 已经筛过，这里把 decision 一并带上：settle 会再按它分一次
+      classes: chk.carry.map(c => ({
+        name: c.name, teacherId: c.teacherId, decision: c.decision,
+        courses: c.courses, students: c.students
+      }))
+    });
+    this._settling = false;
+    if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
     this.setData({ mode: 'list', wz: null });
     this.refresh();
-    const msg = clsN
-      ? '已完成：延续 ' + clsN + ' 个班，续报 ' + reN + ' 人，流失 ' + churnN + ' 人'
+    const msg = res.clsN
+      ? '已完成：延续 ' + res.clsN + ' 个班，续报 ' + res.reN + ' 人，流失 ' + res.churnN + ' 人'
       : '学期已归档';
     wx.showModal({ title: '结转完成', content: msg, showCancel: false, confirmText: '好的' });
   },

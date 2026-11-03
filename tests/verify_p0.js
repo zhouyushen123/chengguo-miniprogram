@@ -76,9 +76,13 @@ console.log('\n【CR-001 媒体持久化】');
     const once = media.persist('http://tmp/abc.jpg', 'photo');
     assert.strictEqual(media.persist(once, 'photo'), once);
   });
-  ok('源文件不存在时返回原路径，不抛错也不丢引用', () => {
+  ok('源文件不存在时返回空串（不保存注定裂图的引用）', () => {
+    // 旧行为是"保留临时路径，宁可留个可能失效的引用"。但临时路径退出即被系统清理，
+    // 等于存了一张注定裂掉的图，而用户以为存上了——现在改为不保存并计数，由页面提示。
+    const before = media.lostCount();
     const r = media.persist('http://tmp/gone.jpg', 'photo');
-    assert.strictEqual(r, 'http://tmp/gone.jpg');
+    assert.strictEqual(r, '');
+    assert.strictEqual(media.lostCount(), before + 1, '应计入"没能保存"的数量，供页面提示');
   });
   ok('视频按视频扩展名存', () => {
     const dest = media.persist('http://tmp/clip.mp4', 'video');

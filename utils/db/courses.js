@@ -1,6 +1,6 @@
 // utils/db/courses.js —— 课程（挂在班级下）
 // 依赖：ctx（底座）。课程不反向依赖班级模块：可见性判断统一走 perms.canSeeClass。
-const { now, org, oc, actor, deny } = require('./ctx');
+const { now, org, oc, actor, deny, pushSaved, applyEdit } = require('./ctx');
 const core = require('./core');
 const schema = require('./schema');
 const perms = require('./permissions');
@@ -30,8 +30,7 @@ function courseCreate(data) {
   const ev = schema.validate('course', e);
   if (ev) return { ok: false, msg: ev };
   e.id = core.nextId();
-  core.coll('courses').push(e);
-  core.persist('courses');
+  if (!pushSaved('courses', e)) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true, item: e };
 }
 function courseUpdate(id, patch) {
@@ -43,8 +42,7 @@ function courseUpdate(id, patch) {
   const ev = schema.validate('course', next);
   if (ev) return { ok: false, msg: ev };
   next.id = c.id; next.updatedAt = now();
-  Object.assign(c, next);
-  core.persist('courses');
+  if (!applyEdit('courses', c, next)) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true, item: c };
 }
 function courseRemove(id) {
@@ -52,8 +50,7 @@ function courseRemove(id) {
   if (!c) return { ok: false, msg: '课程不存在或无权操作' };
   const err = deny('course.write', { clsId: c.clsId });
   if (err) return { ok: false, msg: err };
-  c.removed = true; c.updatedAt = now();
-  core.persist('courses');
+  if (!applyEdit('courses', c, { removed: true, updatedAt: now() })) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true };
 }
 

@@ -1,0 +1,44 @@
+/* 存储空间：一张卡讲一件事（结构化数据 / 媒体），数字要能一眼读出"还要不要管" */
+.wrap { padding-bottom: 40rpx; }
+
+/* ---------- 用量条：细、短、不抢戏，只用来表达"离满还有多远" ---------- */
+.meter {
+  height: 12rpx; margin: 6rpx 0 20rpx;
+  background: var(--chip); border-radius: 999rpx; overflow: hidden;
+}
+.meter-bar {
+  height: 100%; border-radius: 999rpx;
+  background: linear-gradient(90deg, var(--brand), var(--brand-2, var(--brand)));
+  transition: width .3s;
+}
+
+/* ---------- 数据行 ---------- */
+.mrow {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 12rpx 0; border-bottom: 2rpx solid var(--chip);
+}
+.mrow:last-of-type { border-bottom: none; }
+.mk { font-size: 26rpx; color: var(--sub); }
+.mv { font-size: 27rpx; font-weight: 700; color: var(--text); }
+
+/* ---------- 区块标题 + 右侧小字 ---------- */
+.sec { display: flex; align-items: baseline; justify-content: space-between; }
+.sechint { font-size: 23rpx; color: var(--faint); }
+
+.hint { margin-top: 14rpx; font-size: 23rpx; color: var(--muted); line-height: 1.65; }
+
+/* ---------- 清理按钮 ---------- */
+.clean { margin-top: 22rpx; }
+.clean.idle { background: var(--chip); color: var(--muted); box-shadow: none; font-weight: 600; }
+
+/* ---------- 上次保存失败 ---------- */
+.failcard { background: var(--danger-soft, var(--brand-soft)); }
+.ft { font-size: 28rpx; font-weight: 800; color: var(--danger); }
+.fd { margin-top: 8rpx; font-size: 24rpx; color: var(--text-2); line-height: 1.65; }
+
+/* ---------- 底部说明 ---------- */
+.tips { background: var(--chip); }
+.tip {
+  font-size: 24rpx; color: var(--text-2); line-height: 1.7;
+  padding: 6rpx 0;
+}

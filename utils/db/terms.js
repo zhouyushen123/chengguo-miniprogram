@@ -1,6 +1,6 @@
 // utils/db/terms.js —— 学期（开班时间段）与结转向导
 // 依赖：ctx（底座）。不依赖任何其他领域模块。
-const { now, org, oc, deny } = require('./ctx');
+const { now, org, oc, deny, pushSaved, applyEdit } = require('./ctx');
 const core = require('./core');
 const schema = require('./schema');
 
@@ -32,8 +32,7 @@ function termCreate(data) {
   // 默认规则：机构还没有进行中的学期 → 新学期直接进行中；否则先建为未开始
   if (!d.status) e.status = termActiveList().length ? 'upcoming' : 'active';
   e.id = core.nextId();
-  core.coll('terms').push(e);
-  core.persist('terms');
+  if (!pushSaved('terms', e)) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true, item: e };
 }
 function termUpdate(id, patch) {
@@ -49,8 +48,7 @@ function termUpdate(id, patch) {
   const ev = schema.validate('term', next);
   if (ev) return { ok: false, msg: ev };
   next.id = t.id; next.builtIn = t.builtIn; next.updatedAt = now();
-  Object.assign(t, next);
-  core.persist('terms');
+  if (!applyEdit('terms', t, next)) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true, item: t };
 }
 // 归档：只能通过结转向导的完成动作触发（这里提供原子操作）；归档后该学期全部只读
@@ -60,8 +58,7 @@ function termArchive(id) {
   const t = termRaw(id);
   if (!t) return { ok: false, msg: '学期不存在' };
   if (t.builtIn) return { ok: false, msg: '内置长期班不能归档' };
-  t.status = 'archived'; t.updatedAt = now();
-  core.persist('terms');
+  if (!applyEdit('terms', t, { status: 'archived', updatedAt: now() })) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true, item: t };
 }
 // 结转向导的数据准备：该学期每个班级的课程、学生、报名与剩余课时

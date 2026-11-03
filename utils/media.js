@@ -7,7 +7,13 @@
 // 只有用户主动清理小程序存储或卸载时才会消失）。
 //
 // 【容量】小程序本地文件空间上限约 200MB。照片按 1-3MB、视频按 10-50MB 估算，
-// 不做清理的话大约 2-3 个月会满。usage() 给页面做容量提示，清理策略留到上云后（媒体走云存储）。
+// 不做清理的话大约 2-3 个月会满（两条带满视频的记录就能吃掉 150MB）。
+// 「我的 · 存储空间」页用 scan() 找出没有被任何记录引用的文件，用户点一下就能清掉。
+//
+// 【转存失败就给空串，不要留临时路径】以前失败时返回原 tempFilePath，注释写"宁可留个可能失效
+// 的路径"——单张照片的取舍没错，但临时路径退出即被系统清理，等于存了一张注定裂掉的图，
+// 而用户以为存上了。现在失败直接返回空串（调用方过滤掉并提示"有 N 张没能保存"）：
+// 少一张图用户当场就知道，比半年后翻记录发现一片裂图好。
 //
 // 【上云怎么改】只需要替换 provider：setProvider(fn) 注入一个把临时文件上传到云存储、
 // 返回 fileID 的异步函数，其余调用点都不用改。这里默认是本地实现。
@@ -23,6 +29,9 @@ const LIMIT = 200 * 1024 * 1024;
 let seq = 0;
 let provider = null;   // 云端上传实现，签名 (tempPath, kind) => Promise<fileID>
 let readyDir = false;
+let lost = 0;          // 本次运行期间未能转存的文件数（页面保存后提示用户）
+// 2 小时内新建的文件不参与清理：可能是用户在录入页选好、还没保存的照片
+const KEEP_RECENT_MS = 2 * 60 * 60 * 1000;
 
 // kind 只能是这三类，决定子目录与默认扩展名
 const KINDS = { photo: 'jpg', video: 'mp4', audio: 'mp3' };
@@ -63,16 +72,17 @@ function persist(tmpPath, kind) {
   if (!s) return '';
   if (isPersist(s)) return s;
   if (provider) { provider(s, k); return s; }   // 云端模式下由 provider 异步接管，先返回原路径占位
-  if (!ensureDir()) return s;
+  if (!ensureDir()) { lost++; return ''; }
   const dest = DIR + '/' + k + '_' + Date.now() + '_' + (seq++) + '.' + extOf(s, k);
   try {
     fs().copyFileSync(s, dest);
     return dest;
   } catch (e) {
-    // 常见原因是临时文件已被系统清理。用 warn 而非 error：这是可预期的降级路径，
-    // 不是程序错误，调用方拿到原路径继续走。
-    console.warn('[media] 转存失败，保留原路径', k, (e && e.message) || e);
-    return s;
+    // 常见原因是临时文件已被系统清理，或存储空间已满。用 warn 而非 error：这是可预期的
+    // 降级路径，不是程序错误。返回空串由调用方过滤 —— 见文件头「转存失败就给空串」。
+    console.warn('[media] 转存失败，本次不保存该文件', k, (e && e.message) || e);
+    lost++;
+    return '';
   }
 }
 
@@ -109,6 +119,40 @@ function remove(p) {
   try { fs().unlinkSync(s); return true; } catch (e) { return false; }
 }
 
+/* ---------- 容量与清理 ---------- */
+// 扫描媒体目录：refs 是"当前数据引用着的路径"集合（由数据层给出）。
+// 不在 refs 里、且不是最近新建的文件 = 垃圾（换过图、删过记录、保存失败留下的）。
+function scan(refs) {
+  const keep = refs || {};
+  const out = { files: 0, bytes: 0, orphan: [], orphanBytes: 0, recent: 0 };
+  let names = [];
+  try { names = fs().readdirSync(DIR); } catch (e) { return out; }
+  names.forEach(name => {
+    const p = DIR + '/' + name;
+    let st = null;
+    try { st = fs().statSync(p); } catch (e) { return; }
+    const size = (st && st.size) || 0;
+    out.files++; out.bytes += size;
+    if (keep[p]) return;
+    const mtime = (st && st.mtime) ? st.mtime * 1000 : 0;
+    if (mtime && Date.now() - mtime < KEEP_RECENT_MS) { out.recent++; return; }
+    out.orphan.push({ path: p, size });
+    out.orphanBytes += size;
+  });
+  return out;
+}
+
+// 清掉未被引用的文件。返回 { removed, bytes }，页面据此告诉用户释放了多少
+function prune(refs) {
+  const s = scan(refs);
+  let removed = 0, bytes = 0;
+  s.orphan.forEach(f => { if (remove(f.path)) { removed++; bytes += f.size; } });
+  return { removed, bytes };
+}
+
+const lostCount = () => lost;
+const resetLost = () => { lost = 0; };
+
 function setProvider(fn) { provider = typeof fn === 'function' ? fn : null; }
 
 // chooseMedia 统一失败处理：不写 fail 回调时，相册被隐私/权限拦截会表现为「点了没反应」
@@ -136,4 +180,7 @@ function handleChooseFail(err, page) {
   wx.showToast({ title: '选择失败，请重试', icon: 'none' });
 }
 
-module.exports = { ROOT, DIR, LIMIT, isPersist, persist, persistMany, exists, usage, remove, setProvider, extOf, handleChooseFail };
+module.exports = {
+  ROOT, DIR, LIMIT, isPersist, persist, persistMany, exists, usage, remove,
+  scan, prune, lostCount, resetLost, setProvider, extOf, handleChooseFail
+};

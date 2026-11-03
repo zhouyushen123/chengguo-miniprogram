@@ -1,6 +1,6 @@
 // utils/db/classes.js —— 班级
 // 依赖：ctx（底座）、terms（新建班级默认挂当前进行中的学期）。不反向依赖 enrollments/records。
-const { now, org, oc, actor, deny } = require('./ctx');
+const { now, org, oc, actor, deny, pushSaved, applyEdit } = require('./ctx');
 const core = require('./core');
 const schema = require('./schema');
 const perms = require('./permissions');
@@ -36,8 +36,7 @@ function classCreate(data) {
   const ev = schema.validate('class', e);
   if (ev) return { ok: false, msg: ev };
   e.id = core.nextId();
-  core.coll('classes').push(e);
-  core.persist('classes');
+  if (!pushSaved('classes', e)) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true, item: e };
 }
 function classUpdate(id, patch) {
@@ -49,8 +48,7 @@ function classUpdate(id, patch) {
   const ev = schema.validate('class', next);
   if (ev) return { ok: false, msg: ev };
   next.id = c.id; next.updatedAt = now();
-  Object.assign(c, next);
-  core.persist('classes');
+  if (!applyEdit('classes', c, next)) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true, item: c };
 }
 // 删除班级：班级软删，其课程一并软删，学生从该班移除（学生与历史记录保留）
@@ -59,26 +57,29 @@ function classRemove(id) {
   if (err) return { ok: false, msg: err };
   const c = classRaw(id);
   if (!c) return { ok: false, msg: '班级不存在' };
-  const t = now();
-  c.removed = true; c.updatedAt = t;
-  oc('courses').forEach(x => {
-    if (x.clsId === c.id) { x.removed = true; x.updatedAt = t; }
+  return core.tx(() => {
+    const t = now();
+    c.removed = true; c.updatedAt = t;
+    oc('courses').forEach(x => {
+      if (x.clsId === c.id) { x.removed = true; x.updatedAt = t; }
+    });
+    oc('students').forEach(s => {
+      const i = s.clsIds.indexOf(c.id);
+      if (i > -1) { s.clsIds.splice(i, 1); s.updatedAt = t; }
+    });
+    // 成员负责范围里也要摘掉这个班，否则会留下指向已删班级的悬空授权
+    oc('members').forEach(m => {
+      const i = m.clsIds.indexOf(c.id);
+      if (i > -1) { m.clsIds.splice(i, 1); m.updatedAt = t; }
+    });
+    // 该班的报名（课时账）一并软删：班没了账跟着走，学生与记录保留
+    oc('enrollments').forEach(en => {
+      if (en.clsId === c.id) { en.removed = true; en.updatedAt = t; }
+    });
+    core.persist('classes'); core.persist('courses'); core.persist('students');
+    core.persist('members'); core.persist('enrollments');
+    return { ok: true };
   });
-  oc('students').forEach(s => {
-    const i = s.clsIds.indexOf(c.id);
-    if (i > -1) { s.clsIds.splice(i, 1); s.updatedAt = t; }
-  });
-  // 成员负责范围里也要摘掉这个班，否则会留下指向已删班级的悬空授权
-  oc('members').forEach(m => {
-    const i = m.clsIds.indexOf(c.id);
-    if (i > -1) { m.clsIds.splice(i, 1); m.updatedAt = t; }
-  });
-  // 该班的报名（课时账）一并软删：班没了账跟着走，学生与记录保留
-  oc('enrollments').forEach(en => {
-    if (en.clsId === c.id) { en.removed = true; en.updatedAt = t; }
-  });
-  core.persist('classes'); core.persist('courses'); core.persist('students'); core.persist('members'); core.persist('enrollments');
-  return { ok: true };
 }
 
 module.exports = { classList, classRaw, classGet, className, classCreate, classUpdate, classRemove };

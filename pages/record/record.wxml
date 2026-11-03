@@ -71,9 +71,9 @@
     <view class="sec"><view class="label">发送</view></view>
     <view class="row2">
       <view class="btn ghost" hover-class="btn-hover" bindtap="preview">预览效果</view>
-      <view class="btn ghost" hover-class="btn-hover" bindtap="save" data-send="0">存草稿</view>
+      <view class="btn ghost {{saving ? 'busy' : ''}}" hover-class="btn-hover" bindtap="save" data-send="0">{{saving ? '保存中…' : '存草稿'}}</view>
     </view>
-    <view wx:if="{{canSend}}" class="btn" hover-class="btn-hover" bindtap="save" data-send="1">发送给家长</view>
+    <view wx:if="{{canSend}}" class="btn {{saving ? 'busy' : ''}}" hover-class="btn-hover" bindtap="save" data-send="1">{{saving ? '保存中…' : '发送给家长'}}</view>
     <view wx:else class="hint">补齐 照片/语音 与 课堂评价 后，即可发送给家长</view>
   </view>
 </view>

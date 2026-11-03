@@ -148,3 +148,6 @@
 /* 评分等级：固定一行 5 档，等宽居中 */
 .tagchips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12rpx; }
 .tagchips .chip { text-align: center; padding: 14rpx 0; min-width: 0; }
+
+/* 保存中：按钮变淡，视觉上明确"已经收到点击了"，配合 JS 里的同步锁防连点 */
+.btn.busy { opacity: .55; }

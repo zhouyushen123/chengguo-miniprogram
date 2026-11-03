@@ -1,6 +1,6 @@
 // utils/db/org.js —— 机构（当前安装对应的那一家）
 // 依赖：ctx（底座）。不依赖任何其他领域模块。
-const { now, org, oc, deny } = require('./ctx');
+const { now, org, oc, deny, applyEdit } = require('./ctx');
 const core = require('./core');
 const schema = require('./schema');
 
@@ -16,8 +16,7 @@ function orgUpdate(patch) {
   const e = schema.validate('org', next);
   if (e) return { ok: false, msg: e };
   next.id = o.id; next.updatedAt = now();
-  Object.assign(o, next);
-  core.persist('orgs');
+  if (!applyEdit('orgs', o, next)) return { ok: false, msg: core.SAVE_FAIL };
   core.updateMeta({ orgName: o.name });
   return { ok: true, item: o };
 }

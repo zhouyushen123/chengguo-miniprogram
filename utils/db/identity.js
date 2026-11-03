@@ -3,7 +3,7 @@
 // user 是跨机构的账号本身，member 是这个账号在本机构的角色/数据范围，两者本质是一体两面，
 // 且互相引用（建成员要查账号、改账号要落到成员），所以放在同一个模块里，避免 require 互相循环。
 // 依赖：ctx（底座）、org（机构名）、classes（成员视图里的班级名）、students（成员视图里的孩子名）。
-const { now, org, oc, actor, deny, memberCurrent } = require('./ctx');
+const { now, org, oc, actor, deny, memberCurrent, pushSaved, applyEdit } = require('./ctx');
 const core = require('./core');
 const schema = require('./schema');
 const perms = require('./permissions');
@@ -46,36 +46,38 @@ function memberCreate(data) {
   if (d.role === 'owner' && oc('members').some(m => m.role === 'owner')) {
     return { ok: false, msg: '该机构已有负责人，请用「移交负责人」转移' };
   }
-  // 有 id 视为给已存在的人员补一条成员关系，没有则先建人
-  let userId = schema.str(d.userId).trim();
-  if (!userId) {
-    const u = schema.normalizeUser({ id: 'u' + now(), name: d.name, role: d.role }, org(), now());
-    const eu = schema.validate('user', u);
-    if (eu) return { ok: false, msg: eu };
-    core.coll('users').push(u);
-    core.persist('users');
-    userId = u.id;
-  } else {
-    const exist = userGet(userId);
-    if (!exist) return { ok: false, msg: '人员不存在' };
-    if (exist.name !== schema.str(d.name).trim() && d.name) {
-      exist.name = schema.str(d.name).trim(); exist.updatedAt = now();
-      core.persist('users');
+  // 建人 + 建成员关系是同一件事：用事务包起来，避免"人建好了、成员关系没建成"的孤儿账号
+  return core.tx(() => {
+    // 有 id 视为给已存在的人员补一条成员关系，没有则先建人
+    let userId = schema.str(d.userId).trim();
+    if (!userId) {
+      const u = schema.normalizeUser({ id: 'u' + now(), name: d.name, role: d.role }, org(), now());
+      const eu = schema.validate('user', u);
+      if (eu) return { ok: false, msg: eu };
+      if (!pushSaved('users', u)) return { ok: false, msg: core.SAVE_FAIL };
+      userId = u.id;
+    } else {
+      const exist = userGet(userId);
+      if (!exist) return { ok: false, msg: '人员不存在' };
+      if (exist.name !== schema.str(d.name).trim() && d.name) {
+        if (!applyEdit('users', exist, { name: schema.str(d.name).trim(), updatedAt: now() })) {
+          return { ok: false, msg: core.SAVE_FAIL };
+        }
+      }
+      if (memberOfUser(userId)) return { ok: false, msg: '该人员已在本机构中' };
     }
-    if (memberOfUser(userId)) return { ok: false, msg: '该人员已在本机构中' };
-  }
 
-  const e = schema.normalizeMember({
-    id: core.nextId(), orgId: org(), userId,
-    role: d.role, name: d.name,
-    clsIds: d.clsIds, courseIds: d.courseIds, studentIds: d.studentIds,
-    status: d.status
-  }, org(), now());
-  const ev = schema.validate('member', e);
-  if (ev) return { ok: false, msg: ev };
-  core.coll('members').push(e);
-  core.persist('members');
-  return { ok: true, item: memberView(e), raw: e };
+    const e = schema.normalizeMember({
+      id: core.nextId(), orgId: org(), userId,
+      role: d.role, name: d.name,
+      clsIds: d.clsIds, courseIds: d.courseIds, studentIds: d.studentIds,
+      status: d.status
+    }, org(), now());
+    const ev = schema.validate('member', e);
+    if (ev) return { ok: false, msg: ev };
+    if (!pushSaved('members', e)) return { ok: false, msg: core.SAVE_FAIL };
+    return { ok: true, item: memberView(e), raw: e };
+  });
 }
 
 function memberUpdate(id, patch) {
@@ -90,13 +92,17 @@ function memberUpdate(id, patch) {
   const ev = schema.validate('member', next);
   if (ev) return { ok: false, msg: ev };
   next.id = m.id; next.updatedAt = now();
-  Object.assign(m, next);
-  if (p.name) {
-    const u = userGet(m.userId);
-    if (u) { u.name = p.name; u.updatedAt = now(); core.persist('users'); }
-  }
-  core.persist('members');
-  return { ok: true, item: memberView(m) };
+  // 改成员往往连带改账号姓名，两张表要么一起成、要么一起回滚
+  return core.tx(() => {
+    if (!applyEdit('members', m, next)) return { ok: false, msg: core.SAVE_FAIL };
+    if (p.name) {
+      const u = userGet(m.userId);
+      if (u && !applyEdit('users', u, { name: p.name, updatedAt: now() })) {
+        return { ok: false, msg: core.SAVE_FAIL };
+      }
+    }
+    return { ok: true, item: memberView(m) };
+  });
 }
 
 function memberRemove(id) {
@@ -105,8 +111,7 @@ function memberRemove(id) {
   const m = memberGet(id);
   if (!m) return { ok: false, msg: '成员不存在' };
   if (m.role === 'owner') return { ok: false, msg: '不能移除机构负责人' };
-  m.removed = true; m.updatedAt = now();
-  core.persist('members');
+  if (!applyEdit('members', m, { removed: true, updatedAt: now() })) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true };
 }
 
@@ -203,10 +208,12 @@ function setTeacher(name) {
   if (a && a.memberId) {
     const m = memberGet(a.memberId);
     if (m) {
-      m.name = v; m.updatedAt = now();
-      const u = userGet(m.userId);
-      if (u) { u.name = v; u.updatedAt = now(); core.persist('users'); }
-      core.persist('members');
+      core.tx(() => {
+        if (!applyEdit('members', m, { name: v, updatedAt: now() })) return { ok: false, msg: core.SAVE_FAIL };
+        const u = userGet(m.userId);
+        if (u && !applyEdit('users', u, { name: v, updatedAt: now() })) return { ok: false, msg: core.SAVE_FAIL };
+        return { ok: true };
+      });
     }
   }
   core.updateMeta({ teacher: v });

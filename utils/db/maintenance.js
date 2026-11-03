@@ -147,6 +147,23 @@ function repairMedia() {
   return n > 0;
 }
 
+// 真实库引用着的媒体文件集合（跨机构、含已软删的记录）。
+// 「存储空间」页拿它和磁盘目录比对，差集就是可以清理的垃圾文件。
+// 已删除的记录也算"引用"：宁可留着，也不要因为一条被误删的记录把照片真删了——
+// 用户的照片删掉就找不回来了，多占几百 KB 是可以接受的代价。
+function mediaRefs() {
+  const st = core.realData();
+  const out = {};
+  const add = v => { const s = schema.str(v); if (s) out[s] = 1; };
+  (st.students || []).forEach(s => add(s.photo));
+  (st.records || []).forEach(r => {
+    (r.photos || []).forEach(add);
+    (r.videos || []).forEach(add);
+    add(r.audio);
+  });
+  return out;
+}
+
 /* =====================================================================
  * 演示数据
  *
@@ -310,6 +327,7 @@ function merge(remote) {
 }
 
 module.exports = {
+  mediaRefs,
   init, status, normalizeAll, repairRefs, repairMedia,
   buildDemoData, ensureDemo, purgeSeed, resolveMode, demo: demoApi, merge
 };

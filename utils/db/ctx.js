@@ -52,4 +52,34 @@ function memberCurrentOfRole(role) {
   return oc('members').find(m => m.role === role) || null;
 }
 
-module.exports = { now, org, oc, memberCurrent, actor, deny, memberCurrentOfRole };
+/* =====================================================================
+ * 写后落盘的两个小工具
+ * ---------------------------------------------------------------------
+ * 【为什么必须检查 persist 的返回值】本地存储会失败（单 key 超 1MB、总量超 10MB）。
+ * 失败时内存里已经改好了，如果不撤回，界面会显示这条数据、用户以为存好了，
+ * 重启后它凭空消失——比当场报错难查得多。所以：写内存 → 立刻落盘 → 失败就还原。
+ * ===================================================================*/
+
+// 新增一条：push + 落盘，失败自动撤回。返回 false 时调用方返回 core.SAVE_FAIL
+function pushSaved(name, item) {
+  const arr = core.coll(name);
+  arr.push(item);
+  if (core.persist(name)) return true;
+  const i = arr.indexOf(item);
+  if (i > -1) arr.splice(i, 1);
+  return false;
+}
+
+// 更新一条：把 next 合并进 obj + 落盘，失败用改动前的浅拷贝还原。
+// 注意 next 里的数组/对象必须是新构造的（normalize* 已经保证），否则还原不回来。
+function applyEdit(name, obj, next) {
+  const backup = Object.assign({}, obj);
+  Object.assign(obj, next);
+  if (core.persist(name)) return true;
+  Object.assign(obj, backup);
+  return false;
+}
+
+module.exports = {
+  now, org, oc, memberCurrent, actor, deny, memberCurrentOfRole, pushSaved, applyEdit
+};

@@ -1,7 +1,7 @@
 // utils/db/records.js —— 课堂记录
 // 依赖：ctx（底座）、students（学生引用与范围校验）、enrollments（结转班消课）。
 // 依赖方向：students/enrollments → records（单向），本模块位于领域依赖链顶端。
-const { now, org, oc, actor, deny } = require('./ctx');
+const { now, org, oc, actor, deny, pushSaved, applyEdit } = require('./ctx');
 const core = require('./core');
 const schema = require('./schema');
 const perms = require('./permissions');
@@ -102,10 +102,8 @@ function recordSave(pick, send) {
     const ev = schema.validate('record', next);
     if (ev) return { ok: false, msg: ev };
     next.id = r.id; next.tid = r.tid || core.meta().me || ''; next.updatedAt = now();
-    const backup = Object.assign({}, r);
-    Object.assign(r, next);
     // 落盘失败 → 把内存改回去，不能让界面显示"已保存"而磁盘上没有
-    if (!core.persist('records')) { Object.assign(r, backup); return { ok: false, msg: core.SAVE_FAIL }; }
+    if (!applyEdit('records', r, next)) return { ok: false, msg: core.SAVE_FAIL };
     return { ok: true, rid: r.id, record: r };
   }
 
@@ -117,13 +115,7 @@ function recordSave(pick, send) {
   if (ev) return { ok: false, msg: ev };
   e.id = core.nextId();
   e.createdAt = now(); e.updatedAt = now();
-  const arr = core.coll('records');
-  arr.push(e);
-  if (!core.persist('records')) {
-    const i = arr.indexOf(e);
-    if (i > -1) arr.splice(i, 1);
-    return { ok: false, msg: core.SAVE_FAIL };
-  }
+  if (!pushSaved('records', e)) return { ok: false, msg: core.SAVE_FAIL };
   // 结转制班级：每录一节 = 消 1 课时（编辑不重复消课）
   const hr = enrollments.consumeHours(e);
   if (hr && hr.ok === false) return { ok: true, rid: e.id, record: e, warn: hr.msg };
@@ -152,12 +144,7 @@ function recordRemove(id) {
   if (!r) return { ok: false, msg: '记录不存在' };
   const err = deny('record.delete', { record: r });
   if (err) return { ok: false, msg: err };
-  const prev = { removed: r.removed, updatedAt: r.updatedAt };
-  r.removed = true; r.updatedAt = now();
-  if (!core.persist('records')) {
-    r.removed = prev.removed; r.updatedAt = prev.updatedAt;
-    return { ok: false, msg: core.SAVE_FAIL };
-  }
+  if (!applyEdit('records', r, { removed: true, updatedAt: now() })) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true };
 }
 

@@ -5,7 +5,7 @@
 // 【读也过滤】课时数字直接推给家长端（"还剩 N 节课"），所以列表与单条查询都要按身份过滤：
 // 家长只见自己孩子、老师只见自己带的班。内部校验（重复报名、消课找账）走不过滤的 raw 版本，
 // 否则"看不到 → 以为不存在 → 又建一条"会造出重复账。
-const { now, org, oc, actor, deny } = require('./ctx');
+const { now, org, oc, actor, deny, pushSaved, applyEdit } = require('./ctx');
 const core = require('./core');
 const schema = require('./schema');
 const perms = require('./permissions');
@@ -65,13 +65,7 @@ function enrollmentCreate(data) {
   const ev = schema.validate('enrollment', e);
   if (ev) return { ok: false, msg: ev };
   e.id = core.nextId();
-  const arr = core.coll('enrollments');
-  arr.push(e);
-  if (!core.persist('enrollments')) {
-    const i = arr.indexOf(e);
-    if (i > -1) arr.splice(i, 1);
-    return { ok: false, msg: core.SAVE_FAIL };
-  }
+  if (!pushSaved('enrollments', e)) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true, item: e };
 }
 function enrollmentUpdate(id, patch) {
@@ -83,9 +77,7 @@ function enrollmentUpdate(id, patch) {
   const ev = schema.validate('enrollment', next);
   if (ev) return { ok: false, msg: ev };
   next.id = e.id; next.updatedAt = now();
-  const backup = Object.assign({}, e);
-  Object.assign(e, next);
-  if (!core.persist('enrollments')) { Object.assign(e, backup); return { ok: false, msg: core.SAVE_FAIL }; }
+  if (!applyEdit('enrollments', e, next)) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true, item: e };
 }
 function enrollmentRemove(id) {
@@ -93,12 +85,7 @@ function enrollmentRemove(id) {
   if (err) return { ok: false, msg: err };
   const e = enrollmentRaw(id);
   if (!e) return { ok: false, msg: '报名不存在' };
-  const prev = { removed: e.removed, updatedAt: e.updatedAt };
-  e.removed = true; e.updatedAt = now();
-  if (!core.persist('enrollments')) {
-    e.removed = prev.removed; e.updatedAt = prev.updatedAt;
-    return { ok: false, msg: core.SAVE_FAIL };
-  }
+  if (!applyEdit('enrollments', e, { removed: true, updatedAt: now() })) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true };
 }
 // 消课：结转制班级每录一条成果记录 = 消 1 课时。

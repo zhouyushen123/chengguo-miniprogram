@@ -67,6 +67,8 @@ Page({
       entries.push({ k: 'term', t: '学期管理', d: '开班学期、课时结转与续报' });
       entries.push({ k: 'switch', t: '切换身份', d: '管理员 / 老师 / 学生家长 演示切换' });
     }
+    // 存储空间：照片视频占的是这台手机的空间，满了会静默存不进去，所以给一个能看见的地方
+    entries.push({ k: 'storage', t: '存储空间', d: '照片视频占用与清理' });
     entries.push({ k: 'about', t: '关于橙果', d: '这是什么、怎么用' });
     this.setData({
       name: u.name || '未命名',
@@ -88,6 +90,7 @@ Page({
     if (k === 'switch') { this.switchIdentity(); return; }
     if (k === 'about') { this.showAbout(); return; }
     if (k === 'demo') { this.demoMenu(); return; }
+    if (k === 'storage') { wx.navigateTo({ url: '/pages/storage/storage' }); return; }
   },
   // 统计卡点按：跳到管理页对应页签（0班级 1课程 2学生 3人员）
   tapStat(e) {

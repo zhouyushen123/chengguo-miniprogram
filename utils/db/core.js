@@ -48,6 +48,9 @@ let txDirty = {};
 
 const cur = () => (mode === 'demo' ? demoState : realState);
 const isSandbox = () => mode === 'demo';
+// 真实库视图（与当前模式无关）：设备级维护（存储清理、统计）用它 ——
+// 在演示模式下点开「存储空间」，看到的也应该是自己机构的真实占用，而不是样板间的
+const realData = () => realState;
 
 function hydrateInto(which, loaded) {
   const s = emptyState();
@@ -90,9 +93,13 @@ function orgColl(name) {
   return list.filter(x => !x.removed && (x.orgId || o) === o);
 }
 
+// 整表覆盖：落盘失败时把旧数组放回去，避免"内存里是新表、磁盘上还是旧表"的错位
 function setColl(name, list) {
+  const prev = cur()[name];
   cur()[name] = list;
-  persist(name);
+  if (persist(name)) return true;
+  cur()[name] = prev;
+  return false;
 }
 
 function writeNow(name) {
@@ -217,7 +224,7 @@ function health() {
 }
 
 module.exports = {
-  hydrate, hydrateDemo, isReady, isDemoReady, data, coll, orgColl, meta, realMeta,
+  hydrate, hydrateDemo, isReady, isDemoReady, data, realData, coll, orgColl, meta, realMeta,
   setColl, persist, flushAll, updateMeta, updateRealMeta, setMode, isSandbox, nextId,
   setReadOnly, isReadOnly, EMPTY, tx, health, SAVE_FAIL
 };

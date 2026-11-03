@@ -26,7 +26,7 @@ Page({
     courses: [], courseIdx: 0, course: '',
     score: 85, tags: TAGS, tag: '',
     note: '', photos: [], videos: [], audio: null, recording: false, recognizing: false, canSend: false,
-    selCount: 0, editing: false,
+    selCount: 0, editing: false, saving: false,
     tplOpen: false, tplList: [], sel: [],
     icoCamera: icons.camera, icoAlbum: icons.album, icoAudio: icons.audio,
     icoOrange: icons.mic('#E8590C'),
@@ -125,14 +125,20 @@ Page({
       camera: 'back',
       success: r => {
         const photos = this.data.photos.slice(), videos = this.data.videos.slice();
-        let over = 0;
+        let over = 0, lost = 0;
         (r.tempFiles || []).forEach(f => {
           if ((f.size || 0) > MAX_FILE) { over++; return; }
           // 必须转存到用户目录：tempFilePath 在小程序退出后会被系统清理，历史记录会全部裂图
-          if (f.fileType === 'video' || /\.mp4$/i.test(f.tempFilePath || '')) videos.push(media.persist(f.tempFilePath, 'video'));
-          else photos.push(media.persist(f.tempFilePath, 'photo'));
+          const isVideo = f.fileType === 'video' || /\.mp4$/i.test(f.tempFilePath || '');
+          // 转存失败会返回空串：宁可这次少一张，也不要存一条注定裂图的引用
+          const p = media.persist(f.tempFilePath, isVideo ? 'video' : 'photo');
+          if (!p) { lost++; return; }
+          if (isVideo) videos.push(p); else photos.push(p);
         });
-        if (over) wx.showToast({ title: '单个文件需小于 50MB，已跳过 ' + over + ' 个', icon: 'none' });
+        const tips = [];
+        if (over) tips.push('跳过 ' + over + ' 个超大文件');
+        if (lost) tips.push(lost + ' 个没能保存（存储空间可能已满）');
+        if (tips.length) wx.showToast({ title: tips.join('，'), icon: 'none' });
         this.setData({ photos: photos.slice(0, MAX_PHOTOS), videos: videos.slice(0, MAX_VIDEOS) });
         this.refreshCan();
       },
@@ -183,9 +189,11 @@ Page({
       // 先转存为持久文件，再尝试上传云存储；未接云端时用的是本地持久路径
       const local = media.persist(res.tempFilePath, 'audio');
       api.uploadFile(res.tempFilePath, 'audio').then(url => {
-        this.setData({ audio: url || local });
+        const src = url || local || null;
+        this.setData({ audio: src });
         this.refreshCan();
-        wx.showToast({ title: '语音已录入', icon: 'success' });
+        // 本地与云端都没存下来：如实说，不要让用户以为录上了
+        wx.showToast({ title: src ? '语音已录入' : '语音没能保存，请重试', icon: src ? 'success' : 'none' });
       });
     });
     this.rec.onError(() => { this.setData({ recording: false }); wx.showToast({ title: '录音失败', icon: 'none' }); });
@@ -203,6 +211,10 @@ Page({
     wx.navigateTo({ url: '/pages/tpls/tpls?mode=preview' });
   },
   save(e) {
+    // 【防重】保存是同步的，但成功后有 800ms 的停留再返回上一页。
+    // 这段时间里再点一次 = 再存一条记录 + 结转班再扣一次课时，账就错了。
+    // setData 是异步的，所以用一个同步标志而不是只靠按钮 disabled。
+    if (this._saving) return;
     const send = e.currentTarget.dataset.send === '1';
     // 只回传业务字段：data 里的班级叫 clsId，而记录模型用 cid，这里显式映射一次
     const payload = {
@@ -210,10 +222,18 @@ Page({
       course: this.data.course, score: this.data.score, tag: this.data.tag,
       note: this.data.note, photos: this.data.photos, videos: this.data.videos, audio: this.data.audio
     };
+    this._saving = true;
+    this.setData({ saving: true });
     const res = db.records.save(payload, send);
-    if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
+    if (!res.ok) {
+      this._saving = false;
+      this.setData({ saving: false });
+      wx.showToast({ title: res.msg, icon: 'none' });
+      return;
+    }
     api.pushRecord(res.record); // 线上模式自动上推，本地模式静默跳过
-    wx.showToast({ title: send ? '已发送' : '已存草稿', icon: 'success' });
+    // warn：记录已存下，但关联的课时账没记上（空间不足），得让老师知道
+    wx.showToast({ title: res.warn || (send ? '已发送' : '已存草稿'), icon: res.warn ? 'none' : 'success' });
     setTimeout(() => wx.navigateBack(), 800);
   },
   /* ================= 模板：页内全屏面板（多选/增删改） ================= */

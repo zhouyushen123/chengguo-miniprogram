@@ -64,6 +64,7 @@ const LAYER = {
   enrollments: 4,                           // → classes, students
   identity: 4,                              // → org, classes, students（成员视图要班级/学生名）
   records: 5,                               // → students, enrollments（结转班消课）
+  settle: 6,                                // 结转向导落地：→ terms, classes, courses, students, enrollments
   maintenance: 6,                           // 库级维护，只用 ctx + 基础组
   index: 7                                  // 门面，只用各领域
 };
@@ -181,7 +182,7 @@ ok('各分组的方法都在且可调用（拆文件时漏搬会在这里暴露�
       'denyReason', 'role', 'roleLabel', 'isOwner', 'isAdmin', 'isTeacher', 'isParent'],
     orgs: ['current', 'update', 'get', 'list'],
     members: ['list', 'view', 'get', 'ofUser', 'current', 'create', 'update', 'remove'],
-    terms: ['list', 'get', 'activeList', 'create', 'update', 'archive', 'planSettle'],
+    terms: ['list', 'get', 'activeList', 'create', 'update', 'archive', 'planSettle', 'settle'],
     enrollments: ['list', 'get', 'ofStudent', 'ofClass', 'of', 'create', 'update', 'remove'],
     classes: ['list', 'get', 'name', 'create', 'update', 'remove', '_all'],
     courses: ['list', 'of', 'get', 'create', 'update', 'remove'],

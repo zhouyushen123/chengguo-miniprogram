@@ -85,6 +85,11 @@
 .clsmem .ava { width: 56rpx; height: 56rpx; font-size: 24rpx; border-radius: 18rpx; }
 .memname { font-size: 27rpx; font-weight: 600; }
 .memchev { width: 28rpx; height: 28rpx; flex: none; }
+.clsexp-add {
+  margin-top: 12rpx; text-align: center; font-size: 26rpx; font-weight: 600;
+  color: var(--brand); background: var(--brand-soft); border-radius: 16rpx;
+  padding: 16rpx 0;
+}
 
 /* ---------- 学生标签页：筛选区（吸顶）+ 底部固定添加按钮 ---------- */
 /* 列表加底部留白，避免最后一张卡被固定的添加按钮压住 */

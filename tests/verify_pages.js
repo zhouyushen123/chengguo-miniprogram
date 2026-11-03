@@ -218,7 +218,19 @@ ok('空名称班级被拒并提示', () => {
   mgr.onNewCls({ detail: { value: '  ' } });
   mgr.addClass();
   assert.strictEqual(mgr.data.classes.length, before);
-  assert.ok(toasts[toasts.length - 1].indexOf('不能为空') > -1);
+  ok('班级展开：添加学生到本班预选该班级', () => {
+  mgr.onClsTap({ currentTarget: { dataset: { id: c1.id } } });
+  assert.strictEqual(mgr.data.clsExpand, c1.id);
+  mgr.addClsStudent({ currentTarget: { dataset: { id: c1.id } } });
+  assert.ok(mgr.data.stuForm);
+  assert.deepStrictEqual(mgr.data.stuClsSel, [c1.id]);
+  mgr.stuCancel();
+  assert.strictEqual(mgr.data.stuForm, null);
+  mgr.onClsTap({ currentTarget: { dataset: { id: c1.id } } }); // 收起
+  assert.strictEqual(mgr.data.clsExpand, 0);
+});
+
+assert.ok(toasts[toasts.length - 1].indexOf('不能为空') > -1);
 });
 ok('班级卡展开：本班学生列表与筛选', () => {
   mgr.onClsTap({ currentTarget: { dataset: { id: 1 } } });

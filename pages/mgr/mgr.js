@@ -244,9 +244,11 @@ Page({
   /* ================= 学生：弹层表单（姓名+班级多选+家长+微信） ================= */
   addStudent() { this.openStuForm(null); },
   editStudent(e) { this.openStuForm(e.currentTarget.dataset.id); },
-  openStuForm(id) {
+  // 班级展开区里加人：新学生默认勾选这个班
+  addClsStudent(e) { this.openStuForm(null, [+e.currentTarget.dataset.id]); },
+  openStuForm(id, preCls) {
     const s = id ? db.students.get(id) : null;
-    const clsSel = s ? (s.clsIds || []).slice() : [];
+    const clsSel = s ? (s.clsIds || []).slice() : (preCls || []);
     const year = s ? (s.enrollYear || 0) : 0;
     this.setData({
       stuForm: { id: id || null, name: s ? s.name : '', gender: s ? (s.gender || '') : '', enrollYear: year, parent: s ? (s.parent || '') : '', wechat: s ? (s.wechat || '') : '', photo: s ? (s.photo || '') : '' },

@@ -31,7 +31,8 @@
         <view class="mi" style="flex:1;text-align:right">{{s.parent ? '家长 '+s.parent : '未填家长'}}</view>
         <image class="memchev" src="{{icoChev}}" mode="aspectFit" />
       </view>
-      <view wx:if="{{!clsStus.length}}" class="mi" style="padding:16rpx 4rpx">{{clsStuQ ? '没有符合筛选的学生' : '这个班还没有学生，去「学生」页签添加'}}</view>
+      <view wx:if="{{!clsStus.length}}" class="mi" style="padding:16rpx 4rpx">{{clsStuQ ? '没有符合筛选的学生' : '这个班还没有学生'}}</view>
+      <view class="clsexp-add" hover-class="btn-hover" catchtap="addClsStudent" data-id="{{item.id}}">＋ 添加学生到本班</view>
     </view>
   </view>
 </view>

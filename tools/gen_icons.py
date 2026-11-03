@@ -26,9 +26,10 @@ PALETTE = {
     'red':    '#D9534F',
 }
 
-# 双主题调色板：键与 PALETTE 一致（'orange' = 品牌色）。
-# warm → assets/icons/（默认，文件名不含主题）；blue → assets/icons/blue/（同名文件）。
-# 换肤要求图标与主题同色系：蓝主题把暖灰换成冷灰、品牌橙换成清透蓝。
+# 多主题调色板：键与 PALETTE 一致（'orange' = 品牌色）。
+# warm → assets/icons/（默认，文件名不含主题）；blue/min → assets/icons/<theme>/（同名文件）。
+# 换肤要求图标与主题同色系：蓝主题把暖灰换成冷灰、品牌橙换成清透蓝；
+# 极简主题把冷灰换成中性灰、品牌色换成墨黑（白纸黑字，只靠明度区分层级）。
 THEME_PALETTES = {
     'warm': PALETTE,
     'blue': {
@@ -37,6 +38,13 @@ THEME_PALETTES = {
         'orange': '#59A8FF',   # 品牌蓝（沿用 'orange' 变体键名，避免改所有映射）
         'white':  '#FFFFFF',
         'red':    '#D9534F',
+    },
+    'min': {
+        'ink':    '#2B2F36',   # 墨黑（对应主色 #1F2329 的可读版）
+        'gray':   '#8E949D',   # 中性灰
+        'orange': '#1F2329',   # 品牌墨色（同上，沿用键名）
+        'white':  '#FFFFFF',
+        'red':    '#C0453B',
     },
 }
 

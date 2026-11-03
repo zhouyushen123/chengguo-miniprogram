@@ -5,14 +5,16 @@
 //   · 24×24 网格，图形约束在 3~21 光学框内 → 视觉大小统一
 //   · 线宽统一 1.75、圆头圆角、不填充 → 笔画粗细一致
 //   · 72px 输出适配 3x 屏
-// 双主题：warm → assets/icons/；blue → assets/icons/blue/（同名文件、同色系键名）。
+// 三主题：warm → assets/icons/；blue → assets/icons/blue/；min → assets/icons/min/（同名文件、同色系键名）。
 // setTheme() 决定后续取图路径；页面在 onShow 里经 theme.apply() 重新取一次标准键。
 // 新增图标：在 gen_icons.py 里加绘制函数与配色组合，重跑脚本，再在此登记。
-let theme = 'warm'; // 'warm' | 'blue'，由 theme.js 在启动与切换时同步
-const setTheme = t => { theme = t === 'blue' ? 'blue' : 'warm'; };
-const dirOf = () => (theme === 'blue' ? '/assets/icons/blue/' : '/assets/icons/');
+let theme = 'warm'; // 'warm' | 'blue' | 'min'，由 theme.js 在启动与切换时同步
+const SRC = { warm: '/assets/icons/', blue: '/assets/icons/blue/', min: '/assets/icons/min/' };
+const BRAND = { warm: '#E8590C', blue: '#59A8FF', min: '#1F2329' };
+const setTheme = t => { theme = SRC[t] ? t : 'warm'; };
+const dirOf = () => SRC[theme];
 // 品牌色十六进制（JS 里需要色值参数时用，如播放按钮图标）
-const brand = () => (theme === 'blue' ? '#59A8FF' : '#E8590C');
+const brand = () => BRAND[theme];
 
 const I = (name, color) => dirOf() + name + '-' + color + '.png';
 

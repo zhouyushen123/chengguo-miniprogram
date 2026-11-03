@@ -79,6 +79,53 @@ page {
   --shadow: rgba(30, 70, 140, 0.08);
 }
 
+/* ---------- 极简主题（简洁版：白纸黑字 / 单一墨色强调 / 细线框替代投影） ----------
+   设计原则：
+   · 只用「墨黑 + 中性灰」一个色相做强调，其余信息靠字重与间距分层
+   · 卡片改用 2rpx 细线框（box-shadow 描边，不占布局），几乎不留投影
+   · 状态色（已发送/待发送/危险）保持语义不变，只把饱和度压一档
+   ------------------------------------------------------------------ */
+.theme-min {
+  --brand: #1F2329;
+  --brand-a: #34383F;
+  --brand-b: #1B1E23;
+  --brand-soft: #F1F2F4;
+  --brand-tint: #F7F8FA;
+  --brand-tint-0: rgba(247, 248, 250, 0);
+  --brand-border: #E2E4E8;
+  --brand-glow: rgba(31, 35, 41, 0.10);
+  --brand-shadow: rgba(17, 19, 22, 0.16);
+  --brand-shadow-soft: rgba(17, 19, 22, 0.12);
+
+  --bg: #F6F7F9;
+  --card: #FFFFFF;
+  --chip: #F2F3F5;
+  --line: #EDEEF0;
+  --line-2: #E2E4E8;
+  --line-3: #EAEBED;
+  --text: #16181C;
+  --text-2: #33373D;
+  --sub: #5F656E;
+  --muted: #8E949D;
+  --faint: #B4B9C1;
+
+  --ok: #2F8F5B;  --ok-soft: #E9F3ED;
+  --sent: #00C79B;
+  --warn: #A9761A;
+  --info: #4B6FD6;  --info-soft: #EEF1FA;
+  --danger: #C0453B;
+
+  --shadow: rgba(17, 19, 22, 0.04);
+  --mask: rgba(0, 0, 0, 0.5);
+}
+/* 极简版独有的排版收敛：卡片用细线框，投影几乎取消（只做样式，不动结构） */
+.theme-min .card {
+  box-shadow: 0 0 0 2rpx var(--line-2);
+}
+.theme-min .btn {
+  box-shadow: none;
+}
+
 /* 每页最外层根节点：承载主题类，撑满全屏并把主题底色铺到页面上 */
 .theme-root {
   min-height: 100vh;

@@ -63,23 +63,20 @@
   background: var(--brand); color: #fff; border-radius: 999rpx; font-size: 22rpx;
 }
 
-/* ---------- 换肤卡片 ---------- */
+/* ---------- 换肤卡片（三主题并排，尺寸按 3 列收敛） ---------- */
 .skin-t { font-size: 28rpx; font-weight: 700; color: var(--text); margin-bottom: 20rpx; }
-.skins { display: flex; gap: 18rpx; }
+.skins { display: flex; gap: 14rpx; }
 .skin {
-  flex: 1; border-radius: 22rpx; padding: 22rpx 24rpx;
+  flex: 1; min-width: 0; border-radius: 20rpx; padding: 20rpx 18rpx;
   background: var(--chip); border: 3rpx solid transparent;
   transition: all 0.15s; position: relative;
 }
 .skin.on { background: var(--brand-soft); border-color: var(--brand); }
 .skin-dot {
-  width: 56rpx; height: 56rpx; border-radius: 50%;
+  width: 44rpx; height: 44rpx; border-radius: 50%;
   box-shadow: inset 0 0 0 4rpx rgba(255, 255, 255, 0.65);
-  margin-bottom: 14rpx;
+  margin-bottom: 12rpx;
 }
-.skin-n { font-size: 28rpx; font-weight: 700; color: var(--text); }
-.skin-d { font-size: 22rpx; color: var(--muted); margin-top: 4rpx; }
-.skin-cur {
-  position: absolute; right: 20rpx; top: 22rpx;
-  font-size: 20rpx; font-weight: 700; color: var(--brand);
-}
+.skin-n { font-size: 26rpx; font-weight: 700; color: var(--text); }
+.skin-d { font-size: 21rpx; color: var(--muted); margin-top: 4rpx; }
+.skin-cur { margin-top: 8rpx; font-size: 19rpx; font-weight: 700; color: var(--brand); }

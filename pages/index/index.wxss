@@ -1,17 +1,17 @@
 /* ---------- 顶部欢迎 ---------- */
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 36rpx 30rpx 24rpx;
+  padding: 36rpx 30rpx 28rpx;
 }
 .hello { font-size: 27rpx; color: var(--sub); font-weight: 600; }
 .datechip {
   flex: none; font-size: 24rpx; color: var(--sub); font-weight: 600;
   background: #fff; border-radius: 999rpx; padding: 12rpx 24rpx;
-  box-shadow: 0 4rpx 12rpx var(--shadow);
+  box-shadow: 0 4rpx 16rpx var(--shadow);
 }
 /* ---------- 主操作区：不对称大卡（参考卡牌式首页设计） ---------- */
 /* 左：品牌渐变大卡（开始录入）；右上：浅色记录卡；右下：搜索卡；搜索结果悬浮在整个区块下方 */
-.herog-wrap { position: relative; z-index: 30; margin: 0 24rpx 24rpx; }
+.herog-wrap { position: relative; z-index: 30; margin: 0 24rpx 32rpx; }
 .herog { display: flex; gap: 20rpx; }
 .hgc {
   position: relative; overflow: hidden; border-radius: 28rpx;
@@ -37,7 +37,7 @@
 .hgc.a {
   flex: 1; display: flex; flex-direction: column; justify-content: flex-end;
   background: var(--brand-soft);
-  box-shadow: 0 8rpx 20rpx var(--shadow);
+  box-shadow: 0 4rpx 16rpx var(--shadow);
 }
 .hgc.a .hgc-t { font-size: 30rpx; font-weight: 800; color: var(--brand); }
 .hgc.a .hgc-s { margin-top: 6rpx; font-size: 21rpx; color: var(--muted); }
@@ -46,7 +46,7 @@
 .hgc.searchcell {
   flex: 1; display: flex; align-items: center; gap: 14rpx;
   padding: 0 24rpx; background: #fff; border: 2rpx solid var(--line-2);
-  box-shadow: 0 8rpx 20rpx var(--shadow);
+  box-shadow: 0 4rpx 16rpx var(--shadow);
 }
 .scico { width: 32rpx; height: 32rpx; flex: none; }
 .scinput { flex: 1; min-width: 0; font-size: 26rpx; }
@@ -73,7 +73,7 @@
 .smore { padding: 14rpx 4rpx 18rpx; font-size: 22rpx; color: var(--faint); text-align: center; }
 .ava.sm { width: 72rpx; height: 72rpx; font-size: 30rpx; border-radius: 24rpx; }
 /* ---------- 统计 ---------- */
-.stats { display: flex; gap: 20rpx; margin: 0 24rpx 24rpx; }
+.stats { display: flex; gap: 20rpx; margin: 0 24rpx 32rpx; }
 .stat {
   flex: 1; background: #fff; border-radius: 24rpx; padding: 26rpx 0 22rpx;
   text-align: center; box-shadow: 0 4rpx 16rpx var(--shadow);
@@ -84,7 +84,7 @@
 /* ---------- 区块标题 ---------- */
 .sechead {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10rpx 34rpx 18rpx;
+  padding: 4rpx 34rpx 16rpx;
 }
 .sectitle { font-size: 30rpx; font-weight: 700; }
 .seclink { font-size: 25rpx; color: var(--muted); font-weight: 500; }
@@ -101,7 +101,7 @@
 /* ---------- 我的班级：三列磁贴 ---------- */
 .clsgrid {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 16rpx;
-  padding: 0 24rpx 24rpx;
+  padding: 0 24rpx 32rpx;
 }
 .clstile {
   position: relative; background: #fff; border-radius: 20rpx;
@@ -124,7 +124,7 @@
 /* ---------- 最近成果：自适应磁贴（最多一行 5 个，少则拉伸） ---------- */
 .recgrid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(132rpx, 1fr));
-  gap: 14rpx; padding: 0 24rpx 24rpx;
+  gap: 14rpx; padding: 0 24rpx 32rpx;
 }
 .rectile {
   background: #fff; border-radius: 18rpx; padding: 20rpx 10rpx 18rpx;

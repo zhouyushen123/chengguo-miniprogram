@@ -230,6 +230,36 @@ ok('新增学生（带班级）', () => {
   const s = mgr.data.students.find(x => x.name === '测试新增');
   assert.strictEqual(s.cls, '书法班');
 });
+ok('学生筛选：模糊搜索命中姓名/家长/微信号', () => {
+  mgr.onStuQ({ detail: { value: '测试新增' } });
+  assert.strictEqual(mgr.data.students.length, 1);
+  mgr.onStuQ({ detail: { value: '' } });
+  assert.strictEqual(mgr.data.students.length, mgr.data.stuCount);
+});
+ok('学生筛选：性别未知归桶 + 表单补录后可筛出', () => {
+  mgr.onStuGender({ currentTarget: { dataset: { v: '未知' } } });
+  assert.ok(mgr.data.students.length > 0 && mgr.data.students.every(x => !x.gender));
+  const first = mgr._stuAll[0];
+  mgr.onStuGender({ currentTarget: { dataset: { v: '' } } });
+  // 通过表单给第一名学生补录性别，存量学生默认都是「未知」
+  mgr.editStudent({ currentTarget: { dataset: { id: first.id } } });
+  mgr.onStuGenderSet({ currentTarget: { dataset: { v: '女' } } });
+  assert.strictEqual(mgr.data.stuForm.gender, '女');
+  mgr.stuSave();
+  assert.strictEqual(db.students.get(first.id).gender, '女');
+  mgr.onStuGender({ currentTarget: { dataset: { v: '女' } } });
+  assert.ok(mgr.data.students.some(x => x.id === first.id));
+  mgr.onStuGender({ currentTarget: { dataset: { v: '' } } });
+});
+ok('学生筛选：录入年份选项由数据倒推且过滤正确', () => {
+  assert.ok(mgr.data.stuYears.length >= 1 && mgr.data.stuYears[0].name === '全部');
+  if (mgr.data.stuYears.length > 1) {
+    mgr.onStuYear({ detail: { value: 1 } });
+    const y = mgr.data.stuYears[1].y;
+    assert.ok(mgr.data.students.every(x => x.year === y));
+    mgr.onStuYear({ detail: { value: 0 } });
+  }
+});
 ok('删除学生同时清掉其记录', () => {
   const s = db.students.create({ name: '待删', clsIds: [1] }).item;
   const r = db.records.save({ cls: 1, sid: s.id, note: '会被一起删' }, true).record;

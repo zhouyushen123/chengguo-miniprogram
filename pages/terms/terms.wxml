@@ -42,7 +42,9 @@
         <view wx:for="{{sugg}}" wx:key="*this" class="chip {{wz.newTerm.name === item ? 'on' : ''}}" bindtap="wzPickSugg" data-v="{{item}}">{{item}}</view>
       </view>
       <view class="lbl">开学日期（选填）</view>
-      <input class="inp" value="{{wz.newTerm.startDate}}" placeholder="YYYY-MM-DD" bindinput="onWzTerm" data-k="startDate" />
+      <picker mode="date" value="{{wz.newTerm.startDate}}" bindchange="onWzTerm" data-k="startDate">
+        <view class="inp pick">{{wz.newTerm.startDate || '点击选择（默认今天）'}}</view>
+      </picker>
     </view>
 
     <view class="card">
@@ -139,9 +141,13 @@
       <view wx:for="{{sugg}}" wx:key="*this" class="chip {{form.name === item ? 'on' : ''}}" bindtap="pickSugg" data-v="{{item}}">{{item}}</view>
     </view>
     <view class="lbl">开始日期（选填）</view>
-    <input class="inp" value="{{form.startDate}}" placeholder="YYYY-MM-DD" bindinput="onF" data-k="startDate" />
+    <picker mode="date" value="{{form.startDate}}" bindchange="onF" data-k="startDate">
+      <view class="inp pick">{{form.startDate || '点击选择（默认今天）'}}</view>
+    </picker>
     <view class="lbl">结束日期（选填）</view>
-    <input class="inp" value="{{form.endDate}}" placeholder="YYYY-MM-DD" bindinput="onF" data-k="endDate" />
+    <picker mode="date" value="{{form.endDate}}" bindchange="onF" data-k="endDate">
+      <view class="inp pick">{{form.endDate || '点击选择（默认今天）'}}</view>
+    </picker>
     <view class="row2">
       <view class="btn ghost" bindtap="closeCreate">取消</view>
       <view class="btn" bindtap="saveTerm">创建</view>

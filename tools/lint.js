@@ -96,14 +96,16 @@ walk(path.join(ROOT, 'pages')).concat(walk(path.join(ROOT, 'components')))
     }
   });
 
-/* ---------------- 6. 页面不许调用内部接口 _all() ---------------- */
-// db.classes._all() 标着"页面不要用"，因为它不过权限。历史上三处页面拿它当"兜底查询"
-// （get() 返回 null 时再从这里捞一次），正好把权限过滤绕过去。语义需要的东西
-// 请让数据层提供只读判定（如 classes.mode / classes.countOfTerm），而不是把实体端出来。
+/* ---------------- 6. 页面不许调用内部接口 / 绕权限的后门 ---------------- */
+// db.classes._all() 标着"页面不要用"，因为它不过权限；db.raw() / db.coll() 同理。
+// 历史上三处页面拿 _all() 当"兜底查询"（get() 返回 null 时再从这里捞一次），
+// 正好把权限过滤绕过去。语义需要的东西请让数据层提供只读判定
+// （如 classes.mode / classes.countOfTerm），而不是把实体端出来。
+const BACKDOOR = /\.(_all|raw|coll)\s*\(/;
 walk(path.join(ROOT, 'pages')).filter(f => f.endsWith('.js')).forEach(f => {
   const src = fs.readFileSync(f, 'utf8');
-  const hit = src.split('\n').findIndex(l => /\._all\s*\(/.test(l) && !/^\s*\/\//.test(l));
-  if (hit > -1) errors.push(rel(f) + ':' + (hit + 1) + ': 页面调用了内部接口 _all()，请改用数据层的只读判定');
+  const hit = src.split('\n').findIndex(l => BACKDOOR.test(l) && !/^\s*\/\//.test(l));
+  if (hit > -1) errors.push(rel(f) + ':' + (hit + 1) + ': 页面调用了内部接口（_all / raw / coll），请改用数据层的只读判定');
 });
 
 /* ---------------- 7. 页面不许直接读写 wx 存储 ---------------- */

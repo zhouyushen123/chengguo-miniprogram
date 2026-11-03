@@ -195,7 +195,7 @@ if (rid) {
 
 ### 🟡 P1-4 页面在用 `_all()` 这类标注"页面不要用"的内部接口 ✅ 已修
 
-> 数据层补两个"只回结论、不回实体"的方法：`classes.mode(id)`（是不是结转制）、`classes.countOfTerm(termId)`（按当前身份可见范围计数）。三处页面改用它俩；`_all()` 保留给 `tests/` 与数据层内部，并由 `tools/lint.js` 禁止 `pages/` 出现 `._all(`。断言：同名班级不再串、学期班级数按身份可见范围算。
+> 数据层补两个"只回结论、不回实体"的方法：`classes.mode(id)`（是不是结转制）、`classes.countOfTerm(termId)`（按当前身份可见范围计数）。三处页面改用它俩；`_all()` / `raw()` / `coll()` 保留给 `tests/` 与设备级维护，并由 `tools/lint.js` 禁止 `pages/` 出现这三者。断言：同名班级不再串、学期班级数按身份可见范围算。
 
 **位置**：`pages/index/index.js:118`、`pages/student/student.js:91`、`pages/terms/terms.js:31`
 
@@ -385,7 +385,7 @@ if (q.data.length) await records.doc(q.data[0]._id).update({ data: doc });  // �
 |---|---|
 | `utils/db/settle.js` | 结转向导的落地动作，15 处写操作收进一个 `core.tx` 事务（LAYER = 6） |
 | `pages/storage/storage.*` | 「我的 · 存储空间」：设备存储用量、照片视频占用、可清理数量、一键清理 |
-| `tools/lint.js` | 自建自检：品牌色硬编码、`console.log` 残留、`require` 未用、WXML 函数调用、页面调 `_all()`、页面直接读写存储、缩进/行尾/末尾换行 |
+| `tools/lint.js` | 自建自检：品牌色硬编码、`console.log` 残留、`require` 未用、WXML 函数调用、页面调 `_all`/`raw`/`coll`、页面直接读写存储、缩进/行尾/末尾换行 |
 | `.editorconfig` | 统一 2 空格 / LF / 末尾换行 |
 | `tests/verify_hardening.js` | 加固回归 27 项（分片、落盘失败、媒体清理、权限收口、事务回滚、连点、存储页、自愈归属、文本限长） |
 

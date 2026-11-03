@@ -103,7 +103,7 @@
 | 家长端 | — | 未开始 | 目前复用老师端页面 + 权限降级 |
 | 媒体持久化 | `utils/media.js` | **已完成（P0）** | 临时路径统一转存 USER_DATA_PATH；启动自愈存量记录 |
 | 云端同步 | `utils/api.js` + `cloudfunctions/sync` | 半成品 | 旧 openid 模型，与新架构冲突（CR-005） |
-| 自动化测试 | `tests/verify_*.js` | **已完成（P0，已入库）** | 130 项断言，`npm test` 一键跑完 |
+| 自动化测试 | `tests/verify_*.js` | **已完成（P0，已入库）** | 236 项断言，8 个套件，`npm test` 一键跑完；`npm run lint` 另守约定 |
 
 ## 5. 接口约定
 
@@ -113,26 +113,35 @@
 const db = require('../../utils/db');
 // 读：已按当前身份过滤，页面不要二次判断角色
 db.classes.list() / .get(id) / .name(id)
+db.classes.mode(id) / .countOfTerm(termId)     // 只回结论（是不是结转制 / 有几个班），不回实体
 db.courses.list() / .of(clsId) / .get(id)
 db.students.list() / .of(clsId) / .get(id) / .search(q) / .name(id)
 db.records.list() / .ofStudent(sid) / .ofClass(cid) / .get(id) / .latest(sid)
+db.enrollments.list() / .ofStudent(sid) / .ofClass(cid) / .of(clsId, sid)
 db.members.list() / .get(id) / .current()
-// 写：返回 {ok, msg?, item?, rid?}，msg 可直接 toast
+db.terms.list() / .activeList() / .planSettle(...) / .settle(payload)   // settle 是事务
+db.orgs.current() / .list() / .get(id) / .checkName(name)               // 校验与写入同一份规则
+// 写：返回 {ok, msg?, item?, rid?}，msg 可直接 toast；写失败不会谎报成功（SAVE_FAIL）
 db.records.save(pick, send) / .markSent(ids) / .remove(id)
 db.students.create/update/updateProfile/remove
+// 健康度与常量
+db.health()            // → { usage: {currentSize, limitSize, keys}, lastFail, readOnly, mode, counts }
+db.mediaRefs()         // 媒体引用集合（清理孤儿文件用）
+db.LIMITS / db.TAGS / db.TYPES
 // 权限
 db.auth.role() / .isParent() / .can(action, target) / .canSeeRecord(r)
 ```
 
-**契约纪律**：页面禁止 `require('utils/db/core')` 或使用 `db.raw()` / `db.coll()`（绕过权限的后门）。
+**契约纪律**：页面禁止 `require('utils/db/core')`；禁止 `db.raw()` / `db.coll()` / `db.classes._all()`（三者都为测试与设备级维护保留，lint 已禁 `pages/` 出现）；页面也不许直接 `wx.setStorageSync`（lint 拦）。
 
 ### 5.2 存储适配器接口（云端化时实现同名方法即可）
 
 ```js
 load()                          // → { meta, orgs, members, classes, courses, students, records, users, templates }
-saveCollection(name, list)      // → boolean
+saveCollection(name, list)      // → boolean（分片集合会写成多片，任一片失败即 false）
 saveMeta(meta)                  // → boolean
 removeCollection(name)          // → boolean
+kvUsage()                       // → 本地 key 用量（云端实现返回服务端配额）
 ```
 
 ### 5.3 权限动作表（`permissions.ACTIONS`）
@@ -170,11 +179,11 @@ removeCollection(name)          // → boolean
 | 编号 | 位置 | 问题 | 影响 |
 |---|---|---|---|
 | CR-005 | `utils/api.js` + `cloudfunctions/sync/index.js` | 云端是「按 openid 隔离」旧模型，与本地「机构内共享 + member 授权」新模型冲突；`merge()` 只同步 records/profiles | 一旦开云，换设备后学生/班级/课程为空，记录变成指向不存在学生的孤儿数据 |
-| CR-006 | `utils/db/storage.js:56` | 每次写操作序列化整个集合（全量覆盖写） | 单条录入写全部 records；数据到数千条时明显卡顿并可能触及 1MB key 限额 |
+| CR-006 | `utils/db/storage.js` | 每次写操作序列化整个集合（全量覆盖写） | 单条录入写全部 records；数据到数千条时明显卡顿并可能触及 1MB key 限额 | ✅ `records` 按 320 条/片分片：老单 key 数据天然当第一片（无需迁移），每片最坏 243KB，离 1MB 有 4 倍余量；写失败会回滚并返回 `SAVE_FAIL`，见 6.7 |
 | CR-007 | `utils/db/permissions.js:132-135` | `if (tid && tid !== actor.userId) return false` —— `tid` 为空时**放行** | 记录缺录入人时"只能改自己录的"规则失效（fail-open） | ✅ 改为 fail-closed：有目标且 `tid` 为空即拒绝；`abilities()` 用空 target 预判时不误伤 |
-| CR-008 | `utils/db/index.js:574` | `cid` 取自入参且未校验是否属于该学生班级，`validate` 只查非 0 | 记录可挂在学生并不在的班级，污染班级统计与家长可见性 | 未修（P1） |
+| CR-008 | `utils/db/records.js` | `cid` 取自入参且未校验是否属于该学生班级，`validate` 只查非 0 | 记录可挂在学生并不在的班级，污染班级统计与家长可见性 | ✅ 新建与编辑双向校验 `cid ∈ stu.clsIds`；编辑路径另补 `canSeeStudent` / `canSeeClass`（P1-1）；`enrollments` 消课改用 `enrollmentRawOf`，避免"看不到→又补一条 0 课时报名" |
 | CR-009 | `utils/db/maintenance.js` | `init()` 无条件播种，`DEMO_VERSION` 升版即向真实数据追加 45 名演示学生 | 演示数据污染生产库，老师会看到不属于自己的学生 | ✅ 演示数据搬进独立存储命名空间（`chengguo_demo_*`），与真实库物理分离；启动时把老版本混进来的演示行请出去，见 6.6 |
-| CR-010 | `.gitignore` 忽略 `.workbuddy/` | 103 项断言测试不在版本控制内 | 换机/协作即丢失质量网，CI 无法执行 | ✅ 迁到 `tests/` 入库，`npm test` 跑全部 130 项；图标脚本迁到 `tools/` |
+| CR-010 | `.gitignore` 忽略 `.workbuddy/` | 103 项断言测试不在版本控制内 | 换机/协作即丢失质量网，CI 无法执行 | ✅ 迁到 `tests/` 入库，`npm test` 跑全部 236 项；图标脚本迁到 `tools/` |
 | CR-011 | `utils/db/index.js:857 merge()` | 按 `updatedAt` 取新，无墓碑、无冲突记录、无幂等键 | 多端同时编辑必然静默丢数据 | 未修（P2） |
 | CR-012 | `pages/mgr/mgr.js` | 单页 265 行承载机构/班级/课程/学生/成员 5 个分区 | 任何新业务（课表/考勤/收费）都会撑爆此页 | 未修（P1） |
 | CR-013 | `app.js:onLaunch` | `db.init()` 无 try/catch | 迁移或水合抛错即整站白屏，且无恢复入口 | ✅ `init()` 内部兜底：失败降级为**只读 + 空库**，磁盘数据原样保留；`app.js` 弹窗告知，`db.status()` 可查 |
@@ -182,12 +191,12 @@ removeCollection(name)          // → boolean
 
 ### 🟡 建议
 
-| 编号 | 位置 | 问题 |
-|---|---|---|
-| CR-015 | `utils/demo-data.js` | 2367 行（占全项目 35%）打包进主包，演示数据与产品代码混居 |
-| CR-016 | `server/server.js` | 45 行 Express 单租户原型，无任何引用，属死代码，会误导后来者以为"已有后端" |
-| CR-017 | `utils/db/index.js:880,881` | 向页面暴露 `raw()` / `coll()`，是绕过权限的后门接口 |
-| CR-018 | `utils/db/index.js:541` | `recordOfStudent` 在 `recordList()` 已过滤后再次过滤，冗余 |
+| 编号 | 位置 | 问题 | 影响 | 处理 |
+|---|---|---|---|---|
+| CR-015 | `utils/demo-data.js` | 2367 行（占全项目 35%）打包进主包，演示数据与产品代码混居 | 主包清洁度；体积只 48KB，不是体积问题 | 未修（P1，建议分包或按需构建） |
+| CR-016 | `server/server.js` | 45 行 Express 单租户原型：整个 db.json 对任何请求方开放、`/api/login` 直接发随机 id | 放在仓库根目录会被当成"已有后端"，上云即数据裸奔 | ✅ 重写：Bearer 鉴权、按 openid 分文件、原子写（tmp+rename）、`jscode2session`（未配 APPID/SECRET 返回 503 而非伪造登录）、上传限扩展名与 50MB |
+| CR-017 | `utils/db/index.js` | 曾向页面暴露 `raw()` / `coll()`，是绕过权限的后门接口 | 页面能拿走未经权限过滤的实体 | 部分修：页面现已不再使用（lint 禁 `pages/` 出现 `db.raw(` / `db.coll(` / `._all(`），但两个方法仍留在门面上给 `tests/` 与设备级维护用——真要摘掉需要先给测试一条独立的测试入口 |
+| CR-018 | `utils/db/records.js` | `recordOfStudent` 在 `recordList()` 已过滤后再次过滤，冗余 | —— | 保留：第二个闸门是刻意的 defense-in-depth，成本可忽略（fail-closed 优于"省一次 filter"） |
 
 ### 做得好的地方（重构时必须保住）
 
@@ -197,7 +206,7 @@ removeCollection(name)          // → boolean
 4. 软删除 + 审计字段全覆盖。
 5. `schema` 白名单规范化，脏数据不抛错（`str/num/list` 容错）。
 6. 迁移"只做加法"铁律，已修复清空数据地雷并有回归固化。
-7. 209 项断言覆盖到页面级真实模块加载，不是只测数据层（`npm test`，已入库）。
+7. 236 项断言覆盖到页面级真实模块加载，不是只测数据层（`npm test`，已入库）；另有 `npm run lint` 守住"页面绕开数据层"这类约定漂移。
 
 ## 6.5 P0 修复记录（2026-11-01）
 
@@ -225,6 +234,33 @@ removeCollection(name)          // → boolean
 | 公开 API | `db.demo.{active,available,enter,exit,reset}` | 页面只管开关与显示，不知道底层是两套 key。`reset()` 重建演示包，真实数据一字不动 |
 | 回归 | `tests/verify_demo.js`（新增 18 项） | 磁盘级验证：真实 key 里零演示行、演示态零落盘、重启/重置/升版后真实数据一字不差 |
 
+## 6.7 代码审查整改（2026-11-03）
+
+审查报告见 `docs/code-review-report-2026-11-03.md`（含逐条状态与验证方式）。**除 P0-3 由项目方决定暂缓外全部落地**。
+
+| 项 | 结论 | 落点 |
+|---|---|---|
+| P0-1 记录触顶 1MB 静默丢数据 | ✅ | `storage.js` 分片 + `core.persist` 返回值检查 + `ctx.pushSaved/applyEdit` 写后即落盘即回滚 + `SAVE_FAIL` 文案 |
+| P0-2 媒体裂图且无清理 | ✅ | `media.persist` 失败返回空串 + `lostCount()`；`scan/prune`（2 小时豁免）+ `db.mediaRefs()` + 「我的 · 存储空间」页 |
+| P0-3 CI 无测试门禁 | ⏸ 暂缓 | 备案未下来只发体验版；**提审前必须补**（`npm test` 步骤 + concurrency + 体积检查） |
+| P1-1/P1-2 写闸门与 cid 归属 | ✅ | 编辑路径补 `canSeeStudent/canSeeClass`；`cid ∈ stu.clsIds` 双向校验 |
+| P1-3 报名读路径 | ✅ | `canSeeEnrollment` + `enrollmentRaw/rawOf` 内部版本 |
+| P1-4 页面用 `_all()` | ✅ | 数据层给 `classes.mode/countOfTerm`；lint 禁 `pages/` 出现 `._all(` |
+| P1-5 结转非原子 | ✅ | 新增 `utils/db/settle.js`（L6），15 处写进 `core.tx` |
+| P1-6 保存零防重 | ✅ | `_saving` 同步锁 + `saving` 态 + 按钮 busy |
+| P1-7 服务端/云函数鉴权 | ✅ | server 重写（token/分文件/原子写/jscode2session/上传白名单）；云函数确定性 `_id` + `doc().set()` + 分页 + 字段白名单 |
+| P1-8 主包体积 | ✅ 缓解 | `packOptions.ignore` 排除测试/文档/服务端/工具；实测 **0.85MB / 2MB** |
+| P1-9 合规 | ◐ 部分 | 隐私弹窗补「监护人同意」段落；`msgSecCheck` 待云环境与审核类目确定 |
+| P2-1 ~ P2-9 | ✅ | 音频上下文复用、自愈不伪造 `tid`（三级降级）、规范化按 `meta.normStamp` 触发、筛选按 id、申请页共用 `orgs.checkName`、正式版不覆盖剪贴板、资料限长（字段级 + 整包 2KB）、自建 lint、失败路径断言 |
+| P3-1 ~ P3-5 | ✅ | 注释指向 `COLLECTIONS`、删 `fileToText`、`memberNameOf`、`LIMITS` 单份、AppID 走 `MP_APPID` |
+
+新增文件：`utils/db/settle.js`、`pages/storage/storage.*`、`tools/lint.js`、`.editorconfig`、`tests/verify_hardening.js`。
+断言：209 → **236**（新增加固套件 27 项）；`npm run lint` 82 文件 0 提醒；`npm run check` = lint + test。
+
+**同步修改的工程约束**（`tests/verify_arch.js`）：`classes` 的方法表加 `mode` / `countOfTerm`，`orgs` 加 `checkName`，`terms` 加 `settle`。
+
+---
+
 ## 7. 待办
 
 ### P0 止血（不动架构，先让数据不丢）—— **2026-11-01 完成**
@@ -232,19 +268,26 @@ removeCollection(name)          // → boolean
 - [x] CR-002 全实体列表加 `orgId` 过滤：新增 `core.orgColl()`，读路径全收口（写路径保持全量，避免误删他机构数据）
 - [x] CR-003 / CR-004 修正 CI 路径与 `PROJECT_PATH`
 - [x] CR-007 修 `tid` fail-open
-- [x] CR-010 测试迁入 `tests/`，`npm test` 跑 130 项
+- [x] CR-010 测试迁入 `tests/`，`npm test` 跑 236 项
 - [x] CR-013 启动包兜底 + 降级为只读（**绝不落盘覆盖**，避免读失败变成永久丢失）
 - [x] ADR-009 `record.type` 预留（默认 `achievement`）
-- [ ] CR-008 校验 `cid ∈ student.clsIds`（顺延 P1，与 repo 拆分一起做）
+- [x] CR-008 校验 `cid ∈ student.clsIds`（2026-11-03 完成，编辑路径另补 sid/cid 二次过闸门）
 - [x] CR-009 演示数据隔离：独立存储命名空间 + `db.demo` 开关 + 演示态只读（2026-11-03，见 6.6）
+- [x] CR-006 记录分片 + 落盘失败可见（2026-11-03，见 6.7）
 
 ### P1 划边界（改结构不改功能）
-- [ ] 拆 `utils/db/index.js` 为 `core/repo/{class,course,student,record,member,template}.js`
+- [x] 拆 `utils/db/index.js`（已成门面 ≤260 行，实现按领域拆到同目录 `classes/courses/students/records/…`，`verify_arch` 的 LAYER 表守着依赖方向）
 - [ ] 引入 `domain/` 应用层，页面只调用例，不直接调 repo
 - [ ] 拆 `pages/mgr` 为「我的」+「管理」两个页面
 - [ ] 演示数据移出主包（`demo-data.js` 2367 行仍在主包内，考虑分包/在线拉取）
 - [ ] `domain/activities` 注册表骨架（接住 `record.type`）
-- [ ] CR-008 / CR-009
+- [x] CR-008 / CR-009（2026-11-03）
+
+### 上线前必办（微信备案下来之后，顺序即优先级）
+- [ ] **P0-3 CI 测试门禁**：`deploy.yml` 在「安装依赖」后加 `run: npm test`，加 `concurrency: { group: deploy, cancel-in-progress: true }`，加主包体积检查
+- [ ] **P1-9 内容安全**：接 `msgSecCheck` / `imgSecCheck`（记录文字与照片会发给家长，属 UGC）
+- [ ] 隐私保护指引在公众平台发布（弹窗已按指引授权流程实现，缺的是"指引本身已发布"）
+- [ ] 主包体积在开发者工具里复核一次（本仓库按字节实测 0.85MB，工具显示的可能是未压缩值）
 
 ### P2 上云（微信认证后）
 - [ ] 实现 `infra/storage/cloud.js`，保持 `load/saveCollection/saveMeta` 接口

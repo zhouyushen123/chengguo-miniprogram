@@ -75,12 +75,8 @@
 .st-g { color: var(--brand); background: var(--brand-soft); }
 .st-d { color: var(--info); background: var(--info-soft); }
 
-/* ---------- 资料待填写行 ---------- */
-.profrow {
-  display: flex; align-items: center; justify-content: space-between;
-  margin: 0 36rpx 20rpx;
-}
-.proflink { color: var(--brand); font-size: 27rpx; font-weight: 700; }
+/* ---------- 资料入口胶囊：未填写时带提醒态（原来单独一行，已并入右上「资料」按钮） ---------- */
+.chip-warn { color: var(--warn); background: var(--warn-soft); font-weight: 700; }
 
 /* ---------- 评价分档徽标（优秀绿 / 良好橙 / 加油蓝灰） ---------- */
 .badge {

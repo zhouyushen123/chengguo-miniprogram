@@ -11,7 +11,7 @@
         <view class="h1">{{s.name}}</view>
         <view class="mi">{{s.meta}}{{s.parent?' · 家长：'+s.parent:''}}{{s.wechat?' · 微信 '+s.wechat:''}}</view>
       </view>
-      <view class="chip" bindtap="goProfile">资料</view>
+      <view class="chip {{!profileFilled ? 'chip-warn' : ''}}" bindtap="goProfile">资料{{!profileFilled ? ' · 待填写' : ''}}</view>
     </view>
     <view wx:if="{{stats}}" class="stats">
       <text class="stat st-c">{{stats.lessons}} 节课</text>
@@ -19,12 +19,6 @@
       <text class="stat st-d">{{stats.days}} 个学习日</text>
       <text wx:if="{{hasCarry}}" class="stat st-h">剩余 {{hoursRemain}} 课时</text>
     </view>
-  </view>
-
-  <!-- 资料待填写：家长资料表单还是空白时给出显眼入口 -->
-  <view wx:if="{{!profileFilled}}" class="profrow">
-    <text class="mi">资料待填写</text>
-    <text class="proflink" bindtap="goProfile">填写学生资料 ›</text>
   </view>
 
   <!-- 语音条（自定义，替代原生 audio 的"未知歌曲"显示） -->

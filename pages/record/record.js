@@ -1,6 +1,7 @@
 const db = require('../../utils/db');
 const api = require('../../utils/api');
 const stt = require('../../utils/stt');
+const voice = require('../../utils/voice');
 const icons = require('../../utils/icons');
 const media = require('../../utils/media');
 const theme = require('../../utils/theme');
@@ -212,7 +213,11 @@ Page({
   onUnload() {
     if (this._audioCtx) { this._audioCtx.destroy(); this._audioCtx = null; }
     if (this.rec && this.data.recording) this.rec.stop();
+    voice.stop(this); // 语音输入的录音也别带到页面外
   },
+  // 语音输入：点搜索框后的麦克风说话，再点一次结束
+  onMic(e) { voice.dictate(this, e.currentTarget.dataset.k); },
+  onHide() { voice.stop(this); },
   rmAudio() { this.setData({ audio: null }); this.refreshCan(); },
   preview() {
     // 预览页要一并展示照片/视频/语音，跳转前把当前媒体同步进 pick

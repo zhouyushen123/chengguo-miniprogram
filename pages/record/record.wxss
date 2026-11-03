@@ -110,7 +110,7 @@
 
 /* ---------- 选择学生：折叠与快速搜索 ---------- */
 /* .sec 已是 flex（::before 竖杠是第一个子项），标题保持紧贴竖杠，搜索框靠右填充 */
-.stuhead .stusearch { margin-left: auto; }
+.stuhead .stusearch-wrap { margin-left: auto; display: flex; align-items: center; gap: 8rpx; flex: 1; max-width: 368rpx; }
 .stucount { font-size: 22rpx; color: var(--faint); font-weight: 400; margin-left: 8rpx; }
 .stusearch {
   flex: 1; max-width: 320rpx; font-size: 24rpx;

@@ -2,6 +2,7 @@ const db = require('../../utils/db');
 const api = require('../../utils/api');
 const icons = require('../../utils/icons');
 const theme = require('../../utils/theme');
+const voice = require('../../utils/voice');
 
 Page({
   data: {
@@ -195,5 +196,8 @@ Page({
   onPullDownRefresh() {
     api.pull().then(d => { if (d) db.merge(d); this.onShow(); wx.stopPullDownRefresh(); })
       .catch(() => wx.stopPullDownRefresh());
-  }
+  },
+  // 语音输入：点搜索框后的麦克风说话，再点一次结束
+  onMic(e) { voice.dictate(this, e.currentTarget.dataset.k); },
+  onHide() { voice.stop(this); }
 });

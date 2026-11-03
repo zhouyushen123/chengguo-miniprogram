@@ -1,6 +1,19 @@
 /* pages/terms/terms.wxss —— 学期管理（继承全局卡片/按钮/主题变量） */
 .page-pad { padding-bottom: 60rpx; }
 
+/* 列表模式：底部留出固定按钮的高度，最后一张卡不被压住 */
+.listwrap { padding-bottom: 170rpx; }
+/* 新建学期：固定钉在页面底部，通栏按钮、左右 24rpx 与卡片同边距线 */
+.termfab {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: var(--bg); border-top: 2rpx solid var(--line);
+}
+.termfab .btn { width: 100%; }
+
+/* 确认页说明条内的条目行距 */
+.note .hline + .hline { margin-top: 8rpx; }
+
 /* 列表行 */
 .trow { display: flex; align-items: center; gap: 20rpx; }
 .tmain { flex: 1; min-width: 0; }

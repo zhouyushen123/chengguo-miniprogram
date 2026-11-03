@@ -1,6 +1,6 @@
 <view class="theme-root {{themeCls}}">
 <view class="wrap">
-  <view class="tip">请家长填写孩子的资料，提交后老师端即可查看</view>
+  <view class="tip note">请家长填写孩子的资料，提交后老师端即可查看</view>
   <view class="card">
     <view class="label">基本信息</view>
     <view class="vin">

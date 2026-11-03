@@ -23,7 +23,7 @@
 </view>
 
 <view wx:else class="wrap">
-  <view wx:if="{{mode==='select'}}" class="tip">点选项可多选，选完点底部「插入所选」</view>
+  <view wx:if="{{mode==='select'}}" class="tip note">点选项可多选，选完点底部「插入所选」</view>
   <view class="card" wx:for="{{groups}}" wx:key="i">
     <view class="dimhead">
       <view class="dimname">{{item.n}}<text class="mi"> · {{item.opts.length}}项</text></view>

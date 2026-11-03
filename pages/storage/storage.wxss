@@ -38,8 +38,7 @@
 .ft { font-size: 28rpx; font-weight: 800; color: var(--danger); }
 .fd { margin-top: 8rpx; font-size: 24rpx; color: var(--text-2); line-height: 1.65; }
 
-/* ---------- 底部说明 ---------- */
-.tips { background: var(--chip); }
+/* ---------- 底部说明（note 淡黄说明条，见 app.wxss） ---------- */
 .tip {
   font-size: 24rpx; color: var(--text-2); line-height: 1.7;
   padding: 6rpx 0;

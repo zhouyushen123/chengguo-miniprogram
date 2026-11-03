@@ -57,5 +57,5 @@
 .drow:last-child { border-bottom: none; }
 .dk { flex: none; width: 150rpx; font-size: 26rpx; color: var(--sub); }
 .dv { flex: 1; font-size: 27rpx; color: var(--text); font-weight: 600; word-break: break-all; }
-.tips { background: var(--chip); }
+/* 说明容器已改用全局 note 淡黄说明条（见 app.wxss） */
 .tip { font-size: 25rpx; color: var(--text-2); line-height: 1.7; }

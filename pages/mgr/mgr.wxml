@@ -257,10 +257,10 @@
       <view class="chip {{clsMode === 'carry' ? 'on' : ''}}" bindtap="onClsMode" data-v="carry">课时结转</view>
     </view>
     <view class="clsfrow" wx:if="{{clsMode === 'term'}}">
-      <view class="hint2">学期制班：按学期上课与统计，学期结束后默认随学期归档（如需延续到下期，可在「学期管理」里整班结转）。</view>
+      <view class="hint2 note">学期制班：按学期上课与统计，学期结束后默认随学期归档（如需延续到下期，可在「学期管理」里整班结转）。</view>
     </view>
     <view class="clsfrow" wx:if="{{clsMode === 'carry'}}">
-      <view class="hint2">课时结转班：录一节消一课时，学期结束可整班结转到下期（在「学期管理」里操作）。</view>
+      <view class="hint2 note">课时结转班：录一节消一课时，学期结束可整班结转到下期（在「学期管理」里操作）。</view>
     </view>
     <view class="clsfrow" style="margin-bottom:8rpx">
       <picker mode="selector" range="{{clsTeachers}}" range-key="name" value="{{clsTeacherIdx}}" bindchange="onClsTeacher">

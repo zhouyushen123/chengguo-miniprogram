@@ -15,7 +15,7 @@
       <view class="mrow"><text class="mk">学生</text><text class="mv">{{students}} 人</text></view>
       <view class="mrow"><text class="mk">班级</text><text class="mv">{{classes}} 个</text></view>
       <view class="mrow"><text class="mk">课堂记录</text><text class="mv">{{records}} 条</text></view>
-      <view class="hint">学生、班级与课堂记录都存在这里。照片和视频单独存放，见下。</view>
+      <view class="hint note">学生、班级与课堂记录都存在这里。照片和视频单独存放，见下。</view>
     </view>
 
     <!-- 媒体 -->
@@ -24,13 +24,13 @@
       <view class="meter"><view class="meter-bar" style="width:{{mdPct}}%"></view></view>
       <view class="mrow"><text class="mk">已占用</text><text class="mv">{{mdText}}</text></view>
       <view class="mrow"><text class="mk">可清理</text><text class="mv">{{orphanCount}} 个 · {{orphanText}}</text></view>
-      <view wx:if="{{recent}}" class="hint">另有 {{recent}} 个最近两小时内新建的文件，可能是你正在录入、还没保存的素材，暂不参与清理。</view>
+      <view wx:if="{{recent}}" class="hint note">另有 {{recent}} 个最近两小时内新建的文件，可能是你正在录入、还没保存的素材，暂不参与清理。</view>
       <view class="btn clean {{orphanCount ? '' : 'idle'}}" hover-class="btn-hover" bindtap="clean">
         {{cleanText}}
       </view>
     </view>
 
-    <view class="card tips">
+    <view class="card note">
       <view class="tip">照片和视频存在这台手机上：换手机、清理小程序存储或卸载重装都会丢失。文字评价与分数存在上一张卡片里，不受影响。</view>
       <view class="tip">视频最占空间（每条约 10–50 MB）。空间紧张时，删掉几条不需要的视频就能腾出很多。</view>
     </view>

@@ -211,6 +211,13 @@ page {
   box-shadow: 0 6rpx 14rpx var(--brand-shadow-soft);
 }
 .pill { font-size: 22rpx; padding: 6rpx 18rpx; border-radius: 999rpx; color: #fff; }
+/* ---------- 统一说明条：淡黄底 + 浅边框，全 App 解释/说明类文字统一用 ---------- */
+/* 只定盒子样式不带外边距：卡内、页级、弹层里各自配合并类控制间距 */
+.note {
+  font-size: 24rpx; color: var(--sub); line-height: 1.7;
+  background: var(--brand-tint); border: 2rpx solid var(--brand-border);
+  border-radius: 16rpx; padding: 16rpx 22rpx;
+}
 .empty { text-align: center; color: var(--muted); padding: 140rpx 40rpx; font-size: 27rpx; line-height: 1.8; }
 .chev { color: var(--faint); font-size: 38rpx; font-weight: 300; }
 /* 品牌色大按钮内的白色线性图标（如「＋ 记录本节成果」） */

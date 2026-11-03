@@ -1,12 +1,11 @@
 <view class="theme-root {{themeCls}}">
 
 <!-- ============ 学期列表 ============ -->
-<view wx:if="{{mode === 'list'}}">
+<view wx:if="{{mode === 'list'}}" class="listwrap">
   <view class="sechead">
     <view class="sectitle">学期管理</view>
-    <view class="seclink" bindtap="openCreate">＋ 新建学期</view>
   </view>
-  <view class="hint">学期 = 开班的时间段。名称随意（春季班 / 暑假班 / 第 N 期都行），排序按日期算。学期结束时用「结束本学期」把班级归档或结转到下期。</view>
+  <view class="hint note">学期 = 开班的时间段。名称随意（春季班 / 暑假班 / 第 N 期都行），排序按日期算。学期结束时用「结束本学期」把班级归档或结转到下期。</view>
 
   <view wx:for="{{terms}}" wx:key="id" class="card">
     <view class="trow">
@@ -19,6 +18,11 @@
   </view>
 
   <view class="slogan">橙果 · 让每节课都有回音</view>
+</view>
+
+<!-- 新建学期：固定钉在页面底部，点开弹层填表单 -->
+<view wx:if="{{mode === 'list'}}" class="termfab">
+  <view class="btn" hover-class="btn-hover" bindtap="openCreate">＋ 新建学期</view>
 </view>
 
 <!-- ============ 结转向导 ============ -->
@@ -46,7 +50,7 @@
 
     <view class="card">
       <view class="wt">② 逐班决定去向</view>
-      <view class="hint2">学期制班级随学期结束归档；课时结转班级可延续到新学期，剩余课时带入。</view>
+      <view class="hint2 note">学期制班级随学期结束归档；课时结转班级可延续到新学期，剩余课时带入。</view>
       <view wx:for="{{wz.classes}}" wx:key="id" class="decrow">
         <view class="decmain">
           <view class="dec1">{{item.name}} <text class="mi">{{item.modeLabel}} · {{item.students.length}} 名学生</text></view>
@@ -108,9 +112,11 @@
   <view wx:if="{{wz.step === 4}}">
     <view class="card">
       <view class="wt">确认执行</view>
-      <view class="hint2">· 延续的班级进入「{{wz.newTerm.name}}」，剩余课时带入，旧报名标记已结转</view>
-      <view class="hint2">· 未续报学生标记流失，档案与成果记录全部保留</view>
-      <view class="hint2">· 「{{wz.termName}}」整体归档，归档后只能查看不能再录入</view>
+      <view class="note">
+        <view class="hline">· 延续的班级进入「{{wz.newTerm.name}}」，剩余课时带入，旧报名标记已结转</view>
+        <view class="hline">· 未续报学生标记流失，档案与成果记录全部保留</view>
+        <view class="hline">· 「{{wz.termName}}」整体归档，归档后只能查看不能再录入</view>
+      </view>
       <view class="warnbox">归档后本学期所有班级变为只读，此操作不可撤销。</view>
     </view>
   </view>

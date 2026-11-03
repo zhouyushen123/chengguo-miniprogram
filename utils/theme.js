@@ -20,6 +20,8 @@ const KINDS = LIST.map(x => x.k);
 const CLS = { warm: '', blue: 'theme-blue', min: 'theme-min' };
 // 主题 → 品牌色（原生组件属性、JS 内需要色值时用）
 const BRAND = { warm: '#E8590C', blue: '#59A8FF', min: '#1F2329' };
+// 主题 → 危险色（与 app.wxss 的 --danger 一一对应；wx.showModal 的 confirmColor 取不到 CSS 变量）
+const DANGER = { warm: '#C0564A', blue: '#D9534F', min: '#C0453B' };
 
 // 各主题的原生 chrome 取值（导航栏 / tabBar / 窗口背景）
 const CHROME = {
@@ -48,6 +50,9 @@ function current() {
   try { return norm(wx.getStorageSync(KEY)); } catch (e) { return 'warm'; }
 }
 function cls() { return CLS[current()] || ''; }
+// JS 里要用色值的地方统一从这里取：页面里再写死 #E8590C，换肤后原生弹窗/图标就不跟着变了
+const brand = () => BRAND[current()] || BRAND.warm;
+const danger = () => DANGER[current()] || DANGER.warm;
 
 // 同步原生部分的配色（导航栏 / tabBar / 窗口底色）。
 // 部分接口仅能在对应场景调用（如 setTabBarItem 需在 tab 页），失败静默，下次 onShow 再补。
@@ -94,4 +99,4 @@ function init() {
   applyChrome();
 }
 
-module.exports = { LIST, current, cls, apply, setTheme, init, CHROME, BRAND };
+module.exports = { LIST, current, cls, apply, setTheme, init, CHROME, BRAND, DANGER, brand, danger };

@@ -19,6 +19,7 @@ const SUITES = [
   ['verify_p0.js', 'P0 止血'],
   ['verify_pages.js', '页面级'],
   ['verify_demo.js', '演示隔离'],
+  ['verify_hardening.js', '加固'],
   ['verify_arch.js', '架构守卫']
 ];
 

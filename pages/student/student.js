@@ -15,7 +15,7 @@ Page({
     // 新增：个人卡统计 / 资料入口 / 班级筛选 / 评价汇总
     stats: null, profileFilled: true, clsFilters: [], clsF: 'all', tagCounts: [],
     hoursRemain: 0, hasCarry: false,
-    playing: '', teacher: '', icoPlay: icons.play('#E8590C'), icoPause: icons.pause('#E8590C'),
+    playing: '', teacher: '', icoPlay: icons.play(icons.brand()), icoPause: icons.pause(icons.brand()),
     icoChev: icons.chevron, icoPlus: icons.plus('#FFFFFF'), icoCam: icons.camera
   },
   onLoad(q) {

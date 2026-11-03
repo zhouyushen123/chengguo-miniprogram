@@ -46,6 +46,34 @@
       {
         "value": "package.json",
         "type": "file"
+      },
+      {
+        "value": "tests",
+        "type": "folder"
+      },
+      {
+        "value": "docs",
+        "type": "folder"
+      },
+      {
+        "value": "server",
+        "type": "folder"
+      },
+      {
+        "value": "tools",
+        "type": "folder"
+      },
+      {
+        "value": "README.md",
+        "type": "file"
+      },
+      {
+        "value": "project-engineering-file.md",
+        "type": "file"
+      },
+      {
+        "value": "预览-小程序界面.html",
+        "type": "file"
       }
     ],
     "include": []

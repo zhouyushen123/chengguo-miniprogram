@@ -175,7 +175,7 @@ Page({
       title: '开始使用',
       content: '将回到你自己的机构。示例数据不会被删除，之后在「我的」里随时能再看。',
       confirmText: '开始使用',
-      confirmColor: '#E8590C',
+      confirmColor: theme.danger(),
       success: r => {
         if (!r.confirm) return;
         db.demo.exit();

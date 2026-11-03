@@ -29,7 +29,7 @@ Page({
     selCount: 0, editing: false, saving: false,
     tplOpen: false, tplList: [], sel: [],
     icoCamera: icons.camera, icoAlbum: icons.album, icoAudio: icons.audio,
-    icoOrange: icons.mic('#E8590C'),
+    icoOrange: icons.mic(icons.brand()),
     icoWhite: icons.mic('#FFFFFF'),
     icoChevD: icons.chevronDown
   },

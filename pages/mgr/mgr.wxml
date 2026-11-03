@@ -118,7 +118,7 @@
   <view class="card item" wx:for="{{members}}" wx:key="id">
     <view>
       <view class="itrow">
-        <view class="ava" style="background:{{item.role==='parent'?'linear-gradient(135deg,#7fb069,#3a9e5f)':(item.role==='admin'||item.role==='owner'?'linear-gradient(135deg,#6b8fd6,#4a7ddc)':'linear-gradient(135deg,#f7a23b,#e8590c)')}}">{{item.name[0]}}</view>
+        <view class="ava ava-{{item.role}}">{{item.name[0]}}</view>
         <view><b>{{item.name}}</b>
           <view class="mi">{{item.roleLabel}} · {{item.meta}}<text wx:if="{{item.invited}}" class="mi"> · 待绑定</text></view>
         </view>

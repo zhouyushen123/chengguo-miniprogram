@@ -125,3 +125,8 @@
 }
 .stufab .btn { width: 100%; }
 .empty { text-align: center; color: var(--sub); font-size: 26rpx; padding: 48rpx 0; }
+
+/* 成员头像按角色着色：原来写在 WXML 的 style 里，暖橙渐变在蓝色/极简主题下不会跟着变 */
+.ava-owner, .ava-admin { background: linear-gradient(135deg, #6B8FD6, #4A7DDC); }
+.ava-parent { background: linear-gradient(135deg, #7FB069, #3A9E5F); }
+.ava-teacher { background: linear-gradient(135deg, var(--brand-a), var(--brand-b)); }

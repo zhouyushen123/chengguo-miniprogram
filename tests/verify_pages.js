@@ -473,9 +473,12 @@ ok('全站图标引用与 assets/icons 一一对应', () => {
     if (!fs.existsSync(f)) return;
     const src = fs.readFileSync(f, 'utf8');
     const re = /icons\.([a-zA-Z]+)(\s*\()?/g;
+    // 这三个不是图标，是图标库自身的工具方法（页面对它们只做调用，不产出图片路径）
+    const NOT_ICON = ['setTheme', 'brand', 'std'];
     let m;
     while ((m = re.exec(src))) {
       const key = m[1], called = !!m[2];
+      if (NOT_ICON.indexOf(key) > -1) continue;
       if (typeof icons[key] === 'undefined') { missing.push(d + ': 图标库无 ' + key); continue; }
       if (called) {
         // 按函数调用 → 图标库里必须真的是函数（这里正是 plus 曾经报错的地方）

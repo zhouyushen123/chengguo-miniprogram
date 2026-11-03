@@ -66,7 +66,7 @@ Page({
       title: '清理 ' + n + ' 个文件？',
       content: '这些照片/视频已经没有任何课堂记录引用（约 ' + s + '）。已保存的记录不受影响。',
       confirmText: '清理',
-      confirmColor: '#c0564a',
+      confirmColor: theme.danger(),
       success: r => {
         if (!r.confirm) return;
         const res = media.prune(db.mediaRefs());

@@ -34,6 +34,16 @@
     </view>
   </template>
 
+  <!-- 照片轮播：自动播放；手指按住暂停，松手后多等 2.5 秒再继续（避免刚松手就翻页） -->
+  <template name="photoswiper">
+    <swiper class="pswiper" autoplay="{{swAuto}}" interval="4000" circular="{{photoUrls.length > 1}}"
+      indicator-dots="{{photoUrls.length > 1}}" bindtouchstart="swTouchStart" bindtouchend="swTouchEnd">
+      <swiper-item wx:for="{{photoUrls}}" wx:key="*this">
+        <image src="{{item}}" mode="aspectFit" bindtap="previewPhoto" data-i="{{index}}" />
+      </swiper-item>
+    </swiper>
+  </template>
+
   <!-- 指定记录（从记录列表点入） -->
   <view wx:if="{{rec}}" class="card">
     <view class="dimhead">
@@ -47,9 +57,7 @@
     <view class="chips" style="margin:12rpx 0">
       <text class="pill" style="background:{{rec.sent?'var(--sent)':'var(--warn)'}}">{{rec.sent?'已发送':'待发送'}}</text>
     </view>
-    <view class="photogrid {{photoCls}}">
-      <image wx:for="{{photoUrls}}" wx:key="*this" src="{{item}}" mode="{{photoCls==='pg1'?'aspectFit':'aspectFill'}}" bindtap="previewPhoto" data-i="{{index}}" />
-    </view>
+    <template is="photoswiper" wx:if="{{photoUrls.length}}" data="{{photoUrls, swAuto}}" />
     <view class="videolist">
       <video wx:for="{{videoUrls}}" wx:key="*this" class="vplayer" src="{{item}}" object-fit="cover" controls show-center-play-btn></video>
     </view>
@@ -85,9 +93,7 @@
         <text class="pill" style="background:{{latest.sent?'var(--sent)':'var(--warn)'}}">{{latest.sent?'已发送':'待发送'}}</text>
       </view>
       <view wx:if="{{!photoUrls.length && !videoUrls.length}}" class="mi nofarm">本次还没有拍照片或录音 📷</view>
-      <view class="photogrid {{photoCls}}">
-        <image wx:for="{{photoUrls}}" wx:key="*this" src="{{item}}" mode="{{photoCls==='pg1'?'aspectFit':'aspectFill'}}" bindtap="previewPhoto" data-i="{{index}}" />
-      </view>
+      <template is="photoswiper" wx:if="{{photoUrls.length}}" data="{{photoUrls, swAuto}}" />
       <view class="videolist">
         <video wx:for="{{videoUrls}}" wx:key="*this" class="vplayer" src="{{item}}" object-fit="cover" controls show-center-play-btn></video>
       </view>

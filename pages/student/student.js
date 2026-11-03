@@ -9,6 +9,8 @@ const tagCls = t => !t ? '' : TAG_GOOD.indexOf(t) > -1 ? 'good' : t === '良好'
 Page({
   data: {
     s: null, tab: 0, latest: null, history: [], rec: null, photoUrls: [], videoUrls: [], photoCls: '',
+    // 照片轮播：swAuto=自动播放开关（手指按住暂停，松手延迟恢复）；_swTimer 挂 this 上不进 data
+    swAuto: true,
     filters: [], filt: '全部', total: 0, shown: 0, expandId: 0,
     // 新增：个人卡统计 / 资料入口 / 班级筛选 / 评价汇总
     stats: null, profileFilled: true, clsFilters: [], clsF: 'all', tagCounts: [],
@@ -174,5 +176,18 @@ Page({
     wx.navigateTo({ url: '/pages/record/record' });
   },
   goProfile() { wx.navigateTo({ url: '/pages/profile/profile?id=' + this.sid }); },
-  previewPhoto(e) { wx.previewImage({ urls: this.data.photoUrls, current: this.data.photoUrls[e.currentTarget.dataset.i] }); }
+  previewPhoto(e) { wx.previewImage({ urls: this.data.photoUrls, current: this.data.photoUrls[e.currentTarget.dataset.i] }); },
+  // —— 照片轮播：按住暂停，松手后多等 2.5 秒再继续（比正常 4 秒间隔多留一点观看时间） ——
+  swTouchStart() {
+    if (this._swTimer) { clearTimeout(this._swTimer); this._swTimer = null; }
+    if (this.data.swAuto) this.setData({ swAuto: false });
+  },
+  swTouchEnd() {
+    if (this._swTimer) clearTimeout(this._swTimer);
+    this._swTimer = setTimeout(() => {
+      this._swTimer = null;
+      if (!this.data.swAuto) this.setData({ swAuto: true });
+    }, 2500);
+  },
+  onUnload() { if (this._swTimer) { clearTimeout(this._swTimer); this._swTimer = null; } }
 });

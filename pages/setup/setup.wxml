@@ -25,8 +25,10 @@
     </view>
     <view class="note">缺的部分（学期/班级/学生）随时能在「管理」里补，不影响现在开始用。</view>
   </view>
-  <view class="btn" hover-class="btn-hover" bindtap="goRecord">录入第一条成果</view>
-  <view class="btn ghost" hover-class="btn-hover" bindtap="goHome">先去首页看看</view>
+  <view class="donebtns">
+    <view class="btn" hover-class="btn-hover" bindtap="goRecord">录入第一条成果</view>
+    <view class="btn ghost" hover-class="btn-hover" bindtap="goHome">先去首页看看</view>
+  </view>
   <view class="later" bindtap="goMgr">去「管理」补全信息</view>
 </block>
 

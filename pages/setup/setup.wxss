@@ -58,6 +58,9 @@
 .okk { color: var(--muted); flex: none; }
 .okv { color: var(--text); font-weight: 600; text-align: right; }
 
+/* 完成页的两枚按钮：左右 24rpx 跟上方卡片对齐，两枚之间留 20rpx 缝 */
+.donebtns { margin: 8rpx 24rpx 0; display: flex; flex-direction: column; gap: 20rpx; }
+
 /* 底部：固定操作条，最后一张卡不被压住 */
 .foot {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;

@@ -47,7 +47,7 @@ Page({
     // 学期
     term: { name: '', startDate: '', endDate: '' },
     // 班级
-    cls: { name: '', mode: 'term' },
+    cls: { name: '', mode: 'term', course: '' },
     // 学生
     stuName: '',
     added: [],
@@ -156,22 +156,32 @@ Page({
     const r = db.terms.create({ name, startDate: f.startDate, endDate: f.endDate, status: 'active' });
     if (!r.ok) return this._toast(r.msg || '学期创建失败');
     this._termId = r.item.id;
-    // 班级默认名跟着机构名给个建议值，省一次输入（用户可改）
+    // 班级默认名跟着机构名给个建议值，省一次输入（用户可改）；课程默认同名
     if (!this.data.cls.name) {
       const guess = (this.data.org.name || '').replace(/(培训|教育|有限|公司|中心)/g, '').slice(0, 6);
       this.setData({ 'cls.name': (guess || '') + '常规班' });
     }
+    // 课程默认跟班级同名：录入页选课需要一个可选项，不预填的话用户走到录入页会被空选框卡住
+    if (!this.data.cls.course) this.setData({ 'cls.course': this.data.cls.name });
     this.setData({ step: 3 });
   },
+
+  onClsCourse(e) { this.setData({ 'cls.course': e.detail.value }); },
 
   commitClass() {
     const f = this.data.cls;
     const name = (f.name || '').trim();
     if (!name) return this._toast('请给班级起个名字');
+    const course = (f.course || '').trim();
 
     const r = db.classes.create({ name, termId: this._termId || 0, mode: f.mode });
     if (!r.ok) return this._toast(r.msg || '班级创建失败');
     this._clsId = r.item.id;
+    // 第一门课程随班级一起建（选填）：录入页、AI 评的提示语都依赖它
+    if (course) {
+      const cr = db.courses.create({ name: course, clsId: this._clsId });
+      if (!cr.ok) return this._toast(cr.msg || '课程创建失败，可稍后在「管理 · 课程」里补');
+    }
     this.setData({ step: 4 });
   },
 

@@ -29,7 +29,8 @@
     </view>
   </view>
 
-  <view class="card">
+  <!-- 课程是选填的：班级还没建课程时不显示这个空选框，别让老师卡在这里 -->
+  <view class="card" wx:if="{{courses.length}}">
     <view class="sec"><view class="label">课程</view></view>
     <picker mode="selector" range="{{courses}}" range-key="name" value="{{courseIdx}}" bindchange="onCourse">
       <view class="pickerbox">{{course || '选择课程'}}<image class="xico" src="{{icoChevD}}" mode="aspectFit" /></view>

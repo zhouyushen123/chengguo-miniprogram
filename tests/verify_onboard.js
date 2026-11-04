@@ -144,9 +144,11 @@ ok('正常提交：学期建立且直接是进行中（第一个学期不能是"
 });
 
 console.log('\n【向导 · 第 3 步 班级】');
-ok('班级名默认给了建议值，提交后挂在该学期下', () => {
+ok('课程默认跟班级同名预填；提交后课程随班级一起建（录入页才有的选）', () => {
   assert.ok(setup.data.cls.name.length > 0, '应预填班级名');
-  setup.setData({ 'cls.name': '书法提高班', 'cls.mode': 'carry' });
+  assert.ok(setup.data.cls.course.length > 0, '应预填课程名（否则录入页空选框卡人）');
+  assert.strictEqual(setup.data.cls.course, setup.data.cls.name, '预填值默认同名，用户可改');
+  setup.setData({ 'cls.name': '书法提高班', 'cls.course': '软笔书法', 'cls.mode': 'carry' });
   setup.next();
   assert.strictEqual(setup.data.step, 4);
   const cs = db.classes.list();
@@ -154,6 +156,10 @@ ok('班级名默认给了建议值，提交后挂在该学期下', () => {
   assert.strictEqual(cs[0].name, '书法提高班');
   assert.strictEqual(cs[0].mode, 'carry');
   assert.strictEqual(cs[0].termId, setup._termId, '班级要挂进向导刚建的学期，而不是内置长期班');
+  const crs = db.courses.list();
+  assert.strictEqual(crs.length, 1, '课程应随班级一起建');
+  assert.strictEqual(crs[0].name, '软笔书法');
+  assert.strictEqual(crs[0].clsId, cs[0].id, '课程要挂在刚建的班上');
 });
 
 console.log('\n【向导 · 第 4 步 学生】');

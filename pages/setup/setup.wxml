@@ -80,6 +80,9 @@
   <view class="card">
     <view class="label">班级名称</view>
     <input class="input" placeholder="如：书法提高班" placeholder-class="ph" value="{{cls.name}}" bindinput="onClsName" maxlength="20" />
+    <view class="label">第一门课程</view>
+    <input class="input" placeholder="如：软笔书法（默认同班级名）" placeholder-class="ph" value="{{cls.course}}" bindinput="onClsCourse" maxlength="20" />
+    <view class="note sm">录入成果时要选课程，这里先建一门；后面还能在「管理 · 课程」里加。</view>
     <view class="label">上课方式</view>
     <view class="chips">
       <view wx:for="{{modes}}" wx:key="k" class="chip {{cls.mode===item.k?'on':''}}" bindtap="pickMode" data-v="{{item.k}}">{{item.t}}</view>

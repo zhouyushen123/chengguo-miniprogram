@@ -15,7 +15,7 @@
 | 远程 | `git@github.com:zhouyushen123/chengguo-miniprogram.git` |
 | 我的工作区 | `C:\Users\zhouy\WorkBuddy\橙果`（只放记忆，不放代码） |
 | 技术栈 | 微信原生小程序（JS）+ 云开发目录 `cloudfunctions/` |
-| 验证基线 | `npm test` = 251 项同步断言 + 4 项 AI 链路（异步）= **255 项全绿**；`npm run lint` 87 文件 0 提醒；`npm run size` 主包 885.1 KB / 2 MB（43.2%）；`npm run check` = lint + size + test 一条跑完 |
+| 验证基线 | `npm test` = 267 项同步断言 + 4 项 AI 链路（异步）= **271 项全绿**；`npm run lint` 92 文件 0 提醒；`npm run size` 主包 908 KB / 2 MB（44.3%）；`npm run check` = lint + size + test 一条跑完 |
 | 提交习惯 | 沙箱常拦 `git push`（读不到 `~/.ssh`），仓库有「5 分钟自动同步」任务会以 `auto: 自动同步 时间戳` 提交并推送 |
 
 ---
@@ -54,6 +54,15 @@
 - **主包体积检查**：新增 `tools/size.js`（`npm run size`）。按 `project.config.json` 的 `packOptions.ignore` + 固定排除（`.git/.github/.workbuddy/node_modules/cloudfunctions/隐藏项`）复算，80% 提示、超 2MB 直接 `exit 1`，`--list` 打印 Top 10。当前 885.1 KB / 43.2%，最大单文件是 `utils/demo-data.js` 47.8 KB。
 - **送达文案去误导（原 B-2，已完成）**：`发送给家长` → `发布到家长端`、`已发送/待发送` → `已发布/待发布`（cls / records / student / record 四个页面的 js + wxml，共 12 处），弹窗改成"对家长开放可见"的说法，并在录入页与记录列表各加一条 `.note`：**"发布后家长打开小程序即可看到，目前不会收到微信消息通知。"** `sent` 字段语义与权限规则一个字没动。新增架构守卫断言：`pages/` `components/` 的 js/wxml 里再出现 `已发送 / 待发送 / 发送给家长` 就红——**接通订阅消息后要连同这条断言一起反转**。
 
+### 新手引导（11-04 深夜，用户提的"一进来是空的像烂东西"）
+- **痛点是第一印象**：全新安装时首页是三块 0 加一片空白，看起来像坏掉的程序。用户要求把「机构入驻 → 学期 → 班级 → 学生」做成一条引导线。
+- 新页面 `pages/setup`（开通向导）：四步一页走完，顶部四段进度条，每步一句问句 + 只问必填项（机构名/类型/联系人/手机 → 学期名+起止日期 → 班级名+上课方式 → 学生姓名可连续加）。每步落库失败就停在原地报原因，不吞错。任意一步可「稍后再说」直接到完成页；完成页给摘要 + 「录入第一条成果」（带好 cls/sid 跳录入页）。
+- 默认值省输入：学期名按当前月份推（3–8 月开春季，9 月到次年 2 月算秋季）、起止日期默认今天起半年、班级名按机构名给出建议值。
+- **首页空态换脸**：`empty = 没学生且没记录`（班级空壳不算）；此时不显示"开始录入"和三块 0，改显示 `.onboard` 开通卡（四步说明 + 开始开通 + 先看示例数据）。首次进入自动跳一次向导，跳过后只在首页留卡片（标记走 `utils/firstrun.js`——页面不许直接碰本地存储）。
+- **出厂数据清干净**：`migrate.buildFresh(stamp, {sample:false})` 让真实新库不再自带「书法班/素描班/楷书/素描」；示例内容只留给演示数据包（`maintenance.buildDemoData` 仍用默认 sample:true）。内置「长期班」学期保留（历史数据兜底）。
+- **改名**：向导第 1 步提交时，若当前成员名还是出厂的「测试老师」，自动换成他填的联系人（`db.members.update`，失败不影响流程）。
+- 测试：新增 `tests/verify_onboard.js`（16 项，从空库起步跑到完成页）；`verify_term` / `verify_perm` 里"全新安装有 2 个默认班"的断言随产品决策改为"不带示例班"。总数 255 → **271**。
+
 ---
 
 ## 2. 刻意的设计与约定（改之前先看这里）
@@ -66,6 +75,8 @@
    - `verify_pages.js` 里「重启：数据持久化」用例会清 db 模块缓存重建实例，**新用例必须放在它之前**，否则页面模块拿旧快照查不到新数据；
    - 异步测试不能包进"注册时不等待"的包装函数（mock 同步 resolve 会竞态），必须纯顺序 `await`，且放文件末尾 IIFE + `process.exit(1)` 兜底。
 6. **版本号断言一律引用 `schema.VERSION`**，不要再硬编码数字。
+7. **真实新库不许带示例内容**：`migrate.buildFresh(stamp, {sample:false})` 是真实安装走的路，示例班级/课程只给演示数据包。想让首次体验更有内容，改首页的开通卡和向导（`pages/setup`），不要往真实库里塞假数据——用户分不清"示例"和"别人剩的"。
+8. **空库判定看学生，不看班级**：`empty = 没有学生 && 没有记录`。班级可能是空壳（向导中途退出就会留下），拿它判断会把新用户误判成老用户。
 
 ---
 
@@ -104,6 +115,8 @@ utils/db/storage.js      分片 + 脏片写（djb2 指纹，只写变化片）
 utils/api.js             云开关 / callSync / aiEvalDraft
 cloudfunctions/aiEval/   AI 识图生成评价（ZHIPU_API_KEY）
 cloudfunctions/sync/     记录与学生资料上推
+pages/index/              首页（空库时显示开通卡 onboard 块）
+pages/setup/             开通向导（机构→学期→班级→学生，四步一页）
 pages/record/            录入页（AI 评 / 模板 / 语音）
 pages/records/           记录列表（发布按钮在此）
 pages/teacher/           老师档案（本轮新增）
@@ -111,6 +124,7 @@ pages/mine/              我的（统计两行三列）
 app.wxss                 全局：.note / .slogan / .vin·.vmic
 tools/gen_icons.py       图标生成（三套主题；user 有 gray/ink/white）
 tools/size.js            主包体积检查（npm run size；CI 门禁用）
+utils/firstrun.js        首次进入的一次性标记（自动跳向导只跳一次）
 .github/workflows/deploy.yml  verify（lint+test+size）→ upload 两段门禁
 ```
 

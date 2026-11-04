@@ -34,18 +34,23 @@ function coreNextId(list) {
   return max + 1;
 }
 
-function buildFresh(stamp) {
+// 全新安装的骨架。
+// opts.sample === false：不带「书法班/素描班/楷书/素描」这些示例内容。
+//   真实新用户第一次进来看到两个自己没建过的班，只会以为是别人的数据或系统坏了；
+//   所以真实库不带示例，示例只给演示数据包用（maintenance.buildDemoData 依赖这两个班）。
+function buildFresh(stamp, opts) {
+  const withSample = !(opts && opts.sample === false);
   const terms = [schema.normalizeTerm({
     id: 1, name: '长期班', status: 'active', builtIn: true
   }, ORG, stamp)];
-  const cls = [
+  const cls = withSample ? [
     schema.normalizeClass({ id: 1, name: '书法班', termId: 1 }, ORG, stamp),
     schema.normalizeClass({ id: 2, name: '素描班', termId: 1 }, ORG, stamp)
-  ];
-  const courses = [
+  ] : [];
+  const courses = withSample ? [
     schema.normalizeCourse({ id: 1, name: '楷书', clsId: 1 }, ORG, stamp),
     schema.normalizeCourse({ id: 2, name: '素描', clsId: 2 }, ORG, stamp)
-  ];
+  ] : [];
   const users = [
     schema.normalizeUser({ id: 't1', name: '测试老师', role: 'owner' }, ORG, stamp),
     schema.normalizeUser({ id: 'p1', name: '家长演示', role: 'parent' }, ORG, stamp)
@@ -167,7 +172,7 @@ function build(loaded) {
   const legacy = require('./storage').readLegacy();
   const old = (legacy && legacy.db) || null;
 
-  if (!old) return buildFresh(stamp);
+  if (!old) return buildFresh(stamp, { sample: false });
 
   // id 只需在各自集合内唯一：每类实体各用一个去重器，避免班级占号把课程 id 顶走
   const uniqOf = () => {

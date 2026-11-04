@@ -71,9 +71,9 @@ Page({
     }));
 
     const label = { parent: '家长端', admin: '管理员端' }[db.auth.role()] || '老师端';
-    // 空库 = 没有班级也没有学生。此时首页不摆"开始录入"和三块 0（那看着像坏了），
+    // 空库 = 还没有学生（班级是空的壳子不算数）。此时首页不摆"开始录入"和三块 0（那看着像坏了），
     // 改摆开通卡；并且第一次进入时直接把人送进向导，只自动跳一次（跳过一次后由卡片接手）
-    const empty = !vis.length && !stu.length;
+    const empty = !stu.length && !recs.length;
     this.setData({
       isParent: false,
       roleLabel: label,

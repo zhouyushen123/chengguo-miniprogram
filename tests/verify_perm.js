@@ -260,8 +260,8 @@ console.log('\n【7】机构信息');
 console.log('\n【8】全新安装（无任何历史数据）');
 {
   const { db } = boot({});
-  ok('默认班级与成员就绪', () => {
-    assert.strictEqual(db.classes.list().length, 2);
+  ok('负责人在位，且不带示例班级（示例只属于演示数据）', () => {
+    assert.strictEqual(db.classes.list().length, 0, '真实新库不该自带示例班级');
     assert.strictEqual(db.settings().role, 'owner');
   });
   ok('真实库是干净的：一条演示数据都不混在里面', () => {

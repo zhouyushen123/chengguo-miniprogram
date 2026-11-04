@@ -33,12 +33,17 @@ ok('内置「长期班」自动创建且进行中', () => {
   assert.strictEqual(t.name, '长期班');
   assert.strictEqual(t.status, 'active');
 });
-ok('默认班级已挂靠长期班', () => {
-  const t = db.terms.list().find(x => x.builtIn);
-  db.classes.list().forEach(c => assert.strictEqual(c.termId, t.id));
+ok('全新安装不带示例班级（第一印象不该出现自己没建过的班）', () => {
+  // 早期版本这里会塞「书法班/素描班」两个空壳班，真实新用户看到以为是别人的数据。
+  // 现在示例内容只给演示数据包用（migrate.buildFresh({sample:false})）。
+  assert.deepStrictEqual(db.classes.list().map(c => c.name), []);
 });
-ok('默认班级模式为学期制', () => {
-  assert.strictEqual(db.classes.list()[0].mode, 'term');
+ok('新建班级默认挂进长期班、默认学期制', () => {
+  const t = db.terms.list().find(x => x.builtIn);
+  const r = db.classes.create({ name: '书法班' });
+  assert.ok(r.ok, r.msg);
+  assert.strictEqual(r.item.termId, t.id);
+  assert.strictEqual(r.item.mode, 'term');
 });
 
 /* ================= 场景 B：v4 老数据升级 ================= */

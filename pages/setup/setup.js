@@ -129,7 +129,17 @@ Page({
       phone: (f.phone || '').trim(),
       status: 'active'
     });
+    // 顺手把出厂名「测试老师」换成他填的联系人：首页一进来就叫"测试老师"，
+    // 是那种会让人立刻觉得"这东西是给我用的吗"的细节
+    this._renameMe((f.contact || '').trim());
     this.setData({ step: 2 });
+  },
+  _renameMe(name) {
+    if (!name) return;
+    try {
+      const me = db.members.current && db.members.current();
+      if (me && /^测试老师$/.test(me.name || '')) db.members.update(me.id, { name });
+    } catch (e) { /* 改名失败不影响开通，名字能在「我的」里改 */ }
   },
 
   commitTerm() {

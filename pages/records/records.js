@@ -114,7 +114,7 @@ Page({
     };
     wx.navigateTo({ url: '/pages/record/record' });
   },
-  // 单条发送：已发送的记录按钮置灰不可再点
+  // 单条发布：已发布的记录按钮置灰不可再点
   sendRec(e) {
     const r = db.records.get(e.currentTarget.dataset.rid);
     if (!r || r.sent) return;
@@ -124,15 +124,15 @@ Page({
     }
     const s = db.students.get(r.sid) || { name: db.students.name(r.sid) || '学生' };
     wx.showModal({
-      title: '发送给家长',
-      content: '将把 ' + s.name + ' ' + (r.date || '') + ' 的这条成果记录发送给学生家长，确认发送？',
-      confirmText: '发送',
+      title: '发布到家长端',
+      content: '将把 ' + s.name + ' ' + (r.date || '') + ' 的这条成果记录对家长开放可见，确认发布？',
+      confirmText: '发布',
       success: res => {
         if (!res.confirm) return;
         const out = db.records.markSent([r.id]);
-        if (!out.count) { wx.showToast({ title: '该记录不在你的发送范围', icon: 'none' }); return; }
+        if (!out.count) { wx.showToast({ title: '该记录不在你的发布范围', icon: 'none' }); return; }
         api.pushRecord(Object.assign({}, r, { sent: true }));
-        wx.showToast({ title: '已发送', icon: 'success' });
+        wx.showToast({ title: '已发布', icon: 'success' });
         this.refresh();
       }
     });

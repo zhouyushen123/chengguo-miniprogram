@@ -303,7 +303,7 @@ Page({
     }
     api.pushRecord(res.record); // 线上模式自动上推，本地模式静默跳过
     // warn：记录已存下，但关联的课时账没记上（空间不足），得让老师知道
-    wx.showToast({ title: res.warn || (send ? '已发送' : '已存草稿'), icon: res.warn ? 'none' : 'success' });
+    wx.showToast({ title: res.warn || (send ? '已发布' : '已存草稿'), icon: res.warn ? 'none' : 'success' });
     setTimeout(() => wx.navigateBack(), 800);
   },
   /* ================= 模板：页内全屏面板（多选/增删改） ================= */

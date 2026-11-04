@@ -6,7 +6,8 @@
     "deploy": "node deploy.js",
     "test": "node tests/run.js",
     "lint": "node tools/lint.js",
-    "check": "node tools/lint.js && node tests/run.js"
+    "size": "node tools/size.js",
+    "check": "node tools/lint.js && node tools/size.js && node tests/run.js"
   },
   "dependencies": {
     "miniprogram-ci": "^2.1.9"

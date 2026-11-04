@@ -23,7 +23,7 @@
       <view class="lg tip">点击学生即可录入今日成果</view>
     </view>
     <view class="sendbtn {{pending?'':'off'}}" hover-class="btn-hover" bindtap="sendAll">
-      {{pending ? '一键发送给家长（' + pending + ' 条待发送）' : '今日已全部发送'}}
+      {{pending ? '一键发布到家长端（' + pending + ' 条待发布）' : '今日已全部发布'}}
     </view>
   </view>
 

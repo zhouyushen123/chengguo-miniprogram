@@ -92,26 +92,26 @@ Page({
     });
     this.setData({ recs, recTotal: list.length });
   },
-  // 统一发送：把今日该班所有「已录入未发布」的记录发给家长
+  // 统一发布：把今日该班所有「已录入未发布」的记录对家长开放
   sendAll() {
     const t = db.today();
-    // 权限：只有能对这批记录执行"发送"的人才进得来（家长/无关老师直接挡回）
+    // 权限：只有能对这批记录执行"发布"的人才进得来（家长/无关老师直接挡回）
     const targets = db.records.ofClass(this.clsId).filter(r => r.date === t && !r.sent);
-    if (!targets.length) { wx.showToast({ title: '今天没有待发送的记录', icon: 'none' }); return; }
+    if (!targets.length) { wx.showToast({ title: '今天没有待发布的记录', icon: 'none' }); return; }
     if (!db.auth.can('record.send', { record: targets[0] })) {
       wx.showToast({ title: db.auth.denyReason('record.send'), icon: 'none' });
       return;
     }
     wx.showModal({
-      title: '统一发送给家长',
-      content: '将把今天已录入的 ' + targets.length + ' 条成果记录发送给学生家长，确认发送？',
-      confirmText: '发送',
+      title: '统一发布到家长端',
+      content: '将把今天已录入的 ' + targets.length + ' 条成果记录对家长开放可见，确认发布？',
+      confirmText: '发布',
       success: res => {
         if (!res.confirm) return;
         const out = db.records.markSent(targets.map(r => r.id));
-        if (!out.count) { wx.showToast({ title: '没有可发送的记录', icon: 'none' }); return; }
+        if (!out.count) { wx.showToast({ title: '没有可发布的记录', icon: 'none' }); return; }
         targets.forEach(r => api.pushRecord(Object.assign({}, r, { sent: true })));
-        const tip = out.denied ? ('已发送 ' + out.count + ' 条，' + out.denied + ' 条无权发送') : ('已发送 ' + out.count + ' 条');
+        const tip = out.denied ? ('已发布 ' + out.count + ' 条，' + out.denied + ' 条无权发布') : ('已发布 ' + out.count + ' 条');
         wx.showToast({ title: tip, icon: out.denied ? 'none' : 'success' });
         this.render(); // 返回后色块绿变蓝、计数即时刷新
       }

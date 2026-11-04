@@ -26,7 +26,7 @@
       <image wx:if="{{item.photo}}" class="thumb" src="{{item.photo}}" mode="aspectFill" />
       <view class="recinfo">
         <view class="chips" style="margin:0 0 8rpx">
-          <text class="pill" style="background:{{item.sent?'var(--sent)':'var(--warn)'}}">{{item.sent?'已发送':'待发送'}}</text>
+          <text class="pill" style="background:{{item.sent?'var(--sent)':'var(--warn)'}}">{{item.sent?'已发布':'待发布'}}</text>
         </view>
         <view wx:if="{{item.note}}" class="mi note">“{{item.note}}”</view>
         <view class="mi footer"><image class="fico" src="{{icoCamera}}" /> {{item.photoCount}} 张<block wx:if="{{item.hasAudio}}"> · <image class="fico" src="{{icoAudio}}" /> 语音</block></view>
@@ -35,10 +35,11 @@
   </view>
   <view wx:if="{{item.canEdit || item.canSend}}" class="btnrow">
     <view wx:if="{{item.canEdit}}" class="btn ghost" hover-class="btn-hover" catchtap="editRec" data-rid="{{item.id}}">编辑</view>
-    <view wx:if="{{item.canSend}}" class="btn send {{item.sent?'off':''}}" hover-class="{{item.sent?'none':'btn-hover'}}" catchtap="sendRec" data-rid="{{item.id}}">{{item.sent?'已发送':'发送给家长'}}</view>
+    <view wx:if="{{item.canSend}}" class="btn send {{item.sent?'off':''}}" hover-class="{{item.sent?'none':'btn-hover'}}" catchtap="sendRec" data-rid="{{item.id}}">{{item.sent?'已发布':'发布到家长端'}}</view>
   </view>
 </view>
 <view wx:if="{{!list.length}}" class="empty">当前筛选条件下暂无记录</view>
+<view wx:if="{{list.length}}" class="note">「已发布」表示家长端已可见，家长打开小程序即可查看，目前不会收到微信消息通知。</view>
 
 <!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
 <privacy-popup />

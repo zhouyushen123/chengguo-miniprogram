@@ -46,7 +46,7 @@
   <view wx:if="{{rec}}" class="card">
     <view class="dimhead">
       <text class="lcourse">{{rec.course}}</text>
-      <text class="pill" style="background:{{rec.sent?'var(--sent)':'var(--warn)'}}">{{rec.sent?'已发送':'待发送'}}</text>
+      <text class="pill" style="background:{{rec.sent?'var(--sent)':'var(--warn)'}}">{{rec.sent?'已发布':'待发布'}}</text>
       <view class="dhr">
         <text class="mi">{{rec.clsName}} · {{rec.date}}</text>
         <text wx:if="{{rec.tag}}" class="badge {{rec.tcls}}">{{rec.tag}}</text>
@@ -79,7 +79,7 @@
       <view class="dimhead">
         <text class="pill pill-o">{{filt==='全部'?'最近一次':filt}}</text>
         <text class="lcourse">{{latest.course}}</text>
-        <text class="pill" style="background:{{latest.sent?'var(--sent)':'var(--warn)'}}">{{latest.sent?'已发送':'待发送'}}</text>
+        <text class="pill" style="background:{{latest.sent?'var(--sent)':'var(--warn)'}}">{{latest.sent?'已发布':'待发布'}}</text>
         <view class="dhr">
           <text class="mi">{{latest.clsName}} · {{latest.date}}</text>
           <text wx:if="{{latest.tag}}" class="badge {{latest.tcls}}">{{latest.tag}}</text>
@@ -117,14 +117,14 @@
           </view>
           <view class="hright">
             <view wx:if="{{item.pcnt}}" class="hcam"><image class="camico" src="{{icoCam}}" mode="aspectFit" />{{item.pcnt}}</view>
-            <text wx:if="{{!item.sent}}" class="pill" style="background:var(--warn)">待发送</text>
+            <text wx:if="{{!item.sent}}" class="pill" style="background:var(--warn)">待发布</text>
             <image class="chev {{expandId===item.id?'up':''}}" src="{{icoChev}}" mode="aspectFit" />
           </view>
         </view>
         <!-- 行内展开：照片/视频在前，课程评价在后 -->
         <view wx:if="{{expandId===item.id}}" class="histdetail">
           <view class="chips" style="margin:0 0 12rpx">
-            <text class="pill" style="background:{{item.sent?'var(--sent)':'var(--warn)'}}">{{item.sent?'已发送':'待发送'}}</text>
+            <text class="pill" style="background:{{item.sent?'var(--sent)':'var(--warn)'}}">{{item.sent?'已发布':'待发布'}}</text>
           </view>
           <view class="photogrid {{item.pcls}}" wx:if="{{item.photos.length}}">
             <image wx:for="{{item.photos}}" wx:for-item="ph" wx:key="*this" src="{{ph}}" mode="{{item.pcls==='pg1'?'aspectFit':'aspectFill'}}" />

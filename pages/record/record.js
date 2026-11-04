@@ -26,7 +26,7 @@ Page({
     clsId: null, students: [], stuShow: [], stuQuery: '', stuExpanded: false, over45: false,
     courses: [], courseIdx: 0, course: '',
     score: 85, tags: TAGS, tag: '',
-    note: '', photos: [], videos: [], audio: null, recording: false, recognizing: false, canSend: false,
+    note: '', photos: [], videos: [], audio: null, recording: false, recognizing: false, canSend: false, aiBusy: false,
     selCount: 0, editing: false, saving: false,
     tplOpen: false, tplList: [], sel: [],
     icoCamera: icons.camera, icoAlbum: icons.album, icoAudio: icons.audio,
@@ -112,6 +112,54 @@ Page({
   },
   onNote(e) { this.setData({ note: e.detail.value }); this.refreshCan(); },
   goTpls() { wx.navigateTo({ url: '/pages/tpls/tpls?mode=select' }); },
+
+  // AI 评：把第一张照片交给 aiEval 云函数（智谱 GLM-4V-Flash 识图），生成评价草稿填入输入框
+  // 图片通道：云存储图直接传 fileID；本地图压缩后转 base64（callFunction 有包体上限，必须先压）
+  async aiDraft() {
+    if (this.data.aiBusy) return;
+    if (!this.data.photos.length) { wx.showToast({ title: '先拍或选一张照片，AI 才有得看', icon: 'none' }); return; }
+    if (String(this.data.note || '').trim()) {
+      const go = await new Promise(res => wx.showModal({
+        title: '覆盖当前评价？', content: 'AI 将根据照片重新生成，替换已输入的内容',
+        success: r => res(!!(r && r.confirm)), fail: () => res(false)
+      }));
+      if (!go) return;
+    }
+    this.setData({ aiBusy: true });
+    wx.showLoading({ title: 'AI 正在识图…', mask: true });
+    try {
+      const src = this.data.photos[0];
+      const payload = { hint: this.data.course || '' };
+      if (String(src).indexOf('cloud://') === 0) {
+        payload.fileID = src;
+      } else {
+        let p = src;
+        try {
+          p = await new Promise((res, rej) => wx.compressImage({ src, quality: 'low', success: r => res(r.tempFilePath), fail: rej }));
+        } catch (e) { /* 压缩失败用原图 */ }
+        payload.imageBase64 = await new Promise((res, rej) =>
+          wx.getFileSystemManager().readFile({ filePath: p, encoding: 'base64', success: r => res(r.data), fail: rej }));
+      }
+      const r = await api.aiEvalDraft(payload);
+      if (!r || !r.ok) throw new Error((r && r.msg) || '生成失败');
+      const text = String(r.text || '').trim().slice(0, 500);
+      if (!text) throw new Error('AI 没有返回内容，请重试');
+      this.setData({ note: text });
+      this.refreshCan();
+      wx.showToast({ title: '已生成，可自由修改', icon: 'success' });
+    } catch (e) {
+      const m = String((e && e.message) || '');
+      const tip = m.indexOf('CLOUD_OFF') > -1 ? '云开发未开通：需开通环境并部署 aiEval 云函数'
+        : m.indexOf('NO_KEY') > -1 ? 'AI 未配置：云函数缺 ZHIPU_API_KEY 环境变量'
+        : m.indexOf('超时') > -1 || m.indexOf('timeout') > -1 ? 'AI 响应超时，请重试'
+        : (m || '生成失败，请重试');
+      wx.showToast({ title: tip, icon: 'none' });
+    } finally {
+      wx.hideLoading && wx.hideLoading();
+      this.setData({ aiBusy: false });
+    }
+  },
+
   // 拍摄 / 相册：均支持照片与小视频（同微信），单文件上限 50MB
   addMedia(e) {
     const src = e.currentTarget.dataset.src; // camera | album

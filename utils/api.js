@@ -4,7 +4,8 @@
 const CLOUD_ENV = 'chengguo-0gxxx'; // ← 改成你的云环境 ID（开发者工具-云开发控制台可查）
 // ★ 云开关：未完成微信认证/未开通云开发前保持 false（纯本地模式，数据存手机）
 // 认证通过并开通云开发后，改为 true 并填好上面的 CLOUD_ENV，再部署云函数即可
-const CLOUD_ENABLED = false;
+// （测试用：环境变量 CG_CLOUD=1 可强制打开，仅影响 require 时机在设值之后的模块）
+const CLOUD_ENABLED = process.env.CG_CLOUD === '1';
 
 let cloudReady = false;
 function initCloud() {
@@ -49,4 +50,19 @@ function uploadFile(filePath, kind) {
     });
   });
 }
-module.exports = { initCloud, enabled, login, pushRecord, pull, uploadFile, CLOUD_ENV };
+// AI 识图生成评价草稿：调 aiEval 云函数（智谱 GLM-4V-Flash）。
+// 入参二选一：{ fileID } 云存储图片；{ imageBase64, hint } 压缩图兜底。
+// 不走 callSync（它把 ok:false 当 reject，这里的业务错误码要用 result 原样带回）
+function aiEvalDraft(data) {
+  if (!cloudReady) return Promise.reject(new Error('CLOUD_OFF'));
+  return new Promise((resolve, reject) => {
+    wx.cloud.callFunction({
+      name: 'aiEval',
+      data: data || {},
+      success: r => resolve(r.result || { ok: false, msg: '云函数无返回' }),
+      fail: e => reject(new Error((e && e.errMsg) || '云函数调用失败'))
+    });
+  });
+}
+
+module.exports = { initCloud, enabled, login, pushRecord, pull, uploadFile, aiEvalDraft, CLOUD_ENV };

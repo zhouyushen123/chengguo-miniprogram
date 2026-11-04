@@ -64,6 +64,7 @@
       <view class="notetools">
         <text class="notecnt">{{note.length}}/500</text>
         <view class="barbtn" hover-class="btn-hover" bindtap="toggleTpl">模板<text wx:if="{{selCount}}" class="badge">{{selCount}}</text></view>
+        <view class="barbtn aibtn {{aiBusy?'busy':''}}" hover-class="btn-hover" bindtap="aiDraft">AI 评</view>
         <view class="micbtn {{(recording||recognizing)?'rec':''}}" hover-class="btn-hover" bindtap="toggleRec"><image class="micico" src="{{(recording||recognizing)?icoWhite:icoOrange}}" mode="aspectFit" /></view>
       </view>
     </view>

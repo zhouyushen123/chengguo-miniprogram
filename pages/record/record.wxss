@@ -56,6 +56,9 @@
   background: var(--brand); color: #fff; border-radius: 16rpx;
   font-size: 20rpx; padding: 2rpx 12rpx; margin-left: 8rpx;
 }
+/* AI 评：品牌色描边以区别于「模板」；忙碌时降透明度并禁用点击感 */
+.barbtn.aibtn { color: var(--brand); background: var(--brand-soft); }
+.barbtn.aibtn.busy { opacity: 0.5; }
 .micbtn {
   flex: none; width: 76rpx; height: 76rpx; border-radius: 50%;
   background: var(--brand-soft); display: flex; align-items: center; justify-content: center;

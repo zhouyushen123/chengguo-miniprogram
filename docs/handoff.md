@@ -76,9 +76,7 @@
 > 云开发已开通（11-04 22:33），环境 ID **`cloud1-d9gca4e7q307c4564`**，已填进 `utils/api.js`，`CLOUD_ENABLED` 默认 true。剩下只有「部署 aiEval + 配 Key」两步（见下 2~4），完成后 ping 自检。
 > ⚠️ `SYNC_ENABLED` 仍为 false：`pushRecord` / `pull` / `uploadFile` 一律空转，因为 sync 云函数还是旧 openid 模型（CR-005）。**AI 评不受影响**（`aiEvalDraft` 只要求云通）。
 1. ~~云开发环境还没开通~~ ✅ 已开通（免费体验版），ID 已配。
-2. 部署 `cloudfunctions/aiEval`（右键 → 上传并部署：云端安装依赖）。
-3. 云开发控制台 → 云函数 → aiEval → 配置 → 环境变量加 `ZHIPU_API_KEY`（值由用户自己粘贴，**不要写进任何文件**）；**超时时间默认 3 秒不够，改 30 秒**。
-4. 部署后云端测试 `{"action":"ping"}` 应返回 `hasKey: true`。
+2. ~~部署 `cloudfunctions/aiEval`~~ ✅ 11-04 22:56 部署成功，`{"action":"ping"}` 返回 `hasKey:true`，链路全通。剩余：真机实测 AI 评生成质量，按反馈调 prompt。
 5. ~~拿到环境 ID 后改 `api.js`~~ ✅ 已改（`CLOUD_ENV` + `CLOUD_ENABLED=true`）。
 
 ### B. 备案 / 认证通过后

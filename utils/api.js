@@ -4,11 +4,13 @@
 const CLOUD_ENV = 'cloud1-d9gca4e7q307c4564'; // 云开发环境 ID（微信认证已完成，2026-11-04 开通）
 // ★ 云开关：控制 wx.cloud.init 要不要跑。现在开的是「AI 评」这一条（aiEval 云函数）。
 // 离线/纯本地调试时用 CG_CLOUD=0 强制关掉（测试若要打开需在 require 本模块之前设值）。
-const CLOUD_ENABLED = process.env.CG_CLOUD !== '0';
+// 测试环境才有 process.env，小程序运行时没有，必须先判存在再取值
+const ENV = (typeof process !== 'undefined' && process.env) || {};
+const CLOUD_ENABLED = ENV.CG_CLOUD !== '0';
 // ★ 同步链路单独上锁：sync 云函数还是旧 openid 模型（CR-005，与新架构的记录/成员模型不对齐）。
 // 重构完再打开，避免把本地记录推到还没对齐的库里、也避免云端半份数据反过来污染本地。
 // 开通方式：CG_SYNC=1 或把下面这行改成 true。
-const SYNC_ENABLED = process.env.CG_SYNC === '1';
+const SYNC_ENABLED = ENV.CG_SYNC === '1';
 
 let cloudReady = false;
 function initCloud() {

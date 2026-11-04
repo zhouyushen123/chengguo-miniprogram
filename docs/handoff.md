@@ -15,7 +15,7 @@
 | 远程 | `git@github.com:zhouyushen123/chengguo-miniprogram.git` |
 | 我的工作区 | `C:\Users\zhouy\WorkBuddy\橙果`（只放记忆，不放代码） |
 | 技术栈 | 微信原生小程序（JS）+ 云开发目录 `cloudfunctions/` |
-| 验证基线 | `npm test` = 283 项同步断言 + 4 项 AI 链路（异步）= **287 项全绿**；`npm run lint` 92 文件 0 提醒；`npm run size` 主包 910 KB / 2 MB（44.4%）；`npm run check` = lint + size + test 一条跑完 |
+| 验证基线 | `npm test` = 292 项同步断言 + 4 项 AI 链路（异步）= **296 项全绿**；`npm run lint` 96 文件 0 提醒；`npm run size` 主包 919 KB / 2 MB（44.9%）；`npm run check` = lint + size + test 一条跑完 |
 | 提交习惯 | 沙箱常拦 `git push`（读不到 `~/.ssh`），仓库有「5 分钟自动同步」任务会以 `auto: 自动同步 时间戳` 提交并推送 |
 
 ---
@@ -48,6 +48,13 @@
 - 头像占位：无照片 → 浅底 + 人形剪影（`user-gray`）；老师档案渐变色底 + `user-white`（`tools/gen_icons.py` 的 `user` 配色组合已加 `white`）。
 - 记录列表：姓名/课程/分数行**通栏**，照片下移到与评价同行、在评价左侧（原来照片占整卡左侧把姓名挤成竖排）。
 - 班级条目：圆形色块 → 8×52rpx 品牌渐变圆角竖杠；学生条目：色块 → 头像缩略图。
+
+### 全站统一头像（11-05 早，用户要求"全小程序统一"）
+- **口径（唯一，写在 `components/ava/ava.js`）**：①有真实照片（上传缩略图 / 微信头像同步）→ 显示照片；②没有 → 色块（品牌渐变）+ 白色姓名首字。任何页面不得私拼头像块。
+- **组件 `components/ava`**，app.json 全局注册为 `<ava>`；props：`src`（照片）、`name`（取首字）、`size/radius`（rpx）、`tone`（brand=老师 / owner=负责人与管理员（蓝）/ parent=家长（绿），色值沿用原 mgr 配色）。
+- **覆盖五页七处**：student 个人卡、teacher 个人卡、mine 名片、index 家长端孩子卡、mgr（学生列表×2 + 成员列表）。守卫测试 `verify_ava.js` 断言这五页必须用 `<ava>` 且不得残留 `stuava`/`pav`/`tava` 私拼。
+- **人员（老师/家长/管理员）新增 photo 档案字段**：`schema.normalizeMember/normalizeUser` 带 `photo`；`memberUpdate` 写 photo 时同步冗余到 user 表（与 name 同一套事务）；`memberView` 对外暴露。学生本就有 `photo`。
+- **微信头像同步**：mgr 成员表单新增头像行——点头像 `chooseMedia` 上传，或点「用微信头像」按钮（`open-type="chooseAvatar"` 头像填写能力），两条路都经 `media.persist` 转存。学生表单大头像占位从白色相机图标改为"色块+首字"，相机改右下角小角标。
 
 ### 工程门禁与文案（11-04 晚）
 - **CI 门禁（原 P0-3，已完成）**：`deploy.yml` 拆成 `verify` → `upload` 两段。`verify` 跑 `npm run lint` / `npm test` / `npm run size`，红一条就不上传；`upload` 需要 `needs: verify`。加了 `concurrency: deploy-mini-<ref>`（同一分支取消旧运行，避免倒序发布），`pull_request` 只跑门禁不发版（`if: github.event_name != 'pull_request'`）。

@@ -63,7 +63,7 @@
 ├── utils/api.js                      线上同步层（REST，未配置自动降级本地）
 ├── assets/icons/                     线性图标（PNG，由 tools/gen_icons.py 生成）
 ├── pages/setup|index|record|tpls|records|student|cls|profile|mgr
-├── tests/                            回归测试（npm test，287 项断言）
+├── tests/                            回归测试（npm test，296 项断言）
 ├── tools/gen_icons.py                图标生成脚本（改图标后重跑）
 ├── cloudfunctions/sync               云函数（records/profiles 读写，模型待重构）
 └── project.config.json
@@ -80,7 +80,7 @@
 ### 改完代码怎么验
 
 ```bash
-npm test          # 9 个套件：数据层 30 + 权限 45 + 学期 30 + P0 27 + 页面级 61+AI链路 4 + 手机号 12 + 新手引导 19 + 演示隔离 19 + 加固 30 + 架构守卫 10 = 287 项
+npm test          # 9 个套件：数据层 30 + 权限 45 + 学期 30 + P0 27 + 页面级 61+AI链路 4 + 手机号 12 + 头像统一 9 + 新手引导 19 + 演示隔离 19 + 加固 30 + 架构守卫 10 = 296 项
 npm run lint      # 自建自检：页面绕开数据层、写死品牌色、残留 console.log、WXML 函数调用
 npm run size      # 主包体积（2MB 上限，超线直接失败；--list 看体积 Top 10）
 npm run check     # lint + size + test（CI 门禁跑的就是这一条）

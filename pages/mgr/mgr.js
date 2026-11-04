@@ -21,7 +21,7 @@ Page({
     clsTerms: [], clsTermIdx: 0, clsMode: 'term', clsTeachers: [], clsTeacherIdx: 0,
     // 学生表单弹层
     // icoCameraW：压在全品牌色头像块上的相机图标，必须恒为白色，故不参与主题图标整包（换肤会覆盖）
-    stuForm: null, stuClsSel: [], stuClsChips: [], icoCamera: icons.camera,
+    stuForm: null, stuClsSel: [], stuClsChips: [], icoCamera: icons.camera, icoUser: icons.user,
     icoCameraW: '/assets/icons/camera-white.png',
     // 学生筛选：模糊搜索（姓名/家长/微信号）+ 入学年份 + 性别；stuYears 由现有学生倒推
     stuQ: '', stuYears: [{ y: 0, name: '全部' }], stuYearIdx: 0, stuGender: '', stuCount: 0,

@@ -39,7 +39,8 @@
 
 /* 学生头像缩略图：有照片显示照片，无照片浅底首字占位（不再是实色圆形色块） */
 .stuava { width: 88rpx; height: 88rpx; border-radius: 24rpx; flex: none; }
-.stuava.stub { background: var(--brand-soft); color: var(--brand); font-size: 34rpx; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.stuava.stub { background: var(--brand-soft); display: flex; align-items: center; justify-content: center; }
+.stuava.stub image { width: 44rpx; height: 44rpx; opacity: .55; }
 
 /* 课堂语音条：替代原生 audio 组件 */
 .voicebar {

@@ -38,6 +38,7 @@ const icons = {
   chevronDown: I('chevron-down', 'gray'),
   // —— 业务 ——
   user: I('user', 'gray'),
+  userWhite: I('user', 'white'),
   users: I('users', 'ink'),
   calendar: I('calendar', 'gray'),
   clock: I('clock', 'gray'),

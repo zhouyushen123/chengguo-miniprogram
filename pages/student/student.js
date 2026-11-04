@@ -18,7 +18,7 @@ Page({
     stats: null, profileFilled: true, clsFilters: [], clsF: 'all', tagCounts: [],
     hoursRemain: 0, hasCarry: false,
     playing: '', teacher: '', icoPlay: icons.play(icons.brand()), icoPause: icons.pause(icons.brand()),
-    icoChev: icons.chevron, icoPlus: icons.plus('#FFFFFF'), icoCam: icons.camera
+    icoChev: icons.chevron, icoPlus: icons.plus('#FFFFFF'), icoCam: icons.camera, icoUser: icons.user
   },
   onLoad(q) {
     this.sid = +q.id || +q.sid || 0; // 兼容 id / sid 两种参数名

@@ -1,5 +1,6 @@
 const db = require('../../utils/db');
 const theme = require('../../utils/theme');
+const icons = require('../../utils/icons');
 
 // 评价分档配色：与学生档案页同一套（优秀/最佳绿、良好橙、加油/待提高蓝灰）
 const TAG_GOOD = ['优秀', '最佳'];
@@ -12,7 +13,8 @@ Page({
     clsList: [],      // 负责班级（名称 + 模式 + 人数）
     crsNames: [],     // 负责课程名
     recent: [],       // 最近成果（最多 10 条）
-    recTotal: 0       // 成果总数
+    recTotal: 0,      // 成果总数
+    icoUser: icons.userWhite
   },
 
   onLoad(o) { this.mid = +o.id || 0; },

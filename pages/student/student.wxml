@@ -4,7 +4,7 @@
   <view class="card">
     <view class="sturow">
       <image wx:if="{{s.photo}}" class="stuava" src="{{s.photo}}" mode="aspectFill" />
-      <view wx:else class="stuava stub">{{s.name[0]}}</view>
+      <view wx:else class="stuava stub"><image src="{{icoUser}}" mode="aspectFit" /></view>
       <view class="stuinfo">
         <view class="h1">{{s.name}}</view>
         <view class="mi">{{s.meta}}{{s.parent?' · 家长：'+s.parent:''}}{{s.wechat?' · 微信 '+s.wechat:''}}</view>

@@ -241,7 +241,7 @@ VARIANTS = {
     'plus': ['orange', 'ink', 'white'],
     'chevron': ['gray', 'ink'],
     'chevron-down': ['gray', 'ink'],
-    'user': ['gray', 'ink'],
+    'user': ['gray', 'ink', 'white'],
     'users': ['ink', 'orange'],
     'send': ['white', 'orange', 'ink'],
     'calendar': ['gray', 'ink'],

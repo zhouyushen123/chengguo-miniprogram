@@ -5,10 +5,10 @@
 .tava {
   width: 92rpx; height: 92rpx; border-radius: 30rpx; flex: none;
   background: linear-gradient(135deg, var(--brand-a), var(--brand-b));
-  color: #fff; font-size: 36rpx; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 6rpx 14rpx var(--brand-shadow-soft);
 }
+.tava image { width: 52rpx; height: 52rpx; opacity: .9; }
 .tinfo { flex: 1; min-width: 0; }
 
 /* 四项统计（班级绿 / 课程橙 / 学生蓝 / 成果品牌色）——与学生页同款胶囊 */

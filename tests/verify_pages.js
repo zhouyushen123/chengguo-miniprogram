@@ -481,8 +481,11 @@ ok('成员卡点按跳老师档案页', () => {
 });
 ok('老师档案页：个人卡 + 统计 + 负责班级 + 最近成果', () => {
   const teacher = loadPage('pages/teacher/teacher.js');
+  console.log('DEBUG mid=', teacherMid, 'get=', !!db.members.get(teacherMid));
   teacher.onLoad({ id: teacherMid });
+  console.log('DEBUG this.mid=', teacher.mid);
   teacher.onShow();
+  console.log('DEBUG m=', JSON.stringify(teacher.data.m));
   assert.strictEqual(teacher.data.m.name, '王老师');
   assert.strictEqual(teacher.data.m.phone, '13800001111');
   assert.strictEqual(teacher.data.stats.clsN, 1);

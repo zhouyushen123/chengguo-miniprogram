@@ -3,6 +3,7 @@ const api = require('../../utils/api');
 const icons = require('../../utils/icons');
 const theme = require('../../utils/theme');
 const voice = require('../../utils/voice');
+const firstrun = require('../../utils/firstrun');
 
 Page({
   data: {
@@ -19,7 +20,9 @@ Page({
     // 自定义导航栏：状态栏高度（px）+ 标题（跟机构名）
     statusBarH: 20, navTitle: '橙果',
     // 演示数据：独立的一套数据，只看不改（横幅在导航栏下方，随时能一键开始使用）
-    sandbox: false
+    sandbox: false,
+    // 空库：没有班级也没有学生 → 首页改摆开通卡（见 wxml 的 onboard 块）
+    empty: false
   },
   onLoad() {
     // 自定义导航要自己腾出状态栏的空间；取不到时用常见默认值兜底
@@ -68,6 +71,9 @@ Page({
     }));
 
     const label = { parent: '家长端', admin: '管理员端' }[db.auth.role()] || '老师端';
+    // 空库 = 没有班级也没有学生。此时首页不摆"开始录入"和三块 0（那看着像坏了），
+    // 改摆开通卡；并且第一次进入时直接把人送进向导，只自动跳一次（跳过一次后由卡片接手）
+    const empty = !vis.length && !stu.length;
     this.setData({
       isParent: false,
       roleLabel: label,
@@ -75,8 +81,24 @@ Page({
       dateStr,
       clsCount: vis.length, stuCount: stu.length,
       pending: stu.filter(notToday).length,
-      myClasses, recent
+      myClasses, recent, empty
     });
+    if (empty && !st.sandbox) this.autoSetup();
+  },
+  // 首次进入自动打开开通向导：用一次性标记记一笔，之后只在首页留卡片，不再强行跳
+  // （标记走 utils/firstrun.js：页面不许直接读写本地存储）
+  autoSetup() {
+    if (firstrun.autoShown()) return;
+    firstrun.markAutoShown();
+    wx.navigateTo({ url: '/pages/setup/setup' });
+  },
+  goSetup() { wx.navigateTo({ url: '/pages/setup/setup' }); },
+  // 示例数据：样板间，只看不改；看够了点顶部横幅「开始使用」退出
+  viewDemo() {
+    const r = db.demo.enter();
+    if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
+    this.onShow();
+    wx.showToast({ title: '已进入示例数据（只看不改）', icon: 'none' });
   },
   /* ================= 家长端：孩子主页数据 ================= */
   // 评价分档配色：优秀/最佳绿、良好橙、加油/待提高蓝灰

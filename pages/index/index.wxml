@@ -9,6 +9,29 @@
   <text class="demobar-btn" hover-class="btn-hover" bindtap="startReal">开始使用</text>
 </view>
 <view wx:if="{{!isParent}}">
+  <!-- 全新机构：库里没有班级也没有学生。这时候摆"开始录入"和三块 0 只会让人以为东西是坏的，
+       所以换成一张开通卡，把"先建机构 → 学期 → 班级 → 学生"这条路直接铺在首页上 -->
+  <block wx:if="{{empty}}">
+    <view class="topbar">
+      <view class="hello">初次见面，{{uName}}</view>
+      <view class="datechip">{{dateStr}}</view>
+    </view>
+    <view class="onboard card">
+      <view class="obtitle">先花一分钟把机构建起来</view>
+      <view class="obsub">填好机构信息，再建学期、班级、学生，就能录第一条成果了。</view>
+      <view class="obsteps">
+        <view class="obstep"><text class="obn">1</text>机构信息</view>
+        <view class="obstep"><text class="obn">2</text>本学期</view>
+        <view class="obstep"><text class="obn">3</text>一个班</view>
+        <view class="obstep"><text class="obn">4</text>加学生</view>
+      </view>
+      <view class="btn" hover-class="btn-hover" bindtap="goSetup">开始开通</view>
+      <view class="obdemo" bindtap="viewDemo">先看看示例数据 ›</view>
+    </view>
+    <view class="slogan">橙果 · 让每一次进步都被看见</view>
+  </block>
+
+  <block wx:else>
   <!-- 顶部欢迎 -->
   <view class="topbar">
     <view class="hello">{{roleLabel}} · 欢迎回来，{{uName}}</view>
@@ -95,6 +118,7 @@
     </view>
   </view>
   <view wx:if="{{!recent.length}}" class="empty">还没有成果记录，点上面「开始录入」记一条吧</view>
+  </block>
 </view>
 
 <view wx:else>

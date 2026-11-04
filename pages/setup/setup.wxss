@@ -1,0 +1,76 @@
+/* pages/setup/setup.wxss —— 开通向导（继承全局卡片/按钮/主题变量） */
+
+/* 顶部进度：四段短杠，走完哪段亮哪段 */
+.hd { padding: 32rpx 24rpx 8rpx; }
+.hd .slogan { margin: 0 0 28rpx; }
+.bar { display: flex; gap: 10rpx; }
+.seg {
+  flex: 1; height: 8rpx; border-radius: 8rpx;
+  background: var(--line); transition: background 0.2s;
+}
+.seg.on { background: linear-gradient(135deg, var(--brand-a), var(--brand-b)); }
+.steptip { font-size: 24rpx; color: var(--muted); margin-top: 16rpx; }
+
+/* 每一步的提问句：一屏只有一句大字，别让人找重点 */
+.q {
+  font-size: 40rpx; font-weight: 700; color: var(--text);
+  margin: 28rpx 24rpx 16rpx; line-height: 1.4;
+}
+.q + .note { margin: 0 24rpx 24rpx; }
+
+.note.sm { margin: 20rpx 0 0; font-size: 23rpx; }
+
+.row2 { display: flex; gap: 20rpx; }
+.row2 .col { flex: 1; min-width: 0; }
+
+/* 学生：输入框 + 添加按钮 */
+.addrow { display: flex; gap: 16rpx; align-items: center; }
+.input.grow { flex: 1; min-width: 0; }
+.addbtn {
+  flex: none; padding: 0 34rpx; height: 88rpx; line-height: 88rpx;
+  border-radius: 18rpx; font-size: 28rpx; font-weight: 700;
+  color: var(--brand); background: var(--brand-soft);
+  border: 2rpx solid var(--brand-border);
+}
+.addedlist { margin-top: 20rpx; }
+.addedrow {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18rpx 0; border-top: 2rpx solid var(--line);
+}
+.addedname { font-size: 28rpx; font-weight: 600; color: var(--text); }
+.addedno { font-size: 23rpx; color: var(--muted); }
+.emptyline { font-size: 24rpx; color: var(--faint); margin-top: 20rpx; }
+
+/* 完成页 */
+.okcard { margin-top: 32rpx; text-align: center; }
+.okmark {
+  width: 96rpx; height: 96rpx; line-height: 96rpx; border-radius: 999rpx;
+  margin: 8rpx auto 20rpx; font-size: 52rpx; color: #fff;
+  background: linear-gradient(135deg, var(--brand-a), var(--brand-b));
+}
+.oktitle { font-size: 32rpx; font-weight: 700; margin-bottom: 28rpx; }
+.oklist { text-align: left; margin-bottom: 24rpx; }
+.okrow {
+  display: flex; justify-content: space-between; gap: 24rpx;
+  padding: 16rpx 0; border-top: 2rpx solid var(--line); font-size: 26rpx;
+}
+.okrow:first-child { border-top: none; }
+.okk { color: var(--muted); flex: none; }
+.okv { color: var(--text); font-weight: 600; text-align: right; }
+
+/* 底部：固定操作条，最后一张卡不被压住 */
+.foot {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: var(--bg); border-top: 2rpx solid var(--line);
+}
+.foot .btn { width: 100%; }
+.footrow {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 18rpx 8rpx 4rpx;
+}
+.link { font-size: 25rpx; color: var(--muted); }
+.later { text-align: center; font-size: 25rpx; color: var(--muted); margin: 28rpx 0 40rpx; }
+
+/* 给固定底栏让位 */
+.theme-root { padding-bottom: 220rpx; }

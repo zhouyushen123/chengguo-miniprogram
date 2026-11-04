@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/setup/setup",
     "pages/record/record",
     "pages/records/records",
     "pages/student/student",

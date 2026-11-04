@@ -15,10 +15,10 @@
     "pages/storage/storage"
   ],
   "window": {
-    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarBackgroundColor": "#FAF9F7",
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "橙果",
-    "backgroundColor": "#f7f6f3"
+    "backgroundColor": "#FAF9F7"
   },
   "tabBar": {
     "color": "#9c948a",

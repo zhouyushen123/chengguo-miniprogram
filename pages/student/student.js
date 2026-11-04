@@ -46,7 +46,8 @@ Page({
     }
     const recs = db.records.ofStudent(this.sid);
     // 语音条上的老师名：优先用这条记录的录入老师，老数据回退到机构默认老师
-    const tname = r => (r && db.users.name(r.tid)) || db.settings().teacher;
+    // 署名兜底：新装没填名字时不留空白，署「老师」
+    const tname = r => (r && db.users.name(r.tid)) || db.settings().teacher || '老师';
     // 评价行拆分：维度名（浅色）+ 正文（深色），如「上课态度：听讲认真」
     const parseLine = t => {
       const i = t.indexOf('：') > -1 ? t.indexOf('：') : t.indexOf(':');

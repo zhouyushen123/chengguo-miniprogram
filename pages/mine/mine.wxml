@@ -9,7 +9,7 @@
 
 <!-- 个人卡片 -->
 <view class="card usercard">
-  <view class="ava">{{avaChar}}</view>
+  <ava src="{{uPhoto}}" name="{{name}}" size="{{92}}" radius="{{30}}" />
   <view class="uc-txt">
     <view class="uc-name">{{name}}</view>
     <view class="uc-meta">{{roleLabel}}<text wx:if="{{orgName}}"> · {{orgName}}</text><text wx:if="{{sandbox}}" class="uc-demo">演示</text></view>

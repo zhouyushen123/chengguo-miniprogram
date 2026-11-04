@@ -29,8 +29,7 @@
         <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="clsStuQ" />
       </view>
       <view class="clsmem" wx:for="{{clsStus}}" wx:for-item="s" wx:key="id" bindtap="goStudentPage" data-id="{{s.id}}">
-        <image wx:if="{{s.photo}}" class="stuava" src="{{s.photo}}" mode="aspectFill" />
-        <view wx:else class="stuava stub"><image src="{{icoUser}}" mode="aspectFit" /></view>
+        <ava src="{{s.photo}}" name="{{s.name}}" size="{{64}}" radius="{{18}}" />
         <view class="memname">{{s.name}}</view>
         <view class="mi" style="flex:1;text-align:right">{{s.parent ? '家长 '+s.parent : '未填家长'}}</view>
         <image class="memchev" src="{{icoChev}}" mode="aspectFit" />
@@ -91,8 +90,7 @@
   <view class="card item" wx:for="{{students}}" wx:key="id">
     <view style="flex:1;min-width:0" bindtap="goStudentPage" data-id="{{item.id}}">
       <view class="itrow">
-        <image wx:if="{{item.photo}}" class="stuava" src="{{item.photo}}" mode="aspectFill" />
-        <view wx:else class="stuava stub"><image src="{{icoUser}}" mode="aspectFit" /></view>
+        <ava src="{{item.photo}}" name="{{item.name}}" size="{{64}}" radius="{{18}}" />
         <view style="min-width:0"><b>{{item.name}}</b><text wx:if="{{item.gender}}" class="gtag">{{item.gender}}</text>
         <view class="mi"><text wx:if="{{item.no}}" class="sno">学号 {{item.no}}</text>{{item.cls}}{{item.year?' · '+item.year+' 年入学':''}}{{item.parent?' · 家长 '+item.parent:''}}{{item.wechat?' · 微信 '+item.wechat:''}}</view></view>
       </view>
@@ -134,7 +132,7 @@
   <view class="card item" wx:for="{{members}}" wx:key="id">
     <view bindtap="goTeacher" data-id="{{item.id}}">
       <view class="itrow">
-        <view class="ava ava-{{item.role}}">{{item.name[0]}}</view>
+        <ava src="{{item.photo}}" name="{{item.name}}" size="{{76}}" radius="{{24}}" tone="{{item.avaTone}}" />
         <view><b>{{item.name}}</b>
           <view class="mi">{{item.roleLabel}} · {{item.meta}}<text wx:if="{{item.invited}}" class="mi"> · 待绑定</text></view>
         </view>
@@ -156,7 +154,8 @@
     <view class="avrow" bindtap="onStuPhoto">
       <view class="ava big">
         <image wx:if="{{stuForm.photo}}" src="{{stuForm.photo}}" mode="aspectFill" />
-        <image wx:else src="{{icoCameraW}}" class="cam" mode="aspectFit" />
+        <text wx:else class="bigchar">{{stuForm.char}}</text>
+        <image src="{{icoCameraW}}" class="cam" mode="aspectFit" />
       </view>
       <text class="mi">{{stuForm.photo?'点击更换照片':'上传学生照片（选填）'}}</text>
     </view>
@@ -204,6 +203,18 @@
 <view wx:if="{{userForm}}" class="mask" bindtap="userCancel">
   <view class="sheet" catchtap="noop">
     <view class="sheet-t">{{userForm.id ? '编辑成员' : '新增成员'}}</view>
+    <!-- 头像：点块上传照片；或一键同步微信头像（头像填写能力） -->
+    <view class="avrow">
+      <view class="ava big" bindtap="onUserPhoto">
+        <image wx:if="{{userForm.photo}}" src="{{userForm.photo}}" mode="aspectFill" />
+        <text wx:else class="bigchar">{{userForm.char}}</text>
+        <image src="{{icoCameraW}}" class="cam" mode="aspectFit" />
+      </view>
+      <view class="avcol">
+        <text class="mi">{{userForm.photo ? '点击头像更换照片' : '点击头像上传照片（选填）'}}</text>
+        <button class="wxava" open-type="chooseAvatar" bindchooseavatar="onWxAvatar" hover-class="btn-hover">用微信头像</button>
+      </view>
+    </view>
     <view class="vin">
       <input class="input vin-in" placeholder="姓名" value="{{userForm.name}}" bindinput="onUserName" />
       <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="userForm.name" />

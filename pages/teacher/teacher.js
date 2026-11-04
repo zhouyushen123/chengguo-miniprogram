@@ -48,6 +48,7 @@ Page({
     this.setData({
       m: {
         name: v.name, roleLabel: v.roleLabel,
+        photo: v.photo,
         clsText: v.clsText,
         phone: v.phone, wechat: v.wechat
       },

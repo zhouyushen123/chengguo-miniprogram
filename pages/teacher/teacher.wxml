@@ -4,7 +4,7 @@
   <!-- 个人卡：头像 + 姓名/角色 + 统计 + 联系方式 -->
   <view class="card">
     <view class="trow">
-      <view class="tava"><image src="{{icoUser}}" mode="aspectFit" /></view>
+      <ava src="{{m.photo}}" name="{{m.name}}" size="{{92}}" radius="{{30}}" />
       <view class="tinfo">
         <view class="h1">{{m.name}}</view>
         <view class="mi">{{m.roleLabel}}{{m.clsText ? ' · 负责 ' + m.clsText : ''}}</view>

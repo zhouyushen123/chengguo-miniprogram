@@ -113,6 +113,9 @@ Page({
         return {
           id: v.id, userId: v.userId, name: v.name,
           role: v.role, roleLabel: v.roleLabel,
+          photo: v.photo,
+          // 头像色块：老师=品牌色，负责人/管理员=蓝，家长=绿（全站统一口径，见 components/ava）
+          avaTone: v.role === 'parent' ? 'parent' : (v.role === 'teacher' ? 'brand' : 'owner'),
           status: v.status, invited: v.status === 'invited',
           // 范围描述：管理级无需范围，老师列班级，家长列孩子
           meta: v.full
@@ -264,7 +267,7 @@ Page({
     const nowY = new Date().getFullYear();
     const year = s ? (s.enrollYear || 0) : nowY;
     this.setData({
-      stuForm: { id: id || null, name: s ? s.name : '', no: s ? (s.no || '') : '', gender: s ? (s.gender || '') : '', enrollYear: year, parent: s ? (s.parent || '') : '', wechat: s ? (s.wechat || '') : '', photo: s ? (s.photo || '') : '' },
+      stuForm: { id: id || null, name: s ? s.name : '', no: s ? (s.no || '') : '', gender: s ? (s.gender || '') : '', enrollYear: year, parent: s ? (s.parent || '') : '', wechat: s ? (s.wechat || '') : '', photo: s ? (s.photo || '') : '', char: (s && s.name ? s.name : '')[0] || '' },
       stuClsSel: clsSel,
       stuClsChips: this._chips(db.classes.list(), clsSel),
       stuEnrollYearIdx: Math.max(0, this.data.enrollYearOpts.findIndex(o => o.y === year))
@@ -370,7 +373,7 @@ Page({
   openUserForm(u) {
     const clsSel = (u.clsIds || []).slice(), crsSel = (u.courseIds || []).slice(), stuSel = (u.studentIds || []).slice();
     this.setData({
-      userForm: { id: u.id || null, role: u.role, name: u.name || '', phone: u.phone || '', wechat: u.wechat || '' },
+      userForm: { id: u.id || null, role: u.role, name: u.name || '', phone: u.phone || '', wechat: u.wechat || '', photo: u.photo || '', char: ((u.name || '').trim())[0] || '' },
       userBindNo: '',
       userClsSel: clsSel, userCrsSel: crsSel, userStuSel: stuSel,
       userClsChips: this._chips(db.classes.list(), clsSel),
@@ -378,7 +381,26 @@ Page({
       userStuChips: this._stuChips(stuSel)
     });
   },
-  onUserName(e) { this.setData({ 'userForm.name': e.detail.value }); },
+  onUserName(e) {
+    this.setData({ 'userForm.name': e.detail.value, 'userForm.char': (e.detail.value || '').trim()[0] || '' });
+  },
+  // 上传成员头像：拍照/相册均可，统一走 media 转存（与学生照片同一套）
+  onUserPhoto() {
+    wx.chooseMedia({
+      count: 1, mediaType: ['image'], sourceType: ['album', 'camera'], sizeType: ['compressed'],
+      success: r => {
+        const tmp = r.tempFiles[0] && r.tempFiles[0].tempFilePath;
+        if (!tmp) return;
+        this.setData({ 'userForm.photo': media.persist(tmp, 'photo') });
+      },
+      fail: err => media.handleChooseFail(err, this)
+    });
+  },
+  // 一键同步微信头像：头像填写能力回传的临时文件同样要转存，避免路径失效
+  onWxAvatar(e) {
+    const tmp = e.detail && e.detail.avatarUrl;
+    if (tmp) this.setData({ 'userForm.photo': media.persist(tmp, 'photo') });
+  },
   onUserPhone(e) {
     const raw = tel.digits(e.detail.value);
     this.setData({ 'userForm.phone': tel.fmt(raw) });
@@ -424,7 +446,7 @@ Page({
     // 手机号/微信号是档案字段，三类身份都存（老师方便家长联系，家长方便机构联系）
     const ph = tel.digits(f.phone);
     if (ph && !tel.valid(ph)) { wx.showToast({ title: '手机号需 11 位、1 开头', icon: 'none' }); return; }
-    const contact = { phone: ph, wechat: (f.wechat || '').trim() };
+    const contact = { phone: ph, wechat: (f.wechat || '').trim(), photo: (f.photo || '').trim() };
     let payload;
     if (f.role === 'parent') {
       const kids = this.data.userStuSel.slice();

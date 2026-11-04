@@ -29,6 +29,7 @@ function memberView(m) {
     clsText: cls.join('、'),
     kidText: kids.join('、'),
     phone: m.phone || '', wechat: m.wechat || '',   // 档案联系方式
+    photo: m.photo || '',                            // 档案头像（展示统一走 components/ava）
     full: perms.FULL.indexOf(m.role) > -1
   };
 }
@@ -113,16 +114,20 @@ function memberUpdate(id, patch) {
   if (ev) return { ok: false, msg: ev };
   next.id = m.id; next.updatedAt = now();
   // 改成员往往连带改账号姓名，两张表要么一起成、要么一起回滚
-  return core.tx(() => {
-    if (!applyEdit('members', m, next)) return { ok: false, msg: core.SAVE_FAIL };
-    if (p.name) {
-      const u = userGet(m.userId);
-      if (u && !applyEdit('users', u, { name: p.name, updatedAt: now() })) {
-        return { ok: false, msg: core.SAVE_FAIL };
+    // 改姓名/头像都连带同步账号表：两张表要么一起成、要么一起回滚
+    const userSync = {};
+    if (p.name) userSync.name = p.name;
+    if (p.photo !== undefined) userSync.photo = p.photo;
+    return core.tx(() => {
+      if (!applyEdit('members', m, next)) return { ok: false, msg: core.SAVE_FAIL };
+      if (Object.keys(userSync).length) {
+        const u = userGet(m.userId);
+        if (u && !applyEdit('users', u, Object.assign({ updatedAt: now() }, userSync))) {
+          return { ok: false, msg: core.SAVE_FAIL };
+        }
       }
-    }
-    return { ok: true, item: memberView(m) };
-  });
+      return { ok: true, item: memberView(m) };
+    });
 }
 
 function memberRemove(id) {

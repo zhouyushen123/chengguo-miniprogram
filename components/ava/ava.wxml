@@ -1,0 +1,5 @@
+<!-- 全站统一人物头像：有照片显示照片，无照片显示色块+白色首字 -->
+<view class="ava ava-{{tone}} {{src ? 'hasimg' : ''}}" style="width:{{size}}rpx;height:{{size}}rpx;border-radius:{{radius}}rpx;font-size:{{fs}}rpx">
+  <image wx:if="{{src}}" class="img" src="{{src}}" mode="aspectFill" />
+  <text wx:else class="ch">{{char}}</text>
+</view>

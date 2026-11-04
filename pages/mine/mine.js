@@ -5,7 +5,7 @@ const apply = require('../../utils/apply');
 Page({
   data: {
     // 个人卡片
-    name: '', roleLabel: '', orgName: '', meta: '', avaChar: '',
+    name: '', roleLabel: '', orgName: '', meta: '', uPhoto: '',
     isManager: false, canSwitchHome: false, homeName: '',
     sandbox: false,
     // 管理统计层（两行三列：上行「学生·家长·老师」机构的人，下行「班级·课程·学期」教学组织）
@@ -78,7 +78,7 @@ Page({
     entries.push({ k: 'about', t: '关于橙果', d: '这是什么、怎么用' });
     this.setData({
       name: u.name || '未命名',
-      avaChar: (u.name || '橙')[0],
+      uPhoto: u.photo || '',
       roleLabel: s.roleLabel,
       orgName: s.orgName,
       meta, isManager,

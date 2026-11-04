@@ -226,7 +226,8 @@ function normalizeMember(raw, orgId, stamp) {
     studentIds: numList(r.studentIds),
     status: MEMBER_STATUS.indexOf(r.status) > -1 ? r.status : 'active',
     phone: str(r.phone).trim(),        // 档案：手机号（选填，老师/家长通用）
-    wechat: str(r.wechat).trim()       // 档案：微信号（选填）
+    wechat: str(r.wechat).trim(),      // 档案：微信号（选填）
+    photo: str(r.photo).trim()         // 档案：头像照片（选填；头像统一口径见 components/ava）
   }, audit(r, orgId, stamp));
 }
 
@@ -238,6 +239,7 @@ function normalizeUser(raw, orgId, stamp) {
   return Object.assign({
     id: str(r.id),
     name: str(r.name).trim(),
+    photo: str(r.photo).trim(),        // 头像：与成员表冗余同步（memberUpdate 负责），展示统一走 components/ava
     role
   }, audit(r, orgId, stamp));
 }

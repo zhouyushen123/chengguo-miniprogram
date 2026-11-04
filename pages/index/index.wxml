@@ -135,10 +135,7 @@
   <!-- 孩子卡 + 统计 -->
   <view class="card">
     <view class="pstu">
-      <view class="ava pav">
-        <image wx:if="{{kPhoto}}" src="{{kPhoto}}" mode="aspectFill" />
-        <text wx:else>{{kName[0]}}</text>
-      </view>
+      <ava src="{{kPhoto}}" name="{{kName}}" size="{{96}}" radius="{{30}}" />
       <view class="stuinfo">
         <view class="h1">{{kName}}</view>
         <view class="mi">{{kCls}}</view>

@@ -3,8 +3,7 @@
   <!-- 个人卡：头像 + 姓名 + 班级/家长 + 三项统计 -->
   <view class="card">
     <view class="sturow">
-      <image wx:if="{{s.photo}}" class="stuava" src="{{s.photo}}" mode="aspectFill" />
-      <view wx:else class="stuava stub"><image src="{{icoUser}}" mode="aspectFit" /></view>
+      <ava src="{{s.photo}}" name="{{s.name}}" size="{{88}}" radius="{{24}}" />
       <view class="stuinfo">
         <view class="h1">{{s.name}}<text wx:if="{{s.no}}" class="sno">学号 {{s.no}}</text></view>
         <view class="mi">{{s.meta}}{{s.parent?' · 家长：'+s.parent:''}}{{s.wechat?' · 微信 '+s.wechat:''}}</view>

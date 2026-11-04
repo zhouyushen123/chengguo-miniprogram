@@ -15,7 +15,7 @@
 | 远程 | `git@github.com:zhouyushen123/chengguo-miniprogram.git` |
 | 我的工作区 | `C:\Users\zhouy\WorkBuddy\橙果`（只放记忆，不放代码） |
 | 技术栈 | 微信原生小程序（JS）+ 云开发目录 `cloudfunctions/` |
-| 验证基线 | `npm test` = 292 项同步断言 + 4 项 AI 链路（异步）= **296 项全绿**；`npm run lint` 96 文件 0 提醒；`npm run size` 主包 919 KB / 2 MB（44.9%）；`npm run check` = lint + size + test 一条跑完 |
+| 验证基线 | `npm test` = 304 项同步断言 + 4 项 AI 链路（异步）= **308 项全绿**；`npm run lint` 102 文件 0 提醒；`npm run size` 主包 932 KB / 2 MB（45.5%）；`npm run check` = lint + size + test 一条跑完 |
 | 提交习惯 | 沙箱常拦 `git push`（读不到 `~/.ssh`），仓库有「5 分钟自动同步」任务会以 `auto: 自动同步 时间戳` 提交并推送 |
 
 ---
@@ -48,6 +48,18 @@
 - 头像占位：无照片 → 浅底 + 人形剪影（`user-gray`）；老师档案渐变色底 + `user-white`（`tools/gen_icons.py` 的 `user` 配色组合已加 `white`）。
 - 记录列表：姓名/课程/分数行**通栏**，照片下移到与评价同行、在评价左侧（原来照片占整卡左侧把姓名挤成竖排）。
 - 班级条目：圆形色块 → 8×52rpx 品牌渐变圆角竖杠；学生条目：色块 → 头像缩略图。
+
+### 学生批量导入（11-05 早，用户要求"表格/拍照导入"）
+- **入口**：管理 · 学生 tab 底栏改双按钮「批量导入 + 添加学生」→ 新页 `pages/import`。
+- **三条路一个出口 `{ok, students:[{name,gender,parent}]}`**（云函数 `cloudfunctions/stuImport`，**需在开发者工具右键「上传并部署：云端安装依赖」**）：
+  - `parseFile`：xlsx/xls 走 `xlsx` 包确定性解析；csv/txt 直接切列；**docx 用 jszip 抽 document.xml 纯文本 → glm-4-flash 抽名单**；微信聊天里收到的表格文件（"线上表格"）用 `wx.chooseMessageFile` 选。
+  - `parsePhoto`：纸质名单拍照 → glm-4v-flash 识图抽名单（prompt 强约束：只收 2~20 字中文人名、拿不准留空、同去重）。
+  - `ping`：部署后自检 `hasKey`。密钥复用 aiEval 的 `ZHIPU_API_KEY`（同一环境变量，**两个云函数都要配**）。
+- **解析纯函数在 `cloudfunctions/stuImport/parse.js`**（不依赖 wx-server-sdk，测试直接 require）；前端预览辅助在 `utils/roster.js`。
+- **预览确认制**：识别结果先进预览清单（可勾选），班内已有同名默认不勾并划线提示「班内已有已有同名」；导入时逐条 `db.students.create`（学号自动分配、同家长号码自动归并）。
+- **权限**：页面 onLoad 校验 `student.write`；班级下拉只列 `db.auth.canSeeClass` 的班（老师只能导进自班）。
+- **体积红线**：文件/照片 base64 上限 4MB（约 3MB 原文件），前端选文件时就拦 3MB。
+- 守卫：`tests/verify_import.js` 12 项（表头列名识别含「家长姓名 vs 姓名」坑、序号清洗、班级名行剔除、AI 烂输出防御、重名标记、批量落库）。
 
 ### 全站统一头像（11-05 早，用户要求"全小程序统一"）
 - **口径（唯一，写在 `components/ava/ava.js`）**：①有真实照片（上传缩略图 / 微信头像同步）→ 显示照片；②没有 → 色块（品牌渐变）+ 白色姓名首字。任何页面不得私拼头像块。

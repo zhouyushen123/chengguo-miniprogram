@@ -1,0 +1,35 @@
+/* pages/import/import.wxss —— 学生批量导入 */
+.srcrow {
+  display: flex; align-items: center; gap: 20rpx;
+  padding: 24rpx 0; border-top: 2rpx solid var(--line);
+}
+.srcrow:first-of-type { border-top: none; }
+.srcico {
+  flex: none; width: 84rpx; height: 84rpx; border-radius: 22rpx;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26rpx; font-weight: 700; color: #fff;
+  background: linear-gradient(135deg, var(--brand-a), var(--brand-b));
+}
+.srctxt { min-width: 0; }
+.srct { font-size: 28rpx; font-weight: 600; color: var(--text); }
+.srcd { font-size: 23rpx; color: var(--muted); margin-top: 6rpx; line-height: 1.5; }
+
+/* 预览清单 */
+.rvtitle { font-size: 30rpx; font-weight: 700; color: var(--text); }
+.rvsrc { font-size: 23rpx; color: var(--muted); margin: 8rpx 0 16rpx; }
+.rvrow { display: flex; align-items: center; gap: 18rpx; padding: 20rpx 0; border-top: 2rpx solid var(--line); }
+.rvrow:first-child { border-top: none; }
+.ck {
+  flex: none; width: 40rpx; height: 40rpx; border-radius: 12rpx;
+  border: 2rpx solid var(--line-2); color: #fff; font-size: 26rpx;
+  display: flex; align-items: center; justify-content: center;
+}
+.ck.on { background: linear-gradient(135deg, var(--brand-a), var(--brand-b)); border-color: transparent; }
+.rvname { font-size: 28rpx; font-weight: 600; color: var(--text); flex: none; }
+.rvmi { flex: 1; min-width: 0; text-align: right; font-size: 23rpx; color: var(--muted); display: flex; gap: 12rpx; justify-content: flex-end; flex-wrap: wrap; }
+.rvrow.dup .rvname { color: var(--muted); text-decoration: line-through; }
+.dupe { color: var(--warn); }
+
+.btnwrap { padding: 8rpx 24rpx 60rpx; }
+.btnwrap .btn { width: 100%; }
+.later { text-align: center; font-size: 25rpx; color: var(--muted); margin-top: 24rpx; }

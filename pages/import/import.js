@@ -5,6 +5,7 @@
 const db = require('../../utils/db');
 const theme = require('../../utils/theme');
 const api = require('../../utils/api');
+const icons = require('../../utils/icons');
 const roster = require('../../utils/roster');
 
 Page({
@@ -13,8 +14,11 @@ Page({
     classes: [], clsIdx: 0,  // 导入到哪个班（必选：学生没班=看不见）
     srcLabel: '',            // 来源描述（文件名 / 「纸质名单照片」）
     list: [],                // [{name,gender,parent,on,dupe}]
+    pickedN: 0,
     busy: false,
-    result: null             // {ok, added, skippedDupes, failed}
+    result: null,
+    resultText: '',
+    icoChev: icons.chevron
   },
 
   onLoad() {
@@ -25,8 +29,7 @@ Page({
       return;
     }
     // 只列当前身份能写学生的班（老师只能导进自班；管理员是全部）
-    const a = db.auth.actor ? db.auth.actor() : null;
-    const classes = db.classes.list().filter(c => !a || a.all || db.perms.canSeeClass(a, c.id));
+    const classes = db.classes.list().filter(c => db.auth.canSeeClass(c.id));
     this.setData({ classes: classes.map(c => ({ id: c.id, name: c.name })) });
   },
 
@@ -84,7 +87,8 @@ Page({
             if (!out.ok) { wx.showToast({ title: out.msg || '解析失败', icon: 'none' }); return; }
             const students = roster.markDupes(out.students || [], this._existingNames());
             if (!students.length) { wx.showToast({ title: '没识别出学生名单，请换张清晰的照片或检查表格', icon: 'none' }); return; }
-            this.setData({ step: 'review', list: students.map(s => Object.assign({ on: !s.dupe }, s)) });
+            const list = students.map(s => Object.assign({ on: !s.dupe }, s));
+            this.setData({ step: 'review', list, pickedN: list.filter(s => s.on).length });
           })
           .catch(e => {
             this.setData({ busy: false });
@@ -103,10 +107,12 @@ Page({
 
   toggle(e) {
     const i = +e.currentTarget.dataset.i;
-    this.setData({ ['list[' + i + '].on']: !this.data.list[i].on });
+    const on = !this.data.list[i].on;
+    const pickedN = this.data.list.filter((s, j) => (j === i ? on : s.on)).length;
+    this.setData({ ['list[' + i + '].on']: on, pickedN });
   },
 
-  back() { this.setData({ step: 'pick', list: [], result: null }); },
+  back() { this.setData({ step: 'pick', list: [], result: null, resultText: '', pickedN: 0 }); },
 
   // ---------- 批量建档 ----------
   commit() {
@@ -120,7 +126,8 @@ Page({
       if (r.ok) added++; else { failed++; failMsg = r.msg || failMsg; }
     });
     const dupes = this.data.list.filter(s => s.dupe).length;
-    this.setData({ busy: false, result: { ok: true, added, failed, failMsg, dupes } });
+    const result = { ok: true, added, failed, failMsg, dupes };
+    this.setData({ busy: false, result, resultText: roster.resultText(result) });
   },
 
   done() { wx.navigateBack(); }

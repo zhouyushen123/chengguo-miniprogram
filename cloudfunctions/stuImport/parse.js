@@ -21,10 +21,13 @@ function normGender(s) {
   return '';
 }
 
-// 名字是否像人名：2~20 字、不含数字与常见干扰字符
+// 名字是否像人名：2~20 字、不含数字与常见干扰字符；
+// 排除表格里常见的非人名行（班级名、合计行、班/组/队/年级 结尾）
 function likeName(s) {
   if (!s || s.length < 2 || s.length > 20) return false;
   if (/[\d０-９a-zA-Z@/\\]{1}/.test(s)) return false;
+  if (/(班|组|队|年级)$/.test(s)) return false;   // 素描一班 / 2026 届年级组 这类行
+  if (/^(共|合计|总计|应到|实到)/.test(s)) return false;
   return true;
 }
 
@@ -37,10 +40,11 @@ function tableFromRows(rows) {
   for (let i = 0; i < Math.min(3, grid.length); i++) {
     const head = grid[i].map(c => String(c || ''));
     if (head.some(c => c.indexOf('姓名') > -1 || c.indexOf('名字') > -1 || c === '学生')) {
+      // 判断顺序有讲究：「家长姓名」也含“姓名”二字，必须先判家长列再判姓名列
       head.forEach((c, j) => {
-        if (c.indexOf('姓名') > -1 || c.indexOf('名字') > -1 || c === '学生') nameCol = j;
-        else if (c.indexOf('性别') > -1) genderCol = j;
+        if (c.indexOf('性别') > -1) genderCol = j;
         else if (c.indexOf('家长') > -1 || c.indexOf('监护人') > -1 || c.indexOf('联系') > -1) parentCol = j;
+        else if (c.indexOf('姓名') > -1 || c.indexOf('名字') > -1 || c === '学生') nameCol = j;
       });
       start = i + 1;
       break;

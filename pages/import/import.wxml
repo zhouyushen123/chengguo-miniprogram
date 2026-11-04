@@ -1,0 +1,65 @@
+<view class="theme-root {{themeCls}}">
+  <view class="slogan">批量导入学生名单</view>
+
+  <!-- ============ 第 1 步：选班 + 选来源 ============ -->
+  <block wx:if="{{step === 'pick'}}">
+    <view class="card">
+      <view class="label">导入到哪个班</view>
+      <picker mode="selector" range="{{classes}}" range-key="name" value="{{clsIdx}}" bindchange="onCls">
+        <view class="pickerbox">{{classes[clsIdx].name || '选择班级'}}<image class="xico" src="{{icoChev}}" mode="aspectFit" /></view>
+      </picker>
+      <view class="note sm">学生会建进这个班；之后在「班级」里也能再加。</view>
+    </view>
+
+    <view class="card">
+      <view class="label">名单从哪来</view>
+      <view class="srcrow" hover-class="btn-hover" bindtap="pickFile">
+        <view class="srcico">表格</view>
+        <view class="srctxt">
+          <view class="srct">Excel / CSV / Word 文档</view>
+          <view class="srcd">支持从微信聊天记录里选别人发来的表格文件</view>
+        </view>
+      </view>
+      <view class="srcrow" hover-class="btn-hover" bindtap="pickPhoto">
+        <view class="srcico">拍照</view>
+        <view class="srctxt">
+          <view class="srct">纸质名单拍照</view>
+          <view class="srcd">AI 自动识别纸上名单，识别后可核对再导入</view>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <!-- ============ 第 2 步：预览核对 ============ -->
+  <block wx:if="{{step === 'review'}}">
+    <view class="card">
+      <view class="rvtitle">识别出 {{list.length}} 名学生</view>
+      <view class="rvsrc">来源：{{srcLabel}} · 导入到「{{classes[clsIdx].name}}」</view>
+      <view class="note sm">点一下可勾选/取消。班内已有同名学生的默认不勾，防止重复导入。</view>
+    </view>
+    <view class="card">
+      <view class="rvrow {{item.dupe ? 'dup' : ''}}" wx:for="{{list}}" wx:key="index" bindtap="toggle" data-i="{{index}}">
+        <view class="ck {{item.on ? 'on' : ''}}">{{item.on ? '✓' : ''}}</view>
+        <view class="rvname">{{item.name}}</view>
+        <view class="rvmi">
+          <text wx:if="{{item.gender}}">{{item.gender}}</text>
+          <text wx:if="{{item.parent}}">家长 {{item.parent}}</text>
+          <text wx:if="{{item.dupe}}" class="dupe">班内已有同名</text>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{result}}" class="card">
+      <view class="rvtitle">导入完成</view>
+      <view class="note">{{resultText}}</view>
+    </view>
+
+    <view class="btnwrap">
+      <view wx:if="{{!result}}" class="btn {{busy ? 'busy' : ''}}" hover-class="btn-hover" bindtap="commit">{{busy ? '导入中…' : '导入勾选的 ' + pickedN + ' 名学生'}}</view>
+      <view wx:else class="btn" hover-class="btn-hover" bindtap="done">完成</view>
+      <view wx:if="{{!result}}" class="later" bindtap="back">重新选来源</view>
+    </view>
+  </block>
+
+  <!-- 解析中遮罩提示 -->
+  <view wx:if="{{busy && step === 'pick'}}" class="note" style="margin: 0 24rpx">正在解析，拍照识别约需几秒…</view>
+</view>

@@ -8,6 +8,7 @@
     "pages/teacher/teacher",
     "pages/profile/profile",
     "pages/mgr/mgr",
+    "pages/import/import",
     "pages/terms/terms",
     "pages/mine/mine",
     "pages/tpls/tpls",

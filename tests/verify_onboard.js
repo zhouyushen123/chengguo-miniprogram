@@ -71,6 +71,14 @@ ok('全新安装：没有班级、没有学生（不再塞"书法班/素描班"�
   // 内置「长期班」是历史数据兜底用的，留着；有它不影响开通
   assert.ok(db.terms.list().filter(t => t.builtIn).length === 1, '应保留内置长期班');
 });
+ok('全新安装：不留下任何"测试"痕迹（没有测试老师、没有家长演示、不预生成演示包）', () => {
+  const u = db.users.current() || {};
+  assert.strictEqual(u.name, '', '出厂姓名留空，等用户在向导里填');
+  assert.strictEqual(db.members.list().length, 1, '只有负责人一个人，不该有"家长演示"这种假成员');
+  assert.strictEqual(db.members.list().filter(m => m.role === 'parent').length, 0);
+  assert.strictEqual(db.demo.available(), false, '演示包点了才建，不随安装写入');
+  assert.strictEqual(db.settings().sandbox, false, '首次打开是真实机构，不是样板间');
+});
 
 console.log('\n【首页空态】');
 const index = loadPage('pages/index/index.js');

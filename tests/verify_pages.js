@@ -67,7 +67,7 @@ ok('老师端渲染：班级 2 / 学生 45 / 最近成果 5 条', () => {
   assert.strictEqual(index.data.clsCount, 2);
   assert.strictEqual(index.data.stuCount, 45);
   assert.strictEqual(index.data.recent.length, 5);
-  assert.strictEqual(index.data.uName, '测试老师');
+  assert.strictEqual(index.data.uName, '林老师');
   assert.ok(index.data.myClasses.every(c => c.count > 0));
 });
 ok('模糊搜索：输入单字命中所有含该字的学生', () => {
@@ -229,7 +229,7 @@ ok('列表渲染：班级/课程/学生/人员齐备', () => {
   assert.strictEqual(mgr.data.courses.length, 2);
   assert.strictEqual(mgr.data.students.length, 45);
   assert.strictEqual(mgr.data.members.length, 2);
-  assert.strictEqual(mgr.data.teacher, '测试老师');
+  assert.strictEqual(mgr.data.teacher, '林老师');
   assert.strictEqual(mgr.data.isManager, true);
 });
 ok('新增班级', () => {

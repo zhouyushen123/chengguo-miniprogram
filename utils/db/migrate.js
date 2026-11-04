@@ -38,8 +38,13 @@ function coreNextId(list) {
 // opts.sample === false：不带「书法班/素描班/楷书/素描」这些示例内容。
 //   真实新用户第一次进来看到两个自己没建过的班，只会以为是别人的数据或系统坏了；
 //   所以真实库不带示例，示例只给演示数据包用（maintenance.buildDemoData 依赖这两个班）。
+// opts.demoParent：演示包才需要的家长演示账号。真实新库里不该有一个"家长演示"的成员，
+//   否则统计里永远挂着 1 个家长，老师会以为自己请了人。默认不给。
+// 出厂姓名一律留空：以前默认叫「测试老师」，用户填完向导前，首页、成员列表、记录署名
+// 全是"测试老师"，真人一看就以为这是个半成品。空名字由页面兜底显示（如「老师」）。
 function buildFresh(stamp, opts) {
   const withSample = !(opts && opts.sample === false);
+  const withDemoParent = !!(opts && opts.demoParent);
   const terms = [schema.normalizeTerm({
     id: 1, name: '长期班', status: 'active', builtIn: true
   }, ORG, stamp)];
@@ -52,24 +57,26 @@ function buildFresh(stamp, opts) {
     schema.normalizeCourse({ id: 2, name: '素描', clsId: 2 }, ORG, stamp)
   ] : [];
   const users = [
-    schema.normalizeUser({ id: 't1', name: '测试老师', role: 'owner' }, ORG, stamp),
-    schema.normalizeUser({ id: 'p1', name: '家长演示', role: 'parent' }, ORG, stamp)
+    schema.normalizeUser({ id: 't1', name: '', role: 'owner' }, ORG, stamp)
   ];
+  if (withDemoParent) users.push(schema.normalizeUser({ id: 'p1', name: '家长演示', role: 'parent' }, ORG, stamp));
   const templates = schema.DEFAULT_TEMPLATES.map((t, i) =>
     schema.normalizeTemplate({ id: i + 1, name: t.name, options: t.options, sort: i }, ORG, stamp));
 
   // 机构创建者即负责人；负责人不受数据范围限制，不需要分配班级
   const orgs = [schema.normalizeOrg({ id: ORG, name: '我的机构', ownerId: 't1', status: 'active' }, stamp)];
   const members = [
-    schema.normalizeMember({ id: stamp + 1, orgId: ORG, userId: 't1', role: 'owner', name: '测试老师' }, ORG, stamp),
-    // 家长在绑定孩子之前没有可见数据，status 置 invited，绑定后转 active
-    schema.normalizeMember({ id: stamp + 2, orgId: ORG, userId: 'p1', role: 'parent', name: '家长演示', status: 'invited' }, ORG, stamp)
+    schema.normalizeMember({ id: stamp + 1, orgId: ORG, userId: 't1', role: 'owner', name: '' }, ORG, stamp)
   ];
+  if (withDemoParent) {
+    // 家长在绑定孩子之前没有可见数据，status 置 invited，绑定后转 active
+    members.push(schema.normalizeMember({ id: stamp + 2, orgId: ORG, userId: 'p1', role: 'parent', name: '家长演示', status: 'invited' }, ORG, stamp));
+  }
 
   return {
     meta: {
       version: schema.VERSION, orgId: ORG, orgName: '我的机构',
-      teacher: '测试老师', me: 't1', createdAt: stamp, updatedAt: stamp
+      teacher: '', me: 't1', createdAt: stamp, updatedAt: stamp
     },
     orgs, members, terms, classes: cls, courses, students: [], enrollments: [], records: [], users, templates
   };

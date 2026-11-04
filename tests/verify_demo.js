@@ -54,12 +54,20 @@ console.log('\n【1】全新安装：真实库干净，演示数据另存一套'
     assert.strictEqual(db.settings().sandbox, false, '默认在真实机构，不是样板间');
   });
 
-  ok('演示数据落在独立 key 上（磁盘级验证，不看内存标记）', () => {
+  ok('演示数据不随安装生成：新用户手机里不躺测试数据，第一屏就是空的', () => {
+    assert.strictEqual(demoStudents(mem).length, 0, '安装时不该写演示包');
+    assert.strictEqual(db.demo.available(), false, '还没点过，就不该有现成的包');
+    assert.strictEqual(Object.keys(mem).filter(k => k.indexOf(DEMO) === 0).length, 0, '演示 key 一个都不该出现');
+  });
+
+  ok('点「看演示数据」才现建，并且落在独立 key 上（磁盘级验证，不看内存标记）', () => {
+    assert.deepStrictEqual(db.demo.enter(), { ok: true });
     assert.strictEqual(demoStudents(mem).length, 45, '演示包应含 45 个学生');
     assert.ok((mem[DEMO + 'records'] || []).length > 0, '演示包应含记录');
     assert.ok(mem[DEMO + 'meta'], '演示包应带自己的 meta');
     assert.strictEqual(realStudents(mem).length, 0, '真实 key 里不能有一条演示学生');
     assert.strictEqual((mem[REAL + 'records'] || []).length, 0);
+    db.demo.exit();
   });
 
   ok('演示包带全自己的机构/班级/课程/成员，是个能独立渲染的完整世界', () => {
@@ -137,12 +145,16 @@ console.log('\n【3】重启：模式与数据都按用户的显式选择来');
     assert.strictEqual(again.db.settings().sandbox, false);
     assert.strictEqual(again.db.students.list().length, 1, '自己录的学生还在');
   });
-  ok('演示包仍在，随时可以再看', () => {
-    assert.strictEqual(again.db.demo.available(), true);
-    again.db.demo.enter();
+  ok('演示包建过一次就留在磁盘上：重启仍在，随时可以再看', () => {
+    again.db.demo.enter();              // 这批安装没点过演示 → 现建
     assert.strictEqual(again.db.students.list().length, 45);
     again.db.demo.exit();
     assert.strictEqual(again.db.students.list().length, 1);
+    const third = boot(again.mem);       // 再启动一次：包已经在磁盘上了
+    assert.strictEqual(third.db.demo.available(), true, '建过的包不用重建');
+    third.db.demo.enter();
+    assert.strictEqual(third.db.students.list().length, 45);
+    third.db.demo.exit();
   });
 }
 

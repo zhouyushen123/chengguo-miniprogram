@@ -269,8 +269,8 @@ console.log('\n【8】全新安装（无任何历史数据）');
     assert.strictEqual(db.records.list().length, 0);
     assert.strictEqual(db.settings().sandbox, false, '全新安装默认进真实机构，不是演示样板间');
   });
-  ok('演示数据是独立的一份：进演示能看到 45 学生 + 记录', () => {
-    assert.strictEqual(db.demo.available(), true, '演示包应随安装生成');
+  ok('演示数据是独立的一份：没点过就没有，点进演示现建 45 学生 + 记录', () => {
+    assert.strictEqual(db.demo.available(), false, '安装时不预生成演示包（新用户手机里不该有测试数据）');
     db.demo.enter();
     assert.strictEqual(db.settings().sandbox, true);
     assert.strictEqual(db.students.list().length, 45);

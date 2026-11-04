@@ -30,7 +30,12 @@ function init() {
     // 只在"规范化口径变了"时跑全量——靠 meta.normStamp 记住口径版本，改 normalizeXxx 时递增它。
     const changed = normalizeAll(core.meta().normStamp !== NORM_STAMP);
     const purged = purgeSeed();          // 老版本混在真实库里的演示数据 → 请出去（演示包里另有一份）
-    ensureDemo();                        // 演示数据包：缺了就按 demo-data 建，版本变了就重建
+    // 演示包改成「点了才建」：新用户手机里不该先躺着一整套用不到的示例学生与记录
+    // （十几个 key、几百 KB），真实第一屏就该是空的。
+    // 例外两种：①磁盘上已经有包（含老版本），要跟着版本重建；②这次升级会把人送进演示
+    // （老版本把演示数据混在真实库里，清掉后不能让他面对空白），必须先备好包再切模式。
+    const hadDemo = !!storage.demo.load().meta;
+    if (hadDemo || purged) ensureDemo();
     const repaired = repairRefs();
     const mediaFixed = repairMedia();
     resolveMode(purged);                 // 该进演示还是回真实机构
@@ -209,7 +214,7 @@ const DEMO_ORG_NAME = '演示机构';
 // 演示学生正好挂在这两个班上，一份数据就能把 App 每个页面填满。
 function buildDemoData() {
   const stamp = now();
-  const d = migrate.buildFresh(stamp);
+  const d = migrate.buildFresh(stamp, { demoParent: true });
   const o = schema.DEFAULT_ORG;
   d.meta = Object.assign({}, d.meta, {
     orgName: DEMO_ORG_NAME, demoVersion: demo.DEMO_VERSION,
@@ -217,6 +222,10 @@ function buildDemoData() {
     sandbox: false, createdAt: stamp, updatedAt: stamp
   });
   d.orgs = d.orgs.map(x => Object.assign({}, x, { name: DEMO_ORG_NAME }));
+  // 演示机构得有个像样的老师名：真实库出厂留空（等用户填），样板间留空就成了无主数据
+  d.meta.teacher = demo.DEMO_TEACHER;
+  d.users = d.users.map(u => (u.role === 'owner' ? Object.assign({}, u, { name: demo.DEMO_TEACHER }) : u));
+  d.members = d.members.map(m => (m.role !== 'parent' ? Object.assign({}, m, { name: demo.DEMO_TEACHER }) : m));
 
   d.students = schema.assignStudentNos(demo.DEMO_STUDENTS.map(s => schema.normalizeStudent(Object.assign({}, s, {
     clsIds: s.clsIds.slice(),
@@ -304,7 +313,9 @@ const demoApi = {
   available: () => core.isDemoReady(),
   // 进演示：只切指针 + 记住选择，真实数据一个字节都不动
   enter() {
-    if (!core.isDemoReady()) return { ok: false, msg: '演示数据还没准备好，请重启小程序' };
+    // 演示包是懒建的：用户第一次点「看演示数据」时才在磁盘上生成（并落盘存档）
+    if (!core.isDemoReady()) ensureDemo();
+    if (!core.isDemoReady()) return { ok: false, msg: '演示数据准备失败，请重启小程序' };
     core.setMode('demo');
     core.updateRealMeta({ sandbox: true });
     return { ok: true };

@@ -1,6 +1,8 @@
 // utils/demo-data.js —— 演示数据（45 位书法班学生 + 历史成果记录）
 // 由脚本生成，如需调整请改生成脚本而非手改本文件
 const DEMO_VERSION = 6;
+// 演示机构里的老师名：样板间要像个真机构，署名不能是空的
+const DEMO_TEACHER = '林老师';
 
 const DEMO_STUDENTS = [
   {
@@ -2364,4 +2366,4 @@ const DEMO_RECORDS = [
   }
 ];
 
-module.exports = { DEMO_VERSION, DEMO_STUDENTS, DEMO_RECORDS };
+module.exports = { DEMO_VERSION, DEMO_TEACHER, DEMO_STUDENTS, DEMO_RECORDS };

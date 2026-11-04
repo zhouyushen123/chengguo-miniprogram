@@ -77,7 +77,8 @@ Page({
     this.setData({
       isParent: false,
       roleLabel: label,
-      uName: u.name || db.settings().teacher,
+      // 名字可能还没填（新装为空），兜底叫「老师」，不显示空白也不显示"测试老师"
+      uName: u.name || db.settings().teacher || '老师',
       dateStr,
       clsCount: vis.length, stuCount: stu.length,
       pending: stu.filter(notToday).length,

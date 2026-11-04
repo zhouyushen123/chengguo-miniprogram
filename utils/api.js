@@ -72,4 +72,18 @@ function aiEvalDraft(data) {
   });
 }
 
-module.exports = { initCloud, enabled, syncOn, login, pushRecord, pull, uploadFile, aiEvalDraft, CLOUD_ENV };
+// 学生批量导入云函数（表格解析 / 纸质名单拍照识别），返回 { ok, students|msg }
+// 业务错误码用 result 原样带回，不走 callSync
+function stuImport(data) {
+  if (!cloudReady) return Promise.reject(new Error('CLOUD_OFF'));
+  return new Promise((resolve, reject) => {
+    wx.cloud.callFunction({
+      name: 'stuImport',
+      data: data || {},
+      success: r => resolve(r.result || { ok: false, msg: '云函数无返回' }),
+      fail: e => reject(new Error((e && e.errMsg) || '云函数调用失败'))
+    });
+  });
+}
+
+module.exports = { initCloud, enabled, syncOn, login, pushRecord, pull, uploadFile, aiEvalDraft, stuImport, CLOUD_ENV };

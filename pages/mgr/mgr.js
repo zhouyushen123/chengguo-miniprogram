@@ -256,6 +256,8 @@ Page({
 
   /* ================= 学生：弹层表单（姓名+班级多选+家长+微信） ================= */
   addStudent() { this.openStuForm(null); },
+  // 批量导入：文件表格（Excel/CSV/Word）或纸质名单拍照 AI 识别，进导入页走
+  goImport() { wx.navigateTo({ url: '/pages/import/import' }); },
   editStudent(e) { this.openStuForm(e.currentTarget.dataset.id); },
   // 班级展开区里加人：新学生默认勾选这个班
   addClsStudent(e) { this.openStuForm(null, [+e.currentTarget.dataset.id]); },

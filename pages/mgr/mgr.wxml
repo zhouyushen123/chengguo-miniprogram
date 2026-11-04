@@ -102,9 +102,12 @@
   </view>
   <view wx:if="{{!students.length}}" class="card empty">没有符合条件的学生，试试放宽筛选</view>
 </view>
-<!-- 添加学生：固定钉在页面底部，列表再长也始终可点 -->
+<!-- 学生操作：批量导入 + 添加学生，固定钉在页面底部 -->
 <view wx:if="{{tab===2}}" class="stufab">
-  <view class="btn" hover-class="btn-hover" bindtap="addStudent">＋ 添加学生</view>
+  <view class="stufab2">
+    <view class="btn ghost" hover-class="btn-hover" bindtap="goImport">批量导入</view>
+    <view class="btn" hover-class="btn-hover" bindtap="addStudent">＋ 添加学生</view>
+  </view>
 </view>
 
 <!-- ============ 成员管理（负责人/管理员可见） ============ -->

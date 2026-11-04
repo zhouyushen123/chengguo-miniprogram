@@ -176,6 +176,8 @@
   background: var(--bg); border-top: 2rpx solid var(--line);
 }
 .stufab .btn { width: 100%; }
+.stufab2 { display: flex; gap: 16rpx; }
+.stufab2 .btn { flex: 1; min-width: 0; }
 .empty { text-align: center; color: var(--sub); font-size: 26rpx; padding: 48rpx 0; }
 
 /* 成员头像按角色着色：原来写在 WXML 的 style 里，暖橙渐变在蓝色/极简主题下不会跟着变 */

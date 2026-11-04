@@ -28,6 +28,15 @@ function buildPrompt(hint) {
   ].filter(Boolean).join('\n');
 }
 
+// 图片 MIME 必须与实际内容一致，否则智谱直接回 1210「图片格式/解析错误」。
+// 按 base64 开头的魔数判断（PNG iVBOR / JPEG /9j/ / WEBP UklGR），默认 jpeg。
+function mimeOf(b64) {
+  if (b64.indexOf('iVBOR') === 0) return 'image/png';
+  if (b64.indexOf('UklGR') === 0) return 'image/webp';
+  if (b64.indexOf('/9j/') === 0) return 'image/jpeg';
+  return 'image/jpeg';
+}
+
 function callGLM(key, prompt, b64) {
   const body = JSON.stringify({
     model: MODEL,
@@ -36,7 +45,7 @@ function callGLM(key, prompt, b64) {
     messages: [{
       role: 'user',
       content: [
-        { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + b64 } },
+        { type: 'image_url', image_url: { url: 'data:' + mimeOf(b64) + ';base64,' + b64 } },
         { type: 'text', text: prompt }
       ]
     }]

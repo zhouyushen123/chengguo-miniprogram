@@ -693,22 +693,22 @@ ok('退出演示：横幅消失，回到自己的机构数据', () => {
 console.log('\n全部 ' + pass + ' 项页面级断言通过');
 
 /* ---------------- AI 评价草稿链路（录入页 → aiEval 云函数） ---------------- */
-// 放在文件末尾用异步 IIFE：链路全程 Promise 化，同步断言框架罩不住；
-// 任何一项失败都会 assert 抛错 → 进程非零退出，套件照样被卡住
+// 放在文件末尾用异步 IIFE：链路全程 Promise 化。mock 全部同步 resolve，
+// 因此必须纯顺序 await，任何把断言挂到"注册时不等待"的包装都会引入竞态。
+// 任何一项失败 → assert 抛错 → catch 里进程非零退出，套件照样被卡住
 (async () => {
   console.log('\n【AI 评价草稿链路】');
   const apiMod = require('../utils/api');
-  const t = (name, fn) => { fn(); console.log('  ✓ ' + name); };
   const AIDRAFT = 'AI草稿：书写工整，继续保持！';
 
-  t('无照片时拦截并提示', () => {
-    record.setData({ photos: [], note: '' });
-    toasts.length = 0;
-  });
+  // 1. 无照片拦截
+  record.setData({ photos: [], note: '' });
+  toasts.length = 0;
   await record.aiDraft();
   assert.ok(toasts.some(x => x.indexOf('先拍') > -1), '应提示先拍照片');
+  console.log('  ✓ 无照片时拦截并提示');
 
-  // 打通云层：模拟 wx.cloud.callFunction，api.initCloud 后 cloudReady 置真
+  // 打通云层：模拟 wx.cloud，api.initCloud 后 cloudReady 置真
   let called = null;
   global.wx.cloud = {
     init() {},
@@ -719,33 +719,32 @@ console.log('\n全部 ' + pass + ' 项页面级断言通过');
   global.wx.getFileSystemManager = () => ({ readFile(o) { o.success({ data: 'ZmFrZQ==' }); } });
   apiMod.initCloud();
 
-  t('有照片：压缩 → 读 base64 → 调 aiEval → 回填评价并可发送', async () => {
-    record.setData({ photos: ['/tmp/a.jpg'], note: '' });
-    toasts.length = 0;
-    await record.aiDraft();
-    assert.ok(called && called.name === 'aiEval', '应调用 aiEval 云函数');
-    assert.strictEqual(called.data.imageBase64, 'ZmFrZQ==');
-    assert.strictEqual(record.data.note, AIDRAFT, '生成文本应 trim 后回填');
-    assert.strictEqual(record.data.canSend, true);
-    assert.strictEqual(record.data.aiBusy, false, '结束后忙碌态复位');
-  });
+  // 2. 全链路：压缩 → 读 base64 → 调 aiEval → trim 回填 → 可发送
+  record.setData({ photos: ['/tmp/a.jpg'], note: '' });
+  toasts.length = 0;
   await record.aiDraft();
+  assert.ok(called && called.name === 'aiEval', '应调用 aiEval 云函数');
+  assert.strictEqual(called.data.imageBase64, 'ZmFrZQ==');
+  assert.strictEqual(record.data.note, AIDRAFT, '生成文本应 trim 后回填');
+  assert.strictEqual(record.data.canSend, true);
+  assert.strictEqual(record.data.aiBusy, false, '结束后忙碌态复位');
+  console.log('  ✓ 有照片全链路：压缩 → base64 → aiEval → 回填可发送');
 
-  t('已有评价时先弹确认（mock 恒确认）再覆盖', async () => {
-    record.setData({ note: '旧评价' });
-    await record.aiDraft();
-    assert.strictEqual(record.data.note, AIDRAFT);
-  });
+  // 3. 已有评价时先确认（mock showModal 恒 confirm）再覆盖
+  record.setData({ note: '旧评价' });
+  await record.aiDraft();
+  assert.strictEqual(record.data.note, AIDRAFT);
+  console.log('  ✓ 已有评价时确认后覆盖');
 
-  t('云函数业务错误透出中文提示（NO_KEY）', async () => {
-    global.wx.cloud.callFunction = o => o.success({ result: { ok: false, code: 'NO_KEY', msg: 'x' } });
-    record.setData({ note: '' });
-    toasts.length = 0;
-    await record.aiDraft();
-    assert.ok(toasts.some(x => x.indexOf('ZHIPU_API_KEY') > -1), '应提示缺 Key');
-  });
+  // 4. 云函数业务错误透出中文提示（NO_KEY）
+  global.wx.cloud.callFunction = o => o.success({ result: { ok: false, code: 'NO_KEY', msg: 'x' } });
+  record.setData({ note: '' });
+  toasts.length = 0;
+  await record.aiDraft();
+  assert.ok(toasts.some(x => x.indexOf('ZHIPU_API_KEY') > -1), '应提示缺 Key');
+  console.log('  ✓ 云函数业务错误透出中文提示');
 
-  // 还原 mock，避免影响后续套件（verify_db 等独立进程不受影响，本文件收尾即可）
+  // 还原 mock
   delete global.wx.cloud;
   delete global.wx.compressImage;
   global.wx.getFileSystemManager = origFSM;

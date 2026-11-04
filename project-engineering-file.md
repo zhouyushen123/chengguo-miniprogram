@@ -287,6 +287,22 @@ kvUsage()                       // → 本地 key 用量（云端实现返回服
 
 **边界**：只用 `wechat` 一个字段做家长标识（当前学生实体没有独立家长手机号）；两个都没填号码的学生不会被误判成一家人。
 
+## 6.9 AI 评价草稿（2026-11-04，智谱 GLM-4V-Flash）
+
+**场景**：老师录成果时要对着照片现写评价，打字慢、词穷。录入页加「AI 评」按钮：第一张照片交给多模态模型识图，生成 60~120 字评价草稿回填输入框，老师可改可发。
+
+**链路**：录入页 `aiDraft()` → 图片双通道（`cloud://` 传 fileID，云函数端 `downloadFile` 转 base64；本地图 `compressImage` 压缩后 `readFile` 转 base64 兜底）→ `aiEval` 云函数 → 智谱 `glm-4v-flash`（OpenAI 兼容协议，`https` 直连无额外依赖）→ 生成文本 trim 回填。
+
+**密钥与成本**：`ZHIPU_API_KEY` 只存云函数环境变量（云开发控制台配置），绝不进代码仓库/前端。GLM-4V-Flash 免费档 token 不限量（30 并发），机构量级零成本。
+
+**容错**：未开云（`CLOUD_OFF`）、缺 Key（`NO_KEY`，客户端按结构化 `code` 而非 msg 文本映射）、照片过大、超时、空响应均有中文提示；已有评价时先弹确认再覆盖；全程 `aiBusy` 防连点。
+
+**合规**：AI 生成内容发送家长前仍需过内容审核（归入 P1-9 `msgSecCheck` 一并做）；照片含未成年人，隐私声明需注明用于 AI 识图。
+
+**部署**：开通云开发环境 → 开发者工具上传部署 `cloudfunctions/aiEval` → 控制台给该函数配环境变量 `ZHIPU_API_KEY` → `utils/api.js` 的 `CLOUD_ENABLED` 改 true 并填 `CLOUD_ENV` → 可用云函数「云端测试」`{action:'ping'}` 自检（返回 `hasKey` 确认密钥就位）。
+
+**测试**：`verify_pages.js` 末尾异步 IIFE 4 项（无照片拦截 / 全链路回填 / 确认覆盖 / NO_KEY 提示）；`CG_CLOUD=1` 环境变量仅测试用于打开云开关，生产仍由 `CLOUD_ENABLED` 常量控制。
+
 ## 7. 待办
 
 ### P0 止血（不动架构，先让数据不丢）—— **2026-11-01 完成**

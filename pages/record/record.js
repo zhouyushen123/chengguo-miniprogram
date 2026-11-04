@@ -141,7 +141,11 @@ Page({
           wx.getFileSystemManager().readFile({ filePath: p, encoding: 'base64', success: r => res(r.data), fail: rej }));
       }
       const r = await api.aiEvalDraft(payload);
-      if (!r || !r.ok) throw new Error((r && r.msg) || '生成失败');
+      if (!r || !r.ok) {
+        const err = new Error((r && r.msg) || '生成失败');
+        err.code = r && r.code;   // 业务错误码（如 NO_KEY）比 msg 文本更可靠
+        throw err;
+      }
       const text = String(r.text || '').trim().slice(0, 500);
       if (!text) throw new Error('AI 没有返回内容，请重试');
       this.setData({ note: text });
@@ -149,7 +153,8 @@ Page({
       wx.showToast({ title: '已生成，可自由修改', icon: 'success' });
     } catch (e) {
       const m = String((e && e.message) || '');
-      const tip = m.indexOf('CLOUD_OFF') > -1 ? '云开发未开通：需开通环境并部署 aiEval 云函数'
+      const tip = (e && e.code) === 'NO_KEY' ? 'AI 未配置：云函数缺 ZHIPU_API_KEY 环境变量'
+        : m.indexOf('CLOUD_OFF') > -1 ? '云开发未开通：需开通环境并部署 aiEval 云函数'
         : m.indexOf('NO_KEY') > -1 ? 'AI 未配置：云函数缺 ZHIPU_API_KEY 环境变量'
         : m.indexOf('超时') > -1 || m.indexOf('timeout') > -1 ? 'AI 响应超时，请重试'
         : (m || '生成失败，请重试');

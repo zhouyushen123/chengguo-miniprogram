@@ -15,7 +15,7 @@
 | 远程 | `git@github.com:zhouyushen123/chengguo-miniprogram.git` |
 | 我的工作区 | `C:\Users\zhouy\WorkBuddy\橙果`（只放记忆，不放代码） |
 | 技术栈 | 微信原生小程序（JS）+ 云开发目录 `cloudfunctions/` |
-| 验证基线 | `npm test` = 269 项同步断言 + 4 项 AI 链路（异步）= **275 项全绿**；`npm run lint` 92 文件 0 提醒；`npm run size` 主包 910 KB / 2 MB（44.4%）；`npm run check` = lint + size + test 一条跑完 |
+| 验证基线 | `npm test` = 283 项同步断言 + 4 项 AI 链路（异步）= **287 项全绿**；`npm run lint` 92 文件 0 提醒；`npm run size` 主包 910 KB / 2 MB（44.4%）；`npm run check` = lint + size + test 一条跑完 |
 | 提交习惯 | 沙箱常拦 `git push`（读不到 `~/.ssh`），仓库有「5 分钟自动同步」任务会以 `auto: 自动同步 时间戳` 提交并推送 |
 
 ---
@@ -62,7 +62,7 @@
 - **出厂数据清干净**：`migrate.buildFresh(stamp, {sample:false})` 让真实新库不再自带「书法班/素描班/楷书/素描」；示例内容只留给演示数据包（`maintenance.buildDemoData` 仍用默认 sample:true）。内置「长期班」学期保留（历史数据兜底）。
 - **真·初始状态（11-04 二次清理）**：真实新库只留「1 个机构 + 1 个负责人（姓名为空）+ 内置长期班 + 默认评价模板」，实测落盘 2 KB / 12 个 key。三处"测试痕迹"已删：①出厂姓名不再叫「测试老师」（空串，页面兜底显示「老师」）；②不再生成「家长演示」这个假成员（`buildFresh(stamp,{demoParent:true})` 只给演示包用）；③**演示数据包改为「点了才建」**——以前每次安装都往手机写 12 个 `chengguo_demo_*` key，现在只有用户点「看演示数据」时才生成，启动阶段仅当磁盘上已有包（含老版本需重建）或本次升级要把人送进演示时才备好。
 - **改名**：向导第 1 步提交时，若当前成员名还是出厂的「测试老师」，自动换成他填的联系人（`db.members.update`，失败不影响流程）。
-- 测试：新增 `tests/verify_onboard.js`（18 项，从空库起步跑到完成页）；`verify_term` / `verify_perm` 里"全新安装有 2 个默认班"的断言随产品决策改为"不带示例班"。总数 255 → **275**。
+- 测试：新增 `tests/verify_onboard.js`（18 项，从空库起步跑到完成页）；`verify_term` / `verify_perm` 里"全新安装有 2 个默认班"的断言随产品决策改为"不带示例班"。总数 255 → **287**（含 11-04 新增的手机号套件 12 项）。
 
 ---
 

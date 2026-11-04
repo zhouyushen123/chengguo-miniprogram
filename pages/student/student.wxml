@@ -6,7 +6,7 @@
       <image wx:if="{{s.photo}}" class="stuava" src="{{s.photo}}" mode="aspectFill" />
       <view wx:else class="stuava stub"><image src="{{icoUser}}" mode="aspectFit" /></view>
       <view class="stuinfo">
-        <view class="h1">{{s.name}}</view>
+        <view class="h1">{{s.name}}<text wx:if="{{s.no}}" class="sno">学号 {{s.no}}</text></view>
         <view class="mi">{{s.meta}}{{s.parent?' · 家长：'+s.parent:''}}{{s.wechat?' · 微信 '+s.wechat:''}}</view>
       </view>
       <view class="chip {{!profileFilled ? 'chip-warn' : ''}}" bindtap="goProfile">资料{{!profileFilled ? ' · 待填写' : ''}}</view>

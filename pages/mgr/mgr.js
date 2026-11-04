@@ -31,7 +31,7 @@ Page({
     // 学生表单：入学年份选择器（未填 + 近 13 年，倒序）
     enrollYearOpts: [{ y: 0, name: '未填' }], stuEnrollYearIdx: 0,
     // 成员表单弹层（chips = 预计算好 on 标记的渲染数组，WXML 不做任何方法调用）
-    userForm: null, userClsSel: [], userStuSel: [], userCrsSel: [],
+    userForm: null, userClsSel: [], userStuSel: [], userCrsSel: [], userBindNo: '',
     userClsChips: [], userStuChips: [], userCrsChips: [],
     roleOpts: ROLE_OPTS
   },
@@ -164,7 +164,8 @@ Page({
     const y = ((this.data.stuYears || [])[this.data.stuYearIdx] || {}).y || 0;
     const g = this.data.stuGender || '';
     const shown = list.filter(st => {
-      if (q && ((st.name + ' ' + st.parent + ' ' + st.wechat).toLowerCase().indexOf(q) < 0)) return false;
+      // 搜索命中范围：姓名 / 家长 / 微信号 / 学号（家长报学号时最常见）
+      if (q && ((st.name + ' ' + st.parent + ' ' + st.wechat + ' ' + st.no).toLowerCase().indexOf(q) < 0)) return false;
       if (y && st.year !== y) return false;
       if (g === '未知') { if (st.gender) return false; }
       else if (g && st.gender !== g) return false;
@@ -262,7 +263,7 @@ Page({
     const nowY = new Date().getFullYear();
     const year = s ? (s.enrollYear || 0) : nowY;
     this.setData({
-      stuForm: { id: id || null, name: s ? s.name : '', gender: s ? (s.gender || '') : '', enrollYear: year, parent: s ? (s.parent || '') : '', wechat: s ? (s.wechat || '') : '', photo: s ? (s.photo || '') : '' },
+      stuForm: { id: id || null, name: s ? s.name : '', no: s ? (s.no || '') : '', gender: s ? (s.gender || '') : '', enrollYear: year, parent: s ? (s.parent || '') : '', wechat: s ? (s.wechat || '') : '', photo: s ? (s.photo || '') : '' },
       stuClsSel: clsSel,
       stuClsChips: this._chips(db.classes.list(), clsSel),
       stuEnrollYearIdx: Math.max(0, this.data.enrollYearOpts.findIndex(o => o.y === year))
@@ -273,6 +274,12 @@ Page({
   // 开发者工具里静默失效，真机渲染层直接抛异常导致点击即崩。
   _chips(list, sel) {
     return (list || []).map(c => ({ id: c.id, name: c.name, on: sel.indexOf(c.id) >= 0 }));
+  },
+  // 家长选孩子的 chips：学生重名多（两个「王五」不在一个班），露出学号才能分清选的是谁
+  _stuChips(sel) {
+    return db.students.list().map(s => ({
+      id: s.id, name: s.no ? (s.name + ' ' + s.no) : s.name, on: sel.indexOf(s.id) >= 0
+    }));
   },
   onStuName(e) { this.setData({ 'stuForm.name': e.detail.value }); },
   // 表单里的性别：再点一次已选中的取消（记为未知）
@@ -315,7 +322,19 @@ Page({
     const r = f.id ? db.students.update(f.id, payload) : db.students.create(payload);
     if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
     this.setData({ stuForm: null }); this.refresh();
-    wx.showToast({ title: '已保存', icon: 'success' });
+    // 同家长号码下已有孩子 → 已自动把新学生补进家长账号，明确告诉操作者一声
+    const linked = (r.linked || []);
+    if (linked.length) {
+      wx.showToast({ title: '已保存，已归入家长 ' + linked[0] + (linked.length > 1 ? ' 等' : ''), icon: 'none', duration: 2200 });
+    } else {
+      wx.showToast({ title: '已保存', icon: 'success' });
+    }
+  },
+  // 学号只读：编辑时可点按复制，方便发给家长
+  copyStuNo() {
+    const no = (this.data.stuForm || {}).no;
+    if (!no) return;
+    wx.setClipboardData({ data: String(no), success: () => wx.showToast({ title: '学号已复制', icon: 'success' }) });
   },
   goStudentPage(e) {
     wx.navigateTo({ url: '/pages/student/student?id=' + e.currentTarget.dataset.id });
@@ -351,10 +370,11 @@ Page({
     const clsSel = (u.clsIds || []).slice(), crsSel = (u.courseIds || []).slice(), stuSel = (u.studentIds || []).slice();
     this.setData({
       userForm: { id: u.id || null, role: u.role, name: u.name || '', phone: u.phone || '', wechat: u.wechat || '' },
+      userBindNo: '',
       userClsSel: clsSel, userCrsSel: crsSel, userStuSel: stuSel,
       userClsChips: this._chips(db.classes.list(), clsSel),
       userCrsChips: this._chips(db.courses.list(), crsSel),
-      userStuChips: this._chips(db.students.list(), stuSel)
+      userStuChips: this._stuChips(stuSel)
     });
   },
   onUserName(e) { this.setData({ 'userForm.name': e.detail.value }); },
@@ -364,6 +384,25 @@ Page({
   userClsTgl(e) { this._tgl('userClsSel', 'classes', e); },
   userCrsTgl(e) { this._tgl('userCrsSel', 'courses', e); },
   userStuTgl(e) { this._tgl('userStuSel', 'students', e); },
+  onBindNo(e) { this.setData({ userBindNo: e.detail.value }); },
+  /* 按学号绑定孩子：输入学号 → 找到学生 → 连同同家长号码的兄弟姐妹一起加入。
+   * 这是「家长号码自动归并」的手动补口：号码没填对/孩子先建后填号码的情况，用学号兜底。 */
+  bindByNo() {
+    const k = (this.data.userBindNo || '').trim();
+    if (!k) { wx.showToast({ title: '请输入学号', icon: 'none' }); return; }
+    const s = db.students.byNo(k);
+    if (!s) { wx.showToast({ title: '没有学号 ' + k + ' 的学生', icon: 'none' }); return; }
+    const ids = this.data.userStuSel.slice();
+    const sibs = db.students.siblings(s);
+    const add = [s.id].concat(sibs.map(x => x.id)).filter(id => ids.indexOf(id) < 0);
+    add.forEach(id => ids.push(id));
+    this.setData({ userStuSel: ids, userStuChips: this._stuChips(ids), userBindNo: '' });
+    if (!add.length) { wx.showToast({ title: s.name + ' 已在列表中', icon: 'none' }); return; }
+    wx.showToast({
+      title: sibs.length ? ('已加 ' + s.name + ' + ' + sibs.length + ' 个同家长孩子') : ('已加 ' + s.name),
+      icon: 'none', duration: 1800
+    });
+  },
   _tgl(key, srcKey, e) {
     const id = +e.currentTarget.dataset.id, sel = this.data[key].slice();
     const i = sel.indexOf(id); i >= 0 ? sel.splice(i, 1) : sel.push(id);
@@ -398,7 +437,13 @@ Page({
       : db.members.create(payload);
     if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
     this.setData({ userForm: null }); this.refresh();
-    wx.showToast({ title: '已保存', icon: 'success' });
+    // 后端会把同家长号码的孩子一并带上，多出来的要告诉操作者，否则他会以为选错了
+    const extra = f.role === 'parent' && r.item ? r.item.studentIds.length - this.data.userStuSel.length : 0;
+    if (extra > 0) {
+      wx.showToast({ title: '已保存，自动带出 ' + extra + ' 个同家长孩子', icon: 'none', duration: 2200 });
+    } else {
+      wx.showToast({ title: '已保存', icon: 'success' });
+    }
   },
   delUser(e) {
     const id = +e.currentTarget.dataset.id;

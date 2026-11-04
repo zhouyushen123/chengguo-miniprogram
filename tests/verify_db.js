@@ -1,6 +1,7 @@
 // tests/verify_db.js —— 主数据层回归验证（Node 环境，模拟 wx 存储）
 const path = require('path');
 const assert = require('assert');
+const schema = require('../utils/db/schema');
 
 /* ---------- 1. 造一个"老版本"设备存储：v2 单一大对象 ---------- */
 const mem = {};
@@ -54,7 +55,7 @@ db.init();
 console.log('\n【迁移：v2 大对象 → v4 实体集合】');
 ok('元信息升到 v4 且带 orgId', () => {
   const s = db.settings();
-  assert.strictEqual(s.version, 5);
+  assert.strictEqual(s.version, schema.VERSION);
   assert.strictEqual(s.orgId, 'org1');
   assert.strictEqual(s.teacher, '王老师');
 });
@@ -196,6 +197,49 @@ ok('删学生：其记录一并软删，不再出现在列表', () => {
   assert.strictEqual(db.records.get(rec.id), null, '记录应一并软删');
 });
 
+console.log('\n【学号与家长归并】');
+ok('建档自动分配不重复学号，可按学号查回', () => {
+  const a = db.students.create({ name: '学号甲', clsIds: [1] }).item;
+  const b = db.students.create({ name: '学号乙', clsIds: [1] }).item;
+  assert.ok(/^\d+$/.test(a.no), '学号应为纯数字：' + a.no);
+  assert.notStrictEqual(a.no, b.no, '两个学生的学号不能重复');
+  assert.strictEqual(db.students.byNo(a.no).id, a.id, '按学号应查回本人');
+  assert.strictEqual(db.students.byNo('999999'), null, '不存在的学号返回 null');
+  db.students.remove(a.id); db.students.remove(b.id);
+});
+ok('同一家长号码的第二个孩子自动归入已有家长账号', () => {
+  const kid1 = db.students.create({ name: '姐姐', clsIds: [1], parent: '张妈妈', wechat: '13800001111' }).item;
+  const p = db.members.create({ name: '张妈妈', role: 'parent', studentIds: [kid1.id], clsIds: [], courseIds: [] });
+  assert.strictEqual(p.ok, true, p.msg || '');
+  // 号码写法不同（带短横）也要认成同一位家长
+  const kid2 = db.students.create({ name: '弟弟', clsIds: [1], parent: '张妈妈', wechat: '138-0000-1111' });
+  assert.strictEqual(kid2.ok, true, kid2.msg || '');
+  assert.deepStrictEqual(kid2.linked, ['张妈妈'], '应提示归入哪位家长');
+  const m = db.members.list().find(x => x.name === '张妈妈');
+  assert.ok(m.studentIds.indexOf(kid2.item.id) > -1, '弟弟应自动出现在家长名下');
+  assert.ok(m.studentIds.indexOf(kid1.id) > -1, '原有的姐姐不能被顶掉');
+  // 家长号码不同 → 不能被当成一家人
+  const other = db.students.create({ name: '别家孩子', clsIds: [1], parent: '李爸爸', wechat: '13900002222' });
+  assert.deepStrictEqual(other.linked, [], '号码不同不应归并');
+  // 清理，避免影响后续用例的学生数量断言
+  [kid1.id, kid2.item.id, other.item.id].forEach(id => db.students.remove(id));
+  db.members.remove(m.id);
+});
+ok('家长只挑一个孩子，同家长的其他孩子自动带出', () => {
+  const a = db.students.create({ name: '大成', clsIds: [1], wechat: '13700003333' }).item;
+  const b = db.students.create({ name: '小成', clsIds: [1], wechat: '13700003333' }).item;
+  const p = db.members.create({ name: '成爸爸', role: 'parent', studentIds: [a.id], clsIds: [], courseIds: [] });
+  assert.strictEqual(p.ok, true, p.msg || '');
+  assert.ok(p.item.studentIds.indexOf(b.id) > -1, '同家长的另一个孩子应被自动带上');
+  // 改成员时只留一个孩子，也会被补齐（不能出现"漏了老大"）
+  const m = db.members.list().find(x => x.name === '成爸爸');
+  db.members.update(m.id, { studentIds: [b.id] });
+  const after = db.members.list().find(x => x.name === '成爸爸');
+  assert.ok(after.studentIds.indexOf(a.id) > -1, '改档后同家长孩子仍应齐全');
+  [a.id, b.id].forEach(id => db.students.remove(id));
+  db.members.remove(m.id);
+});
+
 console.log('\n【评价模板】');
 ok('新增 / 修改 / 删除选项，重名被拒', () => {
   const g = db.templates.list()[0];
@@ -239,7 +283,7 @@ ok('重启后数据一致（说明真的落盘了）', () => {
   assert.strictEqual(db.students.list().length, before.stu);
   assert.strictEqual(db.records.list().length, before.rec);
   assert.strictEqual(db.templates.list().length, before.tpl);
-  assert.strictEqual(db.settings().version, 5);
+  assert.strictEqual(db.settings().version, schema.VERSION);
 });
 ok('二次 init 不会重复灌演示数据', () => {
   const n1 = db.students.list().length;

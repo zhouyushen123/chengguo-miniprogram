@@ -161,6 +161,23 @@ function normalizeStudent(raw, orgId, stamp) {
   }, audit(r, orgId, stamp));
 }
 
+// 学号补发：老数据、演示数据里没有学号，按建档顺序（id 升序）从 1001 起补。
+// 已有学号原样保留；同一批数据每次算出的号相同（幂等），不会因为归并/迁移反复变动。
+const NO_START = 1001;
+function assignStudentNos(list) {
+  const arr = Array.isArray(list) ? list : [];
+  const used = {};
+  arr.forEach(s => { if (s.no) used[s.no] = 1; });
+  let seq = NO_START - 1;
+  arr.slice().sort((a, b) => a.id - b.id).forEach(s => {
+    if (s.no) return;
+    do { seq++; } while (used[String(seq)]);
+    s.no = String(seq);
+    used[s.no] = 1;
+  });
+  return arr;
+}
+
 function normalizeRecord(raw, orgId, stamp) {
   const r = raw || {};
   const date = normDate(r.date) || ymd(new Date(num(r.createdAt, stamp)));
@@ -318,5 +335,6 @@ module.exports = {
   normalize, validate,
   normalizeOrg, normalizeMember,
   normalizeTerm, normalizeClass, normalizeCourse, normalizeStudent, normalizeEnrollment,
+  assignStudentNos, NO_START,
   normalizeRecord, normalizeUser, normalizeTemplate
 };

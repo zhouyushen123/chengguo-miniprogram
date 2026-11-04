@@ -1,5 +1,10 @@
 .sturow { display: flex; align-items: center; gap: 20rpx; }
 .stuinfo { flex: 1; }
+/* 学号：姓名后面的小标签，标识用不抢视觉 */
+.sno {
+  margin-left: 12rpx; font-size: 20rpx; font-weight: 400; color: var(--sub);
+  background: var(--chip); border-radius: 8rpx; padding: 2rpx 10rpx; vertical-align: 4rpx;
+}
 .r1 { display: flex; align-items: center; gap: 12rpx; }
 .score { margin-left: auto; color: var(--brand); font-weight: 800; font-size: 34rpx; }
 .dimhead { display: flex; align-items: center; gap: 12rpx; }

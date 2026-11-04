@@ -86,7 +86,9 @@ function memberCreate(data) {
     const e = schema.normalizeMember({
       id: core.nextId(), orgId: org(), userId,
       role: d.role, name: d.name,
-      clsIds: d.clsIds, courseIds: d.courseIds, studentIds: d.studentIds,
+      clsIds: d.clsIds, courseIds: d.courseIds,
+      // 家长的孩子列表统一走 expandKidIds：同家长号码的兄弟姐妹自动带出
+      studentIds: d.role === 'parent' ? expandKidIds(d.studentIds) : d.studentIds,
       status: d.status,
       phone: d.phone, wechat: d.wechat
     }, org(), now());
@@ -102,7 +104,8 @@ function memberUpdate(id, patch) {
   if (err) return { ok: false, msg: err };
   const m = memberGet(id);
   if (!m) return { ok: false, msg: '成员不存在' };
-  const p = patch || {};
+  const p = Object.assign({}, patch || {});
+  if (p.studentIds) p.studentIds = expandKidIds(p.studentIds);
   // 机构负责人只能有一个：转移负责人要显式走 ownerTransfer，避免把自己锁在外面
   if (p.role === 'owner' && m.role !== 'owner') return { ok: false, msg: '请用「移交负责人」操作' };
   const next = schema.normalizeMember(Object.assign({}, m, p), org(), now());

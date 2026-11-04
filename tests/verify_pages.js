@@ -491,6 +491,32 @@ ok('测试成员清理，不污染后续用例', () => {
   assert.ok(!db.members.list().some(m => m.name === '王老师'));
 });
 
+console.log('\n【学号与家长绑定】');
+ok('新建学生自动分配学号，编辑表单展示学号', () => {
+  mgr.openStuForm(null, [1]);
+  mgr.onStuName({ detail: { value: '学号测试生' } });
+  mgr.stuSave();
+  const s = db.students.list().find(x => x.name === '学号测试生');
+  assert.ok(s, '学生已保存');
+  assert.ok(/^\d+$/.test(s.no), '保存后应自动带学号：' + s.no);
+  mgr.openStuForm(s.id);
+  assert.strictEqual(mgr.data.stuForm.no, s.no, '编辑表单应展示学号');
+  mgr.stuCancel();
+  db.students.remove(s.id);
+});
+ok('家长表单按学号绑定：同家长的孩子一并带出', () => {
+  const a = db.students.create({ name: '小明', clsIds: [1], wechat: '13500009999' }).item;
+  const b = db.students.create({ name: '小亮', clsIds: [1], wechat: '13500009999' }).item;
+  mgr.openUserForm({ role: 'parent' });
+  mgr.onBindNo({ detail: { value: a.no } });
+  mgr.bindByNo();
+  assert.ok(mgr.data.userStuSel.indexOf(a.id) > -1, '按学号应加上该学生');
+  assert.ok(mgr.data.userStuSel.indexOf(b.id) > -1, '同家长号码的另一个孩子应自动带出');
+  assert.ok(mgr.data.userStuChips.some(c => c.name.indexOf(a.no) > -1), '孩子胶囊要显示学号，防重名选错');
+  mgr.userCancel();
+  [a.id, b.id].forEach(id => db.students.remove(id));
+});
+
 console.log('\n【重启：数据持久化】');
 ok('重新加载后数据不变', () => {
   const before = { cls: db.classes.list().length, stu: db.students.list().length, rec: db.records.list().length };

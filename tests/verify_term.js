@@ -1,6 +1,7 @@
 // tests/verify_term.js —— 学期制与课时结转专项验证
 // 覆盖：v4→v5 迁移（内置长期班收编）/ 学期 CRUD / 报名与课时账 / 消课 / 结转向导 / 权限闸门
 const assert = require('assert');
+const schema = require('../utils/db/schema');
 const demo = require('../utils/demo-data');
 
 /* ---------- 模拟 wx 存储 ---------- */
@@ -62,7 +63,7 @@ db = freshDb();
 db.init();
 
 ok('v4 数据升级到 v5 且班级被长期班收编', () => {
-  assert.strictEqual(db.settings().version, 5);
+  assert.strictEqual(db.settings().version, schema.VERSION);
   const bi = db.terms.list().find(x => x.builtIn);
   assert.ok(bi, '应创建内置学期');
   assert.strictEqual(db.classes._all().length, 2, '班级数量不变');

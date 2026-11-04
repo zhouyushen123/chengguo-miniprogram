@@ -81,7 +81,7 @@
           <view class="gopt {{stuGender==='女'?'on':''}}" bindtap="onStuGender" data-v="女">女</view>
         </view>
         <view class="vin sfsearch">
-          <input class="sfin vin-in" placeholder="搜索姓名 / 家长" value="{{stuQ}}" bindinput="onStuQ" confirm-type="search" />
+          <input class="sfin vin-in" placeholder="搜索姓名 / 学号 / 家长" value="{{stuQ}}" bindinput="onStuQ" confirm-type="search" />
           <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuQ" />
         </view>
       </view>
@@ -94,7 +94,7 @@
         <image wx:if="{{item.photo}}" class="stuava" src="{{item.photo}}" mode="aspectFill" />
         <view wx:else class="stuava stub"><image src="{{icoUser}}" mode="aspectFit" /></view>
         <view style="min-width:0"><b>{{item.name}}</b><text wx:if="{{item.gender}}" class="gtag">{{item.gender}}</text>
-        <view class="mi">{{item.cls}}{{item.year?' · '+item.year+' 年入学':''}}{{item.parent?' · 家长 '+item.parent:''}}{{item.wechat?' · 微信 '+item.wechat:''}}</view></view>
+        <view class="mi"><text wx:if="{{item.no}}" class="sno">学号 {{item.no}}</text>{{item.cls}}{{item.year?' · '+item.year+' 年入学':''}}{{item.parent?' · 家长 '+item.parent:''}}{{item.wechat?' · 微信 '+item.wechat:''}}</view></view>
       </view>
     </view>
     <view class="stuacts">
@@ -164,6 +164,11 @@
       <input class="input vin-in" placeholder="学生姓名" value="{{stuForm.name}}" bindinput="onStuName" />
       <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuForm.name" />
     </view>
+    <!-- 学号由系统分配：新建时保存后生成，编辑时只读展示（家长凭它绑定孩子） -->
+    <view class="stuno" bindtap="copyStuNo">
+      <text wx:if="{{stuForm.id && stuForm.no}}">学号 {{stuForm.no}} · 点按复制</text>
+      <text wx:else>学号保存后自动生成，家长可用它绑定孩子</text>
+    </view>
     <view class="label">性别</view>
     <view class="gswitch" style="margin-bottom:20rpx">
       <view class="gopt {{stuForm.gender==='男'?'on':''}}" bindtap="onStuGenderSet" data-v="男">男</view>
@@ -229,6 +234,12 @@
       </view>
     </block>
     <block wx:elif="{{userForm.role==='parent'}}">
+      <view class="label">按学号绑定</view>
+      <view class="bindrow">
+        <input class="input bindin" type="number" placeholder="输入学生学号，如 1001" value="{{userBindNo}}" bindinput="onBindNo" confirm-type="done" bindconfirm="bindByNo" />
+        <view class="btn ghost bindbtn" hover-class="btn-hover" bindtap="bindByNo">添加</view>
+      </view>
+      <view class="mi" style="margin:-8rpx 0 16rpx">同一个家长号码下的孩子会自动带出，不用一个个选。</view>
       <view class="label">关联孩子（可多选，至少一个）</view>
       <view class="chips" style="margin-bottom:20rpx">
         <view wx:for="{{userStuChips}}" wx:key="id" class="chip {{item.on?'on':''}}" bindtap="userStuTgl" data-id="{{item.id}}">{{item.name}}</view>

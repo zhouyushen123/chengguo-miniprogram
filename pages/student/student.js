@@ -169,7 +169,7 @@ Page({
   },
   stuView(s) {
     return {
-      name: s.name, photo: s.photo || '',
+      name: s.name, photo: s.photo || '', no: s.no || '',
       meta: (s.clsIds || []).map(db.classes.name).join(' · '),
       parent: s.parent || '', wechat: s.wechat || ''
     };

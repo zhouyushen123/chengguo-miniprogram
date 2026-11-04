@@ -1,6 +1,7 @@
 // tests/verify_perm.js —— 机构权限模型验证
 // 用真实模块跑，不 mock 业务逻辑：wx 只提供存储与提示接口。
 const assert = require('assert');
+const schema = require('../utils/db/schema');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
@@ -68,7 +69,7 @@ function v3Seed() {
 console.log('\n【1】v3 → v4 升级：数据一条都不能丢');
 {
   const { db } = boot(v3Seed());
-  ok('版本升到 5', () => assert.strictEqual(db.settings().version, 5));
+  ok('版本升到 ' + schema.VERSION, () => assert.strictEqual(db.settings().version, schema.VERSION));
   ok('45 类学生记录数完整保留', () => {
     assert.strictEqual(db.raw().students.length, 3);
     assert.strictEqual(db.raw().records.length, 5);
@@ -301,7 +302,7 @@ console.log('\n【9】二次启动：不重复迁移、不重复播种');
   ok('重启后学生数不变（没有翻倍）', () => assert.strictEqual(db2.students.list().length, 3));
   ok('重启后记录数不变', () => assert.strictEqual(db2.records.list().length, 5));
   ok('重启后成员数不变', () => assert.strictEqual(db2.members.list().length, 3));
-  ok('重启后版本仍是 5', () => assert.strictEqual(db2.settings().version, 5));
+  ok('重启后版本仍是 ' + schema.VERSION, () => assert.strictEqual(db2.settings().version, schema.VERSION));
 }
 
 console.log('\n' + (fail ? ('✗ ' + fail + ' 项失败，' + pass + ' 项通过') : ('全部 ' + pass + ' 项权限断言通过')));

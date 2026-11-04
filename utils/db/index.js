@@ -139,6 +139,7 @@ const db = {
   students: {
     list: students.studentList, of: students.studentOf, get: students.studentGet,
     search: students.studentSearch, name: students.studentName,
+    byNo: students.studentByNo, siblings: students.studentSiblings,
     create: students.studentCreate, update: students.studentUpdate,
     updateProfile: students.studentUpdateProfile, remove: students.studentRemove
   },

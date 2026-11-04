@@ -218,11 +218,11 @@ function buildDemoData() {
   });
   d.orgs = d.orgs.map(x => Object.assign({}, x, { name: DEMO_ORG_NAME }));
 
-  d.students = demo.DEMO_STUDENTS.map(s => schema.normalizeStudent(Object.assign({}, s, {
+  d.students = schema.assignStudentNos(demo.DEMO_STUDENTS.map(s => schema.normalizeStudent(Object.assign({}, s, {
     clsIds: s.clsIds.slice(),
     // 入学年份按 id 确定性铺开（2022–2025），让「按年份筛选」在演示数据上立即可见
     enrollYear: 2022 + (s.id % 4)
-  }), o, stamp));
+  }), o, stamp)));
   d.records = demo.DEMO_RECORDS.map(r =>
     schema.normalizeRecord(Object.assign({ tid: d.meta.me }, r), o, stamp));
 

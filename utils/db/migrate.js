@@ -131,7 +131,7 @@ function upgrade(loaded, stamp) {
     terms,
     classes,
     courses: (loaded.courses || []).map(c => schema.normalizeCourse(c, orgId, stamp)),
-    students: (loaded.students || []).map(s => schema.normalizeStudent(s, orgId, stamp)),
+    students: schema.assignStudentNos((loaded.students || []).map(s => schema.normalizeStudent(s, orgId, stamp))),
     enrollments: (loaded.enrollments || []).map(e => schema.normalizeEnrollment(e, orgId, stamp)),
     records: (loaded.records || []).map(r => schema.normalizeRecord(r, orgId, stamp)),
     users,
@@ -247,7 +247,7 @@ function build(loaded) {
       migratedFrom: 'v2'
     },
     orgs, members,
-    terms, classes, courses, students, enrollments: [], records, users,
+    terms, classes, courses, students: schema.assignStudentNos(students), enrollments: [], records, users,
     templates: buildTemplates(legacy.tpls, stamp)
   };
 }

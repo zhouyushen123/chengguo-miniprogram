@@ -43,6 +43,16 @@
 }
 .row2 { display: flex; gap: 20rpx; margin-top: 28rpx; }
 .row2 .btn { flex: 1; }
+
+/* 学号提示行（表单内只读）：不占输入框的位置，只用一行小字说明 */
+.stuno { font-size: 23rpx; color: var(--sub); margin: -6rpx 0 18rpx; }
+.stuno text { color: var(--brand); }
+/* 家长按学号绑定：输入框占满剩余宽度，添加按钮定宽不压缩 */
+.bindrow { display: flex; gap: 16rpx; align-items: center; margin-bottom: 12rpx; }
+.bindrow .bindin { flex: 1; min-width: 0; }
+.bindrow .bindbtn { flex: none; width: 168rpx; height: 84rpx; font-size: 28rpx; }
+/* 学生条目里的学号小标签 */
+.sno { margin-right: 8rpx; font-size: 21rpx; color: var(--brand); background: var(--brand-soft); border-radius: 8rpx; padding: 2rpx 10rpx; }
 /* 卡片内的按钮行：上方只留卡片自身的 28rpx 内边距（此前 28+28 双倍叠间距） */
 .card .row2 { margin-top: 0; }
 /* 按钮行后紧跟的说明文字：统一 24rpx 标准间距（与卡片间距同标准） */

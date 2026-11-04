@@ -15,7 +15,7 @@
   </view>
   <view class="card">
     <view class="label">家长联系方式</view>
-    <input class="input" type="number" placeholder="{{fields[3].ph}}" value="{{f.phone}}" bindinput="onInput" data-k="phone" />
+    <input class="input" type="number" placeholder="{{fields[3].ph}}" value="{{f.phone}}" bindinput="onInput" data-k="phone" maxlength="13" />
     <input class="input" placeholder="{{fields[4].ph}}" value="{{f.wechat}}" bindinput="onInput" data-k="wechat" />
   </view>
   <view class="card">

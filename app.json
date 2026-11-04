@@ -4,6 +4,7 @@
     "pages/record/record",
     "pages/records/records",
     "pages/student/student",
+    "pages/teacher/teacher",
     "pages/profile/profile",
     "pages/mgr/mgr",
     "pages/terms/terms",

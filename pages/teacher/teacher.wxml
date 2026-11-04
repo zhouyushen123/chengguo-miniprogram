@@ -1,0 +1,64 @@
+<view class="theme-root {{themeCls}}">
+<view wx:if="{{m}}" class="wrap">
+
+  <!-- 个人卡：头像 + 姓名/角色 + 统计 + 联系方式 -->
+  <view class="card">
+    <view class="trow">
+      <view class="tava">{{m.name[0]}}</view>
+      <view class="tinfo">
+        <view class="h1">{{m.name}}</view>
+        <view class="mi">{{m.roleLabel}}{{m.clsText ? ' · 负责 ' + m.clsText : ''}}</view>
+      </view>
+    </view>
+    <view class="stats">
+      <text class="stat st-c">{{stats.clsN}} 个班级</text>
+      <text class="stat st-g">{{stats.crsN}} 门课程</text>
+      <text class="stat st-d">{{stats.stuN}} 名学生</text>
+      <text class="stat st-h">{{stats.recN}} 条成果</text>
+    </view>
+    <view wx:if="{{m.phone || m.wechat}}" class="contacts">
+      <view wx:if="{{m.phone}}" class="crow" hover-class="btn-hover" bindtap="callPhone">
+        <text class="ck">手机</text><text class="cv">{{m.phone}}</text><text class="ca">拨打</text>
+      </view>
+      <view wx:if="{{m.wechat}}" class="crow" hover-class="btn-hover" bindtap="copyWechat">
+        <text class="ck">微信</text><text class="cv">{{m.wechat}}</text><text class="ca">复制</text>
+      </view>
+    </view>
+    <view wx:if="{{!m.phone && !m.wechat}}" class="mi" style="margin-top:16rpx">还没有联系方式，可在「我的 · 管理 → 人员 → 分配」里补充</view>
+  </view>
+
+  <!-- 负责班级 -->
+  <view class="card" wx:if="{{clsList.length}}">
+    <view class="sec"><view class="label">负责班级</view></view>
+    <view class="clsrow" wx:for="{{clsList}}" wx:key="id">
+      <view class="clsbar"></view>
+      <view><b>{{item.name}}</b><view class="mi">{{item.modeLabel}} · {{item.stuN}} 人</view></view>
+    </view>
+  </view>
+
+  <!-- 负责课程 -->
+  <view class="card" wx:if="{{crsNames.length}}">
+    <view class="sec"><view class="label">负责课程</view></view>
+    <view class="chips"><text wx:for="{{crsNames}}" wx:key="*this" class="pill pill-c">{{item}}</text></view>
+  </view>
+
+  <!-- 最近成果 -->
+  <view class="card">
+    <view class="histhead"><view class="label" style="margin:0">最近成果</view><text class="mi">共 {{recTotal}} 条</text></view>
+    <view wx:for="{{recent}}" wx:key="id" class="recrow">
+      <view class="rleft">
+        <view class="rt1"><b>{{item.course}}</b><text wx:if="{{item.tag}}" class="badge {{item.tcls}}">{{item.tag}}</text></view>
+        <view class="mi">{{item.stuName || '已删除学生'}} · {{item.date}} · {{item.score}}分</view>
+      </view>
+    </view>
+    <view wx:if="{{!recent.length}}" class="mi" style="padding:12rpx 0 4rpx">还没有录入过成果记录</view>
+  </view>
+
+  <view class="slogan">橙果 · 让每一次进步都被看见</view>
+</view>
+
+<view wx:else class="card" style="margin-top:40rpx"><view class="mi" style="text-align:center;padding:20rpx 0">没有找到这位老师，可能已被移除</view></view>
+
+<!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
+<privacy-popup />
+</view>

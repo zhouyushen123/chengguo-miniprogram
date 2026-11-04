@@ -132,7 +132,7 @@
   </view>
 
   <view class="card item" wx:for="{{members}}" wx:key="id">
-    <view>
+    <view bindtap="goTeacher" data-id="{{item.id}}">
       <view class="itrow">
         <view class="ava ava-{{item.role}}">{{item.name[0]}}</view>
         <view><b>{{item.name}}</b>
@@ -202,6 +202,12 @@
     <view class="vin">
       <input class="input vin-in" placeholder="姓名" value="{{userForm.name}}" bindinput="onUserName" />
       <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="userForm.name" />
+    </view>
+    <view class="vin">
+      <input class="input vin-in" type="number" placeholder="手机号（选填，可拨号）" value="{{userForm.phone}}" bindinput="onUserPhone" />
+    </view>
+    <view class="vin">
+      <input class="input vin-in" placeholder="微信号（选填，可复制）" value="{{userForm.wechat}}" bindinput="onUserWechat" />
     </view>
 
     <view class="label">角色</view>

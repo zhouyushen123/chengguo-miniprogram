@@ -343,10 +343,14 @@ Page({
     const m = this.data.members.find(x => x.id === +e.currentTarget.dataset.id);
     if (m) this.openUserForm(m);
   },
+  // 点成员卡进档案页：老师看教学档案；其他角色页面同样能渲染（负责人/管理员也录成果）
+  goTeacher(e) {
+    wx.navigateTo({ url: '/pages/teacher/teacher?id=' + (+e.currentTarget.dataset.id || 0) });
+  },
   openUserForm(u) {
     const clsSel = (u.clsIds || []).slice(), crsSel = (u.courseIds || []).slice(), stuSel = (u.studentIds || []).slice();
     this.setData({
-      userForm: { id: u.id || null, role: u.role, name: u.name || '' },
+      userForm: { id: u.id || null, role: u.role, name: u.name || '', phone: u.phone || '', wechat: u.wechat || '' },
       userClsSel: clsSel, userCrsSel: crsSel, userStuSel: stuSel,
       userClsChips: this._chips(db.classes.list(), clsSel),
       userCrsChips: this._chips(db.courses.list(), crsSel),
@@ -354,6 +358,8 @@ Page({
     });
   },
   onUserName(e) { this.setData({ 'userForm.name': e.detail.value }); },
+  onUserPhone(e) { this.setData({ 'userForm.phone': e.detail.value }); },
+  onUserWechat(e) { this.setData({ 'userForm.wechat': e.detail.value }); },
   pickRole(e) { this.setData({ 'userForm.role': e.currentTarget.dataset.k }); },
   userClsTgl(e) { this._tgl('userClsSel', 'classes', e); },
   userCrsTgl(e) { this._tgl('userCrsSel', 'courses', e); },
@@ -372,18 +378,20 @@ Page({
     const n = (f.name || '').trim();
     if (!n) { wx.showToast({ title: '请填写姓名', icon: 'none' }); return; }
     // 三类身份的范围互斥：老师带班、家长带孩子、管理员全可见无需范围
+    // 手机号/微信号是档案字段，三类身份都存（老师方便家长联系，家长方便机构联系）
+    const contact = { phone: (f.phone || '').trim(), wechat: (f.wechat || '').trim() };
     let payload;
     if (f.role === 'parent') {
       const kids = this.data.userStuSel.slice();
       if (!kids.length) { wx.showToast({ title: '请至少绑定一个孩子', icon: 'none' }); return; }
-      payload = { name: n, role: 'parent', studentIds: kids, clsIds: [], courseIds: [] };
+      payload = Object.assign({ name: n, role: 'parent', studentIds: kids, clsIds: [], courseIds: [] }, contact);
     } else if (f.role === 'admin') {
-      payload = { name: n, role: 'admin', clsIds: [], courseIds: [], studentIds: [] };
+      payload = Object.assign({ name: n, role: 'admin', clsIds: [], courseIds: [], studentIds: [] }, contact);
     } else {
       const cls = this.data.userClsSel.slice();
       // 老师没有班级 = 什么都看不到。与其建一个空权限账号，不如当场拦住
       if (!cls.length) { wx.showToast({ title: '老师至少要分配一个班级', icon: 'none' }); return; }
-      payload = { name: n, role: 'teacher', clsIds: cls, courseIds: this.data.userCrsSel.slice(), studentIds: [] };
+      payload = Object.assign({ name: n, role: 'teacher', clsIds: cls, courseIds: this.data.userCrsSel.slice(), studentIds: [] }, contact);
     }
     const r = f.id
       ? db.members.update(f.id, payload)

@@ -457,6 +457,51 @@ ok('重新加载后数据不变', () => {
   assert.strictEqual(db2.records.list().length, before.rec);
 });
 
+console.log('\n【老师档案：成员档案字段 + 档案页】');
+let teacherMid = 0;
+ok('成员表单可填手机号/微信号并落库', () => {
+  mgr.openUserForm({ role: 'teacher', name: '王老师' });
+  mgr.onUserPhone({ detail: { value: '13800001111' } });
+  mgr.onUserWechat({ detail: { value: 'wang_laoshi' } });
+  mgr.userClsTgl({ currentTarget: { dataset: { id: 1 } } }); // 老师必须至少一个班
+  mgr.userSave();
+  const t = db.members.list().find(m => m.name === '王老师');
+  assert.ok(t, '成员已创建');
+  teacherMid = t.id;
+  assert.strictEqual(t.phone, '13800001111');
+  assert.strictEqual(t.wechat, 'wang_laoshi');
+});
+ok('成员卡点按跳老师档案页', () => {
+  const navs = [];
+  const old = global.wx.navigateTo;
+  global.wx.navigateTo = o => { navs.push(o.url); };
+  mgr.goTeacher({ currentTarget: { dataset: { id: teacherMid } } });
+  global.wx.navigateTo = old;
+  assert.deepStrictEqual(navs, ['/pages/teacher/teacher?id=' + teacherMid]);
+});
+ok('老师档案页：个人卡 + 统计 + 负责班级 + 最近成果', () => {
+  const teacher = loadPage('pages/teacher/teacher.js');
+  teacher.onLoad({ id: teacherMid });
+  teacher.onShow();
+  assert.strictEqual(teacher.data.m.name, '王老师');
+  assert.strictEqual(teacher.data.m.phone, '13800001111');
+  assert.strictEqual(teacher.data.stats.clsN, 1);
+  assert.deepStrictEqual(teacher.data.clsList.map(c => c.id), [1]);
+  assert.ok(teacher.data.recTotal >= 0);
+  assert.ok(teacher.data.recent.length <= 10);
+});
+ok('老师档案页：成员不存在时给空态不崩溃', () => {
+  const teacher = loadPage('pages/teacher/teacher.js');
+  teacher.onLoad({ id: 999999 });
+  teacher.onShow();
+  assert.strictEqual(teacher.data.m, null);
+});
+ok('测试成员清理，不污染后续用例', () => {
+  const r = db.members.remove(teacherMid);
+  assert.ok(r.ok !== false);
+  assert.ok(!db.members.list().some(m => m.name === '王老师'));
+});
+
 console.log('\n【图标资产：引用即存在，且函数式图标可调用】');
 console.log('\n【我的页：管理统计层】');
 const mine = loadPage('pages/mine/mine.js');

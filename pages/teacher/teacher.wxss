@@ -1,0 +1,48 @@
+/* pages/teacher —— 老师档案页（视觉与学生档案页同一套语言） */
+
+/* 个人卡头部 */
+.trow { display: flex; align-items: center; gap: 20rpx; }
+.tava {
+  width: 92rpx; height: 92rpx; border-radius: 30rpx; flex: none;
+  background: linear-gradient(135deg, var(--brand-a), var(--brand-b));
+  color: #fff; font-size: 36rpx; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6rpx 14rpx var(--brand-shadow-soft);
+}
+.tinfo { flex: 1; min-width: 0; }
+
+/* 四项统计（班级绿 / 课程橙 / 学生蓝 / 成果品牌色）——与学生页同款胶囊 */
+.stats { display: flex; gap: 14rpx; margin-top: 22rpx; flex-wrap: wrap; }
+.stat { font-size: 23rpx; font-weight: 600; padding: 8rpx 20rpx; border-radius: 999rpx; }
+.st-c { color: var(--ok); background: var(--ok-soft); }
+.st-g { color: var(--brand); background: var(--brand-soft); }
+.st-d { color: var(--info); background: var(--info-soft); }
+.st-h { color: var(--brand); background: var(--brand-soft); }
+
+/* 联系方式行 */
+.contacts { margin-top: 20rpx; border-top: 2rpx solid var(--line); }
+.crow { display: flex; align-items: center; gap: 16rpx; padding: 18rpx 0; border-bottom: 2rpx solid var(--line); }
+.crow:last-child { border-bottom: none; }
+.ck { font-size: 24rpx; color: var(--muted); flex: none; }
+.cv { flex: 1; font-size: 28rpx; font-weight: 600; color: var(--text); word-break: break-all; }
+.ca { font-size: 24rpx; color: var(--brand); font-weight: 600; flex: none; }
+
+/* 负责班级行：与学生页班级条目同款窄竖杠 */
+.clsrow { display: flex; align-items: center; gap: 20rpx; padding: 14rpx 0; }
+.clsbar { width: 8rpx; height: 52rpx; border-radius: 6rpx; background: linear-gradient(180deg, var(--brand-a), var(--brand-b)); flex: none; }
+
+/* 课程胶囊 */
+.pill-c { background: var(--brand-soft); color: var(--brand); font-size: 24rpx; padding: 10rpx 26rpx; border-radius: 999rpx; }
+
+/* 最近成果行 */
+.histhead { display: flex; align-items: baseline; justify-content: space-between; }
+.recrow { display: flex; align-items: center; padding: 18rpx 0; border-bottom: 2rpx solid var(--line); }
+.recrow:last-child { border-bottom: none; }
+.rleft { flex: 1; min-width: 0; }
+.rt1 { display: flex; align-items: center; gap: 12rpx; }
+.rt1 b { font-size: 29rpx; }
+.rt1 .badge { font-size: 21rpx; padding: 4rpx 14rpx; }
+.badge { font-size: 21rpx; font-weight: 700; padding: 6rpx 18rpx; border-radius: 999rpx; flex: none; }
+.badge.good { color: var(--ok); background: var(--ok-soft); }
+.badge.mid { color: var(--brand); background: var(--brand-soft); }
+.badge.low { color: var(--info); background: var(--info-soft); }

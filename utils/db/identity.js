@@ -28,6 +28,7 @@ function memberView(m) {
     clsIds: m.clsIds.slice(), courseIds: m.courseIds.slice(), studentIds: m.studentIds.slice(),
     clsText: cls.join('、'),
     kidText: kids.join('、'),
+    phone: m.phone || '', wechat: m.wechat || '',   // 档案联系方式
     full: perms.FULL.indexOf(m.role) > -1
   };
 }
@@ -71,7 +72,8 @@ function memberCreate(data) {
       id: core.nextId(), orgId: org(), userId,
       role: d.role, name: d.name,
       clsIds: d.clsIds, courseIds: d.courseIds, studentIds: d.studentIds,
-      status: d.status
+      status: d.status,
+      phone: d.phone, wechat: d.wechat
     }, org(), now());
     const ev = schema.validate('member', e);
     if (ev) return { ok: false, msg: ev };

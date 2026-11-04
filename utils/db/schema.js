@@ -203,7 +203,9 @@ function normalizeMember(raw, orgId, stamp) {
     clsIds: numList(r.clsIds),
     courseIds: numList(r.courseIds),
     studentIds: numList(r.studentIds),
-    status: MEMBER_STATUS.indexOf(r.status) > -1 ? r.status : 'active'
+    status: MEMBER_STATUS.indexOf(r.status) > -1 ? r.status : 'active',
+    phone: str(r.phone).trim(),        // 档案：手机号（选填，老师/家长通用）
+    wechat: str(r.wechat).trim()       // 档案：微信号（选填）
   }, audit(r, orgId, stamp));
 }
 

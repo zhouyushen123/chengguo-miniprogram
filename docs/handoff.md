@@ -61,7 +61,7 @@
 1. **`sent` 只是本地状态，不是真实送达**。全仓零 `subscribeMessage` / 客服消息 / 短信调用。所以「已发布」目前只代表"老师这边标记完毕"，家长需自己打开小程序查看。**改文案或接推送前不要动 `sent` 的语义**（权限层 `permissions.js` 的家长可见性依赖它）。
 2. **格式化字段不配麦克风**：手机号、微信号、生日、日期、邀请码——语音识别产出自然语言，填不进格式化字段。
 3. **家长标识只有 `wechat` 一个字段**，学生实体没有独立家长手机号；两个都没填号码的学生不会被误判成一家人。
-4. **`CLOUD_ENABLED` 默认 false**（纯本地模式）；测试可用环境变量 `CG_CLOUD=1` 强制打开，且必须在模块 `require` 之前设值。
+4. **云开关拆成两个**：`CLOUD_ENABLED`（默认 true，控 `wx.cloud.init`；`CG_CLOUD=0` 可强制关）与 `SYNC_ENABLED`（默认 false，控 `pushRecord/pull/uploadFile`）。开云 ≠ 开同步——sync 云函数模型没对齐前，记录只在本地，这是刻意的，不要为了"看上去更完整"打开它。
 5. **测试编排两个坑**：
    - `verify_pages.js` 里「重启：数据持久化」用例会清 db 模块缓存重建实例，**新用例必须放在它之前**，否则页面模块拿旧快照查不到新数据；
    - 异步测试不能包进"注册时不等待"的包装函数（mock 同步 resolve 会竞态），必须纯顺序 `await`，且放文件末尾 IIFE + `process.exit(1)` 兜底。
@@ -73,11 +73,13 @@
 
 ### A. 需要用户在微信开发者工具 / 后台操作
 > 资质进度（11-04 用户截图）：**微信认证已完成**（云开发门槛已过）；小程序备案管局审核中（只挡提审发布，不挡开发）。
-1. 云开发环境还没开通 → `utils/api.js` 的 `CLOUD_ENV` 仍是占位 `chengguo-0gxxx`、`CLOUD_ENABLED` 为 false。
+> 云开发已开通（11-04 22:33），环境 ID **`cloud1-d9gca4e7q307c4564`**，已填进 `utils/api.js`，`CLOUD_ENABLED` 默认 true。剩下只有「部署 aiEval + 配 Key」两步（见下 2~4），完成后 ping 自检。
+> ⚠️ `SYNC_ENABLED` 仍为 false：`pushRecord` / `pull` / `uploadFile` 一律空转，因为 sync 云函数还是旧 openid 模型（CR-005）。**AI 评不受影响**（`aiEvalDraft` 只要求云通）。
+1. ~~云开发环境还没开通~~ ✅ 已开通（免费体验版），ID 已配。
 2. 部署 `cloudfunctions/aiEval`（右键 → 上传并部署：云端安装依赖）。
-3. 云开发控制台 → 云函数 → aiEval → 配置 → 环境变量加 `ZHIPU_API_KEY`（值由用户自己粘贴，**不要写进任何文件**）。
+3. 云开发控制台 → 云函数 → aiEval → 配置 → 环境变量加 `ZHIPU_API_KEY`（值由用户自己粘贴，**不要写进任何文件**）；**超时时间默认 3 秒不够，改 30 秒**。
 4. 部署后云端测试 `{"action":"ping"}` 应返回 `hasKey: true`。
-5. 拿到环境 ID 后改 `api.js`：`CLOUD_ENABLED` 打开 + 填 `CLOUD_ENV`。
+5. ~~拿到环境 ID 后改 `api.js`~~ ✅ 已改（`CLOUD_ENV` + `CLOUD_ENABLED=true`）。
 
 ### B. 备案 / 认证通过后
 1. **订阅消息（唯一官方免费触达）**：申请教育-培训机构类目模板 → 云函数发 `subscribeMessage.send` → 家长端首次进入弹订阅授权。**这是「真正送达」的唯一正路。**

@@ -63,7 +63,7 @@
 ├── utils/api.js                      线上同步层（REST，未配置自动降级本地）
 ├── assets/icons/                     线性图标（PNG，由 tools/gen_icons.py 生成）
 ├── pages/index|record|tpls|records|student|cls|profile|mgr
-├── tests/                            回归测试（npm test，254 项断言）
+├── tests/                            回归测试（npm test，255 项断言）
 ├── tools/gen_icons.py                图标生成脚本（改图标后重跑）
 ├── cloudfunctions/sync               云函数（records/profiles 读写，模型待重构）
 └── project.config.json
@@ -80,9 +80,10 @@
 ### 改完代码怎么验
 
 ```bash
-npm test          # 8 个套件：数据层 30 + 权限 45 + 学期 30 + P0 27 + 页面级 61+AI链路 4 + 演示隔离 18 + 加固 30 + 架构守卫 9 = 254 项
+npm test          # 8 个套件：数据层 30 + 权限 45 + 学期 30 + P0 27 + 页面级 61+AI链路 4 + 演示隔离 18 + 加固 30 + 架构守卫 10 = 255 项
 npm run lint      # 自建自检：页面绕开数据层、写死品牌色、残留 console.log、WXML 函数调用
-npm run check     # lint + test
+npm run size      # 主包体积（2MB 上限，超线直接失败；--list 看体积 Top 10）
+npm run check     # lint + size + test（CI 门禁跑的就是这一条）
 ```
 
 页面级套件会真实加载 8 个页面模块并运行，能抓到"数据层没问题但页面会崩"的情况（例如之前 `icons.plus` 被当函数调用导致学生主页白屏）。
@@ -98,7 +99,7 @@ npm run check     # lint + test
 | 学生增删改 | 全机构 | 全机构 | 仅本班 | |
 | 录入成果 | ✓ | ✓ | 仅本班 | |
 | 修改 / 删除记录 | 全部 | 全部 | **仅自己录入的** | |
-| 发送给家长 | ✓ | ✓ | 仅本班 | |
+| 发布到家长端 | ✓ | ✓ | 仅本班 | |
 | 查看成果 | 全机构 | 全机构 | 仅本班 | **仅自己孩子、且仅已发布** |
 | 填写孩子档案 | ✓ | ✓ | 仅本班 | 仅自己孩子 |
 
@@ -130,6 +131,8 @@ npm run check     # lint + test
 3. 把 `deploy.js` 里的 `APPID` 改成你的 AppID
 4. `node deploy.js 1.0.1` —— 上传成功后版本出现在后台「版本管理 → 开发版本」
 5. 进阶：**已内置 GitHub Actions 流水线**（`.github/workflows/deploy.yml`）——把工程推到 GitHub 仓库，配置两个 Secrets（`MINI_APPID`、`MINI_UPLOAD_KEY`），push 到 main 即自动上传新版本
+   - 上传前先跑 `verify` 门禁（`npm run lint` + `npm test` + `npm run size`），红一条就不发版；
+   - PR 只跑门禁、不上传；同一分支并发运行会取消旧的（避免倒序发布）
 
 **云函数部署**也可自动化：`miniprogram-ci` 的 `cloud.uploadFunction` 或开发者工具命令行 `cli cloud functions deploy --e <env> --n sync --path cloudfunctions/sync`。
 

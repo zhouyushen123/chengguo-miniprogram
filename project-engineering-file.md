@@ -105,7 +105,7 @@
 | 家长端 | — | 未开始 | 目前复用老师端页面 + 权限降级 |
 | 媒体持久化 | `utils/media.js` | **已完成（P0）** | 临时路径统一转存 USER_DATA_PATH；启动自愈存量记录 |
 | 云端同步 | `utils/api.js` + `cloudfunctions/sync` | 半成品 | 旧 openid 模型，与新架构冲突（CR-005） |
-| 自动化测试 | `tests/verify_*.js` | **已完成（P0，已入库）** | 240 项断言，8 个套件，`npm test` 一键跑完；`npm run lint` 另守约定 |
+| 自动化测试 | `tests/verify_*.js` | **已完成（P0，已入库）** | 255 项断言，8 个套件，`npm test` 一键跑完；`npm run lint` / `npm run size` 另守约定与体积 |
 
 ## 5. 接口约定
 
@@ -244,7 +244,7 @@ kvUsage()                       // → 本地 key 用量（云端实现返回服
 |---|---|---|
 | P0-1 记录触顶 1MB 静默丢数据 | ✅ | `storage.js` 分片 + 脏片写（按内容指纹跳过没变的片）+ `core.persist` 返回值检查 + `ctx.pushSaved/applyEdit` 写后即落盘即回滚 + `SAVE_FAIL` 文案 |
 | P0-2 媒体裂图且无清理 | ✅ | `media.persist` 失败返回空串 + `lostCount()`；`scan/prune`（2 小时豁免）+ `db.mediaRefs()` + 「我的 · 存储空间」页 |
-| P0-3 CI 无测试门禁 | ⏸ 暂缓 | 备案未下来只发体验版；**提审前必须补**（`npm test` 步骤 + concurrency + 体积检查） |
+| P0-3 CI 无测试门禁 | ✅ | 2026-11-04 补：`deploy.yml` 拆 `verify`（`npm run lint` + `npm test` + `npm run size`）→ `upload`，`needs: verify`，加 `concurrency: deploy-mini-<ref>`；PR 只跑门禁 |
 | P1-1/P1-2 写闸门与 cid 归属 | ✅ | 编辑路径补 `canSeeStudent/canSeeClass`；`cid ∈ stu.clsIds` 双向校验 |
 | P1-3 报名读路径 | ✅ | `canSeeEnrollment` + `enrollmentRaw/rawOf` 内部版本 |
 | P1-4 页面用 `_all()` | ✅ | 数据层给 `classes.mode/countOfTerm`；lint 禁 `pages/` 出现 `._all(` |
@@ -328,10 +328,10 @@ kvUsage()                       // → 本地 key 用量（云端实现返回服
 - [x] CR-008 / CR-009（2026-11-03）
 
 ### 上线前必办（微信备案下来之后，顺序即优先级）
-- [ ] **P0-3 CI 测试门禁**：`deploy.yml` 在「安装依赖」后加 `run: npm test`，加 `concurrency: { group: deploy, cancel-in-progress: true }`，加主包体积检查
+- [x] **P0-3 CI 测试门禁**：`verify` 作业跑 `npm run lint` + `npm test` + `npm run size`（`tools/size.js`，2MB 上限），`upload` 依赖它；并发组 `deploy-mini-<ref>` 防倒序发布
 - [ ] **P1-9 内容安全**：接 `msgSecCheck` / `imgSecCheck`（记录文字与照片会发给家长，属 UGC）
 - [ ] 隐私保护指引在公众平台发布（弹窗已按指引授权流程实现，缺的是"指引本身已发布"）
-- [ ] 主包体积在开发者工具里复核一次（本仓库按字节实测 0.85MB，工具显示的可能是未压缩值）
+- [ ] 主包体积在开发者工具里复核一次（本仓库按字节实测 0.86MB / 上限 2MB；`npm run size` 已固化成 CI 门禁，但工具内的压缩后数字仍需人工看一眼）
 
 ### P2 上云（微信认证后）
 - [ ] 实现 `infra/storage/cloud.js`，保持 `load/saveCollection/saveMeta` 接口

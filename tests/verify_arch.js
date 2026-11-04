@@ -216,4 +216,39 @@ ok('单个领域模块不超过 500 行（超了就该再拆一层）', () => {
   assert.deepStrictEqual(big.map(x => `${x.f}(${x.n}行)`), [], '这些模块过大：');
 });
 
+/* ---------- 5. 送达文案 ---------- */
+console.log('\n【E. 送达文案】');
+
+// 全仓零 subscribeMessage / 客服消息 / 短信：点「发送」并不会真的推到家长手机上。
+// 所以界面只能承诺「发布」（家长打开小程序能看到），不能写「已发送」——
+// 那会让老师以为家长收到了通知，是最容易招投诉的一处误导。
+// 等订阅消息真正接通（见 docs/handoff.md B-1），再改回「已发送」并把这条断言反转。
+const BANNED_COPY = ['已发送', '待发送', '发送给家长'];
+
+function walkAll(dir, exts, out) {
+  out = out || [];
+  if (!fs.existsSync(dir)) return out;
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) walkAll(p, exts, out);
+    else if (exts.some(x => e.name.endsWith(x))) out.push(p);
+  }
+  return out;
+}
+
+ok('界面文案统一说「发布」，不出现「已发送 / 待发送 / 发送给家长」', () => {
+  const files = walkAll(path.join(ROOT, 'pages'), ['.js', '.wxml'])
+    .concat(walkAll(path.join(ROOT, 'components'), ['.js', '.wxml']));
+  const hits = [];
+  files.forEach(f => {
+    const raw = fs.readFileSync(f, 'utf8');
+    // js 剥注释（注释里讨论"发送"是允许的），wxml 直接扫
+    const code = f.endsWith('.js') ? stripComments(raw) : raw;
+    BANNED_COPY.forEach(w => {
+      if (code.indexOf(w) > -1) hits.push(path.relative(ROOT, f) + ' → ' + w);
+    });
+  });
+  assert.deepStrictEqual(hits, [], '这些地方还在承诺「送达」：\n    ' + hits.join('\n    '));
+});
+
 console.log('\n全部 ' + pass + ' 项架构断言通过');

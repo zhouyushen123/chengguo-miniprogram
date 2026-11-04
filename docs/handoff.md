@@ -15,7 +15,7 @@
 | 远程 | `git@github.com:zhouyushen123/chengguo-miniprogram.git` |
 | 我的工作区 | `C:\Users\zhouy\WorkBuddy\橙果`（只放记忆，不放代码） |
 | 技术栈 | 微信原生小程序（JS）+ 云开发目录 `cloudfunctions/` |
-| 验证基线 | `npm test` = 250 项同步断言 + 4 项 AI 链路（异步）= **254 项全绿**；`npm run lint` 87 文件 0 提醒 |
+| 验证基线 | `npm test` = 251 项同步断言 + 4 项 AI 链路（异步）= **255 项全绿**；`npm run lint` 87 文件 0 提醒；`npm run size` 主包 885.1 KB / 2 MB（43.2%）；`npm run check` = lint + size + test 一条跑完 |
 | 提交习惯 | 沙箱常拦 `git push`（读不到 `~/.ssh`），仓库有「5 分钟自动同步」任务会以 `auto: 自动同步 时间戳` 提交并推送 |
 
 ---
@@ -49,11 +49,16 @@
 - 记录列表：姓名/课程/分数行**通栏**，照片下移到与评价同行、在评价左侧（原来照片占整卡左侧把姓名挤成竖排）。
 - 班级条目：圆形色块 → 8×52rpx 品牌渐变圆角竖杠；学生条目：色块 → 头像缩略图。
 
+### 工程门禁与文案（11-04 晚）
+- **CI 门禁（原 P0-3，已完成）**：`deploy.yml` 拆成 `verify` → `upload` 两段。`verify` 跑 `npm run lint` / `npm test` / `npm run size`，红一条就不上传；`upload` 需要 `needs: verify`。加了 `concurrency: deploy-mini-<ref>`（同一分支取消旧运行，避免倒序发布），`pull_request` 只跑门禁不发版（`if: github.event_name != 'pull_request'`）。
+- **主包体积检查**：新增 `tools/size.js`（`npm run size`）。按 `project.config.json` 的 `packOptions.ignore` + 固定排除（`.git/.github/.workbuddy/node_modules/cloudfunctions/隐藏项`）复算，80% 提示、超 2MB 直接 `exit 1`，`--list` 打印 Top 10。当前 885.1 KB / 43.2%，最大单文件是 `utils/demo-data.js` 47.8 KB。
+- **送达文案去误导（原 B-2，已完成）**：`发送给家长` → `发布到家长端`、`已发送/待发送` → `已发布/待发布`（cls / records / student / record 四个页面的 js + wxml，共 12 处），弹窗改成"对家长开放可见"的说法，并在录入页与记录列表各加一条 `.note`：**"发布后家长打开小程序即可看到，目前不会收到微信消息通知。"** `sent` 字段语义与权限规则一个字没动。新增架构守卫断言：`pages/` `components/` 的 js/wxml 里再出现 `已发送 / 待发送 / 发送给家长` 就红——**接通订阅消息后要连同这条断言一起反转**。
+
 ---
 
 ## 2. 刻意的设计与约定（改之前先看这里）
 
-1. **`sent` 只是本地状态，不是真实送达**。全仓零 `subscribeMessage` / 客服消息 / 短信调用。所以「已发送」目前只代表"老师这边标记完毕"，家长需自己打开小程序查看。**改文案或接推送前不要动 `sent` 的语义**（权限层 `permissions.js` 的家长可见性依赖它）。
+1. **`sent` 只是本地状态，不是真实送达**。全仓零 `subscribeMessage` / 客服消息 / 短信调用。所以「已发布」目前只代表"老师这边标记完毕"，家长需自己打开小程序查看。**改文案或接推送前不要动 `sent` 的语义**（权限层 `permissions.js` 的家长可见性依赖它）。
 2. **格式化字段不配麦克风**：手机号、微信号、生日、日期、邀请码——语音识别产出自然语言，填不进格式化字段。
 3. **家长标识只有 `wechat` 一个字段**，学生实体没有独立家长手机号；两个都没填号码的学生不会被误判成一家人。
 4. **`CLOUD_ENABLED` 默认 false**（纯本地模式）；测试可用环境变量 `CG_CLOUD=1` 强制打开，且必须在模块 `require` 之前设值。
@@ -75,9 +80,10 @@
 
 ### B. 备案 / 认证通过后
 1. **订阅消息（唯一官方免费触达）**：申请教育-培训机构类目模板 → 云函数发 `subscribeMessage.send` → 家长端首次进入弹订阅授权。**这是「真正送达」的唯一正路。**
-2. 发送文案去误导：`发送给家长` → `发布到家长端`，`已发送` → `已发布`（等订阅消息接上再改回"已发送"）。
-3. P0-3 CI 测试门禁：`deploy.yml` 加 `run: npm test`、`concurrency`、主包体积检查。
-4. P1-9 `msgSecCheck` / `imgSecCheck`：全仓零调用，属 UGC，提审前必须处理（AI 生成的评价同样要走审核）。
+   - 接通后要**一起翻转两处**：界面文案改回「已发送」，以及 `tests/verify_arch.js` 的「送达文案」断言（现在它会拦住「已发送」）。
+2. P1-9 `msgSecCheck` / `imgSecCheck`：全仓零调用，属 UGC，提审前必须处理（AI 生成的评价同样要走审核）。
+
+> 已完成并从本清单移除：~~发送文案去误导~~、~~CI 测试门禁（P0-3）~~ → 见 §1「工程门禁与文案」。
 
 ### C. 技术债
 - `utils/demo-data.js` 2367 行仍在主包内（体积没超，属整洁问题）。
@@ -98,15 +104,17 @@ utils/api.js             云开关 / callSync / aiEvalDraft
 cloudfunctions/aiEval/   AI 识图生成评价（ZHIPU_API_KEY）
 cloudfunctions/sync/     记录与学生资料上推
 pages/record/            录入页（AI 评 / 模板 / 语音）
-pages/records/           记录列表（发送按钮在此）
+pages/records/           记录列表（发布按钮在此）
 pages/teacher/           老师档案（本轮新增）
 pages/mine/              我的（统计两行三列）
 app.wxss                 全局：.note / .slogan / .vin·.vmic
 tools/gen_icons.py       图标生成（三套主题；user 有 gray/ink/white）
+tools/size.js            主包体积检查（npm run size；CI 门禁用）
+.github/workflows/deploy.yml  verify（lint+test+size）→ upload 两段门禁
 ```
 
 ---
 
 ## 5. 下一步建议（给接手的人）
 
-先做 A 的 1~5（用户 GUI，5 分钟），打通 aiEval 后让老师实测三张真实作业照片，收集评价质量反馈再调 prompt；然后等备案/认证，做 B 的 1~2（订阅消息 + 文案），这是产品从"记录工具"变成"能触达家长的工具"的关键一步。
+先做 A 的 1~5（用户 GUI，5 分钟），打通 aiEval 后让老师实测三张真实作业照片，收集评价质量反馈再调 prompt；然后等备案/认证，做 B 的 1（订阅消息），这是产品从"记录工具"变成"能触达家长的工具"的关键一步——B-2 的文案与守卫断言要跟它一起反转。

@@ -39,6 +39,21 @@ function memberOfUser(userId) {
   return oc('members').find(m => m.userId === String(userId)) || null;
 }
 
+/* ---------------- 家长绑孩子：自动带出同家长的兄弟姐妹 ----------------
+ * 家长号码（学生资料里的 wechat）相同的孩子属于同一位家长。
+ * 所以「绑定一个孩子」在业务上等于「绑定这家所有孩子」——管理者只挑一个，
+ * 系统把其余同家长号码的孩子一并带上，避免遗漏导致家长看不到老大的记录。
+ */
+function expandKidIds(ids) {
+  const out = schema.numList(ids);
+  out.slice().forEach(id => {
+    const s = students.studentRaw(id);
+    if (!s) return;
+    students.studentSiblings(s).forEach(x => { if (out.indexOf(x.id) < 0) out.push(x.id); });
+  });
+  return out;
+}
+
 function memberCreate(data) {
   const err = deny('member.manage');
   if (err) return { ok: false, msg: err };

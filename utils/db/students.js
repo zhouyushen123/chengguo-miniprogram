@@ -45,13 +45,16 @@ function studentCreate(data) {
     return { ok: false, msg: '只能在自己负责的班级下新增学生' };
   }
   const e = schema.normalizeStudent({
-    name: d.name, clsIds, parent: d.parent, wechat: d.wechat, photo: d.photo, profile: d.profile
+    name: d.name, no: d.no, clsIds, parent: d.parent, wechat: d.wechat, photo: d.photo, profile: d.profile
   }, org(), now());
   const ev = schema.validate('student', e);
   if (ev) return { ok: false, msg: ev };
+  // 学号自动分配：调用方不用传，也不会重复（现有最大值 +1）
+  if (!e.no) e.no = studentNextNo();
   e.id = core.nextId();
   if (!pushSaved('students', e)) return { ok: false, msg: core.SAVE_FAIL };
-  return { ok: true, item: e };
+  // 同家长号码的孩子自动归入已有家长账号（linked = 被自动补绑的家长姓名）
+  return { ok: true, item: e, linked: studentLinkParents(e) };
 }
 function studentUpdate(id, patch) {
   const s = studentRaw(id);
@@ -72,7 +75,8 @@ function studentUpdate(id, patch) {
   if (ev) return { ok: false, msg: ev };
   next.id = s.id; next.updatedAt = now();
   if (!applyEdit('students', s, next)) return { ok: false, msg: core.SAVE_FAIL };
-  return { ok: true, item: s };
+  // 改了家长号码可能让两个孩子变成"同一位家长"，这里补一次归并
+  return { ok: true, item: s, linked: studentLinkParents(s) };
 }
 // 家长资料各字段的长度上限。profile 是家长唯一能自由写的文本，
 // 不设上限等于把"单条记录体积可控"这条护栏从侧面拆掉（它和记录存在同一份存储里）。
@@ -136,7 +140,57 @@ function studentRemove(id) {
   });
 }
 
+/* ---------------- 学号与家长归并 ---------------- */
+// 学号：机构内唯一、纯数字、从 1001 起。取「现有最大值 +1」而不是「数量 +1」——
+// 删掉学生后号码不复用，家长手里记的旧学号不会指向另一个孩子。
+const NO_START = 1001;
+function studentNextNo() {
+  let max = NO_START - 1;
+  oc('students').forEach(s => {
+    const n = Number(s.no);
+    if (isFinite(n) && n > max) max = n;
+  });
+  return String(max + 1);
+}
+function studentByNo(no) {
+  const k = String(no || '').trim();
+  if (!k) return null;
+  return oc('students').find(s => !s.removed && String(s.no) === k) || null;
+}
+// 家长标识：家长微信号/手机号，比较前统一去空格、短横、大小写。
+// 空值不参与比较——两个都没填家长号码的学生不能被当成一家人。
+function parentKey(v) {
+  return String(v || '').trim().toLowerCase().replace(/[\s-]/g, '');
+}
+// 同家长的其他孩子（家长号码相同）
+function studentSiblings(s) {
+  const k = s ? parentKey(s.wechat) : '';
+  if (!k) return [];
+  return oc('students').filter(x => x.id !== s.id && !x.removed && parentKey(x.wechat) === k);
+}
+// 自动归并：学生建档/改档后，凡与某位家长已绑定的孩子同属一个家长号码，
+// 就把这个学生补进那位家长的绑定列表。场景：家里两个孩子先后报名，
+// 第二个建档时自动出现在家长账号下，不需要再手动绑一次。
+function studentLinkParents(s) {
+  if (!s) return [];
+  const sibs = studentSiblings(s);
+  if (!sibs.length) return [];
+  const sibIds = sibs.map(x => x.id);
+  const hit = [];
+  oc('members').forEach(m => {
+    if (m.role !== 'parent' || m.removed) return;
+    if (m.studentIds.indexOf(s.id) > -1) return;                      // 已经绑了，不重复
+    if (!m.studentIds.some(id => sibIds.indexOf(id) > -1)) return;    // 不是这位家长的孩子
+    m.studentIds.push(s.id);
+    m.updatedAt = now();
+    hit.push(m.name);
+  });
+  if (hit.length) core.persist('members');
+  return hit;
+}
+
 module.exports = {
   studentList, studentOf, studentRaw, studentGet, studentName, studentSearch,
-  studentCreate, studentUpdate, studentUpdateProfile, studentRemove
+  studentCreate, studentUpdate, studentUpdateProfile, studentRemove,
+  studentNextNo, studentByNo, studentSiblings, studentLinkParents, parentKey
 };

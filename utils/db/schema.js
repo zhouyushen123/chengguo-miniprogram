@@ -24,7 +24,7 @@
 //
 // 公共审计字段（所有实体强制携带）：orgId 归属机构 / createdAt 创建时间 / updatedAt 更新时间 / removed 软删除
 // 软删除的意义：多端同步时"删掉"必须能被同步，硬删会被其它端的历史数据覆盖复活。
-const VERSION = 5;
+const VERSION = 6;
 const DEFAULT_ORG = 'org1';
 
 // 评分五档（与录入页每档代表分对应，用于筛选与统计口径统一）
@@ -144,6 +144,10 @@ function normalizeStudent(raw, orgId, stamp) {
   return Object.assign({
     id: num(r.id, 0),
     name: str(r.name).trim(),
+    // 学号：系统自动生成的机构内唯一编号（纯数字，从 1001 起）。
+    // 用途有两个——家长凭学号绑定孩子；同一个家长号码下的多个孩子自动归并到同一位家长。
+    // 由 students.js 在建档时分配，迁移老数据时按建档顺序补发，一经生成不再改动。
+    no: str(r.no).trim(),
     // 性别：仅 男/女 两种取值，空串表示未知（历史数据与未填写的都归入未知，便于筛选补录）
     gender: ['男', '女'].indexOf(r.gender) > -1 ? r.gender : '',
     // 入学年份：机构视角的入学时间（区别于建档时间），0 表示未填；筛选「按年份看学员」用

@@ -20,15 +20,17 @@
   </view>
 </view>
 <view class="card rec" wx:for="{{list}}" wx:key="id">
-  <view class="recrow" bindtap="openRec" data-rid="{{item.id}}" data-sid="{{item.sid}}">
-    <image wx:if="{{item.photo}}" class="thumb" src="{{item.photo}}" mode="aspectFill" />
-    <view class="recinfo">
-      <view class="r1"><b>{{item.name}}</b><text class="mi">{{item.course}} · {{item.date}}</text><text class="scoretag">{{item.score}}分{{item.tag ? ' · ' + item.tag : ''}}</text></view>
-      <view class="chips" style="margin:8rpx 0">
-        <text class="pill" style="background:{{item.sent?'var(--sent)':'var(--warn)'}}">{{item.sent?'已发送':'待发送'}}</text>
+  <view bindtap="openRec" data-rid="{{item.id}}" data-sid="{{item.sid}}">
+    <view class="r1"><b>{{item.name}}</b><text class="mi">{{item.course}} · {{item.date}}</text><text class="scoretag">{{item.score}}分{{item.tag ? ' · ' + item.tag : ''}}</text></view>
+    <view class="recrow">
+      <image wx:if="{{item.photo}}" class="thumb" src="{{item.photo}}" mode="aspectFill" />
+      <view class="recinfo">
+        <view class="chips" style="margin:0 0 8rpx">
+          <text class="pill" style="background:{{item.sent?'var(--sent)':'var(--warn)'}}">{{item.sent?'已发送':'待发送'}}</text>
+        </view>
+        <view wx:if="{{item.note}}" class="mi note">“{{item.note}}”</view>
+        <view class="mi footer"><image class="fico" src="{{icoCamera}}" /> {{item.photoCount}} 张<block wx:if="{{item.hasAudio}}"> · <image class="fico" src="{{icoAudio}}" /> 语音</block></view>
       </view>
-      <view wx:if="{{item.note}}" class="mi note">“{{item.note}}”</view>
-      <view class="mi footer"><image class="fico" src="{{icoCamera}}" /> {{item.photoCount}} 张<block wx:if="{{item.hasAudio}}"> · <image class="fico" src="{{icoAudio}}" /> 语音</block></view>
     </view>
   </view>
   <view wx:if="{{item.canEdit || item.canSend}}" class="btnrow">

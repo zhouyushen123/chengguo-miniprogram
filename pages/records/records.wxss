@@ -19,9 +19,10 @@
 .pico { width: 22rpx; height: 22rpx; }
 .cnt { margin-left: auto; padding-right: 8rpx; }
 
-.recrow { display: flex; gap: 20rpx; }
-.thumb { width: 160rpx; height: 160rpx; border-radius: 16rpx; flex: none; }
-.recinfo { flex: 1; }
+/* 头行（姓名+课程+分数）通栏；照片下移与评价同行、位于评价左边 */
+.recrow { display: flex; gap: 20rpx; margin-top: 12rpx; }
+.thumb { width: 160rpx; height: 160rpx; border-radius: 16rpx; flex: none; align-self: flex-start; }
+.recinfo { flex: 1; min-width: 0; }
 .r1 { display: flex; align-items: center; gap: 12rpx; }
 /* 分数与评价合并成一个胶囊标签（如「85分 · 良好」），右上角对齐 */
 .scoretag {

@@ -1,6 +1,7 @@
 const db = require('../../utils/db');
 const theme = require('../../utils/theme');
 const voice = require('../../utils/voice');
+const tel = require('../../utils/phone');
 
 Page({
   data: { fields: [
@@ -23,12 +24,16 @@ Page({
   },
   onInput(e) {
     const f = Object.assign({}, this.data.f);
-    f[e.currentTarget.dataset.k] = e.detail.value;
+    const k = e.currentTarget.dataset.k;
+    // 手机号边输边格式化（3-4-4），其余字段原样
+    f[k] = k === 'phone' ? tel.fmt(e.detail.value) : e.detail.value;
     this.setData({ f });
   },
   submit() {
     const f = this.data.f;
-    if (f.phone && !/^1\d{10}$/.test(f.phone)) { wx.showToast({ title: '手机号格式不对', icon: 'none' }); return; }
+    const ph = tel.digits(f.phone);
+    if (ph && !/^1\d{10}$/.test(ph)) { wx.showToast({ title: '手机号需 11 位、1 开头', icon: 'none' }); return; }
+    f.phone = ph;
     const r = db.students.updateProfile(this.sid, f);
     if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
     // 家长填写的是孩子资料，属于学生实体的 profile 字段，一并推云端

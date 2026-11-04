@@ -3,6 +3,7 @@ const icons = require('../../utils/icons');
 const media = require('../../utils/media');
 const theme = require('../../utils/theme');
 const voice = require('../../utils/voice');
+const tel = require('../../utils/phone');
 
 // 角色选项目：负责人不在新建时出现（一个机构只能有一个，靠「移交」转移）
 const ROLE_OPTS = [
@@ -378,7 +379,10 @@ Page({
     });
   },
   onUserName(e) { this.setData({ 'userForm.name': e.detail.value }); },
-  onUserPhone(e) { this.setData({ 'userForm.phone': e.detail.value }); },
+  onUserPhone(e) {
+    const raw = tel.digits(e.detail.value);
+    this.setData({ 'userForm.phone': tel.fmt(raw) });
+  },
   onUserWechat(e) { this.setData({ 'userForm.wechat': e.detail.value }); },
   pickRole(e) { this.setData({ 'userForm.role': e.currentTarget.dataset.k }); },
   userClsTgl(e) { this._tgl('userClsSel', 'classes', e); },
@@ -418,7 +422,9 @@ Page({
     if (!n) { wx.showToast({ title: '请填写姓名', icon: 'none' }); return; }
     // 三类身份的范围互斥：老师带班、家长带孩子、管理员全可见无需范围
     // 手机号/微信号是档案字段，三类身份都存（老师方便家长联系，家长方便机构联系）
-    const contact = { phone: (f.phone || '').trim(), wechat: (f.wechat || '').trim() };
+    const ph = tel.digits(f.phone);
+    if (ph && !tel.valid(ph)) { wx.showToast({ title: '手机号需 11 位、1 开头', icon: 'none' }); return; }
+    const contact = { phone: ph, wechat: (f.wechat || '').trim() };
     let payload;
     if (f.role === 'parent') {
       const kids = this.data.userStuSel.slice();

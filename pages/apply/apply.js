@@ -2,12 +2,12 @@ const db = require('../../utils/db');
 const theme = require('../../utils/theme');
 const apply = require('../../utils/apply');
 const voice = require('../../utils/voice');
+const tel = require('../../utils/phone');
 
 // 表单选项：固定集合，避免自由输入导致口径混乱（后续可从服务端下发）
 const TYPES = ['培训机构', '学校', '幼儿园', '个人工作室'];
 const SCALES = ['50 人以下', '50–200 人', '200–500 人', '500 人以上'];
 const COURSES = ['书法', '美术', '素描', '钢琴', '舞蹈', '声乐', '编程', '托育'];
-const PHONE_RE = /^1[3-9]\d{9}$/;
 
 Page({
   data: {
@@ -67,7 +67,10 @@ Page({
     this.setData({ 'form.region': v, 'form.regionText': v.join(' ') });
   },
   onContact(e) { this.setData({ 'form.contact': e.detail.value }); },
-  onPhone(e) { this.setData({ 'form.phone': e.detail.value }); },
+  onPhone(e) {
+    const raw = tel.digits(e.detail.value);
+    this.setData({ 'form.phone': tel.fmt(raw), 'form.phoneBad': raw.length > 0 && !tel.valid(raw) });
+  },
   onScale(e) { this.setData({ 'form.scale': e.currentTarget.dataset.v }); },
   onInvite(e) { this.setData({ 'form.invite': e.detail.value }); },
   toggleCourse(e) {
@@ -88,7 +91,7 @@ Page({
     if (nameErr) return nameErr;
     if (name.length < 2) return '机构名称至少 2 个字';
     if (!(f.contact || '').trim()) return '请填写联系人姓名';
-    if (!PHONE_RE.test((f.phone || '').trim())) return '请填写正确的 11 位手机号';
+    if (!tel.valid(f.phone)) return '请填写正确的 11 位手机号（1 开头）';
     if (!this.data.agreed) return '请先勾选同意协议';
     return '';
   },
@@ -108,7 +111,7 @@ Page({
       region: (f.region || []).slice(),
       regionText: f.regionText || '',
       contact: (f.contact || '').trim(),
-      phone: (f.phone || '').trim(),
+      phone: tel.digits(f.phone),
       scale: f.scale,
       courses,
       courseText: courses.join('、'),

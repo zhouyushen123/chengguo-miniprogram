@@ -238,3 +238,6 @@ page {
 }
 /* 行内搜索框里的麦克风：不套 .vin，直接排在输入框后面（flex 行内一枚小图标） */
 .smic { flex: none; width: 32rpx; height: 32rpx; opacity: 0.5; }
+
+/* 表单字段级校验提示：跟在对应输入框下面的一行小字（红） */
+.field-err { font-size: 22rpx; color: var(--warn); margin-top: 8rpx; line-height: 1.5; }

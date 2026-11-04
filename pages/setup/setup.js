@@ -13,10 +13,10 @@
 const db = require('../../utils/db');
 const theme = require('../../utils/theme');
 const applyUtils = require('../../utils/apply');
+const tel = require('../../utils/phone');
 
 const TYPES = ['培训机构', '学校', '幼儿园', '个人工作室'];
 const MODES = [{ k: 'term', t: '学期制' }, { k: 'carry', t: '课时结转' }];
-const PHONE_RE = /^1[3-9]\d{9}$/;
 
 const pad = n => (n < 10 ? '0' + n : '' + n);
 const dateStr = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
@@ -82,7 +82,11 @@ Page({
   onOrgName(e) { this.setData({ 'org.name': e.detail.value }); },
   pickType(e) { this.setData({ 'org.type': e.currentTarget.dataset.v }); },
   onContact(e) { this.setData({ 'org.contact': e.detail.value }); },
-  onPhone(e) { this.setData({ 'org.phone': e.detail.value }); },
+  // 手机号边输边格式化（3-4-4）：存的是带横线的展示串，提交时 tel.digits 还原裸数字
+  onPhone(e) {
+    const raw = tel.digits(e.detail.value);
+    this.setData({ 'org.phone': tel.fmt(raw), 'org.phoneBad': raw.length > 0 && !tel.valid(raw) });
+  },
   onTermName(e) { this.setData({ 'term.name': e.detail.value }); },
   onStart(e) { this.setData({ 'term.startDate': e.detail.value }); },
   onEnd(e) { this.setData({ 'term.endDate': e.detail.value }); },
@@ -117,7 +121,7 @@ Page({
     const nameErr = db.orgs.checkName(name);
     if (nameErr) return this._toast(nameErr);
     if (!(f.contact || '').trim()) return this._toast('请填写联系人');
-    if (!PHONE_RE.test((f.phone || '').trim())) return this._toast('请填写正确的 11 位手机号');
+    if (!tel.valid(f.phone)) return this._toast('请填写正确的 11 位手机号（1 开头）');
 
     const up = db.orgs.update({ name });
     if (!up.ok) return this._toast(up.msg || '机构名保存失败');
@@ -126,7 +130,7 @@ Page({
       name,
       type: f.type,
       contact: (f.contact || '').trim(),
-      phone: (f.phone || '').trim(),
+      phone: tel.digits(f.phone),
       status: 'active'
     });
     // 顺手把出厂名「测试老师」换成他填的联系人：首页一进来就叫"测试老师"，

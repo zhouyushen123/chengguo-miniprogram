@@ -89,8 +89,11 @@ Page({
   // （标记走 utils/firstrun.js：页面不许直接读写本地存储）
   autoSetup() {
     if (firstrun.autoShown()) return;
-    firstrun.markAutoShown();
-    wx.navigateTo({ url: '/pages/setup/setup' });
+    // 只有真的跳成功了才记账：跳失败（页面未注册/栈满）不该把机会用掉，下次进来还能再跳
+    wx.navigateTo({
+      url: '/pages/setup/setup',
+      success: () => firstrun.markAutoShown()
+    });
   },
   goSetup() { wx.navigateTo({ url: '/pages/setup/setup' }); },
   // 示例数据：样板间，只看不改；看够了点顶部横幅「开始使用」退出

@@ -68,6 +68,8 @@ Page({
       d: appRec ? (appRec.type + (appRec.regionText ? ' · ' + appRec.regionText : '')) : '填写机构名称、类型与联系方式'
     });
     if (isManager) {
+      // 开通引导：不依赖"空库"判断，任何时候都能重走一遍（机构→学期→班级→学生）
+      entries.push({ k: 'setup', t: '开通引导', d: '按步骤走一遍：机构 → 学期 → 班级 → 学生' });
       entries.push({ k: 'term', t: '学期管理', d: '开班学期、课时结转与续报' });
       entries.push({ k: 'switch', t: '切换身份', d: '管理员 / 老师 / 学生家长 演示切换' });
     }
@@ -91,6 +93,7 @@ Page({
     const k = e.currentTarget.dataset.k;
     if (k === 'apply') { wx.navigateTo({ url: '/pages/apply/apply' }); return; }
     if (k === 'term') { wx.navigateTo({ url: '/pages/terms/terms' }); return; }
+    if (k === 'setup') { wx.navigateTo({ url: '/pages/setup/setup' }); return; }
     if (k === 'switch') { this.switchIdentity(); return; }
     if (k === 'about') { this.showAbout(); return; }
     if (k === 'demo') { this.demoMenu(); return; }

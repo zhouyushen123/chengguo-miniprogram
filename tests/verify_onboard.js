@@ -8,6 +8,7 @@
 //   2. 向导四步能真正建出 机构名 / 学期 / 班级 / 学生，且学生自动拿到学号
 //   3. 每一步的校验拦得住（手机号乱填、学期日期倒挂），且失败时停在原地不消费数据
 const path = require('path');
+const fs = require('fs');
 const assert = require('assert');
 
 /* ---------------- 模拟小程序运行环境（空库起步） ---------------- */
@@ -20,7 +21,7 @@ global.wx = {
   removeStorageSync: k => { delete mem[k]; },
   showToast: o => { toasts.push(o && o.title); },
   showModal: o => { if (o && o.success) o.success({ confirm: true }); },
-  navigateTo: o => { navs.push(o && o.url); },
+  navigateTo: o => { navs.push(o && o.url); if (o && o.success) o.success({}); },
   switchTab: o => { navs.push(o && o.url); },
   navigateBack: () => {},
   setNavigationBarTitle: () => {},
@@ -200,6 +201,23 @@ ok('「稍后再说」：直接进完成页，不建任何东西也不报错', (
   p2.later();
   assert.strictEqual(p2.data.done, true);
   assert.ok(p2.data.summary.org, '摘要至少要能显示当前机构名');
+});
+
+console.log('\n【入口兜底】');
+ok('「我的」里有开通引导入口：数据不空也能重走一遍', () => {
+  const mine = loadPage('pages/mine/mine.js');
+  mine.onShow();
+  const keys = mine.data.entries.map(e => e.k);
+  assert.ok(keys.indexOf('setup') > -1, '管理员应看到开通引导入口');
+});
+ok('首次跳转的标记：跳成功才记，避免一次失败就永久不再引导', () => {
+  const firstrun = require('../utils/firstrun');
+  assert.strictEqual(typeof firstrun.markAutoShown, 'function');
+  // autoSetup 里 navigateTo 带 success 回调才算数（结构断言，防止回退成"先记账再跳"）
+  const src = fs.readFileSync(require.resolve('../pages/index/index.js'), 'utf8');
+  const body = src.slice(src.indexOf('autoSetup()'), src.indexOf('goSetup()'));
+  assert.ok(/success\s*:/.test(body), 'navigateTo 应带 success 回调');
+  assert.ok(body.indexOf('success') < body.indexOf('markAutoShown'), '记账应在跳转成功之后');
 });
 
 console.log('\n全部 ' + pass + ' 项新手引导断言通过');

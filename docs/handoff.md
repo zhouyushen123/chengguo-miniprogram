@@ -15,7 +15,7 @@
 | 远程 | `git@github.com:zhouyushen123/chengguo-miniprogram.git` |
 | 我的工作区 | `C:\Users\zhouy\WorkBuddy\橙果`（只放记忆，不放代码） |
 | 技术栈 | 微信原生小程序（JS）+ 云开发目录 `cloudfunctions/` |
-| 验证基线 | `npm test` = 267 项同步断言 + 4 项 AI 链路（异步）= **271 项全绿**；`npm run lint` 92 文件 0 提醒；`npm run size` 主包 908 KB / 2 MB（44.3%）；`npm run check` = lint + size + test 一条跑完 |
+| 验证基线 | `npm test` = 269 项同步断言 + 4 项 AI 链路（异步）= **273 项全绿**；`npm run lint` 92 文件 0 提醒；`npm run size` 主包 908 KB / 2 MB（44.4%）；`npm run check` = lint + size + test 一条跑完 |
 | 提交习惯 | 沙箱常拦 `git push`（读不到 `~/.ssh`），仓库有「5 分钟自动同步」任务会以 `auto: 自动同步 时间戳` 提交并推送 |
 
 ---
@@ -61,7 +61,7 @@
 - **首页空态换脸**：`empty = 没学生且没记录`（班级空壳不算）；此时不显示"开始录入"和三块 0，改显示 `.onboard` 开通卡（四步说明 + 开始开通 + 先看示例数据）。首次进入自动跳一次向导，跳过后只在首页留卡片（标记走 `utils/firstrun.js`——页面不许直接碰本地存储）。
 - **出厂数据清干净**：`migrate.buildFresh(stamp, {sample:false})` 让真实新库不再自带「书法班/素描班/楷书/素描」；示例内容只留给演示数据包（`maintenance.buildDemoData` 仍用默认 sample:true）。内置「长期班」学期保留（历史数据兜底）。
 - **改名**：向导第 1 步提交时，若当前成员名还是出厂的「测试老师」，自动换成他填的联系人（`db.members.update`，失败不影响流程）。
-- 测试：新增 `tests/verify_onboard.js`（16 项，从空库起步跑到完成页）；`verify_term` / `verify_perm` 里"全新安装有 2 个默认班"的断言随产品决策改为"不带示例班"。总数 255 → **271**。
+- 测试：新增 `tests/verify_onboard.js`（18 项，从空库起步跑到完成页）；`verify_term` / `verify_perm` 里"全新安装有 2 个默认班"的断言随产品决策改为"不带示例班"。总数 255 → **273**。
 
 ---
 

@@ -446,17 +446,6 @@ ok('删除选项后选中项正确位移（不再错位选中别的评语）', (
   assert.deepStrictEqual(tpls.sel, ['0:0', '0:1'], '选中下标应前移');
 });
 
-console.log('\n【重启：数据持久化】');
-ok('重新加载后数据不变', () => {
-  const before = { cls: db.classes.list().length, stu: db.students.list().length, rec: db.records.list().length };
-  Object.keys(require.cache).forEach(k => { if (k.indexOf(path.join('utils', 'db')) > -1) delete require.cache[k]; });
-  const db2 = require('../utils/db');
-  db2.init();
-  assert.strictEqual(db2.classes.list().length, before.cls);
-  assert.strictEqual(db2.students.list().length, before.stu);
-  assert.strictEqual(db2.records.list().length, before.rec);
-});
-
 console.log('\n【老师档案：成员档案字段 + 档案页】');
 let teacherMid = 0;
 ok('成员表单可填手机号/微信号并落库', () => {
@@ -481,11 +470,8 @@ ok('成员卡点按跳老师档案页', () => {
 });
 ok('老师档案页：个人卡 + 统计 + 负责班级 + 最近成果', () => {
   const teacher = loadPage('pages/teacher/teacher.js');
-  console.log('DEBUG mid=', teacherMid, 'get=', !!db.members.get(teacherMid));
   teacher.onLoad({ id: teacherMid });
-  console.log('DEBUG this.mid=', teacher.mid);
   teacher.onShow();
-  console.log('DEBUG m=', JSON.stringify(teacher.data.m));
   assert.strictEqual(teacher.data.m.name, '王老师');
   assert.strictEqual(teacher.data.m.phone, '13800001111');
   assert.strictEqual(teacher.data.stats.clsN, 1);
@@ -503,6 +489,17 @@ ok('测试成员清理，不污染后续用例', () => {
   const r = db.members.remove(teacherMid);
   assert.ok(r.ok !== false);
   assert.ok(!db.members.list().some(m => m.name === '王老师'));
+});
+
+console.log('\n【重启：数据持久化】');
+ok('重新加载后数据不变', () => {
+  const before = { cls: db.classes.list().length, stu: db.students.list().length, rec: db.records.list().length };
+  Object.keys(require.cache).forEach(k => { if (k.indexOf(path.join('utils', 'db')) > -1) delete require.cache[k]; });
+  const db2 = require('../utils/db');
+  db2.init();
+  assert.strictEqual(db2.classes.list().length, before.cls);
+  assert.strictEqual(db2.students.list().length, before.stu);
+  assert.strictEqual(db2.records.list().length, before.rec);
 });
 
 console.log('\n【图标资产：引用即存在，且函数式图标可调用】');

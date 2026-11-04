@@ -90,7 +90,7 @@
 .sheet {
   width: 100%; background: var(--card); border-radius: 32rpx 32rpx 0 0;
   padding: 36rpx 32rpx calc(36rpx + env(safe-area-inset-bottom));
-  max-height: 82vh; overflow-y: scroll; -webkit-overflow-scrolling: touch; box-sizing: border-box;
+  max-height: 94vh; overflow-y: auto; -webkit-overflow-scrolling: touch; box-sizing: border-box;
 }
 .sheet-t { text-align: center; font-size: 34rpx; font-weight: 700; color: var(--text); margin-bottom: 10rpx; }
 .row2 { display: flex; gap: 20rpx; margin-top: 30rpx; }

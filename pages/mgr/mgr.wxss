@@ -31,14 +31,14 @@
 .sheet {
   width: 100%; background: #fff; border-radius: 32rpx 32rpx 0 0;
   padding: 36rpx 32rpx calc(36rpx + env(safe-area-inset-bottom));
-  max-height: 94vh; overflow-y: scroll; -webkit-overflow-scrolling: touch; box-sizing: border-box;
+  max-height: 94vh; overflow-y: auto; -webkit-overflow-scrolling: touch; box-sizing: border-box;
 }
-/* 标题吸顶：弹窗内容超高可滚时，标题钉在顶部不跟着滚走，
-   负外边距把吸顶背景顶到弹窗最上沿，盖住滚动到标题下方的内容 */
+/* 弹层标题：普通流式标题（与学期管理页一致）。
+   此前用 sticky 吸顶 + 负边距，但拉键盘时微信会把弹层滚动区上顶、收起后滚动位置残留，
+   第一行输入框会被永久压在吸顶标题下面（截图实证）；普通标题跟随内容滚动，不存在遮挡 */
 .sheet-t {
-  position: sticky; top: 0; z-index: 5; background: #fff;
-  margin: -36rpx -32rpx 0; padding: 36rpx 32rpx 24rpx;
   text-align: center; font-size: 34rpx; font-weight: 700;
+  margin-bottom: 10rpx;
 }
 .row2 { display: flex; gap: 20rpx; margin-top: 28rpx; }
 .row2 .btn { flex: 1; }

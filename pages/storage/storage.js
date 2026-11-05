@@ -11,6 +11,7 @@ const db = require('../../utils/db');
 const media = require('../../utils/media');
 const theme = require('../../utils/theme');
 const api = require('../../utils/api');
+const sync = require('../../utils/sync');
 
 const KB = 1024;
 const MB = 1024 * 1024;
@@ -46,10 +47,11 @@ Page({
     cbShow: true, cbBusy: false, cbHint: '读取中…',
     // 被云端拒绝的改动：本地改成功了、云端没接受，不说出来就是静默不一致
     rejects: [], rejectCount: 0, trashCount: 0,
-    rawRows: []
+    rawRows: [],
+    dirtyCount: 0, syncHint: '', syncBusy: false
   },
 
-  onShow() { theme.apply(this); this.refresh(); this.refreshCloud(); },
+  onShow() { theme.apply(this); this.refresh(); this.refreshCloud(); this.refreshSync(); },
 
   refresh() {
     const h = db.health();
@@ -142,6 +144,35 @@ Page({
         this.refresh();
         wx.showToast({ title: n ? ('已修复 ' + n + ' 处') : '没有需要修的', icon: 'none' });
       }
+    });
+  },
+
+  // 同步状态：待推送条数 + 手动触发。以前的同步完全静默——失败用户不知道，
+  // 成功用户也不知道，排查"数据怎么没上云"只能靠开发者工具（手机上没有）。
+  refreshSync() {
+    let n = 0;
+    try { n = (db.sync.dirtyCols() || []).length; } catch (e) { n = 0; }
+    this.setData({ dirtyCount: n });
+  },
+
+  doSync() {
+    if (this.data.syncBusy) return;
+    this.setData({ syncBusy: true, syncHint: '' });
+    wx.showLoading({ title: '同步中…', mask: true });
+    sync.kick().then(r => {
+      wx.hideLoading();
+      const out = r || {};
+      let hint;
+      if (out.ok) hint = '同步完成：推送 ' + (out.pushed || 0) + ' 项' + (out.pulled ? '，拉回 ' + out.pulled + ' 项' : '');
+      else if (out.code === 'SYNC_OFF') hint = '同步未开启（云开发未就绪）';
+      else if (out.code === 'EMPTY') hint = '本机还没有数据，暂不同步';
+      else if (out.busy || out.throttled) hint = '刚同步过，稍等几秒再试';
+      else hint = '同步失败' + (out.msg ? '：' + out.msg : (out.code ? '（' + out.code + '）' : ''));
+      this.setData({ syncHint: hint, syncBusy: false });
+      this.refreshSync(); this.refreshAudit(); this.refreshRaw();
+    }).catch(e => {
+      wx.hideLoading();
+      this.setData({ syncHint: '同步失败：' + ((e && e.errMsg) || '网络不通'), syncBusy: false });
     });
   },
 

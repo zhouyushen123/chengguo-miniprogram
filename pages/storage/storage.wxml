@@ -37,6 +37,13 @@
       <view class="btn clean" hover-class="btn-hover" bindtap="goTrash">查看最近删除</view>
     </view>
 
+    <!-- 同步状态：手机上唯一能看到"推没推上去"的地方 -->
+    <view class="card">
+      <view class="sec"><view class="label">云同步</view><view class="sechint">{{dirtyCount ? '待推送 ' + dirtyCount + ' 项' : '已同步'}}</view></view>
+      <view class="btn clean" hover-class="btn-hover" bindtap="doSync">{{syncBusy ? '同步中…' : '立即同步'}}</view>
+      <view wx:if="{{syncHint}}" class="hint note">{{syncHint}}</view>
+    </view>
+
     <!-- 同步被云端拒绝的改动：本地看着改好了，云端没接受 -->
     <view wx:if="{{rejectCount}}" class="card">
       <view class="sec"><view class="label">没同步上去</view><view class="sechint">{{rejectCount}} 项</view></view>

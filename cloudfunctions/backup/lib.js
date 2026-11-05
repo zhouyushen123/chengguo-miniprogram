@@ -11,7 +11,8 @@ const KEEP_DAYS = 30;     // 保留天数：够回看一个月，又不至于把
 const PART_DOCS = 2000;   // 单个文件最多装多少条（约 1~3MB，远低于单文件上限）
 const MAX_DOCS = 20000;   // 单次单集合最多备份多少条（防超时；超了在清单里标 truncated）
 const RESTORE_CAP = 2000; // 单次单集合最多写回多少条（云函数 60 秒，宁可分几次做完）
-const COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'students', 'enrollments', 'records', 'templates'];
+const COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'subjects', 'knowledge_points',
+  'students', 'enrollments', 'records', 'templates'];
 
 function pad2(n) {
   return (n < 10 ? '0' : '') + n;

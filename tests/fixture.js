@@ -3,7 +3,8 @@
 // 演示数据现在住在独立的存储命名空间里（chengguo_demo_*），真实库不该自带演示行。
 // 但页面级与流程级测试需要一份"有内容"的真实库 —— 这里用演示数据集造一份，
 // 并去掉 demo 标记，等价于"这位老师自己把这些学生和记录录进了自己的机构"。
-const COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'students', 'enrollments', 'records', 'users', 'templates'];
+const COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'subjects', 'knowledge_points',
+  'students', 'enrollments', 'records', 'users', 'templates'];
 
 function richSeed() {
   const built = require('../utils/db/maintenance').buildDemoData();

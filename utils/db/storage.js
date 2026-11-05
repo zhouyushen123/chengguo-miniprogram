@@ -32,9 +32,10 @@ const META_KEY = 'meta';
 const CHUNK_KEY = 'chunks';     // 各集合的分片数量索引，只用于清理旧分片
 
 // 实体集合（顺序即初始化顺序，被 load 与迁移共用）
-// orgs / members 是机构与成员关系：权限的唯一来源，云端对应 org 表与 member 授权表
-// terms / enrollments 是学期与报名（课时账本）：学期制与结转制的载体
-const COLLECTIONS = ['orgs', 'members', 'terms', 'classes', 'courses', 'students', 'enrollments', 'records', 'users', 'templates'];
+// 【不要在这里加集合名】清单的唯一来源是 entities.js —— 以前这里、core、sync、
+// syncv2、backup、admin 各抄一份，加表漏改一处就会出现"本地能存、云端没有"的静默分裂。
+const entities = require('./entities');
+const COLLECTIONS = entities.ALL_COLLS.slice();
 
 // 需要分片的集合 → 每片最多多少条
 // 只有"随上课天数线性增长"的集合才需要分片；其余集合体量由机构规模决定，不会失控

@@ -14,7 +14,8 @@ const db = cloud.database();
 const _ = db.command;
 
 // 允许同步的集合（users 是本机身份，不同步；演示数据在独立命名空间，天然不进这里）
-const COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'students', 'enrollments', 'records', 'templates'];
+const COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'subjects', 'knowledge_points',
+  'students', 'enrollments', 'records', 'templates'];
 const PAGE = 100;
 // 版本历史：核心资产每次被"真的改内容"之前留一份旧值。
 // 只做核心四类——记录是海量增长的业务数据，给它留历史等于把库撑爆，而且误改一条记录的代价远小于误改一个学生。

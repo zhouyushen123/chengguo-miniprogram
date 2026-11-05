@@ -8,8 +8,10 @@
 // 否则"拉下来写本地"会被当成"本地改动"再推回去，形成来回打转的回声。
 const core = require('./core');
 const syncmerge = require('../syncmerge');
+const entities = require('./entities');
 
-const COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'students', 'enrollments', 'records', 'templates'];
+// 参与同步的集合：来自注册表（users 与演示数据不在其中）
+const COLLS = entities.SYNC_COLLS.slice();
 let applying = false;
 
 const syncMeta = () => (core.realMeta().sync || {});

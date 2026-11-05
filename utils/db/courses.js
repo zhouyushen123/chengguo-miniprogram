@@ -26,7 +26,15 @@ function courseGet(id) {
 function courseCreate(data) {
   const err = deny('course.write', { clsId: data && data.clsId });
   if (err) return { ok: false, msg: err };
-  const e = schema.normalizeCourse({ name: data && data.name, clsId: data && data.clsId }, org(), now());
+  const d = data || {};
+  const name = schema.str(d.name).trim();
+  const e = schema.normalizeCourse({
+    name, clsId: d.clsId,
+    // 学科：显式传了就用，没传就按课程名猜一次（猜不中留 0，不阻塞建课）
+    subjectId: d.subjectId !== undefined && d.subjectId !== ''
+      ? d.subjectId
+      : schema.guessSubjectId(name, oc('subjects'))
+  }, org(), now());
   const ev = schema.validate('course', e);
   if (ev) return { ok: false, msg: ev };
   e.id = core.nextId();
@@ -38,7 +46,12 @@ function courseUpdate(id, patch) {
   if (!c) return { ok: false, msg: '课程不存在或无权操作' };
   const err = deny('course.write', { clsId: c.clsId });
   if (err) return { ok: false, msg: err };
-  const next = schema.normalizeCourse(Object.assign({}, c, patch), org(), now());
+  const p = Object.assign({}, patch);
+  const next = schema.normalizeCourse(Object.assign({}, c, p), org(), now());
+  // 改名后没显式指定学科、原来也没归类 → 再猜一次；已有学科不因改名被冲掉
+  if ((p.subjectId === undefined || p.subjectId === '') && !c.subjectId) {
+    next.subjectId = schema.guessSubjectId(next.name, oc('subjects'));
+  }
   const ev = schema.validate('course', next);
   if (ev) return { ok: false, msg: ev };
   next.id = c.id; next.updatedAt = now();

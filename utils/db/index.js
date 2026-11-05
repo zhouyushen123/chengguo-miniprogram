@@ -41,6 +41,7 @@ const identity = require('./identity');
 const terms = require('./terms');
 const classes = require('./classes');
 const courses = require('./courses');
+const content = require('./content');
 const students = require('./students');
 const enrollments = require('./enrollments');
 const records = require('./records');
@@ -156,6 +157,17 @@ const db = {
   courses: {
     list: courses.courseList, of: courses.courseOf, get: courses.courseGet,
     create: courses.courseCreate, update: courses.courseUpdate, remove: courses.courseRemove
+  },
+  // 内容域：学科与知识点（阶段一只建表，不建界面；阶段二题库的挂载点）
+  subjects: {
+    list: content.subjectList, get: content.subjectGet, byGid: content.subjectByGid,
+    guessFor: content.guessFor,
+    create: content.subjectCreate, update: content.subjectUpdate, remove: content.subjectRemove
+  },
+  kps: {
+    list: content.kpList, get: content.kpGet, byGid: content.kpByGid,
+    children: content.kpChildren, subtree: content.kpSubtree,
+    create: content.kpCreate, update: content.kpUpdate, remove: content.kpRemove
   },
   students: {
     list: students.studentList, of: students.studentOf, get: students.studentGet,

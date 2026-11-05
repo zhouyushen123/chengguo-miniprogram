@@ -46,6 +46,11 @@ jobs:
       - name: 代码规范
         run: npm run lint
 
+      # 数据字典是代码的投影：改了字段没重新生成文档，这里就红。
+      # 它防的是「文档写了两天就过期」——那件事已经真实发生过一次。
+      - name: 数据字典与代码一致
+        run: node tools/schema-doc.js --check
+
       - name: 测试
         run: npm test
 

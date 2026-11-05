@@ -8,7 +8,8 @@
     "lint": "node tools/lint.js",
     "size": "node tools/size.js",
     "review": "node tools/review.js",
-    "check": "node tools/lint.js && node tools/size.js && node tests/run.js"
+    "check": "node tools/lint.js && node tools/schema-doc.js --check && node tools/size.js && node tests/run.js",
+    "docs:schema": "node tools/schema-doc.js"
   },
   "dependencies": {
     "miniprogram-ci": "^2.1.9"

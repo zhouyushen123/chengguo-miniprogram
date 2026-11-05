@@ -14,8 +14,10 @@
 // 这是最贵的一种数据丢失。所以写函数都要检查返回值，失败时回滚内存并回报错误。
 const storage = require('./storage');
 const schema = require('./schema');
+const entities = require('./entities');
 
-const COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'students', 'enrollments', 'records', 'users', 'templates'];
+// 集合清单与 id 类型都来自注册表，这里不再登记集合名
+const COLLS = entities.ALL_COLLS.slice();
 
 // 落盘失败时给用户看的统一文案（各领域模块直接用它，避免说法不一致）
 const SAVE_FAIL = '本地存储空间不足，这次没能保存。请到「我的 · 存储空间」清理后重试';
@@ -65,7 +67,8 @@ function hydrateInto(which, loaded) {
   // id 分配器从现有最大值起步，避免系统时间回拨时生成重复 id。
   // 两套数据共用一个分配器：跨库取最大，两个库的 id 都不会撞。
   let max = 0;
-  ['terms', 'classes', 'courses', 'students', 'enrollments', 'records', 'templates'].forEach(name => {
+  // 数字 id 的集合从注册表取：新增表时不用再回来改这份清单
+  entities.NUM_ID_COLLS.forEach(name => {
     s[name].forEach(e => { if (typeof e.id === 'number' && e.id > max) max = e.id; });
   });
   if (max > lastId) lastId = max;

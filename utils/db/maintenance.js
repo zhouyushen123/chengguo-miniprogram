@@ -165,6 +165,8 @@ function normalizeAll(full) {
     each('terms', schema.normalizeTerm);
     each('classes', schema.normalizeClass);
     each('courses', schema.normalizeCourse);
+    each('subjects', schema.normalizeSubject);
+    each('knowledge_points', schema.normalizeKnowledgePoint);
     each('students', schema.normalizeStudent);
     each('enrollments', schema.normalizeEnrollment);
     each('records', schema.normalizeRecord);
@@ -195,6 +197,11 @@ function normalizeAll(full) {
   // 兜底：内置「长期班」不存在或班级没挂靠学期时补齐（版本刚升级/异常数据）
   const termFix = migrate.ensureBuiltinTerm(core.coll('terms'), core.coll('classes'), org(), now());
   if (termFix.changed) changed = true;
+  // 兜底：学科种子缺失时补齐（升级路径会补，这里防"版本已是 v9 但学科被清空"的异常数据）
+  const subs = core.coll('subjects');
+  const before = subs.length;
+  migrate.ensureSubjects(subs, org(), now());
+  if (subs.length !== before) changed = true;
   return changed;
 }
 

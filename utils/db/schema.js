@@ -26,7 +26,9 @@
 // 软删除的意义：多端同步时"删掉"必须能被同步，硬删会被其它端的历史数据覆盖复活。
 // v7：班级增加 session（课次号）——「本次录入」的节点由老师手动结清，不再由自然日自动切换；
 // 记录落库时盖上当前课次号，跨天/多人接力录同一节课也能算成同一次。
-const VERSION = 8;
+// v9：为阶段二题库留位——加 subjects / knowledge_points 两张表、课程挂学科、记录记满分口径。
+//     全部是"加空字段/空表"，老数据升级后行为完全不变；现在不做，将来要重挂全部历史数据。
+const VERSION = 9;
 // 出厂机构号：每台新装设备的本地库都挂它，**它不是一个真实机构**。
 // 首次上云时由服务端发一个随机机构号（见 syncv2 的 hello），本地整体改挂过去。
 // 以前它被当成真实机构号用，结果所有客户的数据都落在 org1 里混成一团——
@@ -53,6 +55,14 @@ const TAGS = ['待提高', '加油', '良好', '优秀', '最佳'];
 // 单条记录的媒体数量上限。以前页面里写死一份、这里写死一份，改一处必忘另一处，
 // 于是出现"界面上限 9 张、校验上限 9 张"看着一致但实际已经不同步的情况。只留一份。
 const LIMITS = { photos: 9, videos: 3 };
+// 学科种子、类别与课程名猜测放在 subject-seeds.js（纯常量/纯函数，单独成文件避免 schema 超行数上限）
+const seeds = require('./subject-seeds');
+const SUBJECT_KINDS = seeds.SUBJECT_KINDS;
+const SUBJECT_SEEDS = seeds.SUBJECT_SEEDS;
+const SUBJECT_KEYWORDS = seeds.SUBJECT_KEYWORDS;
+const KP_SOURCES = seeds.KP_SOURCES;
+const guessSubjectId = seeds.guessSubjectId;
+
 // 记录类型（ADR-009：留字段不留逻辑）
 // 现在只有一种「成果」，但字段先落下去。将来加考勤/作业/缴费时，只是往这个数组里加值
 // 并写对应的 domain 逻辑，不需要再改表结构、不需要迁移历史数据。
@@ -171,7 +181,48 @@ function normalizeCourse(raw, orgId, stamp) {
   return Object.assign({
     id: num(r.id, 0),
     clsId: num(r.clsId, 0),
+    // 学科：阶段二题库按学科筛题/组卷。0 = 未指定（猜不出来就留空，不影响任何现有功能）
+    subjectId: num(r.subjectId, 0),
     name: str(r.name).trim()
+  }, audit(r, orgId, stamp));
+}
+
+// 学科：机构内学科清单。gid 是全局稳定 ID，内置 7 条用固定值，跨机构一致。
+function normalizeSubject(raw, orgId, stamp) {
+  const r = raw || {};
+  return Object.assign({
+    id: num(r.id, 0),
+    gid: str(r.gid).trim(),
+    name: str(r.name).trim(),
+    kind: SUBJECT_KINDS.indexOf(r.kind) > -1 ? r.kind : 'academic',
+    sort: num(r.sort, 0)
+  }, audit(r, orgId, stamp));
+}
+
+// 学科种子：id 固定按 1..7 分配（幂等——重复调用不会产生第二套）
+function buildSubjectSeeds(orgId, stamp) {
+  return SUBJECT_SEEDS.map((s, i) => normalizeSubject({
+    id: i + 1, gid: s.gid, name: s.name, kind: s.kind, sort: s.sort
+  }, orgId, stamp));
+}
+
+// 知识点树：阶段一只建表与结构，数据到阶段二再录。
+// path 是物化路径（云开发没有递归查询，查子树只能靠前缀匹配），这里只做格式规整。
+function normalizeKnowledgePoint(raw, orgId, stamp) {
+  const r = raw || {};
+  const path = str(r.path).split('/').map(x => x.trim()).filter(Boolean).join('/');
+  return Object.assign({
+    id: num(r.id, 0),
+    gid: str(r.gid).trim(),
+    subjectId: num(r.subjectId, 0),
+    parentId: num(r.parentId, 0),
+    path,
+    depth: Math.max(0, num(r.depth, path ? path.split('/').length - 1 : 0)),
+    name: str(r.name).trim(),
+    grade: str(r.grade).trim(),
+    code: str(r.code).trim(),
+    sort: num(r.sort, 0),
+    source: KP_SOURCES.indexOf(r.source) > -1 ? r.source : 'org'
   }, audit(r, orgId, stamp));
 }
 
@@ -256,6 +307,12 @@ function normalizeRecord(raw, orgId, stamp) {
     course: str(r.course).trim(),
     date,
     score: num(r.score, 0),
+    // 满分口径：默认 100（老记录升级后自动补），只接受 1..1000 的整数，非法值回落 100。
+    // 没有它，"85/100" 与 "8.5/10" 在平均分里无法区分。
+    scoreScale: (function () {
+      const s = Math.round(num(r.scoreScale, 100));
+      return (s >= 1 && s <= 1000) ? s : 100;
+    })(),
     tag: str(r.tag).trim(),
     note: str(r.note),
     photos: txtList(r.photos),
@@ -265,6 +322,10 @@ function normalizeRecord(raw, orgId, stamp) {
     // 课次号：录入时盖上班级当前课次（补录可显式指定更早的课次）。
     // 0 表示未标注（只会出现在迁移前的老数据上，assignRecordSessions 会补算）。
     session: num(r.session, 0),
+    // 关联知识点：阶段二由"作答/评语打标"填入，阶段一恒为空数组。
+    // 单独留字段而不是将来加关联表，是因为一条记录挂 1~3 个知识点，键值对足够且省一次联表。
+    // 只留正整数：null/''/脏值经 Number() 会变 0，留着就是一个指向不存在知识点的引用
+    kpIds: numList(r.kpIds).filter(x => x > 0),
     tid: str(r.tid),        // 录入老师，用于"XX老师的课堂语音"
     demo: r.demo === true
   }, audit(r, orgId, stamp));
@@ -334,6 +395,8 @@ function normalize(entity, raw, orgId, stamp) {
     case 'term': return normalizeTerm(raw, orgId, stamp);
     case 'class': return normalizeClass(raw, orgId, stamp);
     case 'course': return normalizeCourse(raw, orgId, stamp);
+    case 'subject': return normalizeSubject(raw, orgId, stamp);
+    case 'knowledgePoint': return normalizeKnowledgePoint(raw, orgId, stamp);
     case 'student': return normalizeStudent(raw, orgId, stamp);
     case 'enrollment': return normalizeEnrollment(raw, orgId, stamp);
     case 'record': return normalizeRecord(raw, orgId, stamp);
@@ -377,6 +440,17 @@ function validate(entity, e) {
       if (!e.name) return '课程名称不能为空';
       if (!e.clsId) return '课程必须归属一个班级';
       return null;
+    case 'subject':
+      if (!e.gid) return '学科缺少全局标识（gid）';
+      if (!e.name) return '学科名称不能为空';
+      if (e.name.length > 12) return '学科名称过长';
+      return null;
+    case 'knowledgePoint':
+      if (!e.gid) return '知识点缺少全局标识（gid）';
+      if (!e.name) return '知识点名称不能为空';
+      if (!e.subjectId) return '知识点必须归属一个学科';
+      if (!e.path) return '知识点缺少路径（path），子树查询依赖它';
+      return null;
     case 'student':
       if (!e.name) return '学生姓名不能为空';
       if (e.name.length > 20) return '学生姓名过长';
@@ -386,7 +460,10 @@ function validate(entity, e) {
       if (!e.sid) return '记录必须关联学生';
       if (!e.cid) return '记录必须关联班级';
       if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date)) return '记录日期格式应为 YYYY-MM-DD';
-      if (!(e.score >= 0 && e.score <= 100)) return '分数应在 0-100 之间';
+      // 分数按满分口径校验：满分 10 分的随堂小测可以写 8.5，但不能写 85 却不改口径
+      // （直接调 validate 的调用方可能没走 normalize，所以这里也兜底一次）
+      const scale = (e.scoreScale >= 1 && e.scoreScale <= 1000) ? e.scoreScale : 100;
+      if (!(e.score >= 0 && e.score <= scale)) return '分数应在 0-' + scale + ' 之间';
       if (e.photos.length > LIMITS.photos) return '照片最多 ' + LIMITS.photos + ' 张';
       if (e.videos.length > LIMITS.videos) return '视频最多 ' + LIMITS.videos + ' 个';
       return null;
@@ -406,10 +483,12 @@ module.exports = {
   VERSION, DEFAULT_ORG, FACTORY_ORG, newOrgId, isFactoryOrg, ORG_CHARS,
   TAGS, LIMITS, RECORD_TYPES, ROLES, MEMBER_STATUS, ORG_STATUS,
   TERM_STATUS, CLASS_MODES, ENROLL_STATUS, DEFAULT_TEMPLATES,
+  SUBJECT_KINDS, SUBJECT_SEEDS, SUBJECT_KEYWORDS, KP_SOURCES,
   str, num, list, numList, txtList, ymd, normDate,
   normalize, validate,
   normalizeOrg, normalizeMember,
   normalizeTerm, normalizeClass, normalizeCourse, normalizeStudent, normalizeEnrollment,
+  normalizeSubject, normalizeKnowledgePoint, buildSubjectSeeds, guessSubjectId,
   assignStudentNos, NO_START,
   assignRecordSessions,
   normalizeRecord, normalizeUser, normalizeTemplate

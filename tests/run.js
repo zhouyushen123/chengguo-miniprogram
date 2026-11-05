@@ -36,6 +36,7 @@ const SUITES = [
   ['verify_cloudbackup.js', '云端每日备份'],
   ['verify_protect.js', '数据保护机制'],
   ['verify_review.js', '审查机制'],
+  ['verify_datamodel.js', '数据模型'],
   ['verify_arch.js', '架构守卫']
 ];
 

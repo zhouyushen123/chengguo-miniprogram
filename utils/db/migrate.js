@@ -34,6 +34,33 @@ function coreNextId(list) {
   return max + 1;
 }
 
+// 学科种子（v9）：内置 7 条按 gid 合并——已存在的保留原 id 与改名，缺的补上。
+// 幂等：连跑两次不会出现第二套"数学"；机构删过内置学科也会被补回来（课程可能还挂着它）。
+function ensureSubjects(list, orgId, stamp) {
+  const arr = Array.isArray(list) ? list : [];
+  let max = 0;
+  arr.forEach(x => { if (x && x.id > max) max = x.id; });
+  schema.SUBJECT_SEEDS.forEach((s, i) => {
+    if (arr.some(x => x && !x.removed && x.gid === s.gid)) return;
+    const want = i + 1;
+    const id = arr.some(x => x && x.id === want) ? (max += 1) : want;
+    if (id > max) max = id;
+    arr.push(schema.normalizeSubject({ id, gid: s.gid, name: s.name, kind: s.kind, sort: s.sort }, orgId, stamp));
+  });
+  return arr;
+}
+
+// 老课程补学科（v9）：只填 0 的行，按课程名猜一次；猜不中保持 0。
+// 不覆盖已有值——机构手工指定的学科不该被一次升级改掉。
+function ensureCourseSubjects(courses, subjects, stamp) {
+  (courses || []).forEach(c => {
+    if (!c || c.subjectId) return;
+    const sid = schema.guessSubjectId(c.name, subjects);
+    if (sid) { c.subjectId = sid; c.updatedAt = stamp; }
+  });
+  return courses;
+}
+
 // 全新安装的骨架。
 // opts.sample === false：不带「书法班/素描班/楷书/素描」这些示例内容。
 //   真实新用户第一次进来看到两个自己没建过的班，只会以为是别人的数据或系统坏了；
@@ -56,6 +83,10 @@ function buildFresh(stamp, opts) {
     schema.normalizeCourse({ id: 1, name: '楷书', clsId: 1 }, ORG, stamp),
     schema.normalizeCourse({ id: 2, name: '素描', clsId: 2 }, ORG, stamp)
   ] : [];
+  // v9：学科种子 + 课程归类；知识点空表先建好（阶段二才有数据）
+  const subjects = ensureSubjects([], ORG, stamp);
+  ensureCourseSubjects(courses, subjects, stamp);
+  const knowledgePoints = [];
   const users = [
     schema.normalizeUser({ id: 't1', name: '', role: 'owner' }, ORG, stamp)
   ];
@@ -78,7 +109,9 @@ function buildFresh(stamp, opts) {
       version: schema.VERSION, orgId: ORG, orgName: '我的机构',
       teacher: '', me: 't1', createdAt: stamp, updatedAt: stamp
     },
-    orgs, members, terms, classes: cls, courses, students: [], enrollments: [], records: [], users, templates
+    orgs, members, terms, classes: cls, courses, subjects,
+    knowledge_points: knowledgePoints,
+    students: [], enrollments: [], records: [], users, templates
   };
 }
 
@@ -136,6 +169,12 @@ function upgrade(loaded, stamp) {
   const records = (loaded.records || []).map(r => schema.normalizeRecord(r, orgId, stamp));
   schema.assignRecordSessions(classes, records);
 
+  // v9：补学科种子、课程归类、知识点空表（老库没有这三样，行为不变）
+  const subjects = ensureSubjects((loaded.subjects || []).map(s => schema.normalizeSubject(s, orgId, stamp)), orgId, stamp);
+  const courses = (loaded.courses || []).map(c => schema.normalizeCourse(c, orgId, stamp));
+  ensureCourseSubjects(courses, subjects, stamp);
+  const knowledgePoints = (loaded.knowledge_points || []).map(k => schema.normalizeKnowledgePoint(k, orgId, stamp));
+
   return {
     meta: Object.assign({}, meta, {
       version: schema.VERSION,
@@ -146,7 +185,8 @@ function upgrade(loaded, stamp) {
     orgs, members,
     terms,
     classes,
-    courses: (loaded.courses || []).map(c => schema.normalizeCourse(c, orgId, stamp)),
+    courses,
+    subjects, knowledge_points: knowledgePoints,
     students: schema.assignStudentNos((loaded.students || []).map(s => schema.normalizeStudent(s, orgId, stamp))),
     enrollments: (loaded.enrollments || []).map(e => schema.normalizeEnrollment(e, orgId, stamp)),
     records,
@@ -257,6 +297,10 @@ function build(loaded) {
   // v7：老记录按「同班同一天 = 同一课」补算课次号
   schema.assignRecordSessions(classes, records);
 
+  // v9：学科种子 + 课程归类 + 知识点空表
+  const subjects = ensureSubjects([], ORG, stamp);
+  ensureCourseSubjects(courses, subjects, stamp);
+
   return {
     meta: {
       version: schema.VERSION, orgId: ORG, orgName: '我的机构',
@@ -266,9 +310,11 @@ function build(loaded) {
       migratedFrom: 'v2'
     },
     orgs, members,
-    terms, classes, courses, students: schema.assignStudentNos(students), enrollments: [], records, users,
+    terms, classes, courses, subjects,
+    knowledge_points: [],
+    students: schema.assignStudentNos(students), enrollments: [], records, users,
     templates: buildTemplates(legacy.tpls, stamp)
   };
 }
 
-module.exports = { build, buildFresh, upgrade, buildTemplates, ensureBuiltinTerm };
+module.exports = { build, buildFresh, upgrade, buildTemplates, ensureBuiltinTerm, ensureSubjects, ensureCourseSubjects };

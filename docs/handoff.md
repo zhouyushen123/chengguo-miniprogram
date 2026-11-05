@@ -15,7 +15,7 @@
 | 远程 | `git@github.com:zhouyushen123/chengguo-miniprogram.git` |
 | 我的工作区 | `C:\Users\zhouy\WorkBuddy\橙果`（只放记忆，不放代码） |
 | 技术栈 | 微信原生小程序（JS）+ 云开发目录 `cloudfunctions/` |
-| 验证基线 | `npm test` = 24 个套件 / 513 项断言全绿（新增 26 项审查机制断言）；`npm run lint` 122 文件 0 提醒；`npm run size` 主包 1068.8 KB / 2 MB（52.2%）；`npm run check` = lint + size + test 一条跑完 |
+| 验证基线 | `npm test` = 25 个套件 / 539 项断言全绿（新增 20 项数据模型断言）；`npm run lint` 122 文件 0 提醒；`npm run size` 主包 1111.6 KB / 2 MB（54.3%）；`npm run check` = lint + 数据字典 + size + test 一条跑完 |
 | 提交习惯 | 沙箱常拦 `git push`（读不到 `~/.ssh`），仓库有「5 分钟自动同步」任务会以 `auto: 自动同步 时间戳` 提交并推送 |
 
 ---
@@ -318,11 +318,10 @@ tools/review.js          审查包生成（npm run review / --check）
 tools/review-rules.js    审查分级与清单规则（纯函数，tests/verify_review.js 测）
 docs/code-review-standard.md  代码审查标准 v2.0（红线/分级/清单/流程/反模式）
 docs/architecture/backend-architecture.md  后端架构方案 v1.0（现状风险/P0-P3 路线/同步 v3 规格/索引与容灾，2026-11-05，只出方案未改代码）
-docs/architecture/data-model-plan.md  数据模型与底层数据系统规划 v1.0（六域 26 表/题库预留/ID 与版本化/保留期/阶段一 5 件小事，2026-11-05，只出方案未改代码）
-docs/architecture/data-model-plan.md  数据模型与底层数据系统规划 v1.0（六域 26 表/题库预留/ID 与版本化/保留期/阶段一 5 件小事，2026-11-05，只出方案未改代码）
+docs/architecture/data-model-plan.md  数据模型与底层数据系统规划 v1.0（六域 26 表/题库预留/ID 与版本化/保留期/阶段一 5 件小事；2026-11-05，阶段一 5 项已落地 V9）
 .github/pull_request_template.md  PR 四项证据
 utils/firstrun.js        首次进入的一次性标记（自动跳向导只跳一次）
-.github/workflows/deploy.yml  verify（lint+test+size）→ upload 两段门禁
+.github/workflows/deploy.yml  verify（lint+数据字典+test+size）→ upload 两段门禁
 ```
 
 ---
@@ -334,3 +333,30 @@ utils/firstrun.js        首次进入的一次性标记（自动跳向导只跳�
 11-05 之后功能面基本齐了（记录上云 + 家长邀请码 + 电脑后台 + 多机构隔离）。下一步优先：
 1. **真机走一遍闭环**：老师批量录 → 发布 → 家长收到/看到 → 电脑后台改一条 → 手机同步到。这条链跑通比再加功能有价值。
 2. **多机构的三处收尾**：① 现在第一家老客户仍是 org1（不动）；② 邀请码/后台账号都按机构发，机构多了要考虑一个管理员管多家的场景；③ 云开发按量计费后，跨机构查询要盯开销。
+
+---
+
+## 6. 2026-11-05 阶段一数据模型落地（V9，为题库留位）
+
+用户拍板"三问"全部按建议执行：**现在做 5 件小事**、**题库先机构私有 + 预留公共结构**、**阶段一不向学校正式提交**（理由与影响见 `docs/architecture/data-model-plan.md` 第 12 节）。
+
+**代码**
+
+- `utils/db/entities.js`（新增）：12 张表的注册表——集合名 / 域 / id 类型 / 是否同步 / 写入方 / 保留期 / 索引 / 字段清单。成为**唯一集合清单来源**，core / storage / sync 改为从它派生（原来 6 处手抄，漏一处就是"本地有、云端没有"）。
+- `utils/db/subject-seeds.js`（新增）：7 条内置学科（`sub_chinese` … `sub_coding`，gid 永不变）+ 课程名→学科猜测。
+- `utils/db/schema.js`：VERSION **9**；新增 `subjects` / `knowledge_points` 的 normalize + validate；`courses.subjectId`；`records.scoreScale`（默认 100，分数按口径校验）与 `kpIds`（只留正整数）。
+- `utils/db/content.js`（新增）：学科/知识点读写接口（**无界面**）。知识点 `path` 由父节点推导、改名连带改子孙 path、有子节点或有课程引用时拒绝删除。
+- `utils/db/migrate.js`：三条迁移路径都种子化学科、老课程按名猜学科（只填空值，不覆盖机构改名）；`maintenance.normalizeAll` 加学科兜底。
+- 同步与备份：`syncv2` / `backup` / `admin`（BACKUP_COLLS、CB_COLLS）与 `tests/fixture.js` 的清单都加上两张新表。
+
+**门禁**
+
+- `npm run docs:schema` 生成 `docs/data-dictionary.md`；`npm run check` 与 CI 都加 `node tools/schema-doc.js --check`——改了字段不重新生成就红。
+- `tests/verify_datamodel.js`（20 项）：注册表字段 == `normalize()` 实际输出、三个云函数的清单不漏表、种子与猜测、V8→V9 幂等升级、满分口径、字典同步。
+- 基线：**25 个套件 / 539 项断言**；主包 **1111.6 KB / 2 MB（54.3%）**。
+
+**用户可见变化：无。**
+
+**部署提醒**：云函数清单变了，`syncv2` / `backup` / `admin` 三个都要重新部署，否则两张新表不同步、不进备份（`backup` 还需上传触发器 + 超时 60 秒）。
+
+**下一步（阶段二之前）**：① 后台加「学科维护」入口（目前只有接口）；② 课程编辑页加学科下拉（目前只在建课时自动猜）；③ 定谁录知识点（教研 vs 老师）。

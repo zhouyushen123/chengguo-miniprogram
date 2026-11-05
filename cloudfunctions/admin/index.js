@@ -369,7 +369,8 @@ async function exportData(orgId, data) {
   return { ok: true, name: '课堂记录-' + stamp() + '.csv', csv };
 }
 /* ============================ 核心资产：体检与完整备份 ============================ */
-const BACKUP_COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'students', 'enrollments', 'records', 'templates'];
+const BACKUP_COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'subjects', 'knowledge_points',
+  'students', 'enrollments', 'records', 'templates'];
 const BACKUP_CAP = 5000;
 
 // 完整备份：一份能直接归档/迁移的 JSON（CSV 只适合看，不适合恢复）
@@ -469,7 +470,8 @@ function stamp() {
 /* ============================ 云端每日备份（backup 云函数） ============================ */
 // 后台是"服务端调服务端"，没有 openid；backup 云函数对内部调用信任传入的 orgId，
 // 而已登录的会话里本来就带 orgId，所以这里不存在"用户随便指一个机构"的口子。
-const CB_COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'students', 'enrollments', 'records', 'templates'];
+const CB_COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'subjects', 'knowledge_points',
+  'students', 'enrollments', 'records', 'templates'];
 
 function cbCall(orgId, action, extra) {
   const data = Object.assign({ action, orgId }, extra || {});

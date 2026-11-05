@@ -2,6 +2,7 @@ const db = require('./utils/db');
 const api = require('./utils/api');
 const sync = require('./utils/sync');
 const theme = require('./utils/theme');
+const dailybackup = require('./utils/dailybackup');
 
 App({
   onLaunch() {
@@ -42,6 +43,14 @@ App({
     try {
       Promise.resolve(sync.kick()).then(x => { this.globalData.syncLast = x || null; });
     } catch (e) { /* 同步不可用不影响使用 */ }
+
+    // 每日云端备份：定时触发器要人去控制台点一次才生效，这条路径不需要任何配置——
+    // 负责人/管理员当天第一次打开小程序就静默补一次（延迟 10 秒、每天一次、不 popup）。
+    this.globalData.backupLast = null;
+    try {
+      dailybackup.maybe().then(r => { this.globalData.backupLast = r || null; })
+        .catch(() => { /* 备份失败不影响使用，下次前台再试 */ });
+    } catch (e) { /* 备份不可用不影响使用 */ }
   },
 
   // 启动异常时明确告知用户当前是只读，避免他以为"保存成功了"其实没落盘
@@ -104,5 +113,5 @@ App({
     if (this._report) this._report('error', msg);
   },
 
-  globalData: { pick: null, bootStatus: null }
+  globalData: { pick: null, bootStatus: null, syncBoot: null, syncLast: null, backupLast: null }
 });

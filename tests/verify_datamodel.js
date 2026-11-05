@@ -352,4 +352,14 @@ ok('写后自动上云：同步引擎订阅了脏标记（不订阅 = 数据永�
   assert.ok(src.indexOf('retryLater') > -1, '推送失败要有退避重试');
 });
 
+ok('每日云端备份不靠控制台配置：小程序前台自己补，只对负责人/管理员跑', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const app = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
+  const src = fs.readFileSync(path.join(__dirname, '../utils/dailybackup.js'), 'utf8');
+  assert.ok(app.indexOf('dailybackup.maybe()') > -1, '前台必须真的去调，否则备份永远不跑');
+  assert.ok(src.indexOf('isAdmin') > -1, '普通老师不该白跑一趟 60 秒云函数');
+  assert.ok(src.indexOf("status === 'ok'") > -1, '只有完整备完才记日期，被 60 秒掐断的要留着重试');
+});
+
 console.log('\n全部 ' + pass + ' 项数据模型断言通过');

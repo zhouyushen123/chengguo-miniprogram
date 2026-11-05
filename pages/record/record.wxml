@@ -37,6 +37,14 @@
     </picker>
   </view>
 
+  <!-- 归入课次（补录用）：默认本次；班上还没结清过（只有第1课）时不显示 -->
+  <view class="card" wx:if="{{sessMax > 1}}">
+    <view class="sec"><view class="label">归入课次<text class="mihint">（默认本次；补录上一次课的内容时改选）</text></view></view>
+    <picker mode="selector" range="{{sessOpts}}" value="{{sessIdx}}" bindchange="onSess">
+      <view class="pickerbox">{{sessOpts[sessIdx]}}<image class="xico" src="{{icoChevD}}" mode="aspectFit" /></view>
+    </picker>
+  </view>
+
   <view class="card">
     <view class="sec"><view class="label">课堂成果<text class="mihint">（照片 · 视频 · 语音）</text></view></view>
     <view class="mediarow">

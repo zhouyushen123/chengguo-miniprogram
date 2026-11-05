@@ -47,7 +47,7 @@
       <text class="lcourse">{{rec.course}}</text>
       <text class="pill" style="background:{{rec.sent?'var(--sent)':'var(--warn)'}}">{{rec.sent?'已发布':'待发布'}}</text>
       <view class="dhr">
-        <text class="mi">{{rec.clsName}} · {{rec.date}}</text>
+        <text class="mi">{{rec.clsName}} · {{rec.date}}{{rec.sess ? ' · 第' + rec.sess + '课' : ''}}</text>
         <text wx:if="{{rec.tag}}" class="badge {{rec.tcls}}">{{rec.tag}}</text>
       </view>
     </view>
@@ -80,7 +80,7 @@
         <text class="lcourse">{{latest.course}}</text>
         <text class="pill" style="background:{{latest.sent?'var(--sent)':'var(--warn)'}}">{{latest.sent?'已发布':'待发布'}}</text>
         <view class="dhr">
-          <text class="mi">{{latest.clsName}} · {{latest.date}}</text>
+          <text class="mi">{{latest.clsName}} · {{latest.date}}{{latest.sess ? ' · 第' + latest.sess + '课' : ''}}</text>
           <text wx:if="{{latest.tag}}" class="badge {{latest.tcls}}">{{latest.tag}}</text>
         </view>
       </view>
@@ -112,7 +112,7 @@
         <view class="hist" hover-class="btn-hover" bindtap="toggleExpand" data-rid="{{item.id}}">
           <view class="hleft">
             <view class="ht1"><b>{{item.course}}</b><text wx:if="{{item.tag}}" class="badge {{item.tcls}}">{{item.tag}}</text></view>
-            <view class="mi">{{item.clsName}} · {{item.date}} · {{item.score}}分{{item.snip?' · '+item.snip:''}}</view>
+            <view class="mi">{{item.clsName}} · {{item.date}}{{item.sess ? ' · 第' + item.sess + '课' : ''}} · {{item.score}}分{{item.snip?' · '+item.snip:''}}</view>
           </view>
           <view class="hright">
             <view wx:if="{{item.pcnt}}" class="hcam"><image class="camico" src="{{icoCam}}" mode="aspectFit" />{{item.pcnt}}</view>

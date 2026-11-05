@@ -67,7 +67,7 @@ Page({
       const first = (x.noteLines && x.noteLines[0]) || null;
       let snip = first ? (first.text || first.label) : '';
       if (snip.length > 16) snip = snip.slice(0, 16) + '…';
-      return x && Object.assign(x, { clsName: db.classes.name(r.cid), tcls: tagCls(r.tag), pcnt: (r.photos || []).length, snip });
+      return x && Object.assign(x, { clsName: db.classes.name(r.cid), tcls: tagCls(r.tag), pcnt: (r.photos || []).length, snip, sess: r.session || 0 });
     };
 
     // 指定某条记录（从记录列表点入）

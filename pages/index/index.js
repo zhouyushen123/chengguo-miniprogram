@@ -54,10 +54,18 @@ Page({
 
     const vis = db.classes.list();
     const stu = db.students.list();
-    const t = db.today();
     const recs = db.records.list();
     const recOf = s => recs.filter(r => r.sid === s.id);
-    const notToday = s => !recOf(s).some(r => r.date === t);
+    // 「未录」按课次算而不是自然日：学生在任一个自己所在班的【当前课次】里还没有记录，就算未录。
+    // 同一节课分两天录，第二天不再误报；结清过的课不再翻旧账。
+    const curSessionOf = cid => {
+      const c = vis.find(x => x.id === cid);
+      return c ? Math.max(1, c.session || 1) : 0;
+    };
+    const notToday = s => (s.clsIds || []).some(cid => {
+      const sess = curSessionOf(cid);
+      return sess && !recOf(s).some(r => r.cid === cid && r.session === sess);
+    });
 
     const myClasses = vis.map(c => {
       const cs = db.students.of(c.id);

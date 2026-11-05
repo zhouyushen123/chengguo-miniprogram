@@ -38,6 +38,7 @@ Page({
     stuQ: '', stuYears: [{ y: 0, name: '全部' }], stuYearIdx: 0, stuGender: '', stuCount: 0,
     // 班级页签：卡片展开看本班学生（clsExpand=展开的班级 id，0=全部收起）
     clsExpand: 0, clsStuQ: '', clsStus: [], clsFormOpen: false,
+    courseFormOpen: false,   // 课程页签：添加表单默认收起，底部按钮唤起（与班级/学生一致）
     icoChev: icons.chevron,
     // 学生表单：入学年份选择器（未填 + 近 13 年，倒序）
     enrollYearOpts: [{ y: 0, name: '未填' }], stuEnrollYearIdx: 0,
@@ -323,8 +324,9 @@ Page({
     if (!c) { wx.showToast({ title: '请先添加班级', icon: 'none' }); return; }
     const r = db.courses.create({ name: n, clsId: c.id });
     if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
-    this.setData({ newCourse: '' }); this.refresh();
+    this.setData({ newCourse: '', courseFormOpen: false }); this.refresh();
   },
+  openCourseForm() { this.setData({ courseFormOpen: true }); },
   delCourse(e) {
     const id = +e.currentTarget.dataset.id;
     wx.showModal({ title: '确定删除该课程？', success: r => {

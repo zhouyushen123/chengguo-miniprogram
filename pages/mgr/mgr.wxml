@@ -89,9 +89,9 @@
   <view class="btn" hover-class="btn-hover" bindtap="openClsForm">＋ 添加班级</view>
 </view>
 
-<!-- ============ 课程 ============ -->
+<!-- ============ 课程：中间列表，添加表单收进底部按钮（与班级/学生一致） ============ -->
 <view wx:if="{{tabK==='course'}}" class="wrap">
-  <view class="card">
+  <view wx:if="{{courseFormOpen}}" class="card">
     <view class="sec"><view class="label">添加课程</view></view>
     <picker mode="selector" range="{{classes}}" range-key="name" value="{{courseClsIdx}}" bindchange="onCourseCls">
       <view class="pickerbox">所属班级：{{classes[courseClsIdx].name || '请先添加班级'}} ▾</view>
@@ -104,10 +104,14 @@
       <view class="btn addbtn" hover-class="btn-hover" bindtap="addCourse">添加</view>
     </view>
   </view>
+  <view wx:if="{{!courses.length && !courseFormOpen}}" class="empty slim">还没有课程，点下面「添加课程」建一个</view>
   <view class="card item" wx:for="{{courses}}" wx:key="id">
     <view><b>{{item.name}}</b><view class="mi">归属：{{item.cls}}</view></view>
     <view class="mi del" catchtap="delCourse" data-id="{{item.id}}">删除</view>
   </view>
+</view>
+<view wx:if="{{tabK==='course'}}" class="clsfab">
+  <view class="btn" hover-class="btn-hover" bindtap="openCourseForm">＋ 添加课程</view>
 </view>
 
 <!-- ============ 学生 ============ -->

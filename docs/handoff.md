@@ -15,7 +15,7 @@
 | 远程 | `git@github.com:zhouyushen123/chengguo-miniprogram.git` |
 | 我的工作区 | `C:\Users\zhouy\WorkBuddy\橙果`（只放记忆，不放代码） |
 | 技术栈 | 微信原生小程序（JS）+ 云开发目录 `cloudfunctions/` |
-| 验证基线 | `npm test` = 25 个套件 / 539 项断言全绿（新增 20 项数据模型断言）；`npm run lint` 122 文件 0 提醒；`npm run size` 主包 1111.6 KB / 2 MB（54.3%）；`npm run check` = lint + 数据字典 + size + test 一条跑完 |
+| 验证基线 | `npm test` = 25 个套件 / 542 项断言全绿（数据模型 23 项）；`npm run lint` 122 文件 0 提醒；`npm run size` 主包 1111.6 KB / 2 MB（54.3%）；`npm run check` = lint + 数据字典 + size + test 一条跑完 |
 | 提交习惯 | 沙箱常拦 `git push`（读不到 `~/.ssh`），仓库有「5 分钟自动同步」任务会以 `auto: 自动同步 时间戳` 提交并推送 |
 
 ---
@@ -353,7 +353,7 @@ utils/firstrun.js        首次进入的一次性标记（自动跳向导只跳�
 
 - `npm run docs:schema` 生成 `docs/data-dictionary.md`；`npm run check` 与 CI 都加 `node tools/schema-doc.js --check`——改了字段不重新生成就红。
 - `tests/verify_datamodel.js`（20 项）：注册表字段 == `normalize()` 实际输出、三个云函数的清单不漏表、种子与猜测、V8→V9 幂等升级、满分口径、字典同步。
-- 基线：**25 个套件 / 539 项断言**；主包 **1111.6 KB / 2 MB（54.3%）**。
+- 基线：**25 个套件 / 542 项断言**；主包 1111.6 KB / 2 MB（54.3%）。
 
 **用户可见变化：无。**
 
@@ -364,3 +364,26 @@ utils/firstrun.js        首次进入的一次性标记（自动跳向导只跳�
 > 2026-11-05 当天需要在图形界面里做的操作（部署/备份演练/真机验收/上传体验版/GitHub 保护）：见 `docs/ops/manual-checklist-2026-11-05.md`。
 
 > 2026-11-05 当天需要在图形界面里做的操作（部署/备份演练/真机验收/上传体验版/GitHub 保护）：见 `docs/ops/manual-checklist-2026-11-05.md`。
+
+---
+
+## 7. 2026-11-05 晚：学科种子"只在本机、云端 0 条"的根因与修复
+
+**现场**：V9 部署后，本机 `chengguo_v3_subjects` 有 7 条，云数据库 `subjects` 0 条，重启也不变。
+
+**根因（两个真 bug）**
+
+1. **维护期写入绕过了同步写钩子**。启动维护（`normalizeAll` / `ensureSubjects` / `ensureBuiltinTerm` / `repairRefs` / `repairMedia`）都是就地改数组，随后走 `core.flushAll()` 落盘 —— 而 `flushAll` 是"落盘但不算改动"的快路径，**不触发写钩子**，集合名进不了 `meta.sync.dirty`，推送永远不会带上这几张表。学科种子就是这么"消失"的：本机看得见、云端一条没有，而重启时条数没再变化，谁也不会再想起它们还没上云。
+2. **`db.sync.rejects` 没在门面登记**。`utils/sync.js` 的 `pushNow` 成功后的回调读 `db.sync.rejects().length`，门面 `utils/db/index.js` 只登记了 `dirtyCols/snapshot/...`，漏了 `rejects/addRejects/clearRejects` → **每次推送成功都抛异常** → 脏集合永远清不掉 → 每次启动把整个机构重推一遍（数据没丢，但流量与耗时白烧）。
+
+**修复**
+
+- `maintenance.js` 新增 `markRegrown(beforeCount)`：迁移前记条数，维护后按差异对变化的集合调 `core.persist()`（走钩子 → 标脏）。`each()` 里字段被规范化时也 `persist`（条数不变，`markRegrown` 看不见）。`ensureBuiltinTerm` / `ensureSubjects` / 机构兜底 / `repairRefs` / `repairMedia` 改动后各自 `persist`。
+- `meta.subjStamp`：给"已经升到 v9、种子只在本地"的设备补一次脏标记（这次修复之前升级的那批），打过戳就不再重复。
+- `migrate.ensureBuiltinTerm` 的 `changed` 改成只在真新建学期/补 `termId` 时为 true（原来写成 `!!terms.find(x => x === t)`，内置学期存在时**恒为 true**，每次启动都白落一遍盘；现在维护改动会标脏，恒真就是天天重推整机构）。
+- `utils/db/index.js` 门面补 `rejects` / `addRejects` / `clearRejects`。
+- `tests/verify_datamodel.js` 新增 G 组 3 项：v9 设备丢种子→标脏、v8 升级→新表标脏、推完清脏后第二次启动不再标脏。
+
+**基线**：25 套件 / **542 项**断言全绿。
+
+**部署**：本轮只改小程序端，云函数不用重传（但上一轮的 `syncv2` / `backup` / `admin` 仍需部署 + backup 触发器/超时 60s）。

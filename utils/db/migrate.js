@@ -15,13 +15,17 @@ const ORG = schema.DEFAULT_ORG;
 // 同一机构只允许一个 builtIn（重复调用直接复用）。
 function ensureBuiltinTerm(terms, classes, orgId, stamp) {
   let t = terms.find(x => x.builtIn && !x.removed);
+  // changed 只表示"真改了东西"。以前这里写成 `!!terms.find(x => x === t)`，
+  // 内置学期存在时恒为 true —— 于是每次启动都判"有改动"，把全部集合白落一遍盘；
+  // 现在维护期改动会标脏，恒真是会天天把整机构重新推上云的。
+  let changed = false;
   if (!t) {
     t = schema.normalizeTerm({
       id: coreNextId(terms), name: '长期班', status: 'active', builtIn: true
     }, orgId, stamp);
     terms.push(t);
+    changed = true;
   }
-  let changed = !!terms.find(x => x === t);
   classes.forEach(c => {
     if (!c.termId) { c.termId = t.id; c.updatedAt = stamp; changed = true; }
   });

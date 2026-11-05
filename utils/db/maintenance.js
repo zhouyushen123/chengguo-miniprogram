@@ -53,6 +53,12 @@ function init() {
       storage.saveSnapshot('升级前 v' + loaded.meta.version, loaded);
     }
 
+    // 迁移/维护期"新增的行"（学科种子、内置学期、补出来的记录）走的是 flushAll 快路径，
+    // 那条路径不过写钩子 —— 不标脏就永远推不上云端，表现是"本机 7 条、云端 0 条"。
+    // 记下迁移前的条数，维护结束后按差异补标脏。
+    const beforeCount = {};
+    storage.COLLECTIONS.forEach(n => { beforeCount[n] = Array.isArray(loaded[n]) ? loaded[n].length : 0; });
+
     const data = (loaded.meta && loaded.meta.version === schema.VERSION)
       ? loaded
       : migrate.build(loaded);
@@ -70,8 +76,16 @@ function init() {
     if (hadDemo || purged) ensureDemo();
     const repaired = repairRefs();
     const mediaFixed = repairMedia();
+    // 一次性补标：学科/知识点是 v9 新加的表。升级到 v9 那次启动写种子会被 markRegrown 抓到，
+    // 但"已经升到 v9、种子只在本地、云端一条没有"的设备（本修复之前升级的）条数不会再变，
+    // 只能靠这个戳补推一次 —— 否则它永远停在"本机有、云端没有"。
+    if (core.realMeta().subjStamp !== schema.VERSION) {
+      core.updateRealMeta({ subjStamp: schema.VERSION });
+      core.persist('subjects');
+    }
+    const regrew = markRegrown(beforeCount);   // 迁移新增的行为什么必须标脏，见 markRegrown
     resolveMode(purged);                 // 该进演示还是回真实机构
-    if (changed || purged || repaired || mediaFixed) core.flushAll();
+    if (changed || purged || repaired || mediaFixed || regrew) core.flushAll();
 
     if (snapRestored) {
       // 恢复出来的数据必须立刻落盘，否则磁盘上还是那份缺了片的旧数据，
@@ -148,6 +162,20 @@ function restoreSnapshot(id) {
   return { ok: true, at: snap.at, tag: snap.tag || '' };
 }
 
+// 迁移/维护期"新增的行"必须过一遍 core.persist：persist 会调写钩子，把集合名记进
+// meta.sync.dirty，下一次同步才会推上云端。core.flushAll 是"落盘但不算改动"的快路径，
+// 它不碰写钩子 —— 学科种子第一次就是从这里漏掉的：本机 7 条、云端 0 条，重启也不会好，
+// 因为重启时条数没再变化，谁也不会再想起这几行还没上云。
+function markRegrown(before) {
+  if (core.isReadOnly()) return false;
+  let grew = false;
+  storage.COLLECTIONS.forEach(n => {
+    const list = core.coll(n) || [];
+    if (list.length !== before[n]) { core.persist(n); grew = true; }
+  });
+  return grew;
+}
+
 // 把库里所有实体按当前 schema 过一遍（补默认字段、修正日期格式、丢弃未知字段）
 // full=false 时跳过昂贵的逐条比对，只做下面几件"每次都必须做"的结构性兜底
 function normalizeAll(full) {
@@ -155,10 +183,13 @@ function normalizeAll(full) {
   if (full) {
     const each = (name, fn) => {
       const list = core.coll(name);
+      let dirty = false;
       for (let i = 0; i < list.length; i++) {
         const next = fn(list[i], org(), now());
-        if (JSON.stringify(next) !== JSON.stringify(list[i])) { list[i] = next; changed = true; }
+        if (JSON.stringify(next) !== JSON.stringify(list[i])) { list[i] = next; dirty = true; }
       }
+      // 规范化改的是字段值、条数不变，markRegrown 看不见 —— 这里单独标脏
+      if (dirty) { changed = true; core.persist(name); }
     };
     each('orgs', x => schema.normalizeOrg(x, now()));
     each('members', schema.normalizeMember);
@@ -192,16 +223,17 @@ function normalizeAll(full) {
       id: org(), name: m.orgName || '我的机构',
       ownerId: (first && first.id) || '', status: 'active'
     }, now()));
+    core.persist('orgs');
     changed = true;
   }
   // 兜底：内置「长期班」不存在或班级没挂靠学期时补齐（版本刚升级/异常数据）
   const termFix = migrate.ensureBuiltinTerm(core.coll('terms'), core.coll('classes'), org(), now());
-  if (termFix.changed) changed = true;
+  if (termFix.changed) { core.persist('terms'); core.persist('classes'); changed = true; }
   // 兜底：学科种子缺失时补齐（升级路径会补，这里防"版本已是 v9 但学科被清空"的异常数据）
   const subs = core.coll('subjects');
   const before = subs.length;
   migrate.ensureSubjects(subs, org(), now());
-  if (subs.length !== before) changed = true;
+  if (subs.length !== before) { core.persist('subjects'); changed = true; }
   return changed;
 }
 
@@ -238,6 +270,7 @@ function repairRefs() {
       if (from) { r.tid = from; changed++; }
     }
   });
+  if (changed > 0) { core.persist('records'); core.persist('courses'); }
   return changed > 0;
 }
 
@@ -268,6 +301,7 @@ function repairMedia() {
       if (np !== s.photo) s.photo = np;
     }
   });
+  if (n > 0) { core.persist('records'); core.persist('students'); }
   return n > 0;
 }
 

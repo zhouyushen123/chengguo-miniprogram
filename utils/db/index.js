@@ -212,6 +212,12 @@ const db = {
     cursor: syncStore.cursor,
     setCursor: syncStore.setCursor,
     onDirty: syncStore.onDirty,
+    // 云端拒绝的改动（学号重号、微信已绑给别人…）：推送成功后要读它才能如实上报，
+    // 以前门面漏登记这三个，pushNow 一成功就抛 "db.sync.rejects is not a function"，
+    // 脏集合永远清不掉 —— 表现是每次启动都把整个机构重推一遍。
+    rejects: syncStore.rejects,
+    addRejects: syncStore.addRejects,
+    clearRejects: syncStore.clearRejects,
     // 机构号换代：只在服务端刚发号（minted）时用，别的地方调用等于把两个机构的数据搅在一起
     reorg: syncStore.reorg
   },

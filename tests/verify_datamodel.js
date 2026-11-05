@@ -215,4 +215,65 @@ ok('tools/schema-doc.js --check 通过（文档没过期）', () => {
   assert.strictEqual(r.status, 0, (r.stdout || '') + (r.stderr || '') + '\n  运行 npm run docs:schema 重新生成');
 });
 
+/* ---------- G. 启动期补出来的行必须让同步层看见 ----------
+ * 事故原型：学科种子由启动维护写入，走的是 core.flushAll（落盘但"不算改动"的快路径），
+ * 不过写钩子 → 不标脏 → 永远不推云端。现场表现为"本机 7 条、云端 0 条"，重启也不会好。
+ * 这三条断言守的就是这条缝：维护期新增/修改过的集合，必须出现在 sync.dirty 里。 */
+console.log('\n【G. 启动期补的行要能被同步层看见】');
+
+// 先给一个最小 wx 桩：media.js 在加载时就会读 wx.env，没有它整个数据层起不来
+global.wx = global.wx || { env: { USER_DATA_PATH: '' } };
+
+function bootDb(seed) {
+  const mem = {};
+  Object.keys(seed).forEach(k => { mem[k] = JSON.parse(JSON.stringify(seed[k])); });
+  global.wx = {
+    getStorageSync: k => (k in mem ? JSON.parse(JSON.stringify(mem[k])) : ''),
+    setStorageSync: (k, v) => { mem[k] = JSON.parse(JSON.stringify(v)); },
+    removeStorageSync: k => { delete mem[k]; },
+    getStorageInfoSync: () => ({ keys: Object.keys(mem), currentSize: 1, limitSize: 10240 })
+  };
+  Object.keys(require.cache).forEach(k => { if (k.indexOf('utils') > -1) delete require.cache[k]; });
+  const db = require('../utils/db');
+  db.init();
+  return { db, mem };
+}
+
+const fixture = require('./fixture');
+
+ok('v9 设备丢了学科种子：启动补齐后必须标脏（否则只在本机）', () => {
+  const seed = fixture.richSeed();
+  seed['chengguo_v3_subjects'] = [];
+  delete seed.chengguo_v3_meta.subjStamp;
+  const { db } = bootDb(seed);
+  assert.strictEqual(db.subjects.list().length, 7, '种子应被补齐');
+  assert.ok(db.sync.dirtyCols().indexOf('subjects') > -1, 'subjects 必须进 dirty，否则推不上云端');
+});
+
+ok('v8 老库升级到 v9：新表也要进 dirty（不是只写本地）', () => {
+  const seed = fixture.richSeed();
+  seed['chengguo_v3_meta'].version = 8;
+  delete seed['chengguo_v3_meta'].subjStamp;
+  delete seed['chengguo_v3_subjects'];
+  delete seed['chengguo_v3_knowledge_points'];
+  seed['chengguo_v3_courses'].forEach(c => { delete c.subjectId; });
+  const { db } = bootDb(seed);
+  assert.strictEqual(db.subjects.list().length, 7);
+  const dirty = db.sync.dirtyCols();
+  assert.ok(dirty.indexOf('subjects') > -1, 'subjects 必须进 dirty');
+  assert.ok(dirty.indexOf('courses') > -1, '补了 subjectId 的课程也要进 dirty');
+});
+
+ok('启动维护后不重复标脏：推完清脏，第二次启动不再标', () => {
+  const seed = fixture.richSeed();
+  seed['chengguo_v3_subjects'] = [];
+  delete seed.chengguo_v3_meta.subjStamp;
+  const first = bootDb(seed);
+  const names = first.db.sync.dirtyCols();
+  assert.ok(names.indexOf('subjects') > -1);
+  first.db.sync.clearDirty(names);          // 等价于"这一轮推成功了"
+  const second = bootDb(first.mem);
+  assert.deepStrictEqual(second.db.sync.dirtyCols(), [], '种子已齐全且已打戳，第二次启动不该再标脏');
+});
+
 console.log('\n全部 ' + pass + ' 项数据模型断言通过');

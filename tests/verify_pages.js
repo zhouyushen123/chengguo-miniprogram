@@ -545,15 +545,15 @@ ok('统计层两行三列、六维数据齐备（上行学生/家长/老师，�
   assert.ok(flat.every(x => x.k !== 'term' || x.tab === null), '学期不走管理页页签');
   assert.ok(!mine.data.entries.some(e => e.k === 'mgr' || e.k === 'member'));
 });
-ok('统计点按跳转到管理页对应页签，学期进独立学期管理页', () => {
+ok('统计点按跳转到管理页对应页签（负责人管理页多「机构」页签在最前，tab 统一 +1），学期进独立学期管理页', () => {
   const navs = [];
   const old = global.wx.navigateTo;
   global.wx.navigateTo = o => { navs.push(o.url); };
-  mine.tapStat({ currentTarget: { dataset: { tab: 2 } } });
-  mine.tapStat({ currentTarget: { dataset: { tab: 3 } } });
+  mine.tapStat({ currentTarget: { dataset: { tab: 2 } } });   // 学生：负责人页签 0机构1班级2课程3学生4人员 → 3
+  mine.tapStat({ currentTarget: { dataset: { tab: 3 } } });   // 家长/老师 → 人员页签 4
   mine.tapStat({ currentTarget: { dataset: { tab: null, k: 'term' } } });
   global.wx.navigateTo = old;
-  assert.deepStrictEqual(navs, ['/pages/mgr/mgr?tab=2', '/pages/mgr/mgr?tab=3', '/pages/terms/terms']);
+  assert.deepStrictEqual(navs, ['/pages/mgr/mgr?tab=3', '/pages/mgr/mgr?tab=4', '/pages/terms/terms']);
 });
 
 ok('全站图标引用与 assets/icons 一一对应', () => {

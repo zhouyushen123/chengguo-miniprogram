@@ -9,8 +9,53 @@
   <text class="idback" bindtap="backHome">切回我自己</text>
 </view>
 
+<!-- ============ 机构（负责人/管理员可见，页签在最前） ============ -->
+<view wx:if="{{tabK==='org'}}" class="wrap">
+  <view class="card">
+    <view class="sec"><view class="label">机构名称<text class="req">*</text></view></view>
+    <view class="vin">
+      <input class="input vin-in" placeholder="如：橙果书法学堂" placeholder-class="ph" value="{{orgForm.name}}" bindinput="onOrgName" maxlength="30" />
+      <image class="vmic {{micKey==='orgForm.name'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="orgForm.name" />
+    </view>
+
+    <view class="sec"><view class="label">机构类型</view></view>
+    <view class="chips">
+      <view wx:for="{{orgTypes}}" wx:key="*this" class="chip {{orgForm.type===item?'on':''}}" bindtap="pickOrgType" data-v="{{item}}">{{item}}</view>
+    </view>
+
+    <view class="sec"><view class="label">所在地区</view></view>
+    <picker mode="region" value="{{orgForm.region}}" bindchange="onOrgRegion">
+      <view class="pickerbox"><text class="{{orgForm.regionText?'':'ph'}}">{{orgForm.regionText || '选择省 / 市 / 区'}}</text><text class="pkar">▾</text></view>
+    </picker>
+
+    <view class="sec"><view class="label">联系人</view></view>
+    <view class="vin">
+      <input class="input vin-in" placeholder="机构负责人姓名" placeholder-class="ph" value="{{orgForm.contact}}" bindinput="onOrgContact" maxlength="20" />
+      <image class="vmic {{micKey==='orgForm.contact'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="orgForm.contact" />
+    </view>
+
+    <view class="sec"><view class="label">手机号</view></view>
+    <input class="input" type="number" placeholder="接收开通通知的手机号" placeholder-class="ph" value="{{orgForm.phone}}" bindinput="onOrgPhone" maxlength="13" />
+    <view wx:if="{{orgPhoneBad}}" class="field-err">手机号格式不对，请检查一下</view>
+
+    <view class="sec"><view class="label">学员规模</view></view>
+    <view class="chips">
+      <view wx:for="{{orgScales}}" wx:key="*this" class="chip {{orgForm.scale===item?'on':''}}" bindtap="pickOrgScale" data-v="{{item}}">{{item}}</view>
+    </view>
+
+    <view class="sec"><view class="label">课程方向（可多选）</view></view>
+    <view class="chips">
+      <view wx:for="{{orgCourseChips}}" wx:key="name" class="chip {{item.on?'on':''}}" bindtap="toggleOrgCourse" data-v="{{item.name}}">{{item.name}}</view>
+    </view>
+
+    <view class="mi" style="margin-top:16rpx">这些信息来自开通引导里填的资料，改完点下面按钮保存；机构名称会同步到首页与记录页的展示。</view>
+  </view>
+
+  <view class="btn" hover-class="btn-hover" bindtap="saveOrgFull">保存机构资料</view>
+</view>
+
 <!-- ============ 班级 ============ -->
-<view wx:if="{{tab===0}}" class="wrap clswrap">
+<view wx:if="{{tabK==='cls'}}" class="wrap clswrap">
   <view class="card clsitem" wx:for="{{classes}}" wx:key="id">
     <view class="clsrow">
       <view class="clshd" bindtap="onClsTap" data-id="{{item.id}}">
@@ -40,12 +85,12 @@
   </view>
 </view>
 <!-- 添加班级：固定钉在页面底部，点开弹层填表单 -->
-<view wx:if="{{tab===0}}" class="clsfab">
+<view wx:if="{{tabK==='cls'}}" class="clsfab">
   <view class="btn" hover-class="btn-hover" bindtap="openClsForm">＋ 添加班级</view>
 </view>
 
 <!-- ============ 课程 ============ -->
-<view wx:if="{{tab===1}}" class="wrap">
+<view wx:if="{{tabK==='course'}}" class="wrap">
   <view class="card">
     <view class="sec"><view class="label">添加课程</view></view>
     <picker mode="selector" range="{{classes}}" range-key="name" value="{{courseClsIdx}}" bindchange="onCourseCls">
@@ -66,7 +111,7 @@
 </view>
 
 <!-- ============ 学生 ============ -->
-<view wx:if="{{tab===2}}" class="wrap stuwrap">
+<view wx:if="{{tabK==='stu'}}" class="wrap stuwrap">
   <!-- 筛选区：吸顶钉住，列表从其下方滚过；整块收进白色卡片（与页签、列表卡片同一套视觉）。
        行内顺序：入学 → 男/女 → 搜索（含麦克风） -->
   <view class="stufilter">
@@ -103,7 +148,7 @@
   <view wx:if="{{!students.length}}" class="card empty">没有符合条件的学生，试试放宽筛选</view>
 </view>
 <!-- 学生操作：批量导入 + 添加学生，固定钉在页面底部 -->
-<view wx:if="{{tab===2}}" class="stufab">
+<view wx:if="{{tabK==='stu'}}" class="stufab">
   <view class="stufab2">
     <view class="btn ghost" hover-class="btn-hover" bindtap="goImport">批量导入</view>
     <view class="btn" hover-class="btn-hover" bindtap="addStudent">＋ 添加学生</view>
@@ -111,19 +156,7 @@
 </view>
 
 <!-- ============ 成员管理（负责人/管理员可见） ============ -->
-<view wx:if="{{tab===3 && isManager}}" class="wrap">
-  <view class="card">
-    <view class="sec"><view class="label">机构名称</view></view>
-    <view class="addrow">
-      <view class="vin" style="flex:1;min-width:0">
-        <input class="input vin-in" style="margin-bottom:0" placeholder="机构名称" value="{{orgName}}" bindinput="onOrgName" />
-        <image class="vmic {{micKey==='orgName'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="orgName" />
-      </view>
-      <view class="btn addbtn" hover-class="btn-hover" bindtap="saveOrg">保存</view>
-    </view>
-    <view class="mi" style="margin-top:12rpx">当前身份：{{myRoleLabel}}。同一机构内的数据互相隔离，不同机构之间完全不可见。</view>
-  </view>
-
+<view wx:if="{{tabK==='member' && isManager}}" class="wrap">
   <view class="card">
     <view class="row2">
       <view class="btn ghost" hover-class="btn-hover" bindtap="addUserTeacher">＋ 加老师</view>

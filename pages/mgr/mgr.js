@@ -4,6 +4,12 @@ const media = require('../../utils/media');
 const theme = require('../../utils/theme');
 const voice = require('../../utils/voice');
 const tel = require('../../utils/phone');
+const applyStore = require('../../utils/apply');
+
+// 机构资料选项：与入驻申请页（pages/apply）同一套口径，避免两处填的不一样
+const ORG_TYPES = ['培训机构', '学校', '幼儿园', '个人工作室'];
+const ORG_SCALES = ['50 人以下', '50–200 人', '200–500 人', '500 人以上'];
+const ORG_COURSES = ['书法', '美术', '素描', '钢琴', '舞蹈', '声乐', '编程', '托育'];
 
 // 角色选项目：负责人不在新建时出现（一个机构只能有一个，靠「移交」转移）
 const ROLE_OPTS = [
@@ -14,8 +20,12 @@ const ROLE_OPTS = [
 
 Page({
   data: {
-    tab: 0, tabs: ['班级', '课程', '学生', '人员'],
+    // tab 按名字判断（tabK）：负责人多一个「机构」页签插在最前面，索引不再可靠
+    tab: 0, tabs: ['班级', '课程', '学生', '人员'], tabK: 'cls',
     orgName: '', isManager: false, myRole: '', myRoleLabel: '',
+    // 机构资料表单（负责人专用）：预填开通引导/入驻申请里填过的内容
+    orgForm: { name: '', type: ORG_TYPES[0], region: [], regionText: '', contact: '', phone: '', scale: ORG_SCALES[0], courses: [] },
+    orgTypes: ORG_TYPES, orgScales: ORG_SCALES, orgCourseChips: [], orgPhoneBad: false,
     classes: [], courses: [], students: [], members: [],
     newCls: '', newCourse: '', courseClsIdx: 0,
     // 新建班级表单：学期 / 模式 / 主讲
@@ -38,13 +48,21 @@ Page({
   },
   // 从个人中心带参进入：?tab=3 直达人员管理
   onLoad(q) {
-    if (q && q.tab !== undefined) this.setData({ tab: Math.min(+q.tab || 0, 3) });
+    // 从别的页面带页签跳转过来（q.tab 传的是页签序号，按负责人全量页签 0-4）
+    if (q && q.tab !== undefined) { this._tabReady = true; this.setData({ tab: Math.max(0, Math.min(+q.tab || 0, 4)) }); }
   },
   onShow() { theme.apply(this); this.refresh(); },
   // 阻止弹窗内点击冒泡到遮罩层（关闭弹窗）的空处理
   noop() {},
   refresh() {
     const s = db.settings();
+    // 页签定位先算好再进 setData（避免两次调用读到不同的 data.tab）
+    const isManager = db.auth.isAdmin();
+    let tab = this.data.tab;
+    if (!this._tabReady) { this._tabReady = true; tab = isManager ? 1 : 0; }  // 默认落在「班级」，与旧版一致
+    tab = Math.max(0, Math.min(tab, isManager ? 4 : 2));
+    const tabK = (isManager ? ['org', 'cls', 'course', 'stu', 'member'] : ['cls', 'course', 'stu'])[tab] || 'cls';
+    if (tabK === 'org' && !this._orgLoaded) this.loadOrgForm();
     // 班级视图：补学期名 / 模式 / 主讲，列表直接可读
     const terms = db.terms.list();
     const staff = db.members.list()
@@ -66,8 +84,7 @@ Page({
       teacherLabel: c.teacherId ? (memberNameOf(c.teacherId) || '') : '',
       stuN: stuNOf(c.id)
     }));
-    // 只有负责人/管理员能进人员管理；老师进来看不到别人的权限范围
-    const isManager = db.auth.isAdmin();
+    // 只有负责人/管理员能进人员管理；老师进来看不到别人的权限范围（isManager 已在 refresh 开头算过）
     // 新建班级表单：学期下拉默认当前进行中学期
     const actTerms = terms.filter(t => t.status !== 'archived');
     let clsTermIdx = this.data.clsTermIdx || 0;
@@ -99,8 +116,9 @@ Page({
       myRoleLabel: s.roleLabel,
       canSwitchHome: s.canSwitchHome,
       meName: (db.users.current() || {}).name || '',
-      tabs: isManager ? ['班级', '课程', '学生', '人员'] : ['班级', '课程', '学生'],
-      tab: Math.min(this.data.tab, isManager ? 3 : 2),
+      tabs: isManager ? ['机构', '班级', '课程', '学生', '人员'] : ['班级', '课程', '学生'],
+      tab,
+      tabK,
       teacher: s.teacher,
       classes,
       clsTerms: actTerms, clsTermIdx,
@@ -187,24 +205,85 @@ Page({
     this.setData({ stuGender: this.data.stuGender === v ? '' : v });
     this._applyStuFilter();
   },
-  pickTab(e) { this.setData({ tab: +e.currentTarget.dataset.i }); },
+  pickTab(e) {
+    const i = +e.currentTarget.dataset.i;
+    const keys = this.data.isManager ? ['org', 'cls', 'course', 'stu', 'member'] : ['cls', 'course', 'stu'];
+    this.setData({ tab: i, tabK: keys[i] || 'cls' });
+    if (keys[i] === 'org' && !this._orgLoaded) this.loadOrgForm();
+  },
+
+  /* ================= 机构资料（负责人） ================= */
+  // 预填优先级：入驻申请留档 → 现机构名 / 当前用户姓名，引导页填过的直接带进来
+  loadOrgForm() {
+    const rec = applyStore.get() || {};
+    const s = db.settings();
+    const u = db.users.current() || {};
+    const f = {
+      name: rec.name || (s.orgName && s.orgName !== '我的机构' ? s.orgName : ''),
+      type: rec.type || ORG_TYPES[0],
+      region: (rec.region || []).slice(),
+      regionText: rec.regionText || '',
+      contact: rec.contact || u.name || '',
+      phone: rec.phone || '',
+      scale: rec.scale || ORG_SCALES[0],
+      courses: (rec.courses || []).slice()
+    };
+    this._orgLoaded = true;
+    this.setData({
+      orgForm: f,
+      orgPhoneBad: false,
+      orgCourseChips: ORG_COURSES.map(n => ({ name: n, on: f.courses.indexOf(n) > -1 }))
+    });
+  },
+  onOrgName(e) { this.setData({ 'orgForm.name': e.detail.value }); },
+  onOrgContact(e) { this.setData({ 'orgForm.contact': e.detail.value }); },
+  pickOrgType(e) { this.setData({ 'orgForm.type': e.currentTarget.dataset.v }); },
+  pickOrgScale(e) { this.setData({ 'orgForm.scale': e.currentTarget.dataset.v }); },
+  onOrgRegion(e) {
+    const v = e.detail.value || [];
+    this.setData({ 'orgForm.region': v, 'orgForm.regionText': v.join(' ') });
+  },
+  onOrgPhone(e) {
+    const raw = tel.digits(e.detail.value);
+    this.setData({
+      'orgForm.phone': tel.fmt(raw),
+      orgPhoneBad: raw.length > 0 && !tel.valid(raw)
+    });
+  },
+  toggleOrgCourse(e) {
+    const v = e.currentTarget.dataset.v;
+    const cur = (this.data.orgForm.courses || []).slice();
+    const i = cur.indexOf(v);
+    if (i > -1) cur.splice(i, 1); else cur.push(v);
+    this.setData({
+      'orgForm.courses': cur,
+      orgCourseChips: this.data.orgCourseChips.map(c => ({ name: c.name, on: cur.indexOf(c.name) > -1 }))
+    });
+  },
+  // 保存：机构名落 orgs 表（会同步到首页/记录页的口径），其余资料留在申请单档（utils/apply.js）
+  saveOrgFull() {
+    const f = this.data.orgForm || {};
+    const name = (f.name || '').trim();
+    if (!name) { wx.showToast({ title: '机构名称不能为空', icon: 'none' }); return; }
+    if ((f.phone || '').replace(/\D/g, '') && this.data.orgPhoneBad) {
+      wx.showToast({ title: '手机号格式不对', icon: 'none' }); return;
+    }
+    const r = db.orgs.update({ name });
+    if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
+    applyStore.save({
+      name, type: f.type, region: f.region, regionText: f.regionText,
+      contact: (f.contact || '').trim(), phone: f.phone, scale: f.scale, courses: f.courses
+    });
+    wx.showToast({ title: '已保存', icon: 'success' });
+    this.loadOrgForm();   // 从留档重读一遍，展示的就是已保存的内容
+    this.refresh();
+  },
   // 预览他人身份后回到自己：没有这个出口，切到家长就再也回不来了
   backHome() {
     const r = db.users.switchHome();
     if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
     this.refresh();
     wx.showToast({ title: '已切回 ' + (r.item.name || '本人'), icon: 'none' });
-  },
-
-  /* ================= 机构名称 ================= */
-  onOrgName(e) { this.setData({ orgName: e.detail.value }); },
-  saveOrg() {
-    const n = (this.data.orgName || '').trim();
-    if (!n) { wx.showToast({ title: '机构名称不能为空', icon: 'none' }); return; }
-    const r = db.orgs.update({ name: n });
-    if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
-    wx.showToast({ title: '已保存', icon: 'success' });
-    this.refresh();
   },
 
   /* ================= 班级 / 课程 ================= */

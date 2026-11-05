@@ -258,3 +258,5 @@ page {
 
 /* 表单字段级校验提示：跟在对应输入框下面的一行小字（红） */
 .field-err { font-size: 22rpx; color: var(--warn); margin-top: 8rpx; line-height: 1.5; }
+/* 表单必填星号（原来只在申请页有，机构资料页也用） */
+.req { color: var(--danger); margin-left: 6rpx; }

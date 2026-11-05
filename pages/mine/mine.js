@@ -199,10 +199,12 @@ Page({
       }
     });
   },
-  // 统计卡点按：学期进独立学期管理页，其余跳管理页对应页签（0班级 1课程 2学生 3人员）
+  // 统计卡点按：学期进独立学期管理页，其余跳管理页对应页签
+  // 负责人的管理页多了「机构」页签插在最前（0机构 1班级 2课程 3学生 4人员），所以 tab 统一 +1
   tapStat(e) {
     if (e.currentTarget.dataset.k === 'term') { wx.navigateTo({ url: '/pages/terms/terms' }); return; }
-    wx.navigateTo({ url: '/pages/mgr/mgr?tab=' + (+e.currentTarget.dataset.tab || 0) });
+    const tab = (+e.currentTarget.dataset.tab || 0) + (db.auth.isAdmin() ? 1 : 0);
+    wx.navigateTo({ url: '/pages/mgr/mgr?tab=' + tab });
   },
   // 演示切换：从成员列表选一个人，以他的身份看全 App
   switchIdentity() {

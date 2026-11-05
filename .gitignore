@@ -9,3 +9,6 @@ project.private.config.json
 # 本地临时目录。回归测试在 tests/、图标生成脚本在 tools/，两者都已入库；
 # 这里只放临时产物，可随时清空。
 .workbuddy/
+
+# 云函数测试桩（tests 运行时写入；保留空壳防构建缓存 ENOENT）
+.fake-wx-sdk.js

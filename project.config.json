@@ -40,6 +40,10 @@
         "type": "file"
       },
       {
+        "value": ".fake-wx-sdk.js",
+        "type": "file"
+      },
+      {
         "value": "private.key",
         "type": "file"
       },

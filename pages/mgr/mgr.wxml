@@ -26,7 +26,7 @@
     <view wx:if="{{clsExpand===item.id}}" class="clsexp">
       <view class="vin">
         <input class="clsexp-input vin-in" placeholder="筛选本班学生（姓名 / 家长）" placeholder-class="ph" value="{{clsStuQ}}" bindinput="onClsStuQ" />
-        <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="clsStuQ" />
+        <image class="vmic {{micKey==='clsStuQ'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="clsStuQ" />
       </view>
       <view class="clsmem" wx:for="{{clsStus}}" wx:for-item="s" wx:key="id" bindtap="goStudentPage" data-id="{{s.id}}">
         <ava src="{{s.photo}}" name="{{s.name}}" size="{{64}}" radius="{{18}}" />
@@ -54,7 +54,7 @@
     <view class="addrow">
       <view class="vin" style="flex:1;min-width:0">
         <input class="input vin-in" style="margin-bottom:0" placeholder="课程名称" value="{{newCourse}}" bindinput="onNewCourse" />
-        <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="newCourse" />
+        <image class="vmic {{micKey==='newCourse'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="newCourse" />
       </view>
       <view class="btn addbtn" hover-class="btn-hover" bindtap="addCourse">添加</view>
     </view>
@@ -81,7 +81,7 @@
         </view>
         <view class="vin sfsearch">
           <input class="sfin vin-in" placeholder="搜索姓名 / 学号 / 家长" value="{{stuQ}}" bindinput="onStuQ" confirm-type="search" />
-          <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuQ" />
+          <image class="vmic {{micKey==='stuQ'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuQ" />
         </view>
       </view>
       <view class="sfcount">共 {{stuCount}} 人，当前显示 {{students.length}} 人</view>
@@ -117,7 +117,7 @@
     <view class="addrow">
       <view class="vin" style="flex:1;min-width:0">
         <input class="input vin-in" style="margin-bottom:0" placeholder="机构名称" value="{{orgName}}" bindinput="onOrgName" />
-        <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="orgName" />
+        <image class="vmic {{micKey==='orgName'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="orgName" />
       </view>
       <view class="btn addbtn" hover-class="btn-hover" bindtap="saveOrg">保存</view>
     </view>
@@ -164,7 +164,7 @@
     </view>
     <view class="vin">
       <input class="input vin-in" placeholder="学生姓名" value="{{stuForm.name}}" bindinput="onStuName" />
-      <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuForm.name" />
+      <image class="vmic {{micKey==='stuForm.name'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuForm.name" />
     </view>
     <!-- 学号由系统分配：新建时保存后生成，编辑时只读展示（家长凭它绑定孩子） -->
     <view class="stuno" bindtap="copyStuNo">
@@ -189,11 +189,11 @@
     <view class="label">家长联系方式</view>
     <view class="vin">
       <input class="input vin-in" placeholder="家长称呼（如：张珊珊/妈妈）" value="{{stuForm.parent}}" bindinput="onStuParent" />
-      <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuForm.parent" />
+      <image class="vmic {{micKey==='stuForm.parent'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuForm.parent" />
     </view>
     <view class="vin">
       <input class="input vin-in" placeholder="家长微信号（方便沟通）" value="{{stuForm.wechat}}" bindinput="onStuWechat" />
-      <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuForm.wechat" />
+      <image class="vmic {{micKey==='stuForm.wechat'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuForm.wechat" />
     </view>
     <view class="row2">
       <view class="btn ghost" hover-class="btn-hover" bindtap="stuCancel">取消</view>
@@ -220,7 +220,7 @@
     </view>
     <view class="vin">
       <input class="input vin-in" placeholder="姓名" value="{{userForm.name}}" bindinput="onUserName" />
-      <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="userForm.name" />
+      <image class="vmic {{micKey==='userForm.name'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="userForm.name" />
     </view>
     <view class="vin">
       <input class="input vin-in" type="number" placeholder="手机号（选填，可拨号）" value="{{userForm.phone}}" bindinput="onUserPhone" maxlength="13" />
@@ -276,7 +276,7 @@
     <view class="sheet-t">添加班级</view>
     <view class="vin">
       <input class="input vin-in" placeholder="班级名称" value="{{newCls}}" bindinput="onNewCls" />
-      <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="newCls" />
+      <image class="vmic {{micKey==='newCls'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="newCls" />
     </view>
     <view class="clsfrow">
       <picker mode="selector" range="{{clsTerms}}" range-key="name" value="{{clsTermIdx}}" bindchange="onClsTerm">

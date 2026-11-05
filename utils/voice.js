@@ -14,6 +14,12 @@ function current(page, key) {
   return typeof v === 'string' ? v : '';
 }
 
+// 麦克风状态要给 WXML 绑定用：正在听哪个输入框，页面据此把对应图标变红脉冲。
+// 之前只存在 page._rec（JS 变量）里，界面上完全看不出「正在录音」，用户不知道点了有没有效。
+function setMic(page, key) {
+  try { page.setData({ micKey: key || '' }); } catch (e) { /* 页面已卸载 */ }
+}
+
 function dictate(page, key) {
   if (!stt.available()) {
     wx.showToast({ title: '语音输入不可用：请先在小程序后台添加「同声传译」插件', icon: 'none', duration: 2500 });
@@ -22,6 +28,7 @@ function dictate(page, key) {
   // 正在聆听时再点一次 = 结束（此时麦克风就是停止键）
   if (page._rec) { page._rec.stop(); return; }
   const base = current(page, key);
+  setMic(page, key);
   wx.showToast({ title: '请说话…（说完再点一下麦克风）', icon: 'none', duration: 60000 });
   let done = false;
   const rec = stt.createRecognizer({
@@ -29,14 +36,14 @@ function dictate(page, key) {
     onPartial(t) { if (!done) page.setData({ [key]: base + t }); },
     onDone(t) {
       if (done) return;
-      done = true; page._rec = null;
+      done = true; page._rec = null; setMic(page, '');
       page.setData({ [key]: (base + (t || '')).trim() });
       wx.hideToast();
       if (!(t || '').trim()) wx.showToast({ title: '没听清，再试一次？', icon: 'none' });
     },
     onError() {
       if (done) return;
-      done = true; page._rec = null;
+      done = true; page._rec = null; setMic(page, '');
       page.setData({ [key]: base }); // 回滚到进入时的内容，不留半截中间结果
       wx.hideToast();
       wx.showToast({ title: '语音识别失败了，请重试或手动输入', icon: 'none' });
@@ -49,6 +56,7 @@ function dictate(page, key) {
 // 页面隐藏/卸载时停掉录音，别让麦克风在后台一直开着
 function stop(page) {
   if (page && page._rec) { page._rec.stop(); page._rec = null; }
+  if (page) setMic(page, '');
 }
 
 module.exports = { dictate, stop };

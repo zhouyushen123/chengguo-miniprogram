@@ -45,7 +45,7 @@
       <view class="label" style="margin-top:0">机构名称<text class="req">*</text></view>
       <view class="vin">
         <input class="input vin-in" placeholder="如：橙果书法学堂" placeholder-class="ph" value="{{form.name}}" bindinput="onName" maxlength="30" />
-        <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="form.name" />
+        <image class="vmic {{micKey==='form.name'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="form.name" />
       </view>
 
       <view class="label">机构类型<text class="req">*</text></view>
@@ -61,7 +61,7 @@
       <view class="label">联系人<text class="req">*</text></view>
       <view class="vin">
         <input class="input vin-in" placeholder="机构负责人姓名" placeholder-class="ph" value="{{form.contact}}" bindinput="onContact" maxlength="20" />
-        <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="form.contact" />
+        <image class="vmic {{micKey==='form.contact'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="form.contact" />
       </view>
 
       <view class="label">手机号<text class="req">*</text></view>

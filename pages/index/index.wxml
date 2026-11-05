@@ -61,7 +61,7 @@
         <view class="hgc searchcell">
           <image class="scico" src="{{icoSearch}}" mode="aspectFit" />
           <input class="scinput" placeholder="搜索学生姓名" placeholder-class="ph" value="{{q}}" bindinput="onSearch" confirm-type="search" />
-          <image class="smic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="q" />
+          <image class="smic {{micKey==='q'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="q" />
           <image wx:if="{{q}}" class="sclear" src="{{icoClose}}" mode="aspectFit" bindtap="clearSearch" />
         </view>
       </view>

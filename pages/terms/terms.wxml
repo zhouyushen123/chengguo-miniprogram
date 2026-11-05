@@ -36,7 +36,7 @@
       <view class="wt">① 新学期叫什么？</view>
       <view class="vin">
         <input class="inp vin-in" value="{{wz.newTerm.name}}" placeholder="如：2027 春季班 / 第 38 期" bindinput="onWzTerm" data-k="name" />
-        <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="wz.newTerm.name" />
+        <image class="vmic {{micKey==='wz.newTerm.name'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="wz.newTerm.name" />
       </view>
       <view class="chips">
         <view wx:for="{{sugg}}" wx:key="*this" class="chip {{wz.newTerm.name === item ? 'on' : ''}}" bindtap="wzPickSugg" data-v="{{item}}">{{item}}</view>
@@ -135,7 +135,7 @@
     <view class="lbl">学期名称</view>
     <view class="vin">
       <input class="inp vin-in" value="{{form.name}}" placeholder="如：2026 秋季班" bindinput="onF" data-k="name" />
-      <image class="vmic" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="form.name" />
+      <image class="vmic {{micKey==='form.name'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="form.name" />
     </view>
     <view class="chips">
       <view wx:for="{{sugg}}" wx:key="*this" class="chip {{form.name === item ? 'on' : ''}}" bindtap="pickSugg" data-v="{{item}}">{{item}}</view>

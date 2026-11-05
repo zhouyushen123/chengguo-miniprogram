@@ -136,14 +136,15 @@
 
 ### 首轮审查：备份与审查机制（11-05 晚第五批，用户："需要"走一遍真实审查当样例）
 
-拿 `2ed917e`（云端备份）+ `043d5ca`（审查机制）真跑了一遍，产物 `docs/reviews/2026-11-05-backup-review.md`（意见写法样例）。**4 个 P0 已复现、尚未修**，都在恢复链路上：
+拿 `2ed917e`（云端备份）+ `043d5ca`（审查机制）真跑了一遍，产物 `docs/reviews/2026-11-05-backup-review.md`（意见写法样例）。**3 个 P0 已复现、尚未修**，都在恢复链路上：
 
 1. **恢复前的 safety 备份覆盖当天正常备份**（`backup/index.js:110-129` 用 `orgId_date` 做清单 id 与文件路径）→ "恢复到今天"读到的是刚被写进去的坏数据，凌晨那份好备份永久丢失。
-2. **单集合超 `RESTORE_CAP`(2000) 后恢复永远走不到尾部**（`index.js:225` 每次都 `slice(0,RESTORE_CAP)`，无 offset）→ 后台提示"再点一次继续"是假的；`tests/verify_cloudbackup.js:412` 把 bug 当成了规格。
+2. **单集合超 `RESTORE_CAP`(2000) 后恢复永远走不到尾部**（`index.js:225` 每次都 `slice(0,RESTORE_CAP)`，无 offset）→ 后台提示"再点一次继续"是假的；`tests/verify_cloudbackup.js:418` 把 bug 当成了规格。
 3. **读失败被当成空集合**（`index.js:44` `.catch(() => ({data:[]}))`）→ 实测 250 条学生备成 0 条，清单仍标 `ok`；30 天后过期的反而是好的那份。同一个坑（黑名单第 1 条）第三次出现。
-4. **定时器多机构只备得完第一个机构**（`index.js:274` 无预算判断）→ 第二个客户上线即静默无备份。
 
-另有 4 个 P1：`users`（openid→orgId 绑定）不在备份集合里且 `cleanDoc` 会剥掉 `_openid`；恢复 `failed>0` 在 UI 上等于成功；CI `paths-ignore`（`**.md` / `.github/**` / `tests/**`）与"PR 必须过 verify"的分支保护互斥（会死锁，开保护前先改）；`verify_arch.js`/`lint.js` 这类守卫文件只按 R3 审。
+另有 4 个 P1：定时器把全部机构跑在一次调用里（`index.js:274` 无总预算，机构/数据一多后面的机构当天无备份且无告警）；`users`（openid→orgId 绑定）不在备份集合里且 `cleanDoc` 会剥掉 `_openid`（靠 `hello` 用本机 meta 自愈，但没写进文档、清缓存的人回不去）；恢复 `failed>0` 在 UI 上等于成功；`verify_arch.js`/`lint.js` 这类守卫文件只按 R3 审。
+
+**复核（16:20）已改过两处**：原写"定时器必然只备第一个机构"夸大了（降 P1）；原写"CI `paths-ignore` 会与分支保护死锁"是**错的**——`paths-ignore` 只在 `push` 下，`pull_request` 无过滤，已撤回。教训记在 review 文档末尾：写不出文件:行的意见，多半是自己没核对。
 
 ### 数据健壮（11-05 晚，用户："学生、老师、机构是最核心的资产，一定要做好"）
 

@@ -114,10 +114,15 @@
 .num.warn { color: var(--brand); }
 .sl { margin-top: 6rpx; font-size: 23rpx; color: var(--muted); }
 /* ---------- 区块标题 ---------- */
+/* 标题集成进卡片里（用户反馈：浮在卡外不整体） */
 .sechead {
   display: flex; align-items: center; justify-content: space-between;
   padding: 4rpx 34rpx 16rpx;
 }
+.panel .sechead { padding: 6rpx 14rpx 18rpx; }
+.card .sechead { padding: 0 0 16rpx; }   /* 标题在普通卡内：用卡片自带 28rpx 边距 */
+.panel .empty { padding: 30rpx 20rpx; }   /* 空状态在卡内：收窄留白 */
+.empty.slim { padding: 30rpx 20rpx; }     /* 通用：卡内空状态 */
 .sectitle { font-size: 30rpx; font-weight: 700; }
 .seclink { font-size: 25rpx; color: var(--muted); font-weight: 500; }
 /* ---------- 班级 / 成果卡片 ---------- */

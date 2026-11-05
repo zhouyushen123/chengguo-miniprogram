@@ -93,37 +93,36 @@
     </view>
   </view>
 
-  <!-- 我的班级 -->
-  <view class="sechead">
-    <text class="sectitle">我的班级</text>
-    <text class="seclink" bindtap="goMgr">管理</text>
-  </view>
-  <!-- 我的班级：整块一张卡，里面是班级条目 -->
-  <view wx:if="{{myClasses.length}}" class="card panel">
-    <view class="clsgrid">
+  <!-- 我的班级：标题集成在卡内，整块一张卡 -->
+  <view class="card panel">
+    <view class="sechead">
+      <text class="sectitle">我的班级</text>
+      <text class="seclink" bindtap="goMgr">管理</text>
+    </view>
+    <view wx:if="{{myClasses.length}}" class="clsgrid">
       <view class="clstile c{{index%3}}" wx:for="{{myClasses}}" wx:key="id" hover-class="btn-hover" bindtap="goCls" data-id="{{item.id}}">
         <view class="ctname">{{item.name}}</view>
         <view class="ctmeta">{{item.count}} 名学生</view>
         <view wx:if="{{item.pending}}" class="ctwarn">本次未录<text class="dot"></text></view>
       </view>
     </view>
+    <view wx:else class="empty slim">还没有班级，去「我的」里创建</view>
   </view>
-  <view wx:if="{{!myClasses.length}}" class="empty">还没有班级，去「我的」里创建</view>
 
-  <!-- 最近成果：整块一张卡 -->
-  <view class="sechead">
-    <text class="sectitle">最近成果</text>
-    <text class="seclink" bindtap="goRecords">全部</text>
-  </view>
-  <view wx:if="{{recent.length}}" class="card panel">
-    <view class="recgrid">
+  <!-- 最近成果：标题集成在卡内，整块一张卡 -->
+  <view class="card panel">
+    <view class="sechead">
+      <text class="sectitle">最近成果</text>
+      <text class="seclink" bindtap="goRecords">全部</text>
+    </view>
+    <view wx:if="{{recent.length}}" class="recgrid">
       <view class="rectile" wx:for="{{recent}}" wx:key="id" hover-class="btn-hover" bindtap="openRec" data-rid="{{item.id}}" data-sid="{{item.sid}}">
         <view class="rtname">{{item.name}}</view>
         <view class="rtmeta">{{item.clsName}} · {{item.sd}} · {{item.score}}分</view>
       </view>
     </view>
+    <view wx:else class="empty slim">还没有成果记录，点上面「开始录入」记一条吧</view>
   </view>
-  <view wx:if="{{!recent.length}}" class="empty">还没有成果记录，点上面「开始录入」记一条吧</view>
   </block>
 </view>
 
@@ -189,8 +188,8 @@
 
   <!-- 需要注意：加油/待提高的课 -->
   <block wx:if="{{kCare.length}}">
-    <view class="sechead"><text class="sectitle">需要注意</text></view>
     <view class="card">
+      <view class="sechead"><text class="sectitle">需要注意</text></view>
       <view class="histr" wx:for="{{kCare}}" wx:key="id" hover-class="btn-hover" bindtap="openRec" data-rid="{{item.id}}" data-sid="{{kidId}}">
         <text class="badge {{item.tcls}}">{{item.tag}}</text>
         <view class="hmain">
@@ -203,11 +202,12 @@
   </block>
 
   <!-- 历史记录 -->
-  <view class="sechead">
-    <text class="sectitle">历史记录</text>
-    <text class="seclink" wx:if="{{kidId}}" bindtap="goKidPage">全部</text>
-  </view>
-  <view class="card" wx:if="{{kHistory.length}}">
+  <view class="card">
+    <view class="sechead">
+      <text class="sectitle">历史记录</text>
+      <text class="seclink" wx:if="{{kidId}}" bindtap="goKidPage">全部</text>
+    </view>
+    <block wx:if="{{kHistory.length}}">
     <view class="histr" wx:for="{{kHistory}}" wx:key="id" hover-class="btn-hover" bindtap="openRec" data-rid="{{item.id}}" data-sid="{{kidId}}">
       <view class="hmain">
         <view class="ht1"><b>{{item.course}}</b><text wx:if="{{item.tag}}" class="badge sm {{item.tcls}}">{{item.tag}}</text></view>
@@ -215,8 +215,9 @@
       </view>
       <view wx:if="{{item.pcnt}}" class="hcam"><image class="camico" src="{{icoCam}}" mode="aspectFit" />{{item.pcnt}}</view>
     </view>
+    </block>
+    <view wx:elif="{{kLatest}}" class="empty slim">暂无更多历史记录</view>
   </view>
-  <view wx:elif="{{kLatest}}" class="empty">暂无更多历史记录</view>
 </view>
 
 <!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->

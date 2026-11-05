@@ -319,6 +319,7 @@ tools/review-rules.js    审查分级与清单规则（纯函数，tests/verify_
 docs/code-review-standard.md  代码审查标准 v2.0（红线/分级/清单/流程/反模式）
 docs/architecture/backend-architecture.md  后端架构方案 v1.0（现状风险/P0-P3 路线/同步 v3 规格/索引与容灾，2026-11-05，只出方案未改代码）
 docs/architecture/data-model-plan.md  数据模型与底层数据系统规划 v1.0（六域 26 表/题库预留/ID 与版本化/保留期/阶段一 5 件小事，2026-11-05，只出方案未改代码）
+docs/architecture/data-model-plan.md  数据模型与底层数据系统规划 v1.0（六域 26 表/题库预留/ID 与版本化/保留期/阶段一 5 件小事，2026-11-05，只出方案未改代码）
 .github/pull_request_template.md  PR 四项证据
 utils/firstrun.js        首次进入的一次性标记（自动跳向导只跳一次）
 .github/workflows/deploy.yml  verify（lint+test+size）→ upload 两段门禁

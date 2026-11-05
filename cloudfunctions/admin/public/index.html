@@ -123,6 +123,7 @@
     <div class="tab" data-tab="students">学生</div>
     <div class="tab" data-tab="records">课堂记录</div>
     <div class="tab" data-tab="classes">班级</div>
+    <div class="tab" data-tab="data">数据安全</div>
   </div>
 
   <!-- 概览 -->
@@ -165,6 +166,28 @@
       <thead><tr><th>日期</th><th>学生</th><th>班级</th><th>课次</th><th>等级</th><th>评语</th><th>状态</th><th style="width:120px">操作</th></tr></thead>
       <tbody id="recBody"></tbody>
     </table><div class="pager" id="recPager"></div></div>
+  </section>
+
+  <!-- 数据安全：体检 + 完整备份 -->
+  <section id="tab-data" class="hide">
+    <div class="card">
+      <div style="font-weight:600">数据体检</div>
+      <div style="margin-top:6px;color:var(--ink-3);font-size:13px;line-height:1.6">
+        检查学生、老师（成员）、机构之间的引用是否对得上：学号有没有重复、学生是不是挂在已删除的班级上、
+        记录有没有指向不存在的孩子、同一个微信是不是绑成了两个成员。
+      </div>
+      <div id="auditBox" style="margin-top:12px"></div>
+      <button class="btn" id="doAudit" style="margin-top:12px">开始体检</button>
+    </div>
+    <div class="card">
+      <div style="font-weight:600">完整备份</div>
+      <div style="margin-top:6px;color:var(--ink-3);font-size:13px;line-height:1.6">
+        导出全部学生、老师（成员）、机构、班级、学期、报名与课堂记录为一个 JSON 文件。
+        和上面的 CSV 不同，这份是完整快照（所有字段都在），适合归档、留底或换系统时迁移。
+      </div>
+      <button class="btn primary" id="doBackup" style="margin-top:12px">下载完整备份</button>
+      <div style="margin-top:8px;color:var(--ink-3);font-size:12px">建议每周下载一次，存到自己的网盘或电脑里。</div>
+    </div>
   </section>
 
   <!-- 班级 -->
@@ -600,6 +623,31 @@
     }).catch(function () {});
   }
 
+  function renderAudit(r) {
+    var box = $('auditBox');
+    box.innerHTML = '';
+    var head = el('div', '', r.healthy ? '一切正常，没有发现问题' : ('发现 ' + r.errors + ' 类问题、' + r.warns + ' 个提醒'));
+    head.style.cssText = 'font-weight:600;font-size:14px;color:' + (r.healthy ? '#1a7f37' : '#b42318');
+    box.appendChild(head);
+    var c = r.counts || {};
+    var cnt = el('div', '', '学生 ' + (c.students || 0) + ' · 老师/成员 ' + (c.members || 0)
+      + ' · 班级 ' + (c.classes || 0) + ' · 记录 ' + (c.records || 0));
+    cnt.style.cssText = 'margin-top:6px;color:var(--ink-3);font-size:12px';
+    box.appendChild(cnt);
+    (r.issues || []).forEach(function (x) {
+      var row = el('div', '', x.title + '：' + x.count + ' 处');
+      row.style.cssText = 'margin-top:8px;font-size:13px;line-height:1.5;color:'
+        + (x.level === 'error' ? '#b42318' : '#8a6d3b');
+      box.appendChild(row);
+    });
+    if (!r.healthy) {
+      var tip = el('div', '', '这里只做检查，不会自动改数据。可自动处理的部分（悬空引用、重复学号）'
+        + '请在手机小程序「我的 → 存储空间 → 修复」里处理；其余需要人工判断。');
+      tip.style.cssText = 'margin-top:12px;font-size:12px;color:var(--ink-3);line-height:1.65';
+      box.appendChild(tip);
+    }
+  }
+
   /* ---------- 绑定 ---------- */
   $('stuSearch').onclick = function () { S.page.students = 1; loadList('students'); };
   $('recSearch').onclick = function () { S.page.records = 1; loadList('records'); };
@@ -608,6 +656,17 @@
   $('recQ').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('recSearch').click(); });
   $('clsQ').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('clsSearch').click(); });
   $('stuExport').onclick = function () { doExport('students'); };
+  $('doAudit').onclick = function () {
+    $('auditBox').textContent = '检查中…';
+    post('audit', {}).then(guard).then(renderAudit).catch(function () { $('auditBox').textContent = '检查失败，请重试'; });
+  };
+  $('doBackup').onclick = function () {
+    toast('正在打包，稍等…');
+    post('backup', {}).then(guard).then(function (r) {
+      download(r.name || 'backup.json', r.json || '{}');
+      toast(r.truncated ? '已下载（记录超过 5000 条，这份不含更早的记录）' : '已下载完整备份');
+    }).catch(function () {});
+  };
   $('recExport').onclick = function () { doExport('records'); };
   $('stuNew').onclick = function () { openNew('students'); };
   $('recNew').onclick = function () {

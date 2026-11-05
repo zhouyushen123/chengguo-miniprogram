@@ -39,7 +39,7 @@ const COLLECTIONS = ['orgs', 'members', 'terms', 'classes', 'courses', 'students
 // 需要分片的集合 → 每片最多多少条
 // 只有"随上课天数线性增长"的集合才需要分片；其余集合体量由机构规模决定，不会失控
 const SHARD = { records: 320 };
-const MAX_SHARDS = 64;          // 兜底上限：320 × 64 ≈ 2 万条记录
+const MAX_SHARDS = 96;          // 兜底上限：320 × 96 ≈ 3 万条记录（再多会先撞 10MB 总配额，那条路有明确提示）
 
 // v2 遗留的单一大对象（迁移源，保留不动作为兜底备份）
 const LEGACY_DB_KEY = 'chengguo_v2';
@@ -47,14 +47,22 @@ const LEGACY_TPL_KEY = 'chengguo_tpls';
 
 // 一个命名空间 = 一套完整的 load/save/remove，前缀不同而已
 function makeNs(prefix, tag) {
-  function read(key) {
+  // 【读失败 ≠ 没有数据】这个区分是整个数据层最重要的一条。
+  // 以前两者都返回 null：某一分片读异常 → 被当成"到这里就没了" → 后面所有记录静默消失，
+  // 而下一次任何写入都会把这份残缺集合覆盖回磁盘 —— 一次读取抖动就变成永久丢失。
+  // 现在 readState 把异常单独标出来，readColl 把它记进 damage，启动时据此走恢复流程。
+  function readState(key) {
     try {
       const v = wx.getStorageSync(prefix + key);
-      return v === '' || v === undefined ? null : v;
+      return { v: (v === '' || v === undefined ? null : v) };
     } catch (e) {
       console.error('[db] 读取失败', tag, key, e);
-      return null;
+      return { err: e };
     }
+  }
+  function read(key) {
+    const r = readState(key);
+    return r.err ? null : r.v;
   }
   function write(key, value) {
     try {
@@ -103,16 +111,23 @@ function makeNs(prefix, tag) {
     return true;
   }
 
-  // 读一个集合：分片集合逐片读到尽头，普通集合直接读
-  function readColl(name) {
+  // 读一个集合：分片集合逐片读到尽头，普通集合直接读。
+  // damage 传数组时，读异常会往里记一条（'students' 或 'records#3'），
+  // 调用方据此判定"这份数据不完整，不能拿它覆盖磁盘"。
+  function readColl(name, damage) {
+    const hit = e => { if (damage) damage.push(e); };
     if (!SHARD[name]) {
-      const v = read(name);
-      return Array.isArray(v) ? v : [];
+      const r = readState(name);
+      if (r.err) { hit(name); return null; }
+      return Array.isArray(r.v) ? r.v : [];
     }
     const size = SHARD[name];
     const out = [];
     for (let n = 1; n <= MAX_SHARDS; n++) {
-      const v = read(shardKey(name, n));
+      const r = readState(shardKey(name, n));
+      // 读异常：后面的片不能再假设"没有了"，整份集合判定为不可信
+      if (r.err) { hit(name + '#' + n); return null; }
+      const v = r.v;
       if (!Array.isArray(v)) break;          // 空片 = 到头了
       out.push.apply(out, v);
       // 只有"刚好填满"才说明后面还有下一片。
@@ -127,10 +142,50 @@ function makeNs(prefix, tag) {
     const size = SHARD[name];
     const arr = Array.isArray(list) ? list : [];
     const total = Math.max(1, Math.ceil(arr.length / size));   // 空集合也写第一片，保证"读取时存在"
-    let ok = true;
-    for (let n = 1; n <= total; n++) {
-      if (!writeShard(shardKey(name, n), arr.slice((n - 1) * size, n * size))) ok = false;
+    // 超过上限必须显式失败：以前会照写不误，而读取只读到 MAX_SHARDS 片，
+    // 超出的部分永远读不回来 —— 老师看到的条数突然少了一截，还以为是自己记错了。
+    if (total > MAX_SHARDS) {
+      console.error('[db] 集合过大，超出分片上限', name, arr.length, total, MAX_SHARDS);
+      return false;
     }
+
+    // 先把"需要写的片"筛出来（内容没变的不动，省一次同步 IO），并备份它们的旧内容。
+    // 备份是为了失败时能整片回滚：以前第 3 片写失败、前 2 片已经落盘，
+    // 磁盘上就变成"前半段新数据 + 后半段旧数据"，比整份没写还难收拾。
+    const plan = [];
+    for (let n = 1; n <= total; n++) {
+      const key = shardKey(name, n);
+      const slice = arr.slice((n - 1) * size, n * size);
+      let s = null;
+      try { s = JSON.stringify(slice); } catch (e) { s = null; }
+      if (s !== null && PRINT[key] === printOf(s)) continue;
+      const prev = readState(key);
+      plan.push({ key, slice, s, prev: prev.err ? { unknown: true } : { v: prev.v } });
+    }
+    if (!plan.length) return true;
+
+    let ok = true, done = 0;
+    for (let i = 0; i < plan.length; i++) {
+      const p = plan[i];
+      const wrote = p.s === null ? write(p.key, p.slice) : write(p.key, p.slice);
+      if (!wrote) { ok = false; break; }
+      if (p.s !== null) PRINT[p.key] = printOf(p.s);
+      done++;
+    }
+    if (!ok) {
+      // 回滚已写的片，让磁盘回到这次写入之前的样子
+      for (let i = done - 1; i >= 0; i--) {
+        const b = plan[i];
+        try {
+          if (b.prev.unknown) { /* 旧值读不出来，只能保留现状 */ }
+          else if (b.prev.v === null) drop(b.key);
+          else write(b.key, b.prev.v);
+        } catch (e) { /* 回滚也可能失败（配额满），下一次写入会再试 */ }
+        delete PRINT[b.key];
+      }
+      return false;
+    }
+
     // 清掉上一次留下的多余分片（记录被删/清空后又变少时）
     const idx = read(CHUNK_KEY);
     const old = (idx && idx[name]) || 0;
@@ -144,13 +199,26 @@ function makeNs(prefix, tag) {
       next[name] = total;
       write(CHUNK_KEY, next);
     }
-    return ok;
+    return true;
   }
 
   // 一次性加载全部集合（启动时调用一次）
   function load() {
-    const out = { meta: read(META_KEY) };
-    COLLECTIONS.forEach(name => { out[name] = readColl(name); });
+    // 指纹缓存只是"上次这个 key 我写了什么"的记忆。系统清理缓存、换设备、
+    // 或用户在系统设置里清了小程序存储之后，它就和磁盘对不上了；
+    // 继续信它会让下一次写入被误判成"没变"而被跳过 —— 用户看到"已保存"，磁盘却是空的。
+    Object.keys(PRINT).forEach(k => { delete PRINT[k]; });
+    const damage = [];
+    const metaR = readState(META_KEY);
+    if (metaR.err) damage.push('meta');
+    const out = { meta: metaR.err ? null : metaR.v };
+    COLLECTIONS.forEach(name => {
+      const list = readColl(name, damage);
+      // 读不出来的集合先给空数组占位，但 damage 里已经留了记录：
+      // 上层看到 _damage 就知道这份数据不可信，绝不会把它写回磁盘
+      out[name] = list === null ? [] : list;
+    });
+    if (damage.length) out._damage = damage;
     return out;
   }
   function saveCollection(name, list) {
@@ -197,12 +265,136 @@ function kvUsage() {
   } catch (e) { return null; }
 }
 
+/* =====================================================================
+ * 快照：核心资产的本地副本
+ * ---------------------------------------------------------------------
+ * 为什么需要：本地只有一份数据，写坏了、迁移出错了、被误清了，就再也没有第二份。
+ * 云端虽然有，但没网/没部署时等于没有；而且云端是 LWW 合并，救不回"被新值覆盖掉的旧值"。
+ *
+ * 备份什么：学生、成员（老师）、班级、机构、学期、报名、记录、模板 —— 全量。
+ * 唯一的例外是 records：它随上课天数无限增长，整份塞进来会把 10MB 配额吃光，
+ * 反而让日常写入更容易失败。所以记录只留最近 300 条；更早的云端有。
+ *
+ * 保留几份：3 份滚动。按"迁移前 / 每天首次启动 / 手动"三个时机打点，
+ * 一天最多一份日常快照，所以 3 份大约覆盖最近三天的状态。
+ *
+ * 【快照不参与同步、不进演示命名空间、清库时也不删】—— 它是安全网，不是业务数据。
+ * ===================================================================*/
+const SNAP_PREFIX = 'chengguo_snap_';
+const SNAP_INDEX = 'chengguo_snaps';
+const SNAP_KEEP = 3;
+const SNAP_MAX_BYTES = 900 * 1024;    // 单份上限（单 key 1MB 硬限制，留 100KB 余量）
+const SNAP_REC_CAP = 300;             // 快照里最多保留多少条记录
+
+// 精确字节数（微信按 UTF-8 字节计，中文字符占 3 字节，用 s.length 会低估 3 倍）
+function byteLen(s) {
+  let n = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c < 0x80) n += 1;
+    else if (c < 0x800) n += 2;
+    else if (c >= 0xd800 && c <= 0xdbff) { n += 4; i++; }   // 代理对（emoji）
+    else n += 3;
+  }
+  return n;
+}
+
+function snapIndex() {
+  try {
+    const v = wx.getStorageSync(SNAP_INDEX);
+    return Array.isArray(v) ? v : [];
+  } catch (e) { return []; }
+}
+function snapSaveIndex(list) {
+  try { wx.setStorageSync(SNAP_INDEX, list); return true; } catch (e) { return false; }
+}
+function snapDrop(id) {
+  try { wx.removeStorageSync(SNAP_PREFIX + id); } catch (e) { /* 删不掉不影响新快照 */ }
+}
+
+// 生成一份快照。data 传内存里的完整集合（{ students: [...], ... }）。
+// tag 只用于界面显示（"迁移前"/"每日备份"/"手动备份"）。
+function saveSnapshot(tag, data) {
+  if (!data) return { ok: false, msg: '没有可备份的数据' };
+  const at = Date.now();
+  const id = String(at);
+  // meta 也要一起存：机构号、机构名、当前身份、"上次同步游标"全在里面。
+  // 少了它，恢复回来的数据会因为"没有机构号"被判成全新安装，等于白备份。
+  const meta = (data && data.meta) || null;
+  const pack = d => JSON.stringify({ v: 1, at, tag: String(tag || ''), meta, data: d });
+  const body = {};
+  COLLECTIONS.forEach(n => { body[n] = Array.isArray(data[n]) ? data[n] : []; });
+
+  let s = pack(body);
+  // 超限先裁记录（唯一会无限增长的那个），核心资产一条都不裁
+  if (byteLen(s) > SNAP_MAX_BYTES && body.records.length > SNAP_REC_CAP) {
+    body.records = body.records.slice(-SNAP_REC_CAP);
+    s = pack(body);
+  }
+  if (byteLen(s) > SNAP_MAX_BYTES) {
+    return { ok: false, msg: '数据量过大，无法生成本地备份（建议先到电脑端后台导出）' };
+  }
+
+  // 先腾地方：保留份数超了、或剩余空间不够放这一份，就从最旧的开始删
+  let idx = snapIndex().filter(x => x && x.id !== id);
+  const need = byteLen(s) / 1024;
+  const usage = kvUsage();
+  let guard = 0;
+  while (idx.length && (idx.length >= SNAP_KEEP ||
+        (usage && usage.limit && usage.limit - usage.current < need + 200)) && guard++ < 10) {
+    const old = idx.pop();
+    snapDrop(old.id);
+  }
+  while (idx.length >= SNAP_KEEP) snapDrop(idx.pop().id);
+
+  try {
+    wx.setStorageSync(SNAP_PREFIX + id, JSON.parse(s));
+  } catch (e) {
+    console.error('[db] 快照写入失败', e);
+    return { ok: false, msg: '存储空间不足，备份失败' };
+  }
+  idx = [{ id, at, tag: String(tag || ''), bytes: byteLen(s), counts: countOf(body) }].concat(idx);
+  while (idx.length > SNAP_KEEP) { const o = idx.pop(); snapDrop(o.id); }
+  snapSaveIndex(idx);
+  return { ok: true, id, at, bytes: byteLen(s), counts: countOf(body) };
+}
+
+function countOf(body) {
+  const c = {};
+  COLLECTIONS.forEach(n => { c[n] = (body[n] || []).length; });
+  return c;
+}
+
+function snapshotList() { return snapIndex(); }
+
+function readSnapshot(id) {
+  try {
+    const v = wx.getStorageSync(SNAP_PREFIX + id);
+    if (!v || !v.data) return null;
+    return v;
+  } catch (e) { return null; }
+}
+function latestSnapshot() {
+  const list = snapIndex();
+  for (let i = 0; i < list.length; i++) {
+    const s = readSnapshot(list[i].id);
+    if (s) return Object.assign({ id: list[i].id }, s);
+  }
+  return null;
+}
+function dropSnapshot(id) {
+  snapDrop(id);
+  snapSaveIndex(snapIndex().filter(x => x.id !== id));
+  return true;
+}
+
 module.exports = {
-  COLLECTIONS, PREFIX, DEMO_PREFIX, META_KEY, CHUNK_KEY, LEGACY_DB_KEY, LEGACY_TPL_KEY, SHARD,
+  COLLECTIONS, PREFIX, DEMO_PREFIX, META_KEY, CHUNK_KEY, LEGACY_DB_KEY, LEGACY_TPL_KEY, SHARD, MAX_SHARDS,
   load: local.load,
   saveCollection: local.saveCollection,
   saveMeta: local.saveMeta,
   removeAll: local.removeAll,
   demo: demoNs,
-  readLegacy, kvUsage
+  readLegacy, kvUsage,
+  saveSnapshot, snapshotList, readSnapshot, latestSnapshot, dropSnapshot, byteLen
 };

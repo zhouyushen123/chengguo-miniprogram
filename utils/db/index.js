@@ -32,6 +32,7 @@
 // 新增领域时请沿用这个方向，若发现需要反向调用，说明边界划错了，先调整边界而不是写 require 环。
 const schema = require('./schema');
 const core = require('./core');
+const storage = require('./storage');
 const perms = require('./permissions');
 
 const ctx = require('./ctx');
@@ -45,6 +46,7 @@ const enrollments = require('./enrollments');
 const records = require('./records');
 const settle = require('./settle');
 const templates = require('./templates');
+const audit = require('./audit');
 const maintenance = require('./maintenance');
 const syncStore = require('./sync');
 
@@ -62,6 +64,18 @@ const db = {
   coll: core.coll,
   flush: core.flushAll,
   health: core.health,          // 存储健康度：用量、上次落盘失败
+  // 本地快照：核心资产（学生/老师/机构/班级/记录）的滚动备份，最多 3 份。
+  // 页面只做「看有什么、手动备份、恢复」三件事，恢复后由 maintenance 负责落盘与重新同步。
+  // 核心资产体检：学生 / 成员 / 机构之间的引用是否对得上。
+  // scan 只读；fix 只做"修了绝不会更糟"的两类（悬空引用、学号重复/缺失）。
+  audit: { scan: audit.scan, fix: audit.fix },
+  snapshots: {
+    list: storage.snapshotList,
+    save: tag => storage.saveSnapshot(tag, core.realData()),
+    read: storage.readSnapshot,
+    drop: storage.dropSnapshot,
+    restore: maintenance.restoreSnapshot
+  },
   mediaRefs: maintenance.mediaRefs,   // 库里引用着的媒体路径（清理垃圾文件用）
   settings: identity.settings, setTeacher: identity.setTeacher,
   today, canSend: records.canSend, merge: maintenance.merge,

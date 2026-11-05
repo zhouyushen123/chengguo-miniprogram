@@ -24,6 +24,7 @@ const SUITES = [
   ['verify_sec.js', '安全与触达'],
   ['verify_photocloud.js', '照片上云'],
   ['verify_sync.js', '记录上云'],
+  ['verify_pull.js', '云端拉取分页'],
   ['verify_invite.js', '邀请码加入'],
   ['verify_admin.js', '电脑端后台'],
   ['verify_ava.js', '头像统一'],
@@ -31,6 +32,7 @@ const SUITES = [
   ['verify_onboard.js', '新手引导'],
   ['verify_demo.js', '演示隔离'],
   ['verify_hardening.js', '加固'],
+  ['verify_backup.js', '备份与恢复'],
   ['verify_arch.js', '架构守卫']
 ];
 

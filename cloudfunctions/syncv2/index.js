@@ -68,6 +68,9 @@ function newOrgId() {
 // 成员 id：客户端 id 是小整数（nextId），云端发号用「毫秒 ×1000 + 随机」，
 // 量级完全错开，永远不会撞到客户端已经发出的号，也不用为两张表维护同一套序列。
 function newMemberId() { return Date.now() * 1000 + Math.floor(Math.random() * 1000); }
+// 上一个用过的服务端时间戳（云函数实例内有效）。只为避免"同一毫秒两次 push"撞号，
+// 真正的正确性靠 pull 的组完整性保护（见下面 pull 分支）。
+let lastSrvAt = 0;
 const CODE_RE = /^[A-Z0-9]{4,10}$/;
 
 exports.main = async (event) => {
@@ -217,6 +220,13 @@ exports.main = async (event) => {
   if (action === 'push') {
     const docs = Array.isArray(event.docs) ? event.docs.slice(0, 100) : [];
     const now = Date.now();
+    // 【每条一个 srvAt，不能整批共用一个时间戳】
+    // 整批共用 now 时，一次 push 100 条会产生 100 条 srvAt 完全相同的文档；
+    // 而 pull 是「srvAt > since，每次 100 条」，游标推到这一毫秒后，
+    // 同一毫秒里没取到的那些就永远拉不到了 —— 静默丢数据，且没有任何报错。
+    // 这里让它在一批内严格递增，pull 端的游标就能一条条推进。
+    // 同实例内上一次用到的时间戳：同一毫秒的两次 push 也不会撞号（跨实例靠 pull 端的组保护兜底）
+    let at = now > lastSrvAt ? now : lastSrvAt + 1;
     let accepted = 0, newer = 0, denied = 0;
     const mine = await memberOf(OPENID, orgId);
     const isMgr = !!mine && (mine.role === 'owner' || mine.role === 'admin');
@@ -245,11 +255,13 @@ exports.main = async (event) => {
       if (found.data.length) {
         if ((Number(found.data[0].updatedAt) || 0) > (Number(d.updatedAt) || 0)) { newer++; continue; }
         await col.doc(found.data[0]._id).update({
-          data: Object.assign({}, d, { orgId, srvAt: now })
+          data: Object.assign({}, d, { orgId, srvAt: at })
         });
       } else {
-        await col.add({ data: Object.assign({}, d, { orgId, srvAt: now }) });
+        await col.add({ data: Object.assign({}, d, { orgId, srvAt: at }) });
       }
+      lastSrvAt = at;
+      at++;
       accepted++;
     }
     return { ok: true, accepted, newer, denied };
@@ -269,12 +281,46 @@ exports.main = async (event) => {
         await ensureCollections();
         continue;
       }
-      if (r.data.length >= PAGE) more = true;
-      r.data.forEach(d => {
+      if (!r.data.length) continue;
+
+      let batch = r.data;
+      let maxAt = 0;
+      batch.forEach(d => { const v = Number(d.srvAt) || 0; if (v > maxAt) maxAt = v; });
+
+      /* ---------------- 截断保护 ----------------
+       * 这批正好取满 100 条，说明后面很可能还有。此时不能简单把游标推到本批最大值：
+       * 万一 maxAt 那一组还有没取到的（同一毫秒写入的、或老数据），
+       * "srvAt > maxAt" 就会把它们永久跳过 —— 数据明明在云端，客户端却再也拉不到，
+       * 而且两端都不报错，只有老师发现"少了几条"时才可能察觉。
+       * 做法：先确认 maxAt 这一组是否完整；不完整就整组退回，游标停在它之前。 */
+      if (batch.length >= PAGE) {
+        more = true;
+        const got = batch.filter(d => (Number(d.srvAt) || 0) === maxAt).length;
+        let total = got;
+        try {
+          const cnt = await db.collection(c).where({ orgId, srvAt: maxAt }).count();
+          total = Number(cnt && cnt.total) || got;
+        } catch (e) { total = got; }
+        if (total > got) {
+          const rest = batch.filter(d => (Number(d.srvAt) || 0) < maxAt);
+          if (rest.length) {
+            // 整组退回：只交出严格小于 maxAt 的部分，下次用同一个边界再来
+            batch = rest;
+            maxAt = 0;
+            batch.forEach(d => { const v = Number(d.srvAt) || 0; if (v > maxAt) maxAt = v; });
+          } else {
+            // 极端情况：整页都是同一时间戳且还没取完（新写入已经不会产生这种数据，
+            // 只可能来自旧版本或外部批量导入）。退回会导致永远拉不动，所以照常返回并留日志。
+            console.warn('[syncv2] 同一 srvAt 的文档超过单页上限，可能漏拉', c, maxAt, total);
+          }
+        }
+      }
+
+      batch.forEach(d => {
         const { _id, srvAt, ...rest } = d;
         // srvAt 单独带在条目上（不进文档本体，免得回推时污染数据）
         docs.push({ c, d: rest, srvAt: srvAt || 0 });
-        if ((srvAt || 0) > cursor) cursor = srvAt;
+        if ((srvAt || 0) > cursor) cursor = srvAt || 0;
       });
     }
     return { ok: true, docs, cursor, more };

@@ -43,3 +43,8 @@
   font-size: 24rpx; color: var(--text-2); line-height: 1.7;
   padding: 6rpx 0;
 }
+
+/* ---------- 数据体检 ---------- */
+.bad { color: var(--danger); }
+.btnrow { display: flex; gap: 16rpx; margin-top: 22rpx; }
+.btnrow .btn { flex: 1; margin-top: 0; }

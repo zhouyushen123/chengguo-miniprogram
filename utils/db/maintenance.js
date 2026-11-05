@@ -16,11 +16,43 @@ const { now, org, oc } = require('./ctx');
  * ===================================================================*/
 let inited = false;
 let bootError = '';
+// 这次启动是否从本地快照恢复过（页面要明确告诉用户"数据回到几点的样子"，不能悄悄替换）
+let snapRestored = null;   // { id, at, bad }
+// 每日备份的日期戳：同一天只打一次，避免每次冷启动都写一份把配额吃光
+function dayKey(t) {
+  const d = new Date(t);
+  return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+}
 
 function init() {
   if (inited) return;
   try {
-    const loaded = storage.load();
+    let loaded = storage.load();
+
+    /* ---------------- 读盘校验 ----------------
+     * storage.load 会把"读异常"记进 _damage。这时候内存里是残缺的（缺一片 = 少几百条记录），
+     * 只要走完启动流程，后面任何一次落盘都会把这份残缺数据写回磁盘，等于永久丢失。
+     * 所以：有损坏 → 先找本地快照；快照也没有 → 只读降级，宁可让用户看到"读取异常"，
+     * 也不能让程序自己把数据抹掉。 */
+    if (loaded._damage && loaded._damage.length) {
+      const bad = loaded._damage.join('、');
+      const snap = storage.latestSnapshot();
+      if (snap && snap.data) {
+        const fixed = { meta: Object.assign({}, snap.meta || {}, { version: schema.VERSION }) };
+        storage.COLLECTIONS.forEach(n => { fixed[n] = Array.isArray(snap.data[n]) ? snap.data[n].slice() : []; });
+        loaded = fixed;
+        snapRestored = { id: snap.id, at: snap.at, bad };
+        console.warn('[db] 本地数据读取异常，已从备份恢复', bad, snap.at);
+      } else {
+        throw new Error('本地数据读取异常（' + bad + '），且没有可用备份。为保护原有数据，已切换为只读');
+      }
+    }
+
+    // 升级前先留一份：迁移代码出错时，至少能回到升级前的样子（这是最贵的一次写操作）
+    if (loaded.meta && loaded.meta.version && loaded.meta.version !== schema.VERSION) {
+      storage.saveSnapshot('升级前 v' + loaded.meta.version, loaded);
+    }
+
     const data = (loaded.meta && loaded.meta.version === schema.VERSION)
       ? loaded
       : migrate.build(loaded);
@@ -40,6 +72,25 @@ function init() {
     const mediaFixed = repairMedia();
     resolveMode(purged);                 // 该进演示还是回真实机构
     if (changed || purged || repaired || mediaFixed) core.flushAll();
+
+    if (snapRestored) {
+      // 恢复出来的数据必须立刻落盘，否则磁盘上还是那份缺了片的旧数据，
+      // 下次启动又掉进同一个坑里。
+      core.flushAll();
+      // 游标归零 + 全量标脏：快照只留了最近 300 条记录，更早的从云端补回来；
+      // 本地这份也要回推一次，保证云端与本机一致（合并是 LWW，不会重复建）。
+      const s = core.realMeta().sync || {};
+      core.updateRealMeta({ sync: Object.assign({}, s, { cursor: 0, dirty: storage.COLLECTIONS.slice() }) });
+    }
+
+    // 每日首启留一份滚动备份（保留最近 3 份 ≈ 最近三天）。
+    // 空库不备份：既没有可救的东西，又白占配额。
+    const rd = core.realData();
+    const hasAsset = (rd.students && rd.students.length) || (rd.members && rd.members.length);
+    if (hasAsset && core.realMeta().lastSnap !== dayKey(Date.now())) {
+      const r = storage.saveSnapshot('每日备份', rd);
+      if (r.ok) core.updateRealMeta({ lastSnap: dayKey(Date.now()) });
+    }
   } catch (e) {
     // 启动失败不能让整页白屏，也不能把坏状态写回磁盘：
     // 降级成"内存空库 + 只读"，磁盘数据原样保留，页面照常渲染空态。
@@ -56,11 +107,46 @@ function init() {
 
 // 启动状态：页面可据此提示"数据读取异常，当前为只读"
 function status() {
-  return { ready: inited, degraded: !!bootError, error: bootError, readOnly: core.isReadOnly() };
+  return {
+    ready: inited, degraded: !!bootError, error: bootError,
+    readOnly: core.isReadOnly(),
+    restored: snapRestored
+  };
 }
 
 // 规范化口径版本：改了 schema.normalizeXxx 的字段/默认值就 +1，老库下次启动会重跑一次全量
 const NORM_STAMP = schema.VERSION + '/2';
+
+/* =====================================================================
+ * 从本地快照恢复
+ * ---------------------------------------------------------------------
+ * 【为什么恢复前又备份一次】用户可能是"点错了"，或者想回到更早的那一份。
+ * 恢复本身也是一次覆盖写，不给自己留退路就成了新的丢数据途径。
+ *
+ * 【恢复后做什么】立刻落盘 → 游标归零 + 全量标脏：
+ * 快照只留最近 300 条记录，更早的要靠云端补；本地这份也要回推一次。
+ * 合并是 LWW + 按 id 去重，重复推不会产生重复数据。
+ * ===================================================================*/
+function restoreSnapshot(id) {
+  if (!id) return { ok: false, msg: '缺少备份标识' };
+  if (core.isReadOnly()) return { ok: false, msg: '当前是只读模式，请重启小程序后再恢复' };
+  const snap = storage.readSnapshot(id);
+  if (!snap || !snap.data) return { ok: false, msg: '这份备份已不可用（可能被系统清理过）' };
+
+  storage.saveSnapshot('恢复前', core.realData());
+
+  const data = { meta: Object.assign({}, snap.meta || {}, { version: schema.VERSION }) };
+  storage.COLLECTIONS.forEach(n => { data[n] = Array.isArray(snap.data[n]) ? snap.data[n] : []; });
+  core.hydrate(data);
+  // 快照可能是旧版本生成的：按当前 schema 重新过一遍，别让老结构直接进内存
+  normalizeAll(true);
+  repairRefs();
+  const ok = core.flushAll();
+  if (!ok) return { ok: false, msg: core.SAVE_FAIL };
+  const s = core.realMeta().sync || {};
+  core.updateRealMeta({ sync: Object.assign({}, s, { cursor: 0, dirty: storage.COLLECTIONS.slice() }) });
+  return { ok: true, at: snap.at, tag: snap.tag || '' };
+}
 
 // 把库里所有实体按当前 schema 过一遍（补默认字段、修正日期格式、丢弃未知字段）
 // full=false 时跳过昂贵的逐条比对，只做下面几件"每次都必须做"的结构性兜底
@@ -367,6 +453,6 @@ function merge(remote) {
 
 module.exports = {
   mediaRefs,
-  init, status, normalizeAll, repairRefs, repairMedia,
+  init, status, normalizeAll, repairRefs, repairMedia, restoreSnapshot,
   buildDemoData, ensureDemo, purgeSeed, resolveMode, demo: demoApi, merge
 };

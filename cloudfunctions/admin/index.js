@@ -368,6 +368,98 @@ async function exportData(orgId, data) {
   ]);
   return { ok: true, name: '课堂记录-' + stamp() + '.csv', csv };
 }
+/* ============================ 核心资产：体检与完整备份 ============================ */
+const BACKUP_COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'students', 'enrollments', 'records', 'templates'];
+const BACKUP_CAP = 5000;
+
+// 完整备份：一份能直接归档/迁移的 JSON（CSV 只适合看，不适合恢复）
+async function backupData(orgId) {
+  const data = {};
+  const counts = {};
+  for (const c of BACKUP_COLLS) {
+    // orgs 的主键就是机构号，没有 orgId 外键
+    const where = c === 'orgs' ? { id: orgId } : { orgId };
+    const rows = await findAll(c, where, BACKUP_CAP);
+    data[c] = rows.map(d => {
+      const x = Object.assign({}, d);
+      delete x._id;      // 云库内标识，不属于业务数据
+      delete x.srvAt;    // 同步时间戳，恢复时不该沿用
+      return x;
+    });
+    counts[c] = data[c].length;
+  }
+  const pack = { format: 'chengguo-backup-v1', at: Date.now(), orgId, counts, data };
+  const body = JSON.stringify(pack);
+  return {
+    ok: true,
+    name: '橙果备份-' + stamp() + '.json',
+    json: body,
+    bytes: Buffer.byteLength(body, 'utf8'),
+    counts,
+    // 记录超过上限时明确告诉用户"这份不全"，不能让人以为拿到的是全部
+    truncated: counts.records >= BACKUP_CAP
+  };
+}
+
+// 体检：学生 / 成员 / 机构之间的引用是否对得上（只读，不改任何数据）
+async function auditData(orgId) {
+  const [students, classes, members, records] = await Promise.all([
+    findAll('students', alive(orgId), BACKUP_CAP),
+    findAll('classes', alive(orgId), 1000),
+    findAll('members', alive(orgId), 1000),
+    findAll('records', alive(orgId), BACKUP_CAP)
+  ]);
+  const issue = (k, level, title, count, sample) => ({ k, level, title, count, sample: (sample || []).slice(0, 5) });
+  const issues = [];
+  const clsId = {}; classes.forEach(c => { clsId[c.id] = 1; });
+  const stuId = {}; students.forEach(s => { stuId[s.id] = 1; });
+
+  const byNo = {};
+  students.forEach(s => {
+    const n = str(s.no).trim();
+    if (n) (byNo[n] || (byNo[n] = [])).push(s);
+  });
+  const dup = [];
+  Object.keys(byNo).forEach(n => { if (byNo[n].length > 1) byNo[n].forEach(s => dup.push({ id: s.id, name: s.name, no: s.no })); });
+  issues.push(issue('dupNo', 'error', '学号重复（家长凭学号认孩子，重复会认错人）', dup.length, dup));
+
+  const noNo = students.filter(s => !str(s.no).trim());
+  issues.push(issue('noNo', 'warn', '学生没有学号', noNo.length, noNo.map(s => ({ id: s.id, name: s.name }))));
+
+  const dangleStu = [];
+  students.forEach(s => {
+    const bad = (s.clsIds || []).filter(id => !clsId[id]);
+    if (bad.length) dangleStu.push({ id: s.id, name: s.name, bad: bad.join(',') });
+  });
+  issues.push(issue('stuDanglingCls', 'warn', '学生挂在已删除的班级上', dangleStu.length, dangleStu));
+
+  const orphan = records.filter(r => !stuId[r.sid]);
+  issues.push(issue('recOrphanStu', 'error', '课堂记录挂在不存在的学生上', orphan.length,
+    orphan.map(r => ({ id: r.id, sid: r.sid, date: r.date }))));
+
+  const byOpen = {};
+  members.forEach(m => { if (m.openid) (byOpen[m.openid] || (byOpen[m.openid] = [])).push(m); });
+  const dupOpen = [];
+  Object.keys(byOpen).forEach(k => {
+    if (byOpen[k].length > 1) byOpen[k].forEach(m => dupOpen.push({ id: m.id, name: m.name }));
+  });
+  issues.push(issue('memDupOpenid', 'error', '同一个微信绑定了多个成员（权限会串）', dupOpen.length, dupOpen));
+
+  const orgRows = await findAll('orgs', { id: orgId }, 5);
+  const orgMissing = orgRows.filter(x => !x.removed).length === 0;
+  issues.push(issue('orgMissing', 'error', '机构档案缺失', orgMissing ? 1 : 0, []));
+
+  const live = issues.filter(x => x.count > 0);
+  const errors = live.filter(x => x.level === 'error').length;
+  const warns = live.filter(x => x.level === 'warn').length;
+  return {
+    ok: true,
+    at: Date.now(),
+    counts: { students: students.length, members: members.length, classes: classes.length, records: records.length },
+    issues: live, errors, warns, healthy: !errors && !warns
+  };
+}
+
 function stamp() {
   const d = new Date();
   const p = n => String(n).padStart(2, '0');
@@ -391,6 +483,8 @@ async function api(action, data, headers) {
     case 'create': return createData(orgId, data || {});
     case 'remove': return removeData(orgId, data || {});
     case 'export': return exportData(orgId, data || {});
+    case 'backup': return backupData(orgId);
+    case 'audit': return auditData(orgId);
     case 'resetPin': return resetPin(orgId);
     default: return { ok: false, msg: '未知操作' };
   }

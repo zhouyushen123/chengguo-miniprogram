@@ -67,6 +67,7 @@ const LAYER = {
   settle: 6,                                // 结转向导落地：→ terms, classes, courses, students, enrollments
   maintenance: 6,                           // 库级维护，只用 ctx + 基础组
   sync: 6,                                  // 同步的数据层半边：→ core + 外部纯函数 syncmerge（不碰领域模块）
+  audit: 5,                                 // 核心资产体检：只用 core + ctx，不碰领域模块
   index: 7                                  // 门面，只用各领域
 };
 

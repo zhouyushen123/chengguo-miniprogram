@@ -14,6 +14,15 @@ const theme = require('../../utils/theme');
 const KB = 1024;
 const MB = 1024 * 1024;
 
+// 备份时间戳：只到分钟，够用且不占宽度
+function fmtTime(ts) {
+  const n = Number(ts) || 0;
+  if (!n) return '';
+  const d = new Date(n);
+  const p = x => (x < 10 ? '0' + x : '' + x);
+  return (d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
 function size(bytes) {
   const n = Number(bytes) || 0;
   if (n >= MB) return (n / MB).toFixed(n >= 10 * MB ? 0 : 1) + ' MB';
@@ -27,7 +36,11 @@ Page({
     mdText: '0 B', mdPct: 0, mdFiles: 0, mdLimit: '200 MB',
     orphanCount: 0, orphanText: '0 B', recent: 0, cleanText: '暂无可清理的文件',
     students: 0, records: 0, classes: 0,
-    failed: false
+    failed: false,
+    // 数据体检：核心资产（学生 / 成员 / 机构）之间的引用是否对得上
+    auditOk: true, auditErr: 0, auditWarn: 0, auditItems: [], fixable: false,
+    // 本地备份：核心资产的滚动快照（最多 3 份）
+    snaps: [], snapCount: 0, snapHint: '还没有备份'
   },
 
   onShow() { theme.apply(this); this.refresh(); },
@@ -53,6 +66,86 @@ Page({
       records: c.records || 0,
       classes: c.classes || 0,
       failed: !!h.lastFail
+    });
+    this.refreshAudit();
+    this.refreshSnaps();
+  },
+
+  // 体检与备份要单独 try：它们是"附加信息"，坏了不能让整页白屏
+  refreshAudit() {
+    let a = null;
+    try { a = db.audit.scan(); } catch (e) { a = null; }
+    if (!a) { this.setData({ auditOk: true, auditItems: [] }); return; }
+    this.setData({
+      auditOk: a.healthy,
+      auditErr: a.errors,
+      auditWarn: a.warns,
+      auditItems: (a.issues || []).map(x => ({ k: x.k, level: x.level, title: x.title, count: x.count })),
+      // 只有这两类是"修了绝不会更糟"的，其它（比如重复学生）必须人来判断
+      fixable: (a.issues || []).some(x => x.k === 'stuDanglingCls' || x.k === 'memDangling' || x.k === 'dupNo' || x.k === 'noNo')
+    });
+  },
+
+  refreshSnaps() {
+    let list = [];
+    try { list = db.snapshots.list() || []; } catch (e) { list = []; }
+    const snaps = list.map(x => ({
+      id: x.id, tag: x.tag || '备份', at: x.at, time: fmtTime(x.at),
+      text: x.counts ? (x.counts.students + ' 学生 · ' + x.counts.records + ' 记录') : ''
+    }));
+    this.setData({
+      snaps,
+      snapCount: snaps.length,
+      snapHint: snaps.length ? ('最近 ' + snaps[0].time) : '还没有备份'
+    });
+  },
+
+  // 只修悬空引用与学号，重复学生/孤儿记录只报告不自动处理
+  fixData() {
+    wx.showModal({
+      title: '修复这些对不上的引用？',
+      content: '会做两件事：把指向"已删除班级/学生"的引用摘掉；给重复或缺失的学号重新发号。学生、老师、机构本身一条都不会删。',
+      confirmText: '修复',
+      success: r => {
+        if (!r.confirm) return;
+        const res = db.audit.fix(['dangling', 'noNo']);
+        if (!res || !res.ok) { wx.showToast({ title: (res && res.msg) || '修复失败', icon: 'none' }); return; }
+        const n = (res.fixed.dangling || 0) + (res.fixed.noNo || 0);
+        this.refresh();
+        wx.showToast({ title: n ? ('已修复 ' + n + ' 处') : '没有需要修的', icon: 'none' });
+      }
+    });
+  },
+
+  doBackup() {
+    const r = db.snapshots.save('手动备份');
+    if (!r || !r.ok) { wx.showToast({ title: (r && r.msg) || '备份失败', icon: 'none' }); return; }
+    this.refreshSnaps();
+    wx.showToast({ title: '已备份到本机', icon: 'none' });
+  },
+
+  doRestore() {
+    const list = this.data.snaps;
+    if (!list.length) { wx.showToast({ title: '还没有备份', icon: 'none' }); return; }
+    wx.showActionSheet({
+      itemList: list.map(x => x.tag + ' · ' + x.time + '（' + x.text + '）'),
+      success: r => {
+        const s = list[r.tapIndex];
+        if (!s) return;
+        wx.showModal({
+          title: '恢复到 ' + s.time + '？',
+          content: '当前数据会先自动存一份「恢复前」，再回到这份备份。恢复后会自动与云端重新对齐。',
+          confirmText: '恢复',
+          confirmColor: theme.danger(),
+          success: m => {
+            if (!m.confirm) return;
+            const res = db.snapshots.restore(s.id);
+            if (!res || !res.ok) { wx.showToast({ title: (res && res.msg) || '恢复失败', icon: 'none' }); return; }
+            this.refresh();
+            wx.showToast({ title: '已恢复', icon: 'none' });
+          }
+        });
+      }
     });
   },
 

@@ -104,11 +104,14 @@ function claim(openid, adopted) {
   if (res && res.ok && !res.already) db.sync.markDirty('members');
 }
 
-// 拉增量：最多 5 轮（每轮每集合 100 条），游标只增不减
+// 拉增量：每轮每集合 100 条。轮次给足（20 轮 = 单集合 2000 条），
+// 因为换手机 / 从备份恢复后的首次全量很容易超过原来的 5 轮上限，
+// 拉不完就停会让"看起来同步了、其实少了几百条"这种最难查的问题出现。
+const PULL_ROUNDS = 20;
 function pullNow() {
   let round = 0, added = 0, updated = 0;
   const step = () => {
-    if (round++ >= 5) return Promise.resolve({ added, updated, more: true });
+    if (round++ >= PULL_ROUNDS) return Promise.resolve({ added, updated, more: true });
     return api.syncCall('pull', { orgId: targetOrg(), since: db.sync.cursor() }).then(r => {
       if (!r || !r.ok) throw new Error((r && r.msg) || 'pull 失败');
       const st = db.sync.applyRemote(r.docs);

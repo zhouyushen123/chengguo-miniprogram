@@ -30,8 +30,35 @@
       </view>
     </view>
 
+    <!-- 数据体检：学生 / 老师 / 机构之间的引用是否对得上 -->
+    <view class="card">
+      <view class="sec">
+        <view class="label">数据体检</view>
+        <view class="sechint">{{auditOk ? '一切正常' : (auditErr + ' 个问题')}}</view>
+      </view>
+      <view wx:if="{{auditOk}}" class="hint note">学生 {{students}} 人、班级 {{classes}} 个、记录 {{records}} 条，互相引用都对得上。</view>
+      <block wx:else>
+        <view wx:for="{{auditItems}}" wx:key="k" class="mrow">
+          <text class="mk">{{item.title}}</text>
+          <text class="mv {{item.level === 'error' ? 'bad' : ''}}">{{item.count}}</text>
+        </view>
+        <view wx:if="{{fixable}}" class="btn clean" hover-class="btn-hover" bindtap="fixData">修复可自动处理的问题</view>
+        <view class="hint note">只摘掉指向已删除数据的引用、给重复或缺失的学号重新发号。学生、老师、机构本身一条都不会删。</view>
+      </block>
+    </view>
+
+    <!-- 本地备份：核心资产的滚动快照 -->
+    <view class="card">
+      <view class="sec"><view class="label">本地备份</view><view class="sechint">{{snapHint}}</view></view>
+      <view class="hint note">升级前、每天首次打开时会自动备份学生、老师、机构、班级与最近 300 条记录，最多保留 3 份。本机数据读坏时可从这里恢复。</view>
+      <view class="btnrow">
+        <view class="btn clean" hover-class="btn-hover" bindtap="doBackup">立即备份</view>
+        <view class="btn clean {{snapCount ? '' : 'idle'}}" hover-class="btn-hover" bindtap="doRestore">从备份恢复</view>
+      </view>
+    </view>
+
     <view class="card note">
-      <view class="tip">照片和视频存在这台手机上：换手机、清理小程序存储或卸载重装都会丢失。文字评价与分数存在上一张卡片里，不受影响。</view>
+      <view class="tip">照片和视频存在这台手机上：换手机、清理小程序存储或卸载重装都会丢失。文字评价与分数存在上面几张卡片里，不受影响。</view>
       <view class="tip">视频最占空间（每条约 10–50 MB）。空间紧张时，删掉几条不需要的视频就能腾出很多。</view>
     </view>
 

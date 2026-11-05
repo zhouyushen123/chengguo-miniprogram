@@ -179,6 +179,32 @@ t('后台网址指向 HTTP 访问服务的 /admin 路径', () => {
   assert.ok(/^https:\/\/.+-env|^https:\/\/cloud1-/.test(lib.adminUrl('')) || lib.adminUrl('').indexOf('service.tcloudbase.com/admin') > 0);
 });
 
+/* ---------------- 核心资产的备份与体检 ---------------- */
+t('完整备份覆盖全部核心集合（少一个就等于备份不全）', () => {
+  const m = SRC.match(/BACKUP_COLLS\s*=\s*\[([^\]]*)\]/);
+  assert.ok(m, '应定义 BACKUP_COLLS');
+  ['orgs', 'members', 'students', 'classes', 'records'].forEach(k => {
+    assert.ok(m[1].indexOf("'" + k + "'") > -1, '备份里缺少 ' + k);
+  });
+});
+
+t('备份会剔除云端内部字段（_id / srvAt），恢复时不会带着别人的库内标识', () => {
+  const m = SRC.match(/async function backupData\([\s\S]*?\n\}/);
+  assert.ok(m, '应有 backupData');
+  assert.ok(/delete x\._id/.test(m[0]), '要删 _id');
+  assert.ok(/delete x\.srvAt/.test(m[0]), '要删 srvAt');
+});
+
+t('备份记录超过上限时明确告诉用户"这份不全"', () => {
+  assert.ok(/truncated\s*:/.test(SRC), '要有 truncated 标记');
+});
+
+t('体检是只读的：auditData 里不能有任何写操作', () => {
+  const m = SRC.match(/async function auditData\([\s\S]*?\n\}/);
+  assert.ok(m, '应有 auditData');
+  assert.ok(!/\.update\(|\.add\(|\.remove\(|\.set\(/.test(m[0]), '体检函数里出现了写操作');
+});
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {

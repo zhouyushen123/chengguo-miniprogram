@@ -36,6 +36,20 @@ App({
   reportBoot() {
     const st = db.status();
     this.globalData.bootStatus = st;
+    // 从本地快照恢复过：必须告诉用户"数据回到了几点"，不能悄悄替换掉他刚才看到的内容
+    if (st.restored) {
+      const d = new Date(Number(st.restored.at) || 0);
+      const p = x => (x < 10 ? '0' + x : '' + x);
+      const when = d.getMonth() + 1 + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+      wx.showModal({
+        title: '已从备份恢复',
+        content: '这次启动发现本机数据读取出错（' + st.restored.bad + '），已自动恢复到 ' + when + ' 的备份，'
+          + '随后会与云端重新对齐。备份之后新录的内容，云端有的会补回来。',
+        showCancel: false,
+        confirmText: '知道了'
+      });
+      return;
+    }
     if (!st.degraded) return;
     wx.showModal({
       title: '数据读取异常',

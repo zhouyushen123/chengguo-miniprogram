@@ -1,7 +1,7 @@
 // utils/db/students.js —— 学生
 // 依赖：ctx（底座）、pinyin（列表排序）。学生位于实体依赖链的中层，
 // 不 require 任何其他领域模块；删除学生时连带处理记录/成员/报名，一律直接读集合。
-const { now, org, oc, actor, deny, pushSaved, applyEdit } = require('./ctx');
+const { now, org, oc, ocAll, actor, deny, pushSaved, applyEdit, markRemoved, markAlive } = require('./ctx');
 const core = require('./core');
 const schema = require('./schema');
 const perms = require('./permissions');
@@ -120,10 +120,12 @@ function studentRemove(id) {
   // 删学生要同时改动 4 个集合，用事务：中途失败不会留下"学生删了、记录还在"的残局
   return core.tx(() => {
     const t = now();
-    s.removed = true; s.updatedAt = t;
+    // 一次删除牵连的每一行都盖同一个 removedAt（markRemoved 负责），
+    // 回收站才能把「学生 + 他的记录 + 他的报名」当成一批一起还原。
+    markRemoved(s, t);
     let n = 0;
     oc('records').forEach(r => {
-      if (r.sid === s.id) { r.removed = true; r.updatedAt = t; n++; }
+      if (r.sid === s.id && !r.removed) { markRemoved(r, t); n++; }
     });
     // 家长绑定关系同步摘掉，避免指向已删学生
     oc('members').forEach(m => {
@@ -132,11 +134,40 @@ function studentRemove(id) {
     });
     // 报名（课时账）一并软删
     oc('enrollments').forEach(en => {
-      if (en.studentId === s.id) { en.removed = true; en.updatedAt = t; }
+      if (en.studentId === s.id && !en.removed) markRemoved(en, t);
     });
     core.persist('students'); core.persist('records');
     core.persist('members'); core.persist('enrollments');
     return { ok: true, records: n };
+  });
+}
+
+// 从回收站还原一个学生：把他连同「同一次删除带走的东西」一起放回来。
+// 只还原这个学生自己的那一批（removedAt 相同 + 外键指向他），不碰别人后来删的数据。
+function studentRestore(id) {
+  const s = ocAll('students').find(x => x.id === Number(id) && x.removed);
+  if (!s) return { ok: false, msg: '回收站里没有这个学生' };
+  // 还原等于一次写操作，权限照旧按 student.write 判（演示模式也照样被拦）
+  const err = deny('student.write', { student: s });
+  if (err) return { ok: false, msg: err };
+  return core.tx(() => {
+    const t = now();
+    const at = s.removedAt;
+    markAlive(s, t);
+    let rec = 0, enr = 0;
+    // 只认「这一批」：删之前就不在的记录（removedAt 更早）不该被顺手复活。
+    // 必须用 ocAll：oc 会把 removed 的行藏起来，删掉的东西根本遍历不到。
+    ocAll('records').forEach(r => {
+      if (r.sid === s.id && r.removed && r.removedAt === at) { markAlive(r, t); rec++; }
+    });
+    ocAll('enrollments').forEach(en => {
+      if (en.studentId === s.id && en.removed && en.removedAt === at) { markAlive(en, t); enr++; }
+    });
+    core.persist('students'); core.persist('records'); core.persist('enrollments');
+    // 家长绑定在删除时被摘掉了，按「同一家长号码自动归并」的既有规则补回来，
+    // 不还原的话家长会看不到这个孩子，而界面上没有任何提示。
+    const back = studentLinkParents(s);
+    return { ok: true, records: rec, enrollments: enr, parents: back };
   });
 }
 
@@ -191,6 +222,6 @@ function studentLinkParents(s) {
 
 module.exports = {
   studentList, studentOf, studentRaw, studentGet, studentName, studentSearch,
-  studentCreate, studentUpdate, studentUpdateProfile, studentRemove,
+  studentCreate, studentUpdate, studentUpdateProfile, studentRemove, studentRestore,
   studentNextNo, studentByNo, studentSiblings, studentLinkParents, parentKey
 };

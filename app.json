@@ -16,7 +16,8 @@
     "pages/tpls/tpls",
     "pages/cls/cls",
     "pages/apply/apply",
-    "pages/storage/storage"
+    "pages/storage/storage",
+    "pages/trash/trash"
   ],
   "window": {
     "navigationBarBackgroundColor": "#FAF9F7",

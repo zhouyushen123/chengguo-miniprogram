@@ -1,7 +1,7 @@
 // utils/db/records.js —— 课堂记录
 // 依赖：ctx（底座）、students（学生引用与范围校验）、enrollments（结转班消课）。
 // 依赖方向：students/enrollments → records（单向），本模块位于领域依赖链顶端。
-const { now, org, oc, actor, deny, pushSaved, applyEdit } = require('./ctx');
+const { now, org, oc, ocAll, actor, deny, pushSaved, applyEdit, markRemoved, markAlive } = require('./ctx');
 const core = require('./core');
 const schema = require('./schema');
 const perms = require('./permissions');
@@ -222,16 +222,25 @@ function recordMarkSent(ids) {
   }
   return { count: touched.length, denied };
 }
+function recordRestore(id) {
+  const r = ocAll('records').find(y => y.id === Number(id) && y.removed);
+  if (!r) return { ok: false, msg: '回收站里没有这条记录' };
+  const err = deny('record.create', { record: r });
+  if (err) return { ok: false, msg: err };
+  if (!applyEdit('records', r, markAlive({}, now()))) return { ok: false, msg: core.SAVE_FAIL };
+  return { ok: true };
+}
 function recordRemove(id) {
   const r = oc('records').find(y => y.id === Number(id));
   if (!r) return { ok: false, msg: '记录不存在' };
   const err = deny('record.delete', { record: r });
   if (err) return { ok: false, msg: err };
-  if (!applyEdit('records', r, { removed: true, updatedAt: now() })) return { ok: false, msg: core.SAVE_FAIL };
+  // 软删也走 ctx 的统一标记：removedAt/removedBy 是回收站还原与「谁删的」的唯一依据
+  if (!applyEdit('records', r, markRemoved({}, now()))) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true };
 }
 
 module.exports = {
   recordList, recordOfStudent, recordOfClass, recordGet, recordLatest,
-  canSend, recordSave, recordBatchSave, recordMarkSent, recordAttachCloud, recordRemove, sessionSettle
+  canSend, recordSave, recordBatchSave, recordMarkSent, recordAttachCloud, recordRemove, recordRestore, sessionSettle
 };

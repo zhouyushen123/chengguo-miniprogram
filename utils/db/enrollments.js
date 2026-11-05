@@ -5,7 +5,7 @@
 // 【读也过滤】课时数字直接推给家长端（"还剩 N 节课"），所以列表与单条查询都要按身份过滤：
 // 家长只见自己孩子、老师只见自己带的班。内部校验（重复报名、消课找账）走不过滤的 raw 版本，
 // 否则"看不到 → 以为不存在 → 又建一条"会造出重复账。
-const { now, org, oc, actor, deny, pushSaved, applyEdit } = require('./ctx');
+const { now, org, oc, actor, deny, pushSaved, applyEdit, markRemoved, markAlive } = require('./ctx');
 const core = require('./core');
 const schema = require('./schema');
 const perms = require('./permissions');
@@ -85,7 +85,7 @@ function enrollmentRemove(id) {
   if (err) return { ok: false, msg: err };
   const e = enrollmentRaw(id);
   if (!e) return { ok: false, msg: '报名不存在' };
-  if (!applyEdit('enrollments', e, { removed: true, updatedAt: now() })) return { ok: false, msg: core.SAVE_FAIL };
+  if (!applyEdit('enrollments', e, markRemoved({}, now()))) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true };
 }
 // 消课：结转制班级每录一条成果记录 = 消 1 课时。

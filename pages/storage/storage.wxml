@@ -30,6 +30,21 @@
       </view>
     </view>
 
+    <!-- 回收站：删掉的东西都在，随时能放回来 -->
+    <view class="card">
+      <view class="sec"><view class="label">回收站</view><view class="sechint">{{trashCount ? trashCount + ' 项' : '空'}}</view></view>
+      <view class="hint note">学生、班级、记录、成员被删除后都会先放进回收站，连同当时一起删掉的内容都能恢复。</view>
+      <view class="btn clean" hover-class="btn-hover" bindtap="goTrash">查看最近删除</view>
+    </view>
+
+    <!-- 同步被云端拒绝的改动：本地看着改好了，云端没接受 -->
+    <view wx:if="{{rejectCount}}" class="card">
+      <view class="sec"><view class="label">没同步上去</view><view class="sechint">{{rejectCount}} 项</view></view>
+      <view wx:for="{{rejects}}" wx:key="idx" class="hint note">· {{item.msg}}</view>
+      <view class="hint note">这些改动只存在这台手机上：云端有硬约束（学号不能重、一个微信只能绑一个成员、机构不能删）。改掉冲突后会自动重试。</view>
+      <view class="btn clean" hover-class="btn-hover" bindtap="clearRejects">知道了，隐藏</view>
+    </view>
+
     <!-- 数据体检：学生 / 老师 / 机构之间的引用是否对得上 -->
     <view class="card">
       <view class="sec">

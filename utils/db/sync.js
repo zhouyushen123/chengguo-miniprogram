@@ -37,6 +37,18 @@ function clearDirty(names) {
   patchSync({ dirty: left });
 }
 function setCursor(v) { patchSync({ cursor: Number(v) || 0 }); }
+
+// 被云端拒绝的改动（学号重号、微信已绑给别人、机构不可删…）。
+// 必须留在本机并且给人看见：拒绝意味着"服务端不同意"，本地看起来改成功了、
+// 云端永远是旧值，而且下一次拉取不会替它纠正 —— 不告诉用户就是静默不一致。
+const rejects = () => (syncMeta().rejects || []);
+function addRejects(list) {
+  if (!list || !list.length) return;
+  const at = Date.now();
+  const next = list.map(x => ({ at, c: String(x.c || ''), id: x.id, code: String(x.code || ''), msg: String(x.msg || '') }));
+  patchSync({ rejects: next.concat(rejects()).slice(0, 20) });
+}
+function clearRejects() { patchSync({ rejects: [] }); }
 // 首次上云：把当前机构的全部数据标脏，一次推完（幂等，重复标脏没有副作用）
 function markAllDirty() { patchSync({ dirty: COLLS.slice() }); }
 
@@ -126,5 +138,5 @@ function reorg(to) {
 
 module.exports = {
   COLLS, dirtyCols, markDirty, clearDirty, markAllDirty, snapshot, applyRemote,
-  cursor, setCursor, onWrite, onDirty, reorg
+  cursor, setCursor, onWrite, onDirty, reorg, rejects, addRejects, clearRejects
 };

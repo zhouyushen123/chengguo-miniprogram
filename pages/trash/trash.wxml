@@ -1,0 +1,30 @@
+<view class="wrap">
+  <view class="tabs">
+    <view wx:for="{{kinds}}" wx:key="k" class="tab {{kind === item.k ? 'on' : ''}}"
+          data-k="{{item.k}}" bindtap="onKind">{{item.label}}</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="hint">读取中…</view>
+  <view wx:elif="{{msg}}" class="hint">{{msg}}</view>
+
+  <block wx:elif="{{items.length}}">
+    <view class="hint">最近删除 {{total}} 项，只显示最近 60 项。删除是可逆的，恢复后会一起同步到云端。</view>
+    <view class="card list">
+      <view wx:for="{{items}}" wx:key="key" class="row">
+        <view class="info">
+          <view class="title">{{item.title}}</view>
+          <view class="sub">{{item.sub}}</view>
+          <view class="meta">{{item.time}}{{item.by ? ' · ' + item.by + ' 删除' : ''}}</view>
+        </view>
+        <view class="btn small" hover-class="btn-hover"
+              data-kind="{{item.kind}}" data-id="{{item.id}}" data-title="{{item.title}}"
+              bindtap="onRestore">恢复</view>
+      </view>
+    </view>
+  </block>
+
+  <view wx:else class="empty">
+    <view class="etitle">这里空的</view>
+    <view class="ehint">删掉的学生、班级、记录和成员会先放到这里，随时能恢复。</view>
+  </view>
+</view>

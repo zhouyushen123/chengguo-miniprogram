@@ -3,7 +3,7 @@
 // user 是跨机构的账号本身，member 是这个账号在本机构的角色/数据范围，两者本质是一体两面，
 // 且互相引用（建成员要查账号、改账号要落到成员），所以放在同一个模块里，避免 require 互相循环。
 // 依赖：ctx（底座）、org（机构名）、classes（成员视图里的班级名）、students（成员视图里的孩子名）。
-const { now, org, oc, actor, deny, memberCurrent, pushSaved, applyEdit } = require('./ctx');
+const { now, org, oc, ocAll, actor, deny, memberCurrent, pushSaved, applyEdit, markRemoved, markAlive } = require('./ctx');
 const core = require('./core');
 const schema = require('./schema');
 const perms = require('./permissions');
@@ -159,7 +159,23 @@ function memberRemove(id) {
   const m = memberGet(id);
   if (!m) return { ok: false, msg: '成员不存在' };
   if (m.role === 'owner') return { ok: false, msg: '不能移除机构负责人' };
-  if (!applyEdit('members', m, { removed: true, updatedAt: now() })) return { ok: false, msg: core.SAVE_FAIL };
+  if (!applyEdit('members', m, markRemoved({}, now()))) return { ok: false, msg: core.SAVE_FAIL };
+  return { ok: true };
+}
+
+// 从回收站还原成员（老师/家长）。角色与负责范围都还在原文档里，一起回来。
+function memberRestore(id) {
+  const err = deny('member.manage');
+  if (err) return { ok: false, msg: err };
+  const m = ocAll('members').find(x => x.id === Number(id) && x.removed);
+  if (!m) return { ok: false, msg: '回收站里没有这个成员' };
+  // 同一个微信只该有一条成员关系：如果这个微信后来又被加进来了，
+  // 还原会让它同时有两条，权限判定按 openid 取第一条，等于随机生效。
+  if (m.openid) {
+    const clash = ocAll('members').filter(x => !x.removed && x.id !== m.id && x.openid === m.openid);
+    if (clash.length) return { ok: false, msg: '这个微信已经是「' + (clash[0].name || '其他成员') + '」，不能再还原' };
+  }
+  if (!applyEdit('members', m, markAlive({}, now()))) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true };
 }
 
@@ -282,7 +298,7 @@ function isParent() { const a = actor(); return !!a && a.role === 'parent'; }
 
 module.exports = {
   memberList, memberView, memberGet, memberOfUser, memberOfOpenid, claimOpenid,
-  memberCreate, memberUpdate, memberRemove,
+  memberCreate, memberUpdate, memberRemove, memberRestore,
   userList, userGet, userName, userCurrent, userSwitch, userSwitchHome,
   userCreate, userUpdate, userRemove,
   settings, setTeacher, me, isParent

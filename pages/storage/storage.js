@@ -40,7 +40,9 @@ Page({
     // 数据体检：核心资产（学生 / 成员 / 机构）之间的引用是否对得上
     auditOk: true, auditErr: 0, auditWarn: 0, auditItems: [], fixable: false,
     // 本地备份：核心资产的滚动快照（最多 3 份）
-    snaps: [], snapCount: 0, snapHint: '还没有备份'
+    snaps: [], snapCount: 0, snapHint: '还没有备份',
+    // 被云端拒绝的改动：本地改成功了、云端没接受，不说出来就是静默不一致
+    rejects: [], rejectCount: 0, trashCount: 0
   },
 
   onShow() { theme.apply(this); this.refresh(); },
@@ -69,6 +71,7 @@ Page({
     });
     this.refreshAudit();
     this.refreshSnaps();
+    this.refreshRejects();
   },
 
   // 体检与备份要单独 try：它们是"附加信息"，坏了不能让整页白屏
@@ -84,6 +87,26 @@ Page({
       // 只有这两类是"修了绝不会更糟"的，其它（比如重复学生）必须人来判断
       fixable: (a.issues || []).some(x => x.k === 'stuDanglingCls' || x.k === 'memDangling' || x.k === 'dupNo' || x.k === 'noNo')
     });
+  },
+
+  // 同步被拒 + 回收站条数：都是"数据没在预期位置"的信号，放在一起看
+  refreshRejects() {
+    let list = [];
+    let trash = 0;
+    try { list = db.sync.rejects() || []; } catch (e) { list = []; }
+    try { const r = db.trash.list(); trash = (r && r.ok) ? r.total : 0; } catch (e) { trash = 0; }
+    this.setData({
+      rejectCount: list.length,
+      rejects: list.slice(0, 5).map((x, i) => ({ idx: i, msg: x.msg || x.code, time: fmtTime(x.at) })),
+      trashCount: trash
+    });
+  },
+
+  goTrash() { wx.navigateTo({ url: '/pages/trash/trash' }); },
+
+  clearRejects() {
+    try { db.sync.clearRejects(); } catch (e) { /* 清不掉也不影响业务 */ }
+    this.refreshRejects();
   },
 
   refreshSnaps() {

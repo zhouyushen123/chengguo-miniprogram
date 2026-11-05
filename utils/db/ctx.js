@@ -13,6 +13,14 @@ const org = () => (core.meta().orgId || schema.DEFAULT_ORG);
 // 读路径统一入口：当前机构视图。所有列表/查找都必须走这里，绝不能直接读全量集合，
 // 否则其他机构的数据会混进来（曾经的真实 bug：org2 的班级出现在 org1 的列表里）。
 const oc = name => core.orgColl(name);
+// 含"已删除"行的机构视图：oc() 会把 removed 的行藏起来（界面上就该藏），
+// 但回收站、还原、体检都必须看得见它们，否则"能删能还原"只是句空话。
+function ocAll(name) {
+  const list = core.coll(name) || [];
+  const o = org();
+  if (name === 'orgs') return list.filter(x => String(x.id) === String(o));
+  return list.filter(x => (x.orgId || o) === o);
+}
 
 /* =====================================================================
  * 身份与权限
@@ -97,6 +105,29 @@ function applyEdit(name, obj, next) {
   return false;
 }
 
+// 打软删标记（所有删除都必须走这里，别自己写 removed = true）
+// t 由调用方给：一次删除牵连多个集合时共用一个时间戳，回收站靠它认批。
+function markRemoved(doc, t) {
+  // 用成员关系取 id，不用 actor()：后者是给权限判定用的视图，不带成员 id
+  const a = memberCurrent();
+  doc.removed = true;
+  doc.updatedAt = t;
+  if (!doc.removedAt) doc.removedAt = t;      // 早就删过的保留原批次，不并进这一次
+  if (!doc.removedBy) doc.removedBy = (a && a.id) || 0;
+  return doc;
+}
+
+// 取消软删（回收站还原用）。removedAt 必须清 0，
+// 否则下次被删时 carry 着旧值，又和别的批次串在一起。
+function markAlive(doc, t) {
+  doc.removed = false;
+  doc.removedAt = 0;
+  doc.removedBy = 0;
+  doc.updatedAt = t;
+  return doc;
+}
+
 module.exports = {
-  now, org, oc, memberCurrent, actor, deny, memberCurrentOfRole, pushSaved, applyEdit
+  now, org, oc, ocAll, memberCurrent, actor, deny, memberCurrentOfRole, pushSaved, applyEdit,
+  markRemoved, markAlive
 };

@@ -100,11 +100,17 @@ function normDate(v) {
 function audit(raw, orgId, stamp) {
   const r = raw || {};
   const created = num(r.createdAt, 0) || stamp;
+  const removed = r.removed === true;
   return {
     orgId: str(r.orgId, DEFAULT_ORG) || DEFAULT_ORG,
     createdAt: created,
     updatedAt: num(r.updatedAt, 0) || stamp,
-    removed: r.removed === true
+    removed,
+    // 删除痕迹：removedAt 是「哪一次删除」的标记。删学生/删班级会连带软删记录、报名、课程，
+    // 它们共用同一个 removedAt —— 回收站靠这个值把一整批认出来，一起还原。
+    // 已经删过的行不改写原值，否则后来的一次删除会把两次删的东西混成一批，还原时"复活"错的条目。
+    removedAt: removed ? (num(r.removedAt, 0) || num(r.updatedAt, 0) || stamp) : 0,
+    removedBy: removed ? num(r.removedBy, 0) : 0
   };
 }
 
@@ -119,7 +125,14 @@ function normalizeClass(raw, orgId, stamp) {
     teacherId: num(r.teacherId, 0),                            // 主讲老师（member id），0 = 未指派
     // 课次号：当前正录的是第几次课，从 1 起。结清（sessionSettle）时 +1。
     // 老数据升级时由 assignRecordSessions 按历史日期分组补算，不小于 1。
-    session: Math.max(1, num(r.session, 1))
+    session: Math.max(1, num(r.session, 1)),
+    // 删除班级时被一起摘掉的关联（学生 / 负责该班的成员）。
+    // 不记下来的话，从回收站恢复的班级会是个"空班"——学生还在，但不在班里了，
+    // 而且没有任何界面提示这件事，等于一次静默的半个还原。
+    detached: {
+      students: numList(r.detached && r.detached.students),
+      members: numList(r.detached && r.detached.members)
+    }
   }, audit(r, orgId, stamp));
 }
 

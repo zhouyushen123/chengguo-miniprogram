@@ -135,8 +135,10 @@ function pushNow() {
     .reduce((acc, batch) => acc.then(() => api.syncCall('push', { orgId: orgId(), docs: batch }).then(r => {
       if (!r || !r.ok) throw new Error((r && r.msg) || 'push 失败');
       pushed += Number(r.accepted) || 0;
+      // 云端拒了哪几条要原样记下来（服务端的硬约束在这里回传）
+      if (r.rejected && r.rejected.length) db.sync.addRejects(r.rejected);
     })), Promise.resolve())
-    .then(() => { db.sync.clearDirty(names); return { pushed, cols: names.length }; });
+    .then(() => { db.sync.clearDirty(names); return { pushed, cols: names.length, rejected: db.sync.rejects().length }; });
 }
 
 // 一轮完整同步：先拉后推。失败静默（返回 ok:false 仅供日志）
@@ -209,7 +211,20 @@ function kick() {
 
 db.sync.onDirty(schedule);
 
+// 版本历史：看一条核心资产改过什么（只读）
+function history(c, id) {
+  if (!api.syncOn()) return Promise.resolve({ ok: false, code: 'OFFLINE', msg: '没联网' });
+  return api.syncCall('history', { orgId: orgId(), c, id })
+    .catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
+}
+// 退回某一版（回滚本身也是一次改动，会同步到所有设备）
+function revert(c, id, at) {
+  if (!api.syncOn()) return Promise.resolve({ ok: false, code: 'OFFLINE', msg: '没联网' });
+  return api.syncCall('revert', { orgId: orgId(), c, id, at })
+    .catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
+}
+
 module.exports = {
-  init, pullNow, pushNow, syncNow, kick, schedule, join, claim,
+  init, pullNow, pushNow, syncNow, kick, schedule, join, claim, history, revert,
   isReady: () => ready, isConflict: () => conflict
 };

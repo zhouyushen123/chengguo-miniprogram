@@ -16,6 +16,11 @@ const _ = db.command;
 // 允许同步的集合（users 是本机身份，不同步；演示数据在独立命名空间，天然不进这里）
 const COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'students', 'enrollments', 'records', 'templates'];
 const PAGE = 100;
+// 版本历史：核心资产每次被"真的改内容"之前留一份旧值。
+// 只做核心四类——记录是海量增长的业务数据，给它留历史等于把库撑爆，而且误改一条记录的代价远小于误改一个学生。
+const HISTORY = 'history';
+const HIST_COLLS = ['orgs', 'members', 'students', 'classes'];
+const HIST_KEEP = 10;
 // 邀请码（机构码）：不参与内容同步，只做"这个人可以加入哪个机构、以什么身份"的凭据
 const INVITES = 'invites';
 const INVITE_DAYS = 30;
@@ -26,7 +31,7 @@ const ALPHABET = 'ACDEFGHJKLMNPQRSTUVWXY3456789';
 // 首次调用时集合还不存在（云数据库不会自动建表）→ 一个一个建，已存在就忽略。
 // 这样用户不用在控制台手工点十次，部署完直接用。
 async function ensureCollections() {
-  for (const c of COLLS.concat(['users', INVITES])) {
+  for (const c of COLLS.concat(['users', INVITES, HISTORY])) {
     try { await db.createCollection(c); } catch (e) { /* 已存在即可 */ }
   }
 }
@@ -71,6 +76,79 @@ function newMemberId() { return Date.now() * 1000 + Math.floor(Math.random() * 1
 // 上一个用过的服务端时间戳（云函数实例内有效）。只为避免"同一毫秒两次 push"撞号，
 // 真正的正确性靠 pull 的组完整性保护（见下面 pull 分支）。
 let lastSrvAt = 0;
+// 下一个同步时间戳：同一实例内严格递增（跨实例靠 pull 端末组保护兜底）
+function nextSrvAt() {
+  const t = Date.now();
+  lastSrvAt = t > lastSrvAt ? t : lastSrvAt + 1;
+  return lastSrvAt;
+}
+
+// 业务内容是否相同（忽略同步元数据）。只用来决定"值不值得留旧版"：
+// 仅 updatedAt 变了的推送不该刷出一堆内容一样的历史。
+const META_KEYS = { _id: 1, _openid: 1, srvAt: 1, updatedAt: 1 };
+function sameContent(a, b) {
+  const keys = {};
+  Object.keys(a || {}).forEach(k => { if (!META_KEYS[k]) keys[k] = 1; });
+  Object.keys(b || {}).forEach(k => { if (!META_KEYS[k]) keys[k] = 1; });
+  for (const k of Object.keys(keys)) {
+    const x = a ? a[k] : undefined;
+    const y = b ? b[k] : undefined;
+    if (x === y) continue;
+    // 缺字段与它的默认值算同一个内容：客户端少传一个 removed:false 不该被当成一次修改
+    const empty = v => v === undefined || v === null || v === false || v === '' || v === 0;
+    if (empty(x) && empty(y)) continue;
+    if (x && y && typeof x === 'object' && typeof y === 'object') {
+      if (JSON.stringify(x) !== JSON.stringify(y)) return false;
+      continue;
+    }
+    return false;
+  }
+  return true;
+}
+
+// 留一版旧值 + 只保留最近 HIST_KEEP 版。
+// 无限归档等于把数据库变成垃圾桶，而且查起来更慢；"最近十次改错了能退回去"才是真实需求。
+async function keepHistory(orgId, c, id, doc, openid) {
+  const old = Object.assign({}, doc);
+  delete old._id; delete old._openid; delete old.srvAt;
+  try {
+    await db.collection(HISTORY).add({ data: { orgId, c, id, at: Date.now(), by: openid, doc: old } });
+    const r = await db.collection(HISTORY).where({ orgId, c, id })
+      .orderBy('at', 'desc').skip(HIST_KEEP).limit(20).get();
+    for (const x of r.data) await db.collection(HISTORY).doc(x._id).remove();
+  } catch (e) {
+    // 历史写失败绝不能连带业务写入失败——但一定要留痕，否则"以为有历史"比没有更危险
+    console.warn('[syncv2] 写历史失败', c, id, e && e.message);
+  }
+}
+
+// 核心资产的硬约束：客户端体检是事后的，服务端这一层才拦得住
+async function checkCore(c, d, orgId) {
+  if (c === 'orgs' && d.removed === true) {
+    return { code: 'ORG_ROOT', msg: '机构档案不能删除' };
+  }
+  if (c === 'students' && d.removed !== true) {
+    const no = String(d.no === undefined || d.no === null ? '' : d.no).trim();
+    if (no) {
+      const r = await db.collection('students').where({ orgId, no }).limit(10).get().catch(() => ({ data: [] }));
+      const clash = r.data.filter(x => String(x.id) !== String(d.id) && x.removed !== true && String(x.no).trim() === no);
+      // 学号是家长认孩子的唯一凭据，重号会让家长看到别人家的孩子
+      if (clash.length) return { code: 'DUP_NO', msg: '学号 ' + no + ' 已被「' + (clash[0].name || '其他学生') + '」使用' };
+    }
+  }
+  if (c === 'members' && d.removed !== true && d.openid) {
+    const r = await db.collection('members').where({ orgId, openid: d.openid }).limit(10).get().catch(() => ({ data: [] }));
+    const clash = r.data.filter(x => String(x.id) !== String(d.id) && x.removed !== true);
+    // 一个微信两条成员关系 = 权限按哪条生效不确定，这类问题排查起来极贵
+    if (clash.length) return { code: 'MEM_TAKEN', msg: '这个微信已经绑定了「' + (clash[0].name || '其他成员') + '」' };
+  }
+  if (c === 'members' && d.removed !== true && d.role === 'owner') {
+    const r = await db.collection('members').where({ orgId, role: 'owner' }).limit(10).get().catch(() => ({ data: [] }));
+    const clash = r.data.filter(x => String(x.id) !== String(d.id) && x.removed !== true);
+    if (clash.length) return { code: 'OWNER_EXISTS', msg: '机构已有负责人「' + (clash[0].name || '') + '」' };
+  }
+  return null;
+}
 const CODE_RE = /^[A-Z0-9]{4,10}$/;
 
 exports.main = async (event) => {
@@ -217,6 +295,42 @@ exports.main = async (event) => {
     return { ok: false, msg: '邀请码生成失败，请重试' };
   }
 
+  // ---- 版本历史：某条核心资产改过什么 / 退回某一版 ----
+  // 为什么在云端做：手机里的旧版本会随下一次覆盖消失，只有服务端见过"改之前长什么样"。
+  if (action === 'history' || action === 'revert') {
+    const c = String(event.c || '');
+    const id = Number(event.id) || 0;
+    if (HIST_COLLS.indexOf(c) < 0) return { ok: false, code: 'BAD_COLL', msg: '这类数据没有历史版本' };
+    if (!id) return { ok: false, code: 'BAD_ID', msg: '缺少数据标识' };
+    const me = await memberOf(OPENID, orgId);
+    // 家长能看到的是自家孩子发布后的评语；翻改档记录、回滚档案必须是有管理权限的人
+    if (!me || me.role === 'parent') return { ok: false, code: 'FORBIDDEN', msg: '没有权限' };
+
+    const hs = await db.collection(HISTORY).where({ orgId, c, id }).limit(50).get();
+    const items = hs.data
+      .map(h => ({ at: Number(h.at) || 0, by: String(h.by || ''), doc: h.doc || {} }))
+      .sort((a, b) => b.at - a.at);
+    if (action === 'history') return { ok: true, items, kept: HIST_KEEP };
+
+    const at = Number(event.at) || 0;
+    const hit = items.find(x => x.at === at);
+    if (!hit) return { ok: false, code: 'NO_VERSION', msg: '这一版已被清理掉' };
+    if ((c === 'members' || c === 'orgs') && me.role !== 'owner' && me.role !== 'admin') {
+      return { ok: false, code: 'FORBIDDEN', msg: '只有管理员能还原成员或机构' };
+    }
+    const cur = await db.collection(c).where({ orgId, id }).limit(1).get();
+    if (!cur.data.length) return { ok: false, code: 'GONE', msg: '云端已经没有这条数据' };
+    const back = Object.assign({}, hit.doc, { orgId, id, updatedAt: Date.now(), srvAt: nextSrvAt() });
+    delete back._id; delete back._openid;
+    // 回滚出来的内容同样要过一遍硬约束：老版本里可能有当时合法、现在冲突的值
+    const bad = await checkCore(c, back, orgId);
+    if (bad) return { ok: false, code: bad.code, msg: bad.msg };
+    // 回滚本身也是一次改动：先把当前值留一版，滚错了还能再滚回来
+    await keepHistory(orgId, c, id, cur.data[0], OPENID);
+    await db.collection(c).doc(cur.data[0]._id).update({ data: back });
+    return { ok: true, c, id, at };
+  }
+
   if (action === 'push') {
     const docs = Array.isArray(event.docs) ? event.docs.slice(0, 100) : [];
     const now = Date.now();
@@ -228,12 +342,17 @@ exports.main = async (event) => {
     // 同实例内上一次用到的时间戳：同一毫秒的两次 push 也不会撞号（跨实例靠 pull 端的组保护兜底）
     let at = now > lastSrvAt ? now : lastSrvAt + 1;
     let accepted = 0, newer = 0, denied = 0;
+    // 被服务端拒绝的改动要回传给客户端：静默丢弃等于让人以为改成功了
+    const rejected = [];
     const mine = await memberOf(OPENID, orgId);
     const isMgr = !!mine && (mine.role === 'owner' || mine.role === 'admin');
     for (const it of docs) {
       const c = String((it && it.c) || '');
       let d = it && it.d;
       if (COLLS.indexOf(c) < 0 || !d || d.id === undefined || d.id === null) continue;
+      // 核心资产的硬约束（机构不可删、学号不重、一个微信一条成员、一个机构一个负责人）
+      const bad = await checkCore(c, d, orgId);
+      if (bad) { rejected.push({ c, id: d.id, code: bad.code, msg: bad.msg }); continue; }
       // 成员表是权限的源头，必须服务端把关：客户端推送来的角色/范围一律不可信。
       // 非管理者只能改自己的姓名头像；连"认领自己"都不行的话，第一台设备永远建不出成员，
       // 所以机构还没有任何成员时放行第一条（谁先建机构，谁就是负责人）。
@@ -254,6 +373,10 @@ exports.main = async (event) => {
       // 服务器上的版本更新（别的设备刚改过）→ 跳过，让客户端下一步 pull 拿到新值
       if (found.data.length) {
         if ((Number(found.data[0].updatedAt) || 0) > (Number(d.updatedAt) || 0)) { newer++; continue; }
+        // 核心资产：内容真的变了就先留一版旧值，改错了能退回去
+        if (HIST_COLLS.indexOf(c) > -1 && !sameContent(found.data[0], d)) {
+          await keepHistory(orgId, c, d.id, found.data[0], OPENID);
+        }
         await col.doc(found.data[0]._id).update({
           data: Object.assign({}, d, { orgId, srvAt: at })
         });
@@ -264,7 +387,7 @@ exports.main = async (event) => {
       at++;
       accepted++;
     }
-    return { ok: true, accepted, newer, denied };
+    return { ok: true, accepted, newer, denied, rejected };
   }
 
   if (action === 'pull') {

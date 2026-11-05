@@ -68,6 +68,7 @@ const LAYER = {
   maintenance: 6,                           // 库级维护，只用 ctx + 基础组
   sync: 6,                                  // 同步的数据层半边：→ core + 外部纯函数 syncmerge（不碰领域模块）
   audit: 5,                                 // 核心资产体检：只用 core + ctx，不碰领域模块
+  trash: 6,                                 // 回收站：列删除 + 分派到各领域的 restore（→ students/classes/records/identity）
   index: 7                                  // 门面，只用各领域
 };
 

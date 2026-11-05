@@ -1,6 +1,6 @@
 // utils/db/courses.js —— 课程（挂在班级下）
 // 依赖：ctx（底座）。课程不反向依赖班级模块：可见性判断统一走 perms.canSeeClass。
-const { now, org, oc, actor, deny, pushSaved, applyEdit } = require('./ctx');
+const { now, org, oc, actor, deny, pushSaved, applyEdit, markRemoved, markAlive } = require('./ctx');
 const core = require('./core');
 const schema = require('./schema');
 const perms = require('./permissions');
@@ -50,7 +50,7 @@ function courseRemove(id) {
   if (!c) return { ok: false, msg: '课程不存在或无权操作' };
   const err = deny('course.write', { clsId: c.clsId });
   if (err) return { ok: false, msg: err };
-  if (!applyEdit('courses', c, { removed: true, updatedAt: now() })) return { ok: false, msg: core.SAVE_FAIL };
+  if (!applyEdit('courses', c, markRemoved({}, now()))) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true };
 }
 

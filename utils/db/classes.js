@@ -1,6 +1,6 @@
 // utils/db/classes.js —— 班级
 // 依赖：ctx（底座）、terms（新建班级默认挂当前进行中的学期）。不反向依赖 enrollments/records。
-const { now, org, oc, actor, deny, pushSaved, applyEdit } = require('./ctx');
+const { now, org, oc, ocAll, actor, deny, pushSaved, applyEdit, markRemoved, markAlive } = require('./ctx');
 const core = require('./core');
 const schema = require('./schema');
 const perms = require('./permissions');
@@ -71,22 +71,26 @@ function classRemove(id) {
   if (!c) return { ok: false, msg: '班级不存在' };
   return core.tx(() => {
     const t = now();
-    c.removed = true; c.updatedAt = t;
+    markRemoved(c, t);
     oc('courses').forEach(x => {
-      if (x.clsId === c.id) { x.removed = true; x.updatedAt = t; }
+      if (x.clsId === c.id && !x.removed) markRemoved(x, t);
     });
+    // 名单与授权是被「摘掉」而不是被删除的，还原时得知道当初摘掉的是谁，
+    // 所以把班级从哪些人身上摘下来记在这条班级文档上（随它一起同步、一起恢复）。
+    const stu = [], mem = [];
     oc('students').forEach(s => {
       const i = s.clsIds.indexOf(c.id);
-      if (i > -1) { s.clsIds.splice(i, 1); s.updatedAt = t; }
+      if (i > -1) { s.clsIds.splice(i, 1); s.updatedAt = t; stu.push(s.id); }
     });
     // 成员负责范围里也要摘掉这个班，否则会留下指向已删班级的悬空授权
     oc('members').forEach(m => {
       const i = m.clsIds.indexOf(c.id);
-      if (i > -1) { m.clsIds.splice(i, 1); m.updatedAt = t; }
+      if (i > -1) { m.clsIds.splice(i, 1); m.updatedAt = t; mem.push(m.id); }
     });
+    c.detached = { students: stu, members: mem };
     // 该班的报名（课时账）一并软删：班没了账跟着走，学生与记录保留
     oc('enrollments').forEach(en => {
-      if (en.clsId === c.id) { en.removed = true; en.updatedAt = t; }
+      if (en.clsId === c.id && !en.removed) markRemoved(en, t);
     });
     core.persist('classes'); core.persist('courses'); core.persist('students');
     core.persist('members'); core.persist('enrollments');
@@ -94,7 +98,44 @@ function classRemove(id) {
   });
 }
 
+// 从回收站还原班级：班级 + 该班的课程 + 报名一起回来，
+// 并把当初从学生/成员身上摘掉的关联按记录补回去（不然是个"空班"）。
+function classRestore(id) {
+  const c = ocAll('classes').find(x => x.id === Number(id) && x.removed);
+  if (!c) return { ok: false, msg: '回收站里没有这个班级' };
+  const err = deny('class.write', { clsId: c.id });
+  if (err) return { ok: false, msg: err };
+  return core.tx(() => {
+    const t = now();
+    const at = c.removedAt;
+    const link = c.detached || { students: [], members: [] };
+    markAlive(c, t);
+    c.detached = { students: [], members: [] };
+    let crs = 0, enr = 0, stu = 0, mem = 0;
+    ocAll('courses').forEach(x => {
+      if (x.clsId === c.id && x.removed && x.removedAt === at) { markAlive(x, t); crs++; }
+    });
+    ocAll('enrollments').forEach(en => {
+      if (en.clsId === c.id && en.removed && en.removedAt === at) { markAlive(en, t); enr++; }
+    });
+    oc('students').forEach(s => {
+      if (link.students.indexOf(s.id) > -1 && s.clsIds.indexOf(c.id) < 0) {
+        s.clsIds.push(c.id); s.updatedAt = t; stu++;
+      }
+    });
+    oc('members').forEach(m => {
+      if (link.members.indexOf(m.id) > -1 && m.clsIds.indexOf(c.id) < 0) {
+        m.clsIds.push(c.id); m.updatedAt = t; mem++;
+      }
+    });
+    core.persist('classes'); core.persist('courses'); core.persist('enrollments');
+    if (stu) core.persist('students');
+    if (mem) core.persist('members');
+    return { ok: true, courses: crs, enrollments: enr, students: stu, members: mem };
+  });
+}
+
 module.exports = {
   classList, classRaw, classGet, className, classMode, classCountOfTerm,
-  classCreate, classUpdate, classRemove
+  classCreate, classUpdate, classRemove, classRestore
 };

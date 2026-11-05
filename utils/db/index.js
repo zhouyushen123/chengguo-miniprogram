@@ -47,6 +47,7 @@ const records = require('./records');
 const settle = require('./settle');
 const templates = require('./templates');
 const audit = require('./audit');
+const trash = require('./trash');
 const maintenance = require('./maintenance');
 const syncStore = require('./sync');
 
@@ -69,6 +70,8 @@ const db = {
   // 核心资产体检：学生 / 成员 / 机构之间的引用是否对得上。
   // scan 只读；fix 只做"修了绝不会更糟"的两类（悬空引用、学号重复/缺失）。
   audit: { scan: audit.scan, fix: audit.fix },
+  // 回收站：删除是可逆的，这里是列出来与还原的唯一入口
+  trash: { list: trash.list, restore: trash.restore },
   snapshots: {
     list: storage.snapshotList,
     save: tag => storage.saveSnapshot(tag, core.realData()),
@@ -145,6 +148,7 @@ const db = {
     // 页面要的"只读判定/计数"走这两个：不返回实体，不会顺带把看不见的班名带出去
     mode: classes.classMode, countOfTerm: classes.classCountOfTerm,
     create: classes.classCreate, update: classes.classUpdate, remove: classes.classRemove,
+    restore: classes.classRestore,
     // 不过滤权限，但仍限当前机构。只允许 tests/ 与数据层内部用：
     // 页面用它会绕过可见性（get 返回 null 时又从这里捞出来），lint 已禁 pages/ 出现 ._all(
     _all: () => ctx.oc('classes')
@@ -158,12 +162,14 @@ const db = {
     search: students.studentSearch, name: students.studentName,
     byNo: students.studentByNo, siblings: students.studentSiblings,
     create: students.studentCreate, update: students.studentUpdate,
-    updateProfile: students.studentUpdateProfile, remove: students.studentRemove
+    updateProfile: students.studentUpdateProfile, remove: students.studentRemove,
+    restore: students.studentRestore
   },
   records: {
     list: records.recordList, ofStudent: records.recordOfStudent, ofClass: records.recordOfClass,
     get: records.recordGet, latest: records.recordLatest, save: records.recordSave,
     markSent: records.recordMarkSent, attachCloud: records.recordAttachCloud, remove: records.recordRemove,
+    restore: records.recordRestore,
     // 批量保存（成绩单模式）：一个事务逐条过权限/校验/消课，一次落盘
     batch: records.recordBatchSave,
     // 结清本次课：发布当前课次未发布记录 + 课次 +1（一个事务，失败整体回滚）

@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>橙果 · 电脑端后台</title>
+<style>
+  :root{
+    --brand:#E8590C; --brand-2:#FF8A3D; --ink:#1F2329; --ink-2:#545B66; --ink-3:#8A9099;
+    --line:#E9ECF0; --bg:#F6F7F9; --card:#FFFFFF; --ok:#12A150; --warn:#E8A33D; --bad:#D93026;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;font-size:14px}
+  a{color:var(--brand);text-decoration:none}
+  header{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;
+    padding:0 20px;height:56px;background:#fff;border-bottom:1px solid var(--line)}
+  .logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:16px}
+  .dot{width:10px;height:10px;border-radius:3px;background:linear-gradient(135deg,var(--brand-2),var(--brand))}
+  .org{color:var(--ink-3);font-size:13px;max-width:38vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .grow{flex:1}
+  .acc{color:var(--ink-3);font-size:12px}
+  .btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;
+    padding:7px 13px;font-size:13px;cursor:pointer;line-height:1.2}
+  .btn:hover{border-color:#d6dbe2;background:#fafbfc}
+  .btn.primary{background:linear-gradient(135deg,var(--brand-2),var(--brand));border:0;color:#fff}
+  .btn.primary:hover{filter:brightness(1.04)}
+  .btn.ghost{background:transparent;border-color:transparent;color:var(--ink-2)}
+  .btn.danger{color:var(--bad);border-color:#f3d2cf}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  main{max-width:1180px;margin:0 auto;padding:18px 20px 60px}
+  .tabs{display:flex;gap:6px;margin-bottom:16px}
+  .tab{padding:8px 16px;border-radius:999px;font-size:13px;color:var(--ink-2);cursor:pointer;background:#fff;border:1px solid var(--line)}
+  .tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+  .kpi .k{font-size:12px;color:var(--ink-3)}
+  .kpi .v{font-size:26px;font-weight:700;margin-top:6px;font-variant-numeric:tabular-nums}
+  .kpi .s{font-size:12px;color:var(--ink-3);margin-top:4px}
+  .bars{display:flex;align-items:flex-end;gap:14px;height:120px;padding-top:8px}
+  .bars .b{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .bars .bar{width:100%;background:linear-gradient(180deg,var(--brand-2),var(--brand));border-radius:6px 6px 3px 3px;min-height:3px;opacity:.9}
+  .bars .d{font-size:11px;color:var(--ink-3)}
+  .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  input,select{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;
+    background:#fff;color:var(--ink);outline:none;font-family:inherit}
+  input:focus,select:focus{border-color:var(--brand)}
+  input[type=search]{width:220px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-weight:600;color:var(--ink-3);font-size:12px;white-space:nowrap}
+  tbody tr:hover{background:#fbfcfd}
+  td.note{max-width:420px;color:var(--ink-2);line-height:1.5}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;background:#f2f4f7;color:var(--ink-2)}
+  .pill.ok{background:#e8f7ee;color:var(--ok)}
+  .pill.draft{background:#fdf1e2;color:#a9700f}
+  .empty{padding:40px;text-align:center;color:var(--ink-3)}
+  .pager{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:12px;font-size:12px;color:var(--ink-3)}
+  /* 登录 */
+  .login{position:fixed;inset:0;background:
+    radial-gradient(1200px 400px at 50% -80px,#ffe6d5,transparent),var(--bg);
+    display:flex;align-items:center;justify-content:center;z-index:50}
+  .login .box{width:360px;background:#fff;border:1px solid var(--line);border-radius:18px;
+    padding:28px 26px;box-shadow:0 18px 50px rgba(31,35,41,.08)}
+  .login h1{font-size:19px;margin:0 0 4px}
+  .login p{margin:0 0 20px;color:var(--ink-3);font-size:13px}
+  .login label{display:block;font-size:12px;color:var(--ink-2);margin:12px 0 6px}
+  .login input{width:100%;padding:11px 12px;font-size:15px;letter-spacing:.06em}
+  .login .btn{width:100%;justify-content:center;padding:11px;margin-top:18px;font-size:15px}
+  .err{color:var(--bad);font-size:12px;margin-top:10px;min-height:16px}
+  .hint{font-size:12px;color:var(--ink-3);margin-top:14px;line-height:1.6}
+  /* 弹窗 */
+  .mask{position:fixed;inset:0;background:rgba(24,28,33,.42);display:flex;align-items:center;
+    justify-content:center;z-index:60}
+  .modal{width:520px;max-height:86vh;overflow:auto;background:#fff;border-radius:16px;padding:22px}
+  .modal h3{margin:0 0 16px;font-size:17px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;color:var(--ink-3);margin-bottom:6px}
+  .field input,.field select,.field textarea{width:100%;font-family:inherit}
+  .field textarea{min-height:120px;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:13px;resize:vertical;outline:none}
+  .field textarea:focus{border-color:var(--brand)}
+  .field .row{display:flex;gap:10px}
+  .modal .foot{display:flex;justify-content:flex-end;gap:10px;margin-top:6px}
+  .toast{position:fixed;left:50%;bottom:36px;transform:translateX(-50%);background:#1F2329;color:#fff;
+    padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;transition:.2s;pointer-events:none;z-index:80}
+  .toast.on{opacity:1}
+  .hide{display:none!important}
+  @media (max-width:760px){
+    .grid{grid-template-columns:repeat(2,1fr)} td.note{max-width:200px} main{padding:14px}
+    header{padding:0 12px} .org{display:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- 登录 -->
+<div class="login" id="login">
+  <div class="box">
+    <h1>橙果 · 电脑端后台</h1>
+    <p>查看和修改全机构的学员与课堂记录</p>
+    <label>后台账号</label>
+    <input id="acc" placeholder="6 位字母数字，如 A3F7KM" autocomplete="off" autocapitalize="characters">
+    <label>口令</label>
+    <input id="pin" type="password" placeholder="6 位数字" inputmode="numeric" maxlength="6" autocomplete="off">
+    <div class="err" id="lerr"></div>
+    <button class="btn primary" id="doLogin">登录</button>
+    <div class="hint">账号和口令在微信小程序「我的 → 电脑端后台」里查看；看不到请找机构负责人。</div>
+  </div>
+</div>
+
+<header>
+  <div class="logo"><span class="dot"></span>橙果后台</div>
+  <div class="org" id="org"></div>
+  <div class="grow"></div>
+  <span class="acc" id="accLabel"></span>
+  <button class="btn ghost" id="doReset">重置口令</button>
+  <button class="btn ghost" id="doLogout">退出</button>
+</header>
+
+<main id="app" class="hide">
+  <div class="tabs">
+    <div class="tab on" data-tab="overview">概览</div>
+    <div class="tab" data-tab="students">学生</div>
+    <div class="tab" data-tab="records">课堂记录</div>
+    <div class="tab" data-tab="classes">班级</div>
+  </div>
+
+  <!-- 概览 -->
+  <section id="tab-overview">
+    <div class="grid" id="kpis"></div>
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:6px">最近 7 天录入</div>
+      <div class="bars" id="bars"></div>
+    </div>
+  </section>
+
+  <!-- 学生 -->
+  <section id="tab-students" class="hide">
+    <div class="toolbar">
+      <input type="search" id="stuQ" placeholder="搜姓名">
+      <select id="stuCls"><option value="">全部班级</option></select>
+      <button class="btn" id="stuSearch">查询</button>
+      <div class="grow"></div>
+      <button class="btn" id="stuExport">导出 CSV</button>
+      <button class="btn primary" id="stuNew">新建学生</button>
+    </div>
+    <div class="card"><table>
+      <thead><tr><th>学号</th><th>姓名</th><th>性别</th><th>班级</th><th>家长</th><th>入学年份</th><th style="width:120px">操作</th></tr></thead>
+      <tbody id="stuBody"></tbody>
+    </table><div class="pager" id="stuPager"></div></div>
+  </section>
+
+  <!-- 记录 -->
+  <section id="tab-records" class="hide">
+    <div class="toolbar">
+      <input type="search" id="recQ" placeholder="搜评语">
+      <select id="recCls"><option value="">全部班级</option></select>
+      <input type="date" id="recFrom"><span style="color:var(--ink-3)">至</span><input type="date" id="recTo">
+      <button class="btn" id="recSearch">查询</button>
+      <div class="grow"></div>
+      <button class="btn" id="recExport">导出 CSV</button>
+      <button class="btn primary" id="recNew">补录一条</button>
+    </div>
+    <div class="card"><table>
+      <thead><tr><th>日期</th><th>学生</th><th>班级</th><th>课次</th><th>等级</th><th>评语</th><th>状态</th><th style="width:120px">操作</th></tr></thead>
+      <tbody id="recBody"></tbody>
+    </table><div class="pager" id="recPager"></div></div>
+  </section>
+
+  <!-- 班级 -->
+  <section id="tab-classes" class="hide">
+    <div class="toolbar">
+      <input type="search" id="clsQ" placeholder="搜班级名">
+      <button class="btn" id="clsSearch">查询</button>
+    </div>
+    <div class="card"><table>
+      <thead><tr><th>班级</th><th>当前课次</th><th>模式</th><th style="width:120px">操作</th></tr></thead>
+      <tbody id="clsBody"></tbody>
+    </table><div class="pager" id="clsPager"></div></div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<div id="modalRoot"></div>
+
+<script>
+(function(){
+  'use strict';
+  var TOKEN_KEY = 'cg_admin_token';
+  var S = { token: localStorage.getItem(TOKEN_KEY) || '', tab: 'overview', org: '', account: '',
+    page: { students: 1, records: 1, classes: 1 }, total: { students: 0, records: 0, classes: 0 },
+    classes: [], students: [], rows: {} };
+
+  var $ = function (id) { return document.getElementById(id); };
+  function el(tag, cls, text) {
+    var d = document.createElement(tag);
+    if (cls) d.className = cls;
+    if (text !== undefined) d.textContent = text;
+    return d;
+  }
+  function esc(s) { return String(s === undefined || s === null ? '' : s); }
+
+  var toastTimer = null;
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg; t.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('on'); }, 1800);
+  }
+
+  /* ---------- 接口 ---------- */
+  function post(action, payload) {
+    var body = Object.assign({ action: action }, payload || {});
+    return fetch(location.pathname + '?api=' + encodeURIComponent(action), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + S.token },
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json(); }).catch(function () {
+      return { ok: false, msg: '网络不通，请检查网络后重试' };
+    });
+  }
+
+  /* ---------- 登录 ---------- */
+  function showLogin() { $('login').classList.remove('hide'); $('app').classList.add('hide'); }
+  function showApp() { $('login').classList.add('hide'); $('app').classList.remove('hide'); }
+
+  $('doLogin').addEventListener('click', function () {
+    var acc = $('acc').value, pin = $('pin').value;
+    if (!acc || !pin) { $('lerr').textContent = '请填账号和口令'; return; }
+    $('doLogin').disabled = true; $('lerr').textContent = '';
+    post('login', { account: acc, pin: pin }).then(function (r) {
+      $('doLogin').disabled = false;
+      if (!r.ok) { $('lerr').textContent = r.msg || '登录失败'; return; }
+      S.token = r.token; S.account = r.account; S.org = r.orgName || '';
+      localStorage.setItem(TOKEN_KEY, r.token);
+      localStorage.setItem('cg_admin_account', r.account);
+      start();
+    });
+  });
+  $('pin').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('doLogin').click(); });
+  $('acc').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('pin').focus(); });
+
+  $('doLogout').addEventListener('click', function () {
+    post('logout', {}).then(function () {});
+    S.token = ''; localStorage.removeItem(TOKEN_KEY);
+    $('pin').value = ''; showLogin();
+  });
+
+  // 换人接手 / 口令外流时用：新口令立刻生效，所有已登录的浏览器一起踢下线
+  $('doReset').addEventListener('click', function () {
+    if (!window.confirm('重置后台口令？\n\n旧口令会立刻失效，已经登录的浏览器都要重新登录。')) return;
+    post('resetPin', {}).then(function (r) {
+      if (!r || !r.ok) { toast((r && r.msg) || '重置失败'); return; }
+      window.alert('新口令：' + r.pin + '\n\n账号还是 ' + r.account + '，请先抄下来再登录。');
+      S.token = ''; localStorage.removeItem(TOKEN_KEY); $('pin').value = ''; showLogin();
+    }).catch(function () {});
+  });
+
+  // 统一处理"登录过期"：token 失效时直接回登录页，不要让人对着一片空白点
+  function guard(r) {
+    if (r && r.code === 'AUTH') {
+      S.token = ''; localStorage.removeItem(TOKEN_KEY); showLogin();
+      throw new Error('AUTH');
+    }
+    if (!r || !r.ok) { toast((r && r.msg) || '操作失败'); throw new Error((r && r.msg) || 'FAIL'); }
+    return r;
+  }
+
+  /* ---------- 启动 ---------- */
+  function start() {
+    $('accLabel').textContent = '账号 ' + (S.account || localStorage.getItem('cg_admin_account') || '');
+    showApp();
+    loadRefs().then(function () { goTab('overview'); });
+  }
+  // 班级下拉和"班级名"展示都要用，一次拉全（机构一般几十个班）
+  function loadRefs() {
+    return post('list', { col: 'classes', size: 200, page: 1 }).then(function (r) {
+      if (!r.ok) return;
+      S.classes = r.rows || [];
+      var opts = S.classes.map(function (c) {
+        return '<option value="' + c.id + '">' + esc(c.name) + '</option>';
+      }).join('');
+      $('stuCls').innerHTML = '<option value="">全部班级</option>' + opts;
+      $('recCls').innerHTML = '<option value="">全部班级</option>' + opts;
+    }).catch(function () {});
+  }
+  function clsName(id) {
+    var c = S.classes.filter(function (x) { return Number(x.id) === Number(id); })[0];
+    return c ? c.name : (id ? ('#' + id) : '—');
+  }
+
+  /* ---------- Tab ---------- */
+  var tabs = document.querySelectorAll('.tab');
+  Array.prototype.forEach.call(tabs, function (t) {
+    t.addEventListener('click', function () { goTab(t.getAttribute('data-tab')); });
+  });
+  function goTab(k) {
+    S.tab = k;
+    Array.prototype.forEach.call(tabs, function (t) { t.classList.toggle('on', t.getAttribute('data-tab') === k); });
+    ['overview', 'students', 'records', 'classes'].forEach(function (n) {
+      $('tab-' + n).classList.toggle('hide', n !== k);
+    });
+    if (k === 'overview') loadOverview();
+    if (k === 'students') loadList('students');
+    if (k === 'records') loadList('records');
+    if (k === 'classes') loadList('classes');
+  }
+
+  /* ---------- 概览 ---------- */
+  function loadOverview() {
+    post('overview', {}).then(guard).then(function (r) {
+      var s = r.stat;
+      var cards = [
+        { k: '学生', v: s.students, s: '在册学员' },
+        { k: '班级', v: s.classes, s: '含所有学期' },
+        { k: '课堂记录', v: s.records, s: '已发布 ' + s.sent + ' · 草稿 ' + s.draft },
+        { k: '发布率', v: s.rate + '%', s: '照片 ' + s.photos + ' 张' }
+      ];
+      $('kpis').innerHTML = cards.map(function (c) {
+        return '<div class="card kpi"><div class="k">' + c.k + '</div><div class="v">' + c.v +
+          '</div><div class="s">' + c.s + '</div></div>';
+      }).join('');
+      var max = Math.max.apply(null, r.days.map(function (d) { return d.n; }).concat([1]));
+      $('bars').innerHTML = r.days.map(function (d) {
+        var h = Math.round(96 * d.n / max) + 4;
+        return '<div class="b"><div class="bar" style="height:' + h + 'px" title="' + d.n + ' 条"></div>' +
+          '<div class="d">' + d.d.slice(5) + ' · ' + d.n + '</div></div>';
+      }).join('');
+    }).catch(function () {});
+  }
+
+  /* ---------- 列表 ---------- */
+  function params(col) {
+    if (col === 'students') {
+      return { q: $('stuQ').value.trim(), clsId: $('stuCls').value, page: S.page.students, size: 50 };
+    }
+    if (col === 'records') {
+      return { q: $('recQ').value.trim(), cid: $('recCls').value, from: $('recFrom').value,
+        to: $('recTo').value, page: S.page.records, size: 50 };
+    }
+    return { q: $('clsQ').value.trim(), page: S.page.classes, size: 50 };
+  }
+  function loadList(col) {
+    post('list', Object.assign({ col: col }, params(col))).then(guard).then(function (r) {
+      S.rows[col] = r.rows || [];
+      S.total[col] = r.total || 0;
+      if (r.names) S.studentNames = r.names.students;
+      if (col === 'students') renderStudents(r.rows || []);
+      if (col === 'records') renderRecords(r.rows || [], r.names || {});
+      if (col === 'classes') renderClasses(r.rows || []);
+      renderPager(col, r);
+    }).catch(function () {});
+  }
+  function renderPager(col, r) {
+    var box = $({ students: 'stuPager', records: 'recPager', classes: 'clsPager' }[col]);
+    var total = r.total || 0;
+    var pages = Math.max(1, Math.ceil(total / (r.size || 50)));
+    box.innerHTML = '';
+    var info = el('span', '', '共 ' + total + ' 条 · 第 ' + r.page + '/' + pages + ' 页');
+    var prev = el('button', 'btn', '上一页'); prev.disabled = r.page <= 1;
+    var next = el('button', 'btn', '下一页'); next.disabled = r.page >= pages;
+    prev.onclick = function () { if (r.page > 1) { S.page[col] = r.page - 1; loadList(col); } };
+    next.onclick = function () { if (r.page < pages) { S.page[col] = r.page + 1; loadList(col); } };
+    box.appendChild(info); box.appendChild(prev); box.appendChild(next);
+  }
+  function emptyRow(tbody, span, text) {
+    tbody.innerHTML = '<tr><td colspan="' + span + '"><div class="empty">' + text + '</div></td></tr>';
+  }
+  function ops(tbody, tr, col, row) {
+    var td = el('td');
+    var e = el('button', 'btn ghost', '编辑');
+    e.onclick = function () { openEdit(col, row); };
+    td.appendChild(e);
+    if (col !== 'classes') {
+      var d = el('button', 'btn ghost danger', '删除');
+      d.onclick = function () { confirmRemove(col, row); };
+      td.appendChild(d);
+    }
+    tr.appendChild(td);
+  }
+
+  function renderStudents(rows) {
+    var tb = $('stuBody');
+    if (!rows.length) return emptyRow(tb, 7, '还没有学生');
+    tb.innerHTML = '';
+    rows.forEach(function (s) {
+      var tr = el('tr');
+      tr.appendChild(el('td', '', s.no || '—'));
+      tr.appendChild(el('td', '', s.name || ''));
+      tr.appendChild(el('td', '', s.gender || '—'));
+      tr.appendChild(el('td', '', (s.clsIds || []).map(clsName).join('、') || '未分班'));
+      tr.appendChild(el('td', '', s.parent || '—'));
+      tr.appendChild(el('td', '', s.enrollYear || '—'));
+      ops(tb, tr, 'students', s);
+      tb.appendChild(tr);
+    });
+  }
+  function renderRecords(rows, names) {
+    var tb = $('recBody');
+    if (!rows.length) return emptyRow(tb, 8, '还没有课堂记录');
+    tb.innerHTML = '';
+    rows.forEach(function (r) {
+      var tr = el('tr');
+      tr.appendChild(el('td', '', r.date || ''));
+      tr.appendChild(el('td', '', (names.students && names.students[r.sid]) || ('#' + r.sid)));
+      tr.appendChild(el('td', '', (names.classes && names.classes[r.cid]) || clsName(r.cid)));
+      tr.appendChild(el('td', '', r.session ? '第' + r.session + '课' : '—'));
+      tr.appendChild(el('td', '', r.tag || '—'));
+      var note = el('td', 'note', r.note || '');
+      tr.appendChild(note);
+      var st = el('td');
+      st.innerHTML = r.sent ? '<span class="pill ok">已发布</span>' : '<span class="pill draft">草稿</span>';
+      tr.appendChild(st);
+      ops(tb, tr, 'records', r);
+      tb.appendChild(tr);
+    });
+  }
+  function renderClasses(rows) {
+    var tb = $('clsBody');
+    if (!rows.length) return emptyRow(tb, 4, '还没有班级');
+    tb.innerHTML = '';
+    rows.forEach(function (c) {
+      var tr = el('tr');
+      tr.appendChild(el('td', '', c.name || ''));
+      tr.appendChild(el('td', '', '第 ' + (c.session || 1) + ' 次课'));
+      tr.appendChild(el('td', '', c.mode === 'carry' ? '课时包' : '随学期'));
+      ops(tb, tr, 'classes', c);
+      tb.appendChild(tr);
+    });
+  }
+
+  /* ---------- 编辑 / 新建 / 删除 ---------- */
+  var FIELDS = {
+    students: [
+      { k: 'name', t: '姓名', type: 'text' },
+      { k: 'no', t: '学号', type: 'text', ro: true },
+      { k: 'gender', t: '性别', type: 'select', opts: [['', '未填'], ['男', '男'], ['女', '女']] },
+      { k: 'enrollYear', t: '入学年份', type: 'number' },
+      { k: 'parent', t: '家长', type: 'text' },
+      { k: 'wechat', t: '微信/手机', type: 'text' }
+    ],
+    records: [
+      { k: 'date', t: '日期', type: 'date' },
+      { k: 'session', t: '课次', type: 'number' },
+      { k: 'tag', t: '等级', type: 'select', opts: [['', '未评级'], ['待提高', '待提高'], ['加油', '加油'], ['良好', '良好'], ['优秀', '优秀'], ['最佳', '最佳']] },
+      { k: 'score', t: '分数', type: 'number' },
+      { k: 'sent', t: '状态', type: 'select', opts: [['false', '草稿（家长看不到）'], ['true', '已发布']], bool: true },
+      { k: 'note', t: '评语', type: 'textarea' }
+    ],
+    classes: [
+      { k: 'name', t: '班级名称', type: 'text' },
+      { k: 'session', t: '当前课次', type: 'number', hint: '结清一次课 +1；改小会与已录记录脱节，慎改' }
+    ]
+  };
+
+  function openEdit(col, row) {
+    var fields = FIELDS[col] || [];
+    var box = document.createElement('div'); box.className = 'mask';
+    var m = document.createElement('div'); m.className = 'modal';
+    m.appendChild(el('h3', '', '编辑' + (col === 'students' ? '学生' : col === 'records' ? '记录' : '班级')));
+    fields.forEach(function (f) {
+      var wrap = el('div', 'field');
+      wrap.appendChild(el('label', '', f.t));
+      var v = row[f.k];
+      var input;
+      if (f.type === 'select') {
+        input = el('select');
+        f.opts.forEach(function (o) {
+          var op = el('option', '', o[1]); op.value = o[0];
+          input.appendChild(op);
+        });
+        input.value = f.bool ? String(!!v) : (v === undefined || v === null ? '' : String(v));
+      } else if (f.type === 'textarea') {
+        input = el('textarea'); input.value = v || '';
+      } else {
+        input = el('input'); input.type = f.type === 'number' ? 'number' : f.type;
+        input.value = v === undefined || v === null ? '' : v;
+        if (f.ro) input.disabled = true;
+      }
+      input.setAttribute('data-k', f.k);
+      if (f.bool) input.setAttribute('data-bool', '1');
+      wrap.appendChild(input);
+      if (f.hint) wrap.appendChild(el('div', 'hint', f.hint));
+      m.appendChild(wrap);
+    });
+    var foot = el('div', 'foot');
+    var cancel = el('button', 'btn', '取消');
+    var save = el('button', 'btn primary', '保存');
+    cancel.onclick = function () { document.body.removeChild(box); };
+    save.onclick = function () {
+      var patch = {};
+      Array.prototype.forEach.call(m.querySelectorAll('[data-k]'), function (input) {
+        var k = input.getAttribute('data-k');
+        if (input.disabled) return;
+        patch[k] = input.getAttribute('data-bool') ? input.value === 'true' : input.value;
+      });
+      save.disabled = true;
+      post('update', { col: col, id: row.id, patch: patch }).then(guard).then(function () {
+        document.body.removeChild(box); toast('已保存');
+        loadList(col);
+      }).catch(function () { save.disabled = false; });
+    };
+    foot.appendChild(cancel); foot.appendChild(save);
+    m.appendChild(foot);
+    box.appendChild(m);
+    box.addEventListener('click', function (e) { if (e.target === box) document.body.removeChild(box); });
+    document.body.appendChild(box);
+  }
+
+  function confirmRemove(col, row) {
+    var name = col === 'students' ? (row.name || '') : (row.date || '') + ' ' + (row.note || '').slice(0, 16);
+    if (!window.confirm('删除「' + name + '」？\n\n删除后老师和家长的手机里也会看不到（可以找回：让技术同学在数据库里把 removed 改回 false）。')) return;
+    post('remove', { col: col, id: row.id }).then(guard).then(function () {
+      toast('已删除'); loadList(col);
+    }).catch(function () {});
+  }
+
+  /* ---------- 新建 ---------- */
+  function openNew(col) {
+    var box = document.createElement('div'); box.className = 'mask';
+    var m = document.createElement('div'); m.className = 'modal';
+    m.appendChild(el('h3', '', col === 'students' ? '新建学生' : '补录课堂记录'));
+    var inputs = {};
+    function field(k, label, type, extra) {
+      var wrap = el('div', 'field');
+      wrap.appendChild(el('label', '', label));
+      var input;
+      if (type === 'select') {
+        input = el('select');
+        (extra || []).forEach(function (o) {
+          var op = el('option', '', o[1]); op.value = o[0]; input.appendChild(op);
+        });
+      } else if (type === 'textarea') {
+        input = el('textarea');
+      } else {
+        input = el('input'); input.type = type || 'text';
+      }
+      wrap.appendChild(input); m.appendChild(wrap);
+      inputs[k] = input;
+    }
+    if (col === 'students') {
+      field('name', '姓名', 'text');
+      field('gender', '性别', 'select', [['', '未填'], ['男', '男'], ['女', '女']]);
+      field('enrollYear', '入学年份', 'number');
+      field('parent', '家长', 'text');
+      field('wechat', '微信/手机', 'text');
+      var wrap = el('div', 'field');
+      wrap.appendChild(el('label', '', '班级（可多选）'));
+      var sel = el('select'); sel.multiple = true; sel.size = Math.min(6, Math.max(2, S.classes.length || 2));
+      S.classes.forEach(function (c) {
+        var op = el('option', '', c.name); op.value = c.id; sel.appendChild(op);
+      });
+      wrap.appendChild(sel); m.appendChild(wrap);
+      inputs.clsIds = sel;
+    } else {
+      field('sid', '学生', 'select', S.students.map(function (s) { return [s.id, s.name + '（' + (s.no || '无学号') + '）']; }));
+      field('date', '日期', 'date');
+      field('session', '课次', 'number');
+      field('tag', '等级', 'select', [['', '未评级'], ['待提高', '待提高'], ['加油', '加油'], ['良好', '良好'], ['优秀', '优秀'], ['最佳', '最佳']]);
+      field('note', '评语', 'textarea');
+      var d = new Date();
+      inputs.date.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    var foot = el('div', 'foot');
+    var cancel = el('button', 'btn', '取消');
+    var save = el('button', 'btn primary', '创建');
+    cancel.onclick = function () { document.body.removeChild(box); };
+    save.onclick = function () {
+      var data = {};
+      Object.keys(inputs).forEach(function (k) {
+        var v = inputs[k].value;
+        if (k === 'clsIds') {
+          data[k] = Array.prototype.map.call(inputs[k].selectedOptions, function (o) { return Number(o.value); });
+        } else if (v !== '') data[k] = v;
+      });
+      save.disabled = true;
+      post('create', { col: col, data: data }).then(guard).then(function () {
+        document.body.removeChild(box); toast('已创建'); loadList(col);
+      }).catch(function () { save.disabled = false; });
+    };
+    foot.appendChild(cancel); foot.appendChild(save);
+    m.appendChild(foot);
+    box.appendChild(m);
+    box.addEventListener('click', function (e) { if (e.target === box) document.body.removeChild(box); });
+    document.body.appendChild(box);
+  }
+
+  /* ---------- 导出 ---------- */
+  function download(name, text) {
+    var blob = new Blob(['\ufeff' + text], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); document.body.removeChild(a); }, 500);
+  }
+  function doExport(col) {
+    post('export', { col: col }).then(guard).then(function (r) {
+      download(r.name || (col + '.csv'), r.csv || '');
+      toast('已开始下载，可用 Excel 打开');
+    }).catch(function () {});
+  }
+
+  /* ---------- 绑定 ---------- */
+  $('stuSearch').onclick = function () { S.page.students = 1; loadList('students'); };
+  $('recSearch').onclick = function () { S.page.records = 1; loadList('records'); };
+  $('clsSearch').onclick = function () { S.page.classes = 1; loadList('classes'); };
+  $('stuQ').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('stuSearch').click(); });
+  $('recQ').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('recSearch').click(); });
+  $('clsQ').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('clsSearch').click(); });
+  $('stuExport').onclick = function () { doExport('students'); };
+  $('recExport').onclick = function () { doExport('records'); };
+  $('stuNew').onclick = function () { openNew('students'); };
+  $('recNew').onclick = function () {
+    // 补录要先有学生可选：学生少的时候一次拉 200 条足够，多了就在学生页里查
+    post('list', { col: 'students', size: 200, page: 1 }).then(guard).then(function (r) {
+      S.students = r.rows || [];
+      if (!S.students.length) { toast('还没有学生，请先新建学生'); return; }
+      openNew('records');
+    }).catch(function () {});
+  };
+
+  /* ---------- 进入 ---------- */
+  if (S.token) {
+    S.account = localStorage.getItem('cg_admin_account') || '';
+    post('me', {}).then(function (r) {
+      if (r && r.ok) { S.account = r.account; start(); }
+      else { localStorage.removeItem(TOKEN_KEY); showLogin(); }
+    });
+  } else {
+    showLogin();
+  }
+})();
+</script>
+</body>
+</html>

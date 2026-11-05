@@ -70,6 +70,8 @@ Page({
       d: appRec ? (appRec.type + (appRec.regionText ? ' · ' + appRec.regionText : '')) : '填写机构名称、类型与联系方式'
     });
     if (isManager) {
+      // 电脑端后台：浏览器里看全机构学员与记录、改评语、导出 Excel（数据走云端，不占手机）
+      entries.push({ k: 'web', t: '电脑端后台', d: '浏览器打开，看全班记录、改评语、导出 Excel' });
       // 邀请成员：一个机构码给一类身份，家长凭码 + 学号即可加入（不需要手动建成员）
       entries.push({ k: 'invite', t: '邀请成员', d: '生成机构码，家长/老师凭码加入' });
       // 开通引导：不依赖"空库"判断，任何时候都能重走一遍（机构→学期→班级→学生）
@@ -108,6 +110,42 @@ Page({
     if (k === 'storage') { wx.navigateTo({ url: '/pages/storage/storage' }); return; }
     if (k === 'join') { wx.navigateTo({ url: '/pages/join/join' }); return; }
     if (k === 'invite') { this.inviteMenu(); return; }
+    if (k === 'web') { this.webAdmin(); return; }
+  },
+  /* ---------------- 电脑端后台 ----------------
+   * 浏览器拿不到微信身份，所以后台用「账号 + 6 位口令」登录。
+   * 账号由服务端按机构发一份（同一机构永远同一个），口令可以在这里重置。
+   */
+  webAdmin() {
+    wx.showLoading({ title: '准备中', mask: true });
+    // 先同步一轮：服务端靠"成员表里有我这条 + openid 对得上"判权限，
+    // 刚建好的机构如果还没推上去，会白挨一个"没有权限"。
+    sync.syncNow({ force: true }).catch(() => {}).then(() => api.adminAccount()).then(out => {
+      wx.hideLoading();
+      if (!out || !out.ok) {
+        wx.showToast({ title: (out && out.msg) || '取账号失败，请检查网络', icon: 'none' });
+        return;
+      }
+      const url = out.url || '';
+      const txt = '账号：' + out.account + '\n口令：' + out.pin + (url ? '\n网址：' + url : '');
+      wx.showModal({
+        title: '电脑端后台登录信息',
+        content: txt + '\n\n在电脑浏览器打开网址，输入上面两行即可。口令只给负责人和管理员，别发到班级群。',
+        confirmText: '复制全部',
+        cancelText: '知道了',
+        success: r => {
+          if (r.confirm) {
+            wx.setClipboardData({
+              data: txt,
+              success: () => wx.showToast({ title: '已复制', icon: 'none' })
+            });
+          }
+        }
+      });
+    }).catch(() => {
+      wx.hideLoading();
+      wx.showToast({ title: '网络不通，请重试', icon: 'none' });
+    });
   },
   /* ---------------- 邀请成员 ----------------
    * 一个身份一个机构码（家长/老师/管理员各一个），30 天有效，可重复使用。

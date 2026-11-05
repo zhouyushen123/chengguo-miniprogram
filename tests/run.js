@@ -25,6 +25,7 @@ const SUITES = [
   ['verify_photocloud.js', '照片上云'],
   ['verify_sync.js', '记录上云'],
   ['verify_invite.js', '邀请码加入'],
+  ['verify_admin.js', '电脑端后台'],
   ['verify_ava.js', '头像统一'],
   ['verify_import.js', '批量导入'],
   ['verify_onboard.js', '新手引导'],

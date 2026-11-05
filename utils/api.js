@@ -167,4 +167,11 @@ function uploadPhoto(filePath) {
   });
 }
 
-module.exports = { initCloud, enabled, syncOn, syncCall, login, pushRecord, pull, uploadFile, uploadPhoto, aiEvalDraft, stuImport, secText, secImage, requestSubscribe, familyBind, familyNotify, inviteInfo, inviteJoin, inviteGet, CLOUD_ENV };
+// 电脑端后台：取后台账号与口令（服务端按 members 表判角色，只有负责人/管理员能拿）。
+// 走 callFn 而不是 syncOn：后台和同步是两条链路，同步没通也不该挡着"看口令"。
+function adminAccount() {
+  if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪' });
+  return callFn('admin', { action: 'mkAccount' }).catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
+}
+
+module.exports = { initCloud, enabled, syncOn, syncCall, login, pushRecord, pull, uploadFile, uploadPhoto, aiEvalDraft, stuImport, secText, secImage, requestSubscribe, familyBind, familyNotify, inviteInfo, inviteJoin, inviteGet, adminAccount, CLOUD_ENV };

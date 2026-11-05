@@ -68,14 +68,17 @@ PAGES.forEach(([rel, marker]) => {
     assert.ok(src.indexOf('PHONE_RE') === -1, '不许再留页面级正则');
   });
 });
-ok('四个输入框 maxlength 都是 11，且失焦才分段（输入中容不下横线）', () => {
+ok('五个输入框都不设 maxlength（失焦后是 13 字符，设 11 会截断最后两位）', () => {
   PAGES.forEach(([rel, marker]) => {
     const wxml = fs.readFileSync(path.join(ROOT, rel.replace(/\.js$/, '.wxml')), 'utf8');
     const phoneRows = wxml.split('\n').filter(l => l.indexOf('phone') > -1 && l.indexOf('<input') > -1);
     assert.ok(phoneRows.length > 0, rel + ' 应有手机号输入框');
-    phoneRows.forEach(l => assert.ok(l.indexOf('maxlength="11"') > -1, rel + ' 手机号输入框 maxlength 应为 11（裸数字）'));
+    phoneRows.forEach(l => {
+      assert.strictEqual(l.indexOf('maxlength'), -1, rel + ' 手机号输入框不能设 maxlength');
+      assert.ok(l.indexOf('bindblur') > -1, rel + ' 手机号输入框要有失焦分段');
+    });
     const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
-    assert.ok(src.indexOf('bindblur') > -1 || src.indexOf('Blur') > -1, rel + ' 应有失焦分段处理');
+    assert.ok(src.indexOf('Blur') > -1, rel + ' 应有失焦分段处理');
   });
 });
 ok('落库是裸数字：向导提交存 digits，不存带横线的展示串', () => {

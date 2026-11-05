@@ -16,7 +16,7 @@ Page({
     cls: null,
     tiles: [], shown: [],
     counts: { none: 0, rec: 0, sent: 0 }, pending: 0,
-    filts: ['全部', '未录入', '已录入', '已发布'], filt: '全部',
+    filts: [{ n: '全部', c: 0 }, { n: '未录入', c: 0 }, { n: '已录入', c: 0 }, { n: '已发布', c: 0 }], filt: '全部',
     // 记录筛选：课次 + 日期 + 等级
     sess: 1, sessOpts: ['不限课次'], sessIdx: 0,
     dateOpts: ['不限日期'], dateIdx: 0,
@@ -69,9 +69,16 @@ Page({
     const dates = [...new Set(all.map(r => r.date))].sort((a, b) => b.localeCompare(a));
     const dateOpts = ['不限日期'].concat(dates);
     this._all = all;
+    // 统计直接融进筛选页签：「未录入 2」一眼看出各状态多少人，不再单独占一行
+    const filts = [
+      { n: '全部', c: tiles.length },
+      { n: '未录入', c: counts.none },
+      { n: '已录入', c: counts.rec },
+      { n: '已发布', c: counts.sent }
+    ];
     this.setData({
       cls: { id: cls.id, name: cls.name },
-      sess: cur, sessOpts, tiles, counts, dateOpts, pending,
+      sess: cur, sessOpts, tiles, counts, filts, dateOpts, pending,
       // 结清 = 开启下一课的节点动作，能往这个班录课的人才能做
       canSettle: db.auth.can('record.create', { clsId: this.clsId }),
       allCount: this._all.length

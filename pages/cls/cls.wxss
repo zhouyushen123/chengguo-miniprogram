@@ -3,9 +3,6 @@
   gap: 16rpx; margin-bottom: 16rpx;
 }
 .cnt { font-size: 22rpx; color: var(--muted); flex: none; }
-.cnt b { font-size: 26rpx; }
-.cnt b.blue { color: #4a7ddc; }
-.cnt b.gray { color: var(--faint); }
 
 /* 状态分类筛选条 */
 .filtbar { display: flex; gap: 12rpx; margin-bottom: 18rpx; }
@@ -14,6 +11,8 @@
   border-radius: 999rpx; padding: 8rpx 24rpx;
 }
 .fchip.on { background: var(--text-2); color: #fff; font-weight: 500; }
+/* 页签内的统计数：比文字淡一档，选中时随页签变白 */
+.fchip .fc { margin-left: 6rpx; opacity: 0.62; }
 
 /* 学生三状态色块：一行 5 个 */
 .stugrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14rpx; }

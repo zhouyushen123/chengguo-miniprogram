@@ -18,10 +18,27 @@ const oc = name => core.orgColl(name);
  * 身份与权限
  * ===================================================================*/
 // 当前机构下、当前登录人的成员关系（权限的唯一来源）
+//
+// 【为什么不能只按 userId 找】userId 是本机生成的（新装一律叫 t1），换手机/重装后
+// 它跟云端成员表里的 userId 毫无关系。曾经的真实风险：家长重装后本机 me='t1'，
+// 恰好撞上负责人那条成员的 userId，于是家长拿到了负责人的权限。
+// 所以只要知道自己的 openid，就以 openid 为准；只有"预览切换身份"时才临时听 me 的。
 function memberCurrent() {
-  const m = core.meta().me;
+  const meta = core.meta();
   const list = oc('members').filter(x => x.status !== 'disabled');
-  return list.find(x => x.userId === m) || list[0] || null;
+  if (!list.length) return null;
+  const me = meta.me;
+  const byOid = meta.openid ? list.find(x => x.openid && x.openid === meta.openid) : null;
+  if (byOid) {
+    // 预览切换：从本人（byOid 这一条）切走去看别人——homeMe 记着"我本来是谁"
+    if (me && me !== byOid.userId && meta.homeMe && meta.homeMe === byOid.userId) {
+      const pv = list.find(x => x.userId === me);
+      if (pv) return pv;
+    }
+    return byOid;
+  }
+  // 尚未上云（没有 openid）或成员还没认领：本机单成员场景照旧
+  return list.find(x => x.userId === me) || (list.length === 1 ? list[0] : null);
 }
 
 // 把成员关系 + 学生表算成可判定的身份对象（每次实时计算，避免写操作后失效）

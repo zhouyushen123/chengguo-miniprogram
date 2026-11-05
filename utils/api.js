@@ -38,6 +38,23 @@ function syncCall(action, data) {
 }
 function login() { return Promise.resolve(); } // 云开发免登录，openid 由云函数自动获取
 
+/* ---------------- 邀请码（成员绑定） ----------------
+ * 加入机构和同步是两件事：没开通同步也要能加入，所以这三个走 callFn，不经过 syncOn 闸门。
+ * 云没通时全部返回 ok:false，页面提示"请先联网"，绝不假装成功。
+ */
+function inviteInfo(code) {
+  if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪' });
+  return callFn('syncv2', { action: 'inviteInfo', code }).catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
+}
+function inviteJoin(data) {
+  if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪' });
+  return callFn('syncv2', Object.assign({ action: 'inviteJoin' }, data)).catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
+}
+function inviteGet(role) {
+  if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪' });
+  return callFn('syncv2', { action: 'inviteGet', role }).catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
+}
+
 // 上推一条记录：已由 utils/sync.js 的脏集合机制接管，保留空实现兼容旧调用点
 function pushRecord() { return Promise.resolve(); }
 // 拉取云端数据：由 sync 引擎统一处理，保留接口给旧调用点
@@ -150,4 +167,4 @@ function uploadPhoto(filePath) {
   });
 }
 
-module.exports = { initCloud, enabled, syncOn, syncCall, login, pushRecord, pull, uploadFile, uploadPhoto, aiEvalDraft, stuImport, secText, secImage, requestSubscribe, familyBind, familyNotify, CLOUD_ENV };
+module.exports = { initCloud, enabled, syncOn, syncCall, login, pushRecord, pull, uploadFile, uploadPhoto, aiEvalDraft, stuImport, secText, secImage, requestSubscribe, familyBind, familyNotify, inviteInfo, inviteJoin, inviteGet, CLOUD_ENV };

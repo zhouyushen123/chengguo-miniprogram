@@ -26,7 +26,7 @@
 // 软删除的意义：多端同步时"删掉"必须能被同步，硬删会被其它端的历史数据覆盖复活。
 // v7：班级增加 session（课次号）——「本次录入」的节点由老师手动结清，不再由自然日自动切换；
 // 记录落库时盖上当前课次号，跨天/多人接力录同一节课也能算成同一次。
-const VERSION = 7;
+const VERSION = 8;
 const DEFAULT_ORG = 'org1';
 
 // 评分五档（与录入页每档代表分对应，用于筛选与统计口径统一）
@@ -265,7 +265,10 @@ function normalizeMember(raw, orgId, stamp) {
     status: MEMBER_STATUS.indexOf(r.status) > -1 ? r.status : 'active',
     phone: str(r.phone).trim(),        // 档案：手机号（选填，老师/家长通用）
     wechat: str(r.wechat).trim(),      // 档案：微信号（选填）
-    photo: str(r.photo).trim()         // 档案：头像照片（选填；头像统一口径见 components/ava）
+    photo: str(r.photo).trim(),        // 档案：头像照片（选填；头像统一口径见 components/ava）
+    // 云端账号标识（v8）：邀请码加入的成员由云函数写入，本机自建的成员在首次上云时
+    // 由「认领」动作补上。它比 userId 可靠——userId 是本机生成的，跨设备毫无意义。
+    openid: str(r.openid).trim()
   }, audit(r, orgId, stamp));
 }
 

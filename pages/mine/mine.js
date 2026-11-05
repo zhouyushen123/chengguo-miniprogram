@@ -1,4 +1,6 @@
 const db = require('../../utils/db');
+const api = require('../../utils/api');
+const sync = require('../../utils/sync');
 const theme = require('../../utils/theme');
 const apply = require('../../utils/apply');
 
@@ -68,10 +70,16 @@ Page({
       d: appRec ? (appRec.type + (appRec.regionText ? ' · ' + appRec.regionText : '')) : '填写机构名称、类型与联系方式'
     });
     if (isManager) {
+      // 邀请成员：一个机构码给一类身份，家长凭码 + 学号即可加入（不需要手动建成员）
+      entries.push({ k: 'invite', t: '邀请成员', d: '生成机构码，家长/老师凭码加入' });
       // 开通引导：不依赖"空库"判断，任何时候都能重走一遍（机构→学期→班级→学生）
       entries.push({ k: 'setup', t: '开通引导', d: '按步骤走一遍：机构 → 学期 → 班级 → 学生' });
       entries.push({ k: 'term', t: '学期管理', d: '开班学期、课时结转与续报' });
       entries.push({ k: 'switch', t: '切换身份', d: '管理员 / 老师 / 学生家长 演示切换' });
+    }
+    // 还没有任何学生（新装/还没加入机构）时，给一条明路：用邀请码加入
+    if (!isManager && !db.students.list().length) {
+      entries.push({ k: 'join', t: '输入邀请码加入', d: '老师发了机构码，从这儿加入' });
     }
     // 存储空间：照片视频占的是这台手机的空间，满了会静默存不进去，所以给一个能看见的地方
     entries.push({ k: 'storage', t: '存储空间', d: '照片视频占用与清理' });
@@ -98,6 +106,60 @@ Page({
     if (k === 'about') { this.showAbout(); return; }
     if (k === 'demo') { this.demoMenu(); return; }
     if (k === 'storage') { wx.navigateTo({ url: '/pages/storage/storage' }); return; }
+    if (k === 'join') { wx.navigateTo({ url: '/pages/join/join' }); return; }
+    if (k === 'invite') { this.inviteMenu(); return; }
+  },
+  /* ---------------- 邀请成员 ----------------
+   * 一个身份一个机构码（家长/老师/管理员各一个），30 天有效，可重复使用。
+   * 把"建成员"从"管理者手动填一张表"变成"对方自己扫码填名字"：
+   * 老师不可能一个个录入全班家长的姓名和手机号。
+   */
+  inviteMenu() {
+    const roles = ['parent', 'teacher', 'admin'];
+    const items = ['家长邀请码', '老师邀请码', '管理员邀请码'];
+    const hints = [
+      '家长填码 + 孩子学号即可加入，只能看自己孩子已发布的成果',
+      '老师填码 + 姓名即可加入，进来后你再给他分配班级',
+      '管理员填码加入后可管理全机构（谨慎发放）'
+    ];
+    wx.showActionSheet({
+      itemList: items,
+      success: r => {
+        const role = roles[r.tapIndex];
+        if (!role) return;
+        wx.showLoading({ title: '生成中', mask: true });
+        // 先同步一轮再取码：服务端判权限靠"成员表里有我这条 + openid 对得上"，
+        // 刚建好的机构如果还没推上去，会白挨一个"不在成员表里"。
+        sync.syncNow({ force: true }).catch(() => {}).then(() => api.inviteGet(role)).then(out => {
+          wx.hideLoading();
+          if (!out || !out.ok) {
+            const msg = out && out.code === 'NO_MEMBER'
+              ? '云端还没同步完，等半分钟再试一次'
+              : ((out && out.msg) || '生成失败，请检查网络');
+            wx.showToast({ title: msg, icon: 'none' });
+            return;
+          }
+          this.showCode(out.code, items[r.tapIndex], hints[r.tapIndex], out.expiresAt);
+        });
+      }
+    });
+  },
+  showCode(code, title, hint, expiresAt) {
+    const d = expiresAt ? new Date(expiresAt) : null;
+    const exp = d ? (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日' : '';
+    wx.showModal({
+      title: title + '：' + code,
+      content: hint + '\n\n看到这段码的人就能加入本机构，' + (exp ? exp + '前有效。' : ''),
+      confirmText: '复制码',
+      cancelText: '知道了',
+      success: r => {
+        if (!r.confirm) return;
+        wx.setClipboardData({
+          data: code,
+          success: () => wx.showToast({ title: '已复制，发给家长即可', icon: 'none' })
+        });
+      }
+    });
   },
   // 统计卡点按：学期进独立学期管理页，其余跳管理页对应页签（0班级 1课程 2学生 3人员）
   tapStat(e) {

@@ -117,6 +117,8 @@ Page({
           // 头像色块：老师=品牌色，负责人/管理员=蓝，家长=绿（全站统一口径，见 components/ava）
           avaTone: v.role === 'parent' ? 'parent' : (v.role === 'teacher' ? 'brand' : 'owner'),
           status: v.status, invited: v.status === 'invited',
+          // 账号绑定状态：bound = 对方已经用微信加入（能换手机找回）；否则是管理者手工建的档案
+          bound: v.bound,
           // 范围描述：管理级无需范围，老师列班级，家长列孩子
           meta: v.full
             ? '全机构可见'

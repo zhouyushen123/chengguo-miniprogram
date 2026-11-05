@@ -1,0 +1,35 @@
+/* pages/join/join.wxss —— 邀请码加入（继承全局卡片/按钮/主题变量） */
+.hd { padding: 32rpx 24rpx 0; }
+
+.q { font-size: 40rpx; font-weight: 700; color: var(--text); margin: 28rpx 24rpx 12rpx; line-height: 1.4; }
+.note { margin: 0 24rpx 24rpx; font-size: 25rpx; color: var(--muted); line-height: 1.6; }
+
+.card { margin: 0 24rpx 24rpx; }
+.card .mi { margin-top: 14rpx; }
+
+/* 邀请码：等宽大字 + 字间距，照着屏幕抄不会串行 */
+.codein {
+  height: 110rpx; line-height: 110rpx; text-align: center;
+  font-size: 48rpx; font-weight: 800; letter-spacing: 14rpx;
+  color: var(--text); background: var(--brand-soft);
+  border: 2rpx solid var(--brand-border); border-radius: 20rpx;
+  padding-left: 14rpx;   /* 补掉最后一个字的字距，视觉居中 */
+}
+.phcode { font-size: 32rpx; font-weight: 500; letter-spacing: 6rpx; color: var(--faint); }
+
+.err { margin: 0 24rpx 20rpx; font-size: 25rpx; color: var(--danger, #e5484d); line-height: 1.5; }
+
+/* 身份选择：两块大按钮，手机上一眼能看清该点哪个 */
+.chooser { padding: 8rpx 0; }
+.choice { padding: 34rpx 32rpx; border-bottom: 2rpx solid var(--line); }
+.choice:last-child { border-bottom: none; }
+.ch-t { font-size: 32rpx; font-weight: 700; color: var(--text); }
+.ch-d { font-size: 24rpx; color: var(--muted); margin-top: 8rpx; }
+
+.btn { margin: 0 24rpx; }
+.btn.off { opacity: 0.6; }
+
+.later {
+  margin: 28rpx 24rpx 60rpx; text-align: center;
+  font-size: 25rpx; color: var(--muted);
+}

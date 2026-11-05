@@ -120,6 +120,8 @@
     <text wx:if="{{step>1}}" class="link" bindtap="back">上一步</text>
     <text class="link" bindtap="later">稍后再说，先进去看看</text>
   </view>
+  <!-- 走错门的兜底：家长被当成老师进来建机构时，这里能拐回邀请码路线 -->
+  <view wx:if="{{step===1}}" class="linkjump" bindtap="goJoin">我有邀请码，用邀请码加入机构 ›</view>
 </view>
 
 </view>

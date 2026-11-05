@@ -74,6 +74,11 @@
 }
 .link { font-size: 25rpx; color: var(--muted); }
 .later { text-align: center; font-size: 25rpx; color: var(--muted); margin: 28rpx 0 40rpx; }
+/* 走错门的兜底入口：低调但找得到，放在"稍后再说"下面 */
+.linkjump {
+  text-align: center; font-size: 25rpx; color: var(--brand);
+  margin: 22rpx 0 0;
+}
 
 /* 给固定底栏让位 */
 .theme-root { padding-bottom: 220rpx; }

@@ -2,6 +2,7 @@
   "pages": [
     "pages/index/index",
     "pages/setup/setup",
+    "pages/join/join",
     "pages/record/record",
     "pages/records/records",
     "pages/student/student",

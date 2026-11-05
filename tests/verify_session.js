@@ -167,8 +167,8 @@ ok('已有 session 的记录不被重算（混合数据安全）', () => {
 
 /* ================= F. 版本号 ================= */
 console.log('\n【F. schema 版本】');
-ok('schema.VERSION 升到 7', () => {
-  assert.strictEqual(schema.VERSION, 7);
+ok('schema.VERSION 不低于 7（课次从 v7 起）', () => {
+  assert.ok(schema.VERSION >= 7);
 });
 ok('normalizeClass 的 session 兜底不小于 1', () => {
   const c = schema.normalizeClass({ id: 9, name: 'x', session: 0 }, 'org1', Date.now());

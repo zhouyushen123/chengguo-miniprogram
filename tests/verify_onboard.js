@@ -82,12 +82,13 @@ ok('全新安装：不留下任何"测试"痕迹（没有测试老师、没有�
 
 console.log('\n【首页空态】');
 const index = loadPage('pages/index/index.js');
-ok('空库首页：empty=true，并自动打开一次开通向导', () => {
+ok('空库首页：empty=true，并自动打开一次"老师还是家长"的选择页', () => {
   navs.length = 0;
   index.onShow();
   assert.strictEqual(index.data.empty, true);
   assert.strictEqual(index.data.clsCount, 0);
-  assert.ok(navs.some(u => u.indexOf('/pages/setup/setup') > -1), '首次进入应自动跳向导，实际：' + navs.join(','));
+  // 首次进入先问身份：家长不该被要求给机构起名字
+  assert.ok(navs.some(u => u.indexOf('/pages/join/join') > -1), '首次进入应自动跳身份选择，实际：' + navs.join(','));
 });
 ok('再次进入首页：标记已写，不再自动跳（改由首页卡片引导）', () => {
   navs.length = 0;

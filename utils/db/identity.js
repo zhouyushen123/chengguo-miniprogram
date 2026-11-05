@@ -30,6 +30,8 @@ function memberView(m) {
     kidText: kids.join('、'),
     phone: m.phone || '', wechat: m.wechat || '',   // 档案联系方式
     photo: m.photo || '',                            // 档案头像（展示统一走 components/ava）
+    openid: m.openid || '',
+    bound: !!m.openid,                               // 已绑定微信账号（可换手机找回）
     full: perms.FULL.indexOf(m.role) > -1
   };
 }
@@ -38,6 +40,27 @@ function memberGet(id) {
 }
 function memberOfUser(userId) {
   return oc('members').find(m => m.userId === String(userId)) || null;
+}
+function memberOfOpenid(openid) {
+  const k = schema.str(openid).trim();
+  return k ? (oc('members').find(m => m.openid === k) || null) : null;
+}
+
+/* ---------------- 账号认领：把本机成员挂到当前微信账号上 ----------------
+ * 第一次上云时调用。本机自建的成员原本没有 openid，认领后它就有了稳定的云端身份：
+ * 换手机、装第二台设备，都能凭 openid 找回"我是谁"，而不是靠本机随机生成的 userId。
+ * 幂等：已认领过直接返回；成员已被别的账号占用则拒绝（绝不抢占）。
+ */
+function claimOpenid(openid) {
+  const oid = schema.str(openid).trim();
+  if (!oid) return { ok: false, msg: '缺少账号标识' };
+  const mine = memberOfOpenid(oid);
+  if (mine) return { ok: true, id: mine.id, already: true };
+  const m = memberCurrent();
+  if (!m) return { ok: false, msg: '本机没有可认领的成员' };
+  if (m.openid && m.openid !== oid) return { ok: false, msg: '该成员已被其他微信账号认领' };
+  if (!applyEdit('members', m, { openid: oid, updatedAt: now() })) return { ok: false, msg: core.SAVE_FAIL };
+  return { ok: true, id: m.id, already: false };
 }
 
 /* ---------------- 家长绑孩子：自动带出同家长的兄弟姐妹 ----------------
@@ -152,10 +175,20 @@ function userName(id) { const u = userGet(id); return u ? u.name : ''; }
 function userCurrent() {
   const m = memberCurrent();
   const u = m ? userGet(m.userId) : null;
+  // 邀请码加入的人是云端建的成员，本机没有对应的 users 行（users 属于账号表，不参与同步）。
+  // 这时直接用成员上的姓名/头像合成身份，别掉到 users[0]——那会显示成别人的名字。
+  if (m && !u) {
+    return {
+      id: m.userId, name: m.name, photo: m.photo || '',
+      role: m.role,
+      clsIds: m.clsIds.slice(), courseIds: m.courseIds.slice(), studentIds: m.studentIds.slice(),
+      memberId: m.id, orgId: org(), status: m.status
+    };
+  }
   const base = u || userList()[0] || null;
   if (!base) return null;
   return {
-    id: base.id, name: base.name,
+    id: base.id, name: base.name, photo: base.photo || '',
     role: (m && m.role) || base.role || 'parent',
     clsIds: m ? m.clsIds.slice() : [],
     courseIds: m ? m.courseIds.slice() : [],
@@ -248,7 +281,7 @@ function me() { return core.meta().me; }
 function isParent() { const a = actor(); return !!a && a.role === 'parent'; }
 
 module.exports = {
-  memberList, memberView, memberGet, memberOfUser,
+  memberList, memberView, memberGet, memberOfUser, memberOfOpenid, claimOpenid,
   memberCreate, memberUpdate, memberRemove,
   userList, userGet, userName, userCurrent, userSwitch, userSwitchHome,
   userCreate, userUpdate, userRemove,

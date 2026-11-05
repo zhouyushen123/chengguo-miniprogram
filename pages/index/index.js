@@ -102,13 +102,13 @@ Page({
     });
     if (empty && !st.sandbox) this.autoSetup();
   },
-  // 首次进入自动打开开通向导：用一次性标记记一笔，之后只在首页留卡片，不再强行跳
-  // （标记走 utils/firstrun.js：页面不许直接读写本地存储）
+  // 首次进入：先问"老师还是家长"。家长走邀请码，老师走开通向导——
+  // 以前直接甩向导，家长会被要求给机构起名字，第一步就走错路了。
+  // 只有真的跳成功了才记账：跳失败（页面未注册/栈满）不该把机会用掉，下次进来还能再跳
   autoSetup() {
     if (firstrun.autoShown()) return;
-    // 只有真的跳成功了才记账：跳失败（页面未注册/栈满）不该把机会用掉，下次进来还能再跳
     wx.navigateTo({
-      url: '/pages/setup/setup',
+      url: '/pages/join/join?pick=1',
       success: () => firstrun.markAutoShown()
     });
   },

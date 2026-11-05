@@ -1,0 +1,53 @@
+<view class="theme-root {{themeCls}}">
+  <view class="hd">
+    <view class="slogan">橙果 · 让每一次进步都被看见</view>
+  </view>
+
+  <!-- 第 0 步：先分清"老师"和"家长"，别让家长去建机构 -->
+  <block wx:if="{{stage===0}}">
+    <view class="q">你是老师，还是家长？</view>
+    <view class="note">老师建机构、录成果；家长用老师给的邀请码加入，看孩子的成果。</view>
+    <view class="card chooser">
+      <view class="choice" hover-class="mrow-hover" bindtap="goCode">
+        <view class="ch-t">我有邀请码</view>
+        <view class="ch-d">用老师发的 6 位机构码加入</view>
+      </view>
+      <view class="choice" hover-class="mrow-hover" bindtap="goSetup">
+        <view class="ch-t">我是老师，创建机构</view>
+        <view class="ch-d">四步建好机构、班级和学生</view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 第一步：只问邀请码 -->
+  <block wx:elif="{{stage===1}}">
+    <view class="q">输入老师给的邀请码</view>
+    <view class="note">6 位字母数字，老师在「我的 → 邀请成员」里能看到。</view>
+    <view class="card">
+      <input class="codein" value="{{code}}" bindinput="onCode" maxlength="6"
+        placeholder="如 A3F7KM" placeholder-class="phcode" confirm-type="done" bindconfirm="check" />
+    </view>
+    <view wx:if="{{err}}" class="err">{{err}}</view>
+    <view class="btn {{busy ? 'off' : ''}}" hover-class="btn-hover" bindtap="check">{{busy ? '查询中…' : '下一步'}}</view>
+    <view class="later" bindtap="back">我有自己的机构，去建一个 ›</view>
+  </block>
+
+  <!-- 第二步：确认机构 + 填自己是谁 -->
+  <block wx:else>
+    <view class="q">加入「{{orgName}}」</view>
+    <view class="note">以「{{roleLabel}}」身份加入<text wx:if="{{role==='parent'}}">，需要孩子的学号来认领孩子</text>。</view>
+    <view class="card">
+      <view class="label">你的姓名</view>
+      <input class="input" value="{{name}}" bindinput="onName" maxlength="12" placeholder="如：张珊珊" placeholder-class="ph" />
+      <block wx:if="{{role==='parent'}}">
+        <view class="label">孩子的学号</view>
+        <input class="input" type="number" value="{{stuNo}}" bindinput="onStuNo" maxlength="8"
+          placeholder="老师给的 4 位数字，如 1001" placeholder-class="ph" />
+        <view class="mi">学号在孩子报名时生成，问老师要；同一个家长号码的兄弟姐妹会自动一起带上。</view>
+      </block>
+    </view>
+    <view wx:if="{{err}}" class="err">{{err}}</view>
+    <view class="btn {{busy ? 'off' : ''}}" hover-class="btn-hover" bindtap="doJoin">{{busy ? '加入中…' : '加入机构'}}</view>
+    <view class="later" bindtap="back">‹ 换个邀请码</view>
+  </block>
+</view>

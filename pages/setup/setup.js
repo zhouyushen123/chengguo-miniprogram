@@ -111,6 +111,8 @@ Page({
   later() {
     this.setData({ done: true, summary: this._summary() });
   },
+  // 家长/老师走错门：从向导拐到邀请码加入（向导里已经存的东西不会丢，它本来就没提交）
+  goJoin() { wx.redirectTo({ url: '/pages/join/join' }); },
 
   _toast(title) { wx.showToast({ title, icon: 'none' }); },
 

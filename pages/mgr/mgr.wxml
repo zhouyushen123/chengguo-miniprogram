@@ -137,7 +137,7 @@
       <view class="itrow">
         <ava src="{{item.photo}}" name="{{item.name}}" size="{{76}}" radius="{{24}}" tone="{{item.avaTone}}" />
         <view><b>{{item.name}}</b>
-          <view class="mi">{{item.roleLabel}} · {{item.meta}}<text wx:if="{{item.invited}}" class="mi"> · 待绑定</text></view>
+          <view class="mi">{{item.roleLabel}} · {{item.meta}}<text wx:if="{{item.invited}}" class="mi"> · 待绑定</text><text wx:else class="mi">{{item.bound ? ' · 已绑定微信' : ' · 未绑定微信'}}</text></view>
         </view>
       </view>
     </view>

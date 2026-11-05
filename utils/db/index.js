@@ -106,6 +106,8 @@ const db = {
     view: identity.memberView,
     get: identity.memberGet,
     ofUser: identity.memberOfUser,
+    ofOpenid: identity.memberOfOpenid,
+    claimOpenid: identity.claimOpenid,
     current: memberCurrent,
     create: identity.memberCreate, update: identity.memberUpdate, remove: identity.memberRemove
   },

@@ -38,6 +38,11 @@ const targetOrg = () => pendingOrg || orgId();
 function init() {
   if (!api.syncOn() || !orgId()) return Promise.resolve({ ok: false, skipped: true });
   if (ready) return Promise.resolve({ ok: true, orgId: orgId(), cached: true });
+  // 【空库不上云】hello 会「首次调用即绑定」：新装家长刚一进小程序就把这个微信号
+  // 绑到了本机那个空的出厂机构上，等他拿到邀请码想加入真正的机构时，服务端会说
+  // 「该微信已加入其他机构」——从此再也进不来。所以空库先不绑，等真有数据
+  // （老师走完开通向导、家长用邀请码加入）再绑。
+  if (!db.sync.cursor() && isEmptyLocal()) return Promise.resolve({ ok: false, skipped: true, code: 'EMPTY' });
   return api.syncCall('hello', { orgId: orgId() })
     .then(r => {
       if (!r || !r.ok) return { ok: false, code: (r && r.code) || 'HELLO_FAIL', msg: r && r.msg };
@@ -48,11 +53,24 @@ function init() {
         pendingOrg = String(r.orgId);
       }
       ready = true;
+      // 记住自己的云端账号标识，并把本机成员"认领"到这个账号上：
+      // 认领之后，换手机/重装靠 openid 就能找回"我是谁"，不用信本机随机生成的 userId。
+      if (r.openid) claim(String(r.openid), adopted);
       // 从未同步过（游标 0）→ 现有本机数据全部标脏，首次把所有内容推上去
       if (!db.sync.cursor() && !adopted) db.sync.markAllDirty();
       return { ok: true, orgId: String(r.orgId), adopted, firstTime: !!r.firstTime };
     })
     .catch(() => ({ ok: false, code: 'CLOUD_OFF' }));
+}
+
+// 认领：把 openid 记在 meta（设备本地）并写到本机成员上（会随同步上云）。
+// 恢复场景（adopted=true）先不认领——那时的成员表还是别人的，等 pull 回来再说。
+function claim(openid, adopted) {
+  const meta = db.real().meta || {};
+  if (meta.openid !== openid) db.patchMeta({ openid });
+  if (adopted) return;
+  const res = db.members.claimOpenid ? db.members.claimOpenid(openid) : null;
+  if (res && res.ok && !res.already) db.sync.markDirty('members');
 }
 
 // 拉增量：最多 5 轮（每轮每集合 100 条），游标只增不减
@@ -105,12 +123,39 @@ function syncNow(opts) {
             db.patchMeta({ orgId: pendingOrg });
             pendingOrg = '';
           }
+          // 恢复完成后补一次认领：成员表已经是自己的了，此时把 openid 固化到成员上才安全
+          const oid = (db.real().meta || {}).openid;
+          if (oid) claim(oid, false);
           return pushNow().then(u => ({ ok: true, pulled: p.added + p.updated, pushed: u.pushed }));
         })
         .catch(e => ({ ok: false, code: 'SYNC_FAIL', msg: (e && e.message) || '' }))
         .then(out => { busy = false; return out; });
     })
     .catch(e => { busy = false; return { ok: false, code: 'SYNC_FAIL', msg: (e && e.message) || '' }; });
+}
+
+/* ---------------- 邀请码加入机构 ----------------
+ * 家长/老师拿到机构码后走这里：云端建绑定 + 建成员关系 → 本机改挂到该机构 → 全量拉回。
+ * 【前置条件】本机必须是空的。有数据还强行加入，等于把一个机构的记录塞进另一个机构的 id 空间，
+ * 冲突起来没法收场。所以宁可拒绝并提示先清空，也不做「合并」这种看起来聪明的事。
+ */
+function join(code, name, stuNo) {
+  if (!api.syncOn()) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪，请稍后重试' });
+  if (!isEmptyLocal()) {
+    return Promise.resolve({ ok: false, code: 'LOCAL_DATA', msg: '本机已有数据，请先在「存储空间」里清空后再加入' });
+  }
+  return api.inviteJoin({ code, name, stuNo })
+    .then(r => {
+      if (!r || !r.ok) return r || { ok: false, msg: '加入失败' };
+      const m = r.member || {};
+      db.patchMeta({ orgId: String(r.orgId), me: String(m.userId || ''), openid: String(m.openid || '') });
+      // 换机构：游标归零，从头拉一遍；本地那份空库不需要推
+      db.sync.setCursor(0);
+      db.sync.clearDirty(db.sync.COLLS);
+      ready = true;
+      return pullNow().then(p => ({ ok: true, orgId: String(r.orgId), member: m, pulled: p.added + p.updated }));
+    })
+    .catch(e => ({ ok: false, msg: (e && e.message) || '加入失败' }));
 }
 
 // 写后自动上推：本地一次保存常常连续写几个集合，防抖合并成一轮
@@ -130,4 +175,7 @@ function kick() {
 
 db.sync.onDirty(schedule);
 
-module.exports = { init, pullNow, pushNow, syncNow, kick, schedule, isReady: () => ready, isConflict: () => conflict };
+module.exports = {
+  init, pullNow, pushNow, syncNow, kick, schedule, join, claim,
+  isReady: () => ready, isConflict: () => conflict
+};

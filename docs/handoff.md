@@ -15,7 +15,7 @@
 | 远程 | `git@github.com:zhouyushen123/chengguo-miniprogram.git` |
 | 我的工作区 | `C:\Users\zhouy\WorkBuddy\橙果`（只放记忆，不放代码） |
 | 技术栈 | 微信原生小程序（JS）+ 云开发目录 `cloudfunctions/` |
-| 验证基线 | `npm test` = 23 个套件全绿（新增 23 项云端备份断言）；`npm run lint` 122 文件 0 提醒；`npm run size` 主包 1068.8 KB / 2 MB（52.2%）；`npm run check` = lint + size + test 一条跑完 |
+| 验证基线 | `npm test` = 24 个套件 / 513 项断言全绿（新增 26 项审查机制断言）；`npm run lint` 122 文件 0 提醒；`npm run size` 主包 1068.8 KB / 2 MB（52.2%）；`npm run check` = lint + size + test 一条跑完 |
 | 提交习惯 | 沙箱常拦 `git push`（读不到 `~/.ssh`），仓库有「5 分钟自动同步」任务会以 `auto: 自动同步 时间戳` 提交并推送 |
 
 ---
@@ -123,6 +123,16 @@
 - **恢复**：按集合分次（单次上限 2000 条，剩余量如实报 `skipped`）；**只写回、不删除**——恢复是用来把改坏的改成昨天那样，不是回档，顺手删掉备份之后新录的数据比不恢复更糟；写回时盖新 `updatedAt` + 递增 `srvAt`，少一个就会出现"后台说恢复了，手机还是坏的"。后台「数据安全 → 恢复到这一天」会先自动备份一份当前数据（标「恢复前」），滚错还能回来。
 - **顺手修掉**：后台「数据安全」页签以前点了没反应（`goTab` 只切换 4 个页签，`data` 不在列表里，section 永远是 hide）。
 - 守卫：`tests/verify_cloudbackup.js` 23 项（纯函数 + fake wx-server-sdk 端到端：定时全量分机构、大集合拆片、同日覆盖、过期只删备份自己的东西、越权与家长拒绝、恢复不删新数据、恢复上限与 skipped）。
+
+### 代码审查机制（11-05 晚第四批，用户："代码质量参差不齐，要系统的审查机制"）
+
+原来的 `docs/code-review-standard.md` v1.0 是一份"只写在纸上"的标准，且事实已全部过期（240 项断言、8 个套件、说 CI 没有门禁——实际早就有了），也没覆盖上线后最大的风险面：**两端一致性**和**备份能不能恢复**。
+
+- **标准升到 v2.0**：四条红线（R1 数据静默丢失 / R2 权限绕过 / R3 演示污染 / **R4 云端与备份必须拉得回、恢复得出**）、P0–P3 分级、R0–R3 风险分级（按文件判，不按 diff 行数）、A–H 人工清单（新增 C 同步、D 备份两节）、流程、反模式黑名单 10 条（全是本项目真踩过的：`oc()/ocAll()`、`actor()/memberCurrent()`、`toISOString()` 时区、共用 `srvAt`、catch 吞错、测试不 await、`wx:key` 撞、页签漏白名单……）。
+- **单人项目的现实做法**：把 PR 当"审查单元"而不是"等人批准"——分支 → `npm run review -- --check` → 提 PR（模板四项证据）→ 请 AI 以审查者身份读 diff（先喂 handoff 的约定与黑名单）→ 逐条回应 → **R0 放满 24 小时再合并**。作者不能给自己签字，审查意见栏只由审查方填。
+- **工具 `npm run review`**（`tools/review.js` + `tools/review-rules.js`）：按路径算风险层、列出这次该看的章节、提醒"改了核心代码没补断言 / 云函数要部署 / 备份要有恢复断言 / 改 schema 要迁移 / 改界面要跑体积 / 改 CI 别把 verify 挪到 upload 后面"。规则只写在 `review-rules.js` 一处，文档与工具同源。
+- **PR 模板** `.github/pull_request_template.md`：改了什么·风险等级·验证证据·回滚止血，缺一项视为未审查。
+- **自检** `tests/verify_review.js` 26 项：分级不许被降级、清单不许漏、文档与模板必须存在且与工具口径一致——防止"标准写得很全，两周后没人用"。
 
 ### 数据健壮（11-05 晚，用户："学生、老师、机构是最核心的资产，一定要做好"）
 
@@ -290,6 +300,10 @@ pages/mine/              我的（统计两行三列）
 app.wxss                 全局：.note / .slogan / .vin·.vmic
 tools/gen_icons.py       图标生成（三套主题；user 有 gray/ink/white）
 tools/size.js            主包体积检查（npm run size；CI 门禁用）
+tools/review.js          审查包生成（npm run review / --check）
+tools/review-rules.js    审查分级与清单规则（纯函数，tests/verify_review.js 测）
+docs/code-review-standard.md  代码审查标准 v2.0（红线/分级/清单/流程/反模式）
+.github/pull_request_template.md  PR 四项证据
 utils/firstrun.js        首次进入的一次性标记（自动跳向导只跳一次）
 .github/workflows/deploy.yml  verify（lint+test+size）→ upload 两段门禁
 ```

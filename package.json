@@ -7,6 +7,7 @@
     "test": "node tests/run.js",
     "lint": "node tools/lint.js",
     "size": "node tools/size.js",
+    "review": "node tools/review.js",
     "check": "node tools/lint.js && node tools/size.js && node tests/run.js"
   },
   "dependencies": {

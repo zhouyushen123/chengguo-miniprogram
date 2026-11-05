@@ -380,4 +380,14 @@ ok('向导第一步被拦时先自救再重试（自救必须长在被卡住的�
   assert.ok(js.indexOf('_commitOrgOk') > -1, '成功路径要提取出来供重试复用');
 });
 
+ok('结课前随时可改：学生页每条记录有「修改」入口，能改与否由权限层判定', () => {
+  const wxml = fs.readFileSync(path.join(__dirname, '../pages/student/student.wxml'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '../pages/student/student.js'), 'utf8');
+  assert.ok(wxml.indexOf('editRec') > -1, '学生页（单条/最近/历史）必须有修改入口');
+  assert.ok(js.indexOf("/pages/record/record?rid=") > -1, '修改要跳到录入页的编辑模式');
+  assert.ok(js.indexOf("db.auth.can('record.update'") > -1, '能不能改由权限层判定，不许页面自定规则');
+  const rec = fs.readFileSync(path.join(__dirname, '../pages/records/records.wxml'), 'utf8');
+  assert.ok(rec.indexOf('>修改<') > -1, '记录列表的按钮统一叫「修改」');
+});
+
 console.log('\n全部 ' + pass + ' 项数据模型断言通过');

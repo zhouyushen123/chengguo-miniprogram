@@ -59,6 +59,9 @@
       <view class="mi nline" wx:for="{{rec.noteLines}}" wx:key="index"><text wx:if="{{item.label}}" class="nlabel">{{item.label}}：</text><text class="ntext">{{item.text}}</text></view>
     </view>
     <template is="voicebar" wx:if="{{rec.audio}}" data="{{vk:'rec', vsrc:rec.audio, playing, teacher, icoPlay, icoPause}}" />
+    <view wx:if="{{rec.canEdit}}" class="chips" style="margin:12rpx 0 0">
+      <text class="pill" style="background:var(--brand);color:#fff" hover-class="btn-hover" bindtap="editRec" data-rid="{{rec.id}}">修改这条记录</text>
+    </view>
   </view>
 
   <!-- 班级筛选 + 课程页签 + 最近一次详情 + 评价汇总 + 历史列表 -->
@@ -93,6 +96,9 @@
         <view class="mi nline" wx:for="{{latest.noteLines}}" wx:key="index"><text wx:if="{{item.label}}" class="nlabel">{{item.label}}：</text><text class="ntext">{{item.text}}</text></view>
       </view>
       <template is="voicebar" wx:if="{{latest.audio}}" data="{{vk:'latest', vsrc:latest.audio, playing, teacher, icoPlay, icoPause}}" />
+      <view wx:if="{{latest.canEdit}}" class="chips" style="margin:12rpx 0 0">
+        <text class="pill" style="background:var(--brand);color:#fff" hover-class="btn-hover" bindtap="editRec" data-rid="{{latest.id}}">修改这条记录</text>
+      </view>
       <!-- 评价汇总：当前筛选范围内各档评价次数 -->
       <view wx:if="{{tagCounts.length}}" class="tagsum">
         <view class="mi ts-title">评价汇总</view>
@@ -124,6 +130,7 @@
         <view wx:if="{{expandId===item.id}}" class="histdetail">
           <view class="chips" style="margin:0 0 12rpx">
             <text class="pill" style="background:{{item.sent?'var(--sent)':'var(--warn)'}}">{{item.sent?'已发布':'待发布'}}</text>
+            <text wx:if="{{item.canEdit}}" class="pill" style="background:var(--brand);color:#fff" hover-class="btn-hover" bindtap="editRec" data-rid="{{item.id}}">修改这条</text>
           </view>
           <view class="photogrid {{item.pcls}}" wx:if="{{item.photos.length}}">
             <image wx:for="{{item.photos}}" wx:for-item="ph" wx:key="*this" src="{{ph}}" mode="{{item.pcls==='pg1'?'aspectFit':'aspectFill'}}" />

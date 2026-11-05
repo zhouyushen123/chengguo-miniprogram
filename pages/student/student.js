@@ -67,7 +67,8 @@ Page({
       const first = (x.noteLines && x.noteLines[0]) || null;
       let snip = first ? (first.text || first.label) : '';
       if (snip.length > 16) snip = snip.slice(0, 16) + '…';
-      return x && Object.assign(x, { clsName: db.classes.name(r.cid), tcls: tagCls(r.tag), pcnt: (r.photos || []).length, snip, sess: r.session || 0 });
+      // 班级结课前的记录随时可改：能不能改由权限层判定（负责人/管理员全可改，老师限本人）
+      return x && Object.assign(x, { clsName: db.classes.name(r.cid), tcls: tagCls(r.tag), pcnt: (r.photos || []).length, snip, sess: r.session || 0, canEdit: db.auth.can('record.update', { record: r }) });
     };
 
     // 指定某条记录（从记录列表点入）
@@ -186,6 +187,10 @@ Page({
   toggleExpand(e) {
     const id = +e.currentTarget.dataset.rid;
     this.setData({ expandId: this.data.expandId === id ? 0 : id });
+  },
+  // 修改已有记录：record 页认 rid 就是编辑模式（wasSent 时底部按钮是「保存修改」）
+  editRec(e) {
+    wx.navigateTo({ url: '/pages/record/record?rid=' + e.currentTarget.dataset.rid });
   },
   goRecord() {
     const s = db.students.get(this.sid);

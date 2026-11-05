@@ -31,7 +31,7 @@
     </view>
   </view>
   <view wx:if="{{item.canEdit || item.canSend}}" class="btnrow">
-    <view wx:if="{{item.canEdit}}" class="btn ghost" hover-class="btn-hover" catchtap="editRec" data-rid="{{item.id}}">编辑</view>
+    <view wx:if="{{item.canEdit}}" class="btn ghost" hover-class="btn-hover" catchtap="editRec" data-rid="{{item.id}}">修改</view>
     <view wx:if="{{item.canSend}}" class="btn send {{item.sent?'off':''}}" hover-class="{{item.sent?'none':'btn-hover'}}" catchtap="sendRec" data-rid="{{item.id}}">{{item.sent?'已发布':'发布到家长端'}}</view>
   </view>
 </view>

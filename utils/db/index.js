@@ -32,6 +32,8 @@
 // 新增领域时请沿用这个方向，若发现需要反向调用，说明边界划错了，先调整边界而不是写 require 环。
 const schema = require('./schema');
 const core = require('./core');
+const entities = require('./entities');
+const factory = require('./factory');
 const storage = require('./storage');
 const perms = require('./permissions');
 
@@ -81,6 +83,22 @@ const db = {
     restore: maintenance.restoreSnapshot
   },
   mediaRefs: maintenance.mediaRefs,   // 库里引用着的媒体路径（清理垃圾文件用）
+  // 回到出厂：本机数据坏档（成员表丢失 → 所有写操作都被「请先登录」拦住）时的唯一自救出口。
+  // 只清本机，云端不动；重置后重走开通向导，第一次同步会重新绑定机构。
+  resetReal: factory.resetReal,
+  // 原始条数：每张表「总条数 / 当前机构条数」。数据"看着少了"时用它分辨是丢了还是身份不对
+  rawCounts: () => {
+    const raw = core.realData() || {};
+    const cur = core.meta().orgId || '';
+    return entities.ALL_COLLS.map(n => {
+      const list = Array.isArray(raw[n]) ? raw[n] : [];
+      const mine = n === 'orgs'
+        ? list.filter(x => String(x && x.id) === String(cur)).length
+        : list.filter(x => String((x && x.orgId) || cur) === String(cur)).length;
+      const def = entities.byColl(n);
+      return { k: n, label: (def && def.label) || n, all: list.length, mine };
+    });
+  },
   settings: identity.settings, setTeacher: identity.setTeacher,
   today, canSend: records.canSend, merge: maintenance.merge,
   me: identity.me, isParent: identity.isParent,

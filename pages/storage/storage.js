@@ -45,7 +45,8 @@ Page({
     // 云端备份：云开发每天凌晨 3 点自动打包（云数据库被改坏时的最后一道保险）
     cbShow: true, cbBusy: false, cbHint: '读取中…',
     // 被云端拒绝的改动：本地改成功了、云端没接受，不说出来就是静默不一致
-    rejects: [], rejectCount: 0, trashCount: 0
+    rejects: [], rejectCount: 0, trashCount: 0,
+    rawRows: []
   },
 
   onShow() { theme.apply(this); this.refresh(); this.refreshCloud(); },
@@ -72,6 +73,7 @@ Page({
       classes: c.classes || 0,
       failed: !!h.lastFail
     });
+    this.refreshRaw();
     this.refreshAudit();
     this.refreshSnaps();
     this.refreshRejects();
@@ -143,6 +145,43 @@ Page({
     });
   },
 
+  // 原始条数：每张表「总条数 / 当前机构条数」
+  // 这两个数字的差是"数据在、但身份/机构号对不上"的唯一线索——没有它，
+  // 界面上一律显示 0，用户和我们都只能猜"是不是丢了"（2026-11-05 真机踩过）。
+  refreshRaw() {
+    let rows = [];
+    try { rows = db.rawCounts() || []; } catch (e) { rows = []; }
+    this.setData({ rawRows: rows });
+  },
+
+  // 回到出厂：数据层是 fail-closed 的，成员表丢了以后连开通向导都过不了权限闸，
+  // 界面上必须有这个出口，否则这台手机永远改不了也建不了。
+  doReset() {
+    wx.showModal({
+      title: '重置本机数据？',
+      content: '会清掉这台手机上的全部学生、班级、记录与成员，不能撤销。云端数据不受影响。重置后重新走一遍开通向导即可。',
+      confirmText: '继续',
+      confirmColor: theme.danger(),
+      success: r => {
+        if (!r.confirm) return;
+        // 第二道确认：这一步没有回收站，误点就是全没
+        wx.showModal({
+          title: '再确认一次',
+          content: '重置后本机将回到刚安装的状态（没有学生、没有记录）。确定继续？',
+          confirmText: '确定重置',
+          confirmColor: theme.danger(),
+          success: m => {
+            if (!m.confirm) return;
+            const res = db.resetReal();
+            if (!res || !res.ok) { wx.showToast({ title: (res && res.msg) || '重置失败', icon: 'none' }); return; }
+            wx.showToast({ title: '已重置，正在重新启动', icon: 'none' });
+            setTimeout(() => wx.reLaunch({ url: '/pages/index/index' }), 600);
+          }
+        });
+      }
+    });
+  },
+
   doBackup() {
     const r = db.snapshots.save('手动备份');
     if (!r || !r.ok) { wx.showToast({ title: (r && r.msg) || '备份失败', icon: 'none' }); return; }
@@ -195,7 +234,8 @@ Page({
   // 中途失败不谎报成功——剩下一半会在提示里说清楚。
   doCloudBackup() {
     if (this.data.cbBusy) return;
-    const COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'students', 'enrollments', 'records', 'templates'];
+    // 清单从注册表来：以前这里手抄了一份，加新表时漏掉 → 云端备份少一张表（静默）
+    const COLLS = db.sync.COLLS.slice();
     this.setData({ cbBusy: true });
     wx.showLoading({ title: '备份中 1/' + COLLS.length, mask: true });
     let i = 0;

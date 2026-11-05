@@ -276,4 +276,59 @@ ok('启动维护后不重复标脏：推完清脏，第二次启动不再标', (
   assert.deepStrictEqual(second.db.sync.dirtyCols(), [], '种子已齐全且已打戳，第二次启动不该再标脏');
 });
 
+console.log('\n【H. 坏档自救：成员丢了以后还能不能救回来】');
+
+ok('成员表空了就是坏档：actor 为空、所有写操作都提示「请先登录」', () => {
+  const seed = fixture.richSeed();
+  seed['chengguo_v3_members'] = [];
+  const { db } = bootDb(seed);
+  assert.strictEqual(db.auth.actor(), null, '没有成员记录就没有身份');
+  assert.strictEqual(db.auth.denyReason('class.write'), '请先登录');
+  const r = db.classes.create({ name: '新班', termId: 1 });
+  assert.strictEqual(r.ok, false, '坏档状态下建班级必须被拦（这就是真机上看到的那一幕）');
+  assert.strictEqual(r.msg, '请先登录');
+});
+
+ok('resetReal 能把坏档救回出厂：重建负责人 + 清空业务数据 + 身份恢复', () => {
+  const seed = fixture.richSeed();
+  seed['chengguo_v3_members'] = [];
+  const { db, mem } = bootDb(seed);
+  assert.strictEqual(db.auth.actor(), null);
+  const r = db.resetReal();
+  assert.strictEqual(r.ok, true, '重置应成功');
+  const a = db.auth.actor();
+  assert.ok(a, '重置后必须有身份，否则还是死结');
+  assert.strictEqual(a.role, 'owner');
+  assert.strictEqual(db.students.list().length, 0, '出厂态没有学生');
+  assert.strictEqual(db.records.list().length, 0, '出厂态没有记录');
+  // 落盘：重新用同一份存储启动，身份仍在（否则"重置完一重启又坏"）
+  const again = bootDb(mem);
+  assert.ok(again.db.auth.actor(), '重启后身份仍要在');
+});
+
+ok('rawCounts 能区分「数据丢了」和「数据挂在别的机构号下」', () => {
+  const seed = fixture.richSeed();
+  seed['chengguo_v3_students'].push({
+    id: 9001, orgId: 'org-orphan', name: '别人的学生', no: 9001,
+    clsIds: [], createdAt: 1, updatedAt: 1, removed: false
+  });
+  const { db } = bootDb(seed);
+  const row = db.rawCounts().find(x => x.k === 'students');
+  assert.ok(row, '要有 students 这一行');
+  assert.ok(row.all > row.mine, '总条数应大于本机构条数：数据还在，只是挂在别的机构号下');
+  assert.strictEqual(row.all - row.mine, 1);
+  assert.ok(row.label, '要有中文名，界面上直接显示');
+});
+
+ok('存储页必须有重置入口与诊断区块（没有出口，坏档就只能卸载重装）', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const wxml = fs.readFileSync(path.join(__dirname, '../pages/storage/storage.wxml'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '../pages/storage/storage.js'), 'utf8');
+  assert.ok(wxml.indexOf('重置本机数据') > -1, '页面上要有重置按钮');
+  assert.ok(wxml.indexOf('rawRows') > -1, '页面上要显示原始条数');
+  assert.ok(js.indexOf('db.resetReal') > -1, '按钮要接重置实现');
+  assert.strictEqual(js.indexOf("const COLLS = ['orgs'"), -1, '云端备份的集合清单不许再手抄');
+});
+
 console.log('\n全部 ' + pass + ' 项数据模型断言通过');

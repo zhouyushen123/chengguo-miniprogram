@@ -15,7 +15,7 @@
 | 远程 | `git@github.com:zhouyushen123/chengguo-miniprogram.git` |
 | 我的工作区 | `C:\Users\zhouy\WorkBuddy\橙果`（只放记忆，不放代码） |
 | 技术栈 | 微信原生小程序（JS）+ 云开发目录 `cloudfunctions/` |
-| 验证基线 | `npm test` = 25 个套件 / 542 项断言全绿（数据模型 23 项）；`npm run lint` 122 文件 0 提醒；`npm run size` 主包 1111.6 KB / 2 MB（54.3%）；`npm run check` = lint + 数据字典 + size + test 一条跑完 |
+| 验证基线 | `npm test` = 25 个套件 / 546 项断言全绿（数据模型 27 项）；`npm run lint` 122 文件 0 提醒；`npm run size` 主包 1111.6 KB / 2 MB（54.3%）；`npm run check` = lint + 数据字典 + size + test 一条跑完 |
 | 提交习惯 | 沙箱常拦 `git push`（读不到 `~/.ssh`），仓库有「5 分钟自动同步」任务会以 `auto: 自动同步 时间戳` 提交并推送 |
 
 ---
@@ -411,3 +411,28 @@ utils/firstrun.js        首次进入的一次性标记（自动跳向导只跳�
 **修复**：全项目 4 处手机号输入（setup / apply / mgr×2 / profile）统一改为——**输入中只绑裸数字（maxlength 11），失焦（bindblur）才 fmt() 成 3-4-4**。`utils/phone.js` 的口径注释同步修订；`verify_phone` 新增"maxlength 11 + 有失焦分段"守卫。
 
 **教训**：给 `type="number"` 的输入框绑非数字字符，模拟器正常、真机必坏——这类问题只有真机能验收。
+
+---
+
+## 9. 2026-11-05 深夜：真机"机构在、成员表空"的死结与自救出口
+
+**现场**：手机上传新版本后，任何创建动作都弹「请先登录」，机构信息还在、学生 0、班级 0；本地备份 22:17 那份已是 0 学生。
+
+**根因链（设计缺陷，不是偶发）**
+
+1. `'请先登录'` 是 `permissions.denyReason` 在 `actor === null`（`memberCurrent()` 找不到成员记录）时的统一文案，与微信登录无关。
+2. 数据层 fail-closed：没有成员 → 所有写操作被拦。
+3. **连自救路径都被同一道闸拦住**：开通向导第一步 `db.orgs.update({name})` 需要 `org.manage`，同样被拦 → 用户既改不了也建不了，界面上没有出口，只能卸载重装。
+4. 顺带确认：`migrate.buildFresh` 本身是建了 owner 成员的，所以出厂态正常；坏的是「org 在、members 空」这种半残状态（升级或存储被清一半都可能落到这里）。
+
+**修复**
+
+- `utils/db/factory.js`（新增，层级 6）：`resetReal()` —— 清本机存储 → `buildFresh({sample:false})` → hydrate → flushAll；只清本机、云端不动。
+- `db.resetReal` 进门面；`db.rawCounts()` 返回每张表「总条数 / 本机构条数」。
+- 存储页新增「本机数据」卡：显示原始条数（分辨"数据丢了"和"数据挂在别的机构号下"）+ 「重置本机数据」双确认 + reLaunch。
+- 顺带修：存储页「立刻备份到云端」的集合清单是手抄的，漏了 `subjects` / `knowledge_points` → 改为 `db.sync.COLLS`（注册表派生）。
+- `tests/verify_datamodel.js` H 组 4 项：坏档复现（actor 空 + 建班级被拦）、resetReal 后 owner 恢复且重启仍在、rawCounts 能识别孤儿机构数据、页面必须有重置入口且清单不许再手抄。
+
+**基线**：25 套件 / **546 项**断言；主包 **1121.3 KB / 2 MB（54.7%）**。
+
+**遗留（明天做）**：① 数据为什么在 21:50–22:17 之间消失仍未定位（升级丢数据是 P0，需查 storage 读损坏分支与 reorg 路径）；② 重走开通向导后确认云端 `students` / `records` / `subjects` 三条链路都通。

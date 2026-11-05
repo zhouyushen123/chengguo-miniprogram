@@ -81,6 +81,18 @@
       </view>
     </view>
 
+    <!-- 本机数据：原始条数 + 回到出厂。数据看着少了时，这一块能分辨"丢了"和"身份对不上" -->
+    <view class="card">
+      <view class="sec"><view class="label">本机数据</view><view class="sechint">总条数 / 本机构</view></view>
+      <view class="mrow" wx:for="{{rawRows}}" wx:key="k">
+        <text class="mk">{{item.label}}</text>
+        <text class="mv">{{item.all}} / {{item.mine}}</text>
+      </view>
+      <view class="hint note">左边是这张表的全部条数，右边是当前机构能看到的。两个数不相等说明数据还在、只是挂在别的机构号下；都是 0 才是真的没了。</view>
+      <view class="btn clean" hover-class="btn-hover" bindtap="doReset">重置本机数据</view>
+      <view class="hint note">重置会清掉这台手机上的全部学生、班级与记录，且不能撤销（云端数据不受影响）。只在"任何操作都提示请先登录"这种坏档时使用，重置后重新走一遍开通向导即可。</view>
+    </view>
+
     <view class="card note">
       <view class="tip">照片和视频存在这台手机上：换手机、清理小程序存储或卸载重装都会丢失。文字评价与分数存在上面几张卡片里，不受影响。</view>
       <view class="tip">视频最占空间（每条约 10–50 MB）。空间紧张时，删掉几条不需要的视频就能腾出很多。</view>

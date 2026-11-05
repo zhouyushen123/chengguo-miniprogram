@@ -127,7 +127,23 @@ Page({
     if (!tel.valid(f.phone)) return this._toast('请填写正确的 11 位手机号（1 开头）');
 
     const up = db.orgs.update({ name });
-    if (!up.ok) return this._toast(up.msg || '机构名保存失败');
+    if (!up.ok) {
+      // 半坏档自救：机构在、成员表空时，一切写都被「请先登录」拦住，连向导都过不了
+      // （2026-11-05/06 真机两次卡死）。这里先修身份再重试一次，修不好才把原因说出来。
+      const fix = db.repairIdentity();
+      if (fix.ok && fix.code !== 'FINE') {
+        const retry = db.orgs.update({ name });
+        if (retry.ok) {
+          wx.showToast({ title: '本机数据已修复', icon: 'none' });
+          return this._commitOrgOk(f, name);
+        }
+        return this._toast(retry.msg || '修复失败，请到「我的 → 存储」重置本机数据后再试');
+      }
+      return this._toast(up.msg || '机构名保存失败');
+    }
+    return this._commitOrgOk(f, name);
+  },
+  _commitOrgOk(f, name) {
     // 申请单与「机构资料」页共用同一份留档（utils/apply.js），这里填的字段那边能看到
     applyUtils.save({
       name,

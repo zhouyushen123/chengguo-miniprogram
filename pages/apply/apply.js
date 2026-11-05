@@ -105,8 +105,13 @@ Page({
     if (err) { wx.showToast({ title: err, icon: 'none' }); return; }
 
     const name = f.name.trim();
-    // 机构名写进机构表（需要「机构管理」权限）；老师/家长提交只留申请单，等负责人开通
-    const up = db.orgs.update({ name });
+    // 机构名写进机构表（需要「机构管理」权限）；老师/家长提交只留申请单，等负责人开通。
+    // 半坏档（成员表空）时这里也会被「请先登录」拦住——先修身份再重试一次，别静默吞错。
+    let up = db.orgs.update({ name });
+    if (!up.ok) {
+      const fix = db.repairIdentity();
+      if (fix.ok && fix.code !== 'FINE') up = db.orgs.update({ name });
+    }
     const courses = (f.courses || []).slice();
     const item = apply.save({
       name,

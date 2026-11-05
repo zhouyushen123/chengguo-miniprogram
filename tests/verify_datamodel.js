@@ -362,4 +362,22 @@ ok('每日云端备份不靠控制台配置：小程序前台自己补，只对�
   assert.ok(src.indexOf("status === 'ok'") > -1, '只有完整备完才记日期，被 60 秒掐断的要留着重试');
 });
 
+ok('半坏档自救 repairIdentity：有业务数据 → 原地重建负责人，学生一条不丢', () => {
+  const seed = fixture.richSeed();
+  seed['chengguo_v3_members'] = seed['chengguo_v3_members'].map(m =>
+    Object.assign({}, m, { removed: true }));
+  const { db } = bootDb(seed);
+  assert.strictEqual(db.auth.actor(), null, '前提：成员全死行时身份为空');
+  const fix = db.repairIdentity();
+  assert.ok(fix.ok && fix.code === 'REBUILT', '应走重建路径，实际：' + JSON.stringify(fix));
+  assert.ok(db.auth.actor() && db.auth.isOwner(), '重建后身份恢复为负责人');
+  assert.ok(db.students.list().length > 0, '业务数据原地可见，一条不丢');
+});
+
+ok('向导第一步被拦时先自救再重试（自救必须长在被卡住的地方）', () => {
+  const js = fs.readFileSync(path.join(__dirname, '../pages/setup/setup.js'), 'utf8');
+  assert.ok(js.indexOf('db.repairIdentity()') > -1, '向导提交被拦时必须先调 repairIdentity');
+  assert.ok(js.indexOf('_commitOrgOk') > -1, '成功路径要提取出来供重试复用');
+});
+
 console.log('\n全部 ' + pass + ' 项数据模型断言通过');

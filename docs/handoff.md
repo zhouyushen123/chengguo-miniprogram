@@ -317,6 +317,7 @@ tools/size.js            主包体积检查（npm run size；CI 门禁用）
 tools/review.js          审查包生成（npm run review / --check）
 tools/review-rules.js    审查分级与清单规则（纯函数，tests/verify_review.js 测）
 docs/code-review-standard.md  代码审查标准 v2.0（红线/分级/清单/流程/反模式）
+docs/architecture/backend-architecture.md  后端架构方案 v1.0（现状风险/P0-P3 路线/同步 v3 规格/索引与容灾，2026-11-05，只出方案未改代码）
 .github/pull_request_template.md  PR 四项证据
 utils/firstrun.js        首次进入的一次性标记（自动跳向导只跳一次）
 .github/workflows/deploy.yml  verify（lint+test+size）→ upload 两段门禁

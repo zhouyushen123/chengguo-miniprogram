@@ -225,6 +225,41 @@ function revert(c, id, at) {
     .catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
 }
 
+/* ---------------- 写后自动上云 ----------------
+ * 以前同步只有两个时机：启动/回前台（app.onShow，节流 20s）和存储页的手动按钮。
+ * 老师在录入页一路操作、始终不切后台时，数据就一直躺在「待推送」里 ——
+ * 真机上的表现就是「手机上明明有学生，云端 0 条」，而且完全没有提示。
+ * 这里订阅数据层的脏标记：任何一次落盘成功，1.5 秒后自动推一轮。
+ * 失败按 30s → 60s → 120s 退避重试 3 次（之后交给下次前台，不无限重试打网络）。
+ */
+let retryTimer = null;
+let retryCount = 0;
+const RETRY_DELAY = [30000, 60000, 120000];
+function retryLater() {
+  if (retryTimer || retryCount >= RETRY_DELAY.length) return;
+  const wait = RETRY_DELAY[retryCount];
+  retryCount++;
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    syncNow({ force: true })
+      .then(r => {
+        if (r && r.ok) { retryCount = 0; return; }
+        if (db.sync.dirtyCols().length) retryLater();
+      })
+      .catch(() => { retryLater(); });
+  }, wait);
+}
+
+try {
+  db.sync.onDirty(() => {
+    // 云还没就绪（未初始化/未部署）：脏标记已经落在 meta 里，下次前台/下次写会再排，
+    // 这里不排重试定时器（否则离线时每 30 秒空转一次，白耗电和流量）
+    if (!api.syncOn()) return;
+    retryCount = 0;
+    schedule();
+  });
+} catch (e) { /* 数据层不可用不影响本地使用 */ }
+
 module.exports = {
   init, pullNow, pushNow, syncNow, kick, schedule, join, claim, history, revert,
   isReady: () => ready, isConflict: () => conflict

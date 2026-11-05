@@ -344,4 +344,12 @@ ok('存储页必须有重置入口与诊断区块（没有出口，坏档就只�
   assert.strictEqual(js.indexOf("const COLLS = ['orgs'"), -1, '云端备份的集合清单不许再手抄');
 });
 
+ok('写后自动上云：同步引擎订阅了脏标记（不订阅 = 数据永远只在本机）', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, '../utils/sync.js'), 'utf8');
+  assert.ok(src.indexOf('db.sync.onDirty') > -1, '必须订阅数据层的脏标记，否则写完没人推');
+  assert.ok(src.indexOf('retryLater') > -1, '推送失败要有退避重试');
+});
+
 console.log('\n全部 ' + pass + ' 项数据模型断言通过');

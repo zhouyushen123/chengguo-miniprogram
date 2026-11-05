@@ -87,7 +87,7 @@
       <view class="btn ghost" hover-class="btn-hover" bindtap="preview">预览效果</view>
       <view class="btn ghost {{saving ? 'busy' : ''}}" hover-class="btn-hover" bindtap="save" data-send="0">{{saving ? '保存中…' : '存草稿'}}</view>
     </view>
-    <view wx:if="{{canSend}}" class="btn {{saving ? 'busy' : ''}}" hover-class="btn-hover" bindtap="save" data-send="1">{{saving ? '保存中…' : '发布到家长端'}}</view>
+    <view wx:if="{{canSend}}" class="btn {{saving ? 'busy' : ''}}" hover-class="btn-hover" bindtap="save" data-send="1">{{saving ? '保存中…' : (wasSent ? '保存修改' : '发布到家长端')}}</view>
     <view wx:else class="hint">补齐 照片/语音 与 课堂评价 后，即可发布到家长端</view>
     <view class="note" style="margin-top:16rpx">发布后家长打开小程序即可看到，目前不会收到微信消息通知。</view>
   </view>

@@ -57,9 +57,14 @@ Page({
     const clsRaw = db.classes.get(clsId);
     const sessMax = Math.max(1, (clsRaw && clsRaw.session) || 1);
     let sess = sessMax;
+    let wasSent = false;
     if (pick.rid) {
       const r0 = db.records.get(pick.rid);
-      if (r0 && r0.session >= 1 && r0.session <= sessMax) sess = r0.session;
+      if (r0) {
+        if (r0.session >= 1 && r0.session <= sessMax) sess = r0.session;
+        // 已发布过的记录再进来是「修改」，不是首发布：按钮文案与提示都要跟着变
+        wasSent = !!r0.sent;
+      }
     }
     const sessOpts = [];
     for (let i = 1; i <= sessMax; i++) sessOpts.push('第' + i + '次课' + (i === sessMax ? '（本次）' : ''));
@@ -70,7 +75,7 @@ Page({
       course: courses[ci] ? courses[ci].name : '',
       sid: pick.sid || null, score: pick.score || 85, tag: pick.tag || '',
       note: pick.note || '', photos: pick.photos || [], videos: pick.videos || [], audio: pick.audio || null,
-      rid: pick.rid || null, editing: !!pick.rid,
+      rid: pick.rid || null, editing: !!pick.rid, wasSent,
       // 模板统一由机构维护：老师可选用，改模板需负责人/管理员权限
       canTplEdit: db.auth.can('template.write')
     });
@@ -360,7 +365,8 @@ Page({
     // 直接发布给家长时，顺手把订阅通知交出去（未配模板/云未通时 familyNotify 静默跳过）
     if (res.record.sent) api.familyNotify({ items: sec.itemsFromRecords([res.record], db.students.name, db.classes.name) });
     // warn：记录已存下，但关联的课时账没记上（空间不足），得让老师知道
-    wx.showToast({ title: res.warn || (send ? '已发布' : '已存草稿'), icon: res.warn ? 'none' : 'success' });
+    // 已发布过的记录再保存 = 修改，文案不骗人说「已发布」
+    wx.showToast({ title: res.warn || (send ? (this.data.wasSent ? '已保存修改' : '已发布') : '已存草稿'), icon: res.warn ? 'none' : 'success' });
     setTimeout(() => wx.navigateBack(), 800);
   },
   /* ================= 模板：页内全屏面板（多选/增删改） ================= */

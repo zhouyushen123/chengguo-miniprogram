@@ -25,9 +25,6 @@
     <view class="recrow">
       <image wx:if="{{item.photo}}" class="thumb" src="{{item.photo}}" mode="aspectFill" />
       <view class="recinfo">
-        <view class="chips" style="margin:0 0 8rpx">
-          <text class="pill" style="background:{{item.sent?'var(--sent)':'var(--warn)'}}">{{item.sent?'已发布':'待发布'}}</text>
-        </view>
         <view wx:if="{{item.note}}" class="mi note">“{{item.note}}”</view>
         <view class="mi footer"><image class="fico" src="{{icoCamera}}" /> {{item.photoCount}} 张<block wx:if="{{item.hasAudio}}"> · <image class="fico" src="{{icoAudio}}" /> 语音</block></view>
       </view>

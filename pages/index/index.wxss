@@ -68,7 +68,7 @@
 .hgc-col { flex: 1; display: flex; flex-direction: column; gap: 20rpx; }
 .hgc.a {
   flex: 1; display: flex; flex-direction: column; justify-content: flex-end;
-  background: var(--brand-soft);
+  background: var(--brand-soft-2);   /* 比通用浅底深一档：用户反馈原来太淡、和搜索卡拉不开层次 */
   box-shadow: 0 4rpx 16rpx var(--shadow);
 }
 .hgc.a .hgc-t { font-size: 30rpx; font-weight: 800; color: var(--brand); }

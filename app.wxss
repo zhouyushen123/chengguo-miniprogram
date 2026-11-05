@@ -12,6 +12,7 @@ page {
   --brand-a: #F7A23B;   /* 渐变起 */
   --brand-b: #E8590C;   /* 渐变止 */
   --brand-soft: #FDEEE2;  /* 品牌浅底（chip 选中底、提示底） */
+  --brand-soft-2: #FBE3D1; /* 比浅底深一档（入口大卡用，只重一点点） */
   --brand-tint: #FFF4E8;  /* 更浅的暖底（输入底、提示条） */
   --brand-tint-0: rgba(255, 244, 232, 0);  /* 同上的透明端（渐隐用，避免渐变中段发灰） */
   --brand-border: #F6DCC0;  /* 品牌浅边框 */
@@ -52,6 +53,7 @@ page {
   --brand-a: #59A8FF;
   --brand-b: #3D8BEE;
   --brand-soft: #E3F0FF;
+  --brand-soft-2: #D7E9FF; /* 比浅底深一档（入口大卡用，只重一点点） */
   --brand-tint: #EFF6FF;
   --brand-tint-0: rgba(239, 246, 255, 0);
   --brand-border: #C7E1FF;
@@ -90,6 +92,7 @@ page {
   --brand-a: #34383F;
   --brand-b: #1B1E23;
   --brand-soft: #F1F2F4;
+  --brand-soft-2: #E9EBEF; /* 比浅底深一档（入口大卡用，只重一点点） */
   --brand-tint: #F7F8FA;
   --brand-tint-0: rgba(247, 248, 250, 0);
   --brand-border: #E2E4E8;

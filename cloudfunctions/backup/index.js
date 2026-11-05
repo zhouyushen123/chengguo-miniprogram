@@ -40,8 +40,9 @@ async function readAll(coll, orgId, cap) {
   const out = [];
   let skip = 0;
   for (;;) {
-    const r = await db.collection(coll).where(where).skip(skip).limit(PAGE)
-      .get().catch(() => ({ data: [] }));
+    // 读失败一律往上抛。以前这里是 .catch(() => ({ data: [] }))——
+    // 一次网络抖动就会被当成"这一页没有数据"，备份悄悄变短，清单还标 ok。
+    const r = await db.collection(coll).where(where).skip(skip).limit(PAGE).get();
     const rows = r.data || [];
     for (const d of rows) {
       if (out.length >= cap) break;
@@ -53,12 +54,39 @@ async function readAll(coll, orgId, cap) {
   return out;
 }
 
+async function countOf(coll, orgId) {
+  const where = coll === 'orgs' ? { id: orgId } : { orgId };
+  const r = await db.collection(coll).where(where).count();
+  return Number(r.total) || 0;
+}
+
+// 读一个集合：失败重试一次；读到的条数比云端少也当失败。
+// "读少了"和"本来就这么少"必须分开——否则备份的完整性只能靠运气。
+async function readCollStable(coll, orgId) {
+  let msg = '';
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const docs = (await readAll(coll, orgId, lib.MAX_DOCS)).map(lib.cleanDoc);
+      if (docs.length < lib.MAX_DOCS) {
+        const total = await countOf(coll, orgId).catch(() => -1);
+        if (total > docs.length) { msg = '云端 ' + total + ' 条，只读到 ' + docs.length + ' 条'; continue; }
+      }
+      return { ok: true, docs };
+    } catch (e) {
+      msg = (e && e.message) || String(e);
+    }
+  }
+  return { ok: false, msg: msg || '读取失败' };
+}
+
 // 机构清单：orgs 里一行一个机构。这里只取 id，不读内容。
 async function allOrgs() {
   const out = [];
   let skip = 0;
   for (;;) {
-    const r = await db.collection('orgs').skip(skip).limit(PAGE).get().catch(() => ({ data: [] }));
+    // 这里也不吞异常：读不到机构列表时如果返回"没有机构"，
+    // 定时任务会以为今晚无事可做，而实际上是它自己瞎了。
+    const r = await db.collection('orgs').skip(skip).limit(PAGE).get();
     const rows = r.data || [];
     rows.forEach(o => {
       const id = str(o.id || o.orgId);
@@ -86,10 +114,10 @@ async function boundOrgOf(openid) {
   } catch (e) { return ''; }
 }
 
-async function saveManifest(orgId, date, doc) {
+async function saveManifest(orgId, date, doc, tag) {
   const data = Object.assign({}, doc);
   delete data._id;
-  const id = lib.manifestId(orgId, date);
+  const id = lib.manifestId(orgId, date, tag);
   try {
     await db.collection(BACKUP).doc(id).set({ data });
   } catch (e) {
@@ -99,23 +127,32 @@ async function saveManifest(orgId, date, doc) {
   return id;
 }
 
-// 备份一个机构。默认跑全部集合；传 colls 时只跑其中几个，结果合并进当天的清单。
+// 备份一个机构。默认跑全部集合；传 colls 时只跑其中几个，结果合并进同一份清单。
 // 合并是必须的：小程序/后台一次调用只跑一个集合（每一步都要在云函数超时前回来），
 // 不合并的话后一步会把前一步的文件记录覆盖掉，清单看起来只有最后跑的那一个集合。
+//
+// tag 的作用：日常备份用空 tag（一机构一天一份，重复跑覆盖）；
+// 恢复前的快照用唯一 tag（如 s1a2b3），清单 id 与文件目录都跟着 tag 走，
+// 所以"恢复到今天"不会把今天凌晨那份好备份覆盖成坏数据。
 async function runOrg(orgId, opt) {
   const o = opt || {};
   const t0 = now();
   const date = lib.ymd(t0);
+  const tag = lib.cleanTag(o.tag);
   const colls = (o.colls && o.colls.length) ? o.colls : lib.COLLS;
-  const prev = (await listManifests(orgId, 5)).filter(m => m.date === date)[0] || null;
+  const prev = (await listManifests(orgId, 60))
+    .filter(m => m.date === date && lib.cleanTag(m.tag) === tag)[0] || null;
   const prevFiles = (prev && prev.files) || [];
   // 这次没跑的集合沿用今天已经备好的那份
   const files = prevFiles.filter(f => colls.indexOf(f.c) < 0);
   const counts = Object.assign({}, (prev && prev.counts) || {});
-  const stale = [];   // 重跑同一集合时旧分片要删掉，否则它会永远留在云存储里没人引用
+  const failed = [];   // 读失败的集合：如实记下来，别让它变成"这个集合是空的"
+  const stale = [];    // 重跑同一集合时旧分片要删掉，否则它会永远留在云存储里没人引用
   let stopped = '';
   for (const c of colls) {
-    const docs = (await readAll(c, orgId, lib.MAX_DOCS)).map(lib.cleanDoc);
+    const got = await readCollStable(c, orgId);
+    if (!got.ok) { failed.push({ c, msg: got.msg }); continue; }
+    const docs = got.docs;
     counts[c] = docs.length;
     const parts = lib.chunk(docs, lib.PART_DOCS);
     if (!parts.length) files.push({ c, part: 0, count: 0, bytes: 0, fileID: '' });
@@ -123,10 +160,10 @@ async function runOrg(orgId, opt) {
     for (let i = 0; i < parts.length; i++) {
       const body = JSON.stringify({
         format: 'chengguo-cloud-backup-v1',
-        orgId, date, c, part: i + 1, at: now(), docs: parts[i]
+        orgId, date, tag, c, part: i + 1, at: now(), docs: parts[i]
       });
       const buf = Buffer.from(body, 'utf8');
-      const up = await cloud.uploadFile({ cloudPath: lib.pathOf(orgId, date, c, i + 1), fileContent: buf });
+      const up = await cloud.uploadFile({ cloudPath: lib.pathOf(orgId, date, c, i + 1, tag), fileContent: buf });
       keep.push(up.fileID);
       files.push({ c, part: i + 1, count: parts[i].length, bytes: buf.length, fileID: up.fileID });
     }
@@ -135,21 +172,23 @@ async function runOrg(orgId, opt) {
     });
     if (now() - t0 > TIME_BUDGET) { stopped = c; break; }
   }
-  if (stale.length) await cloud.deleteFile({ fileList: stale }).catch(() => ({}));
   const done = {};
   files.forEach(f => { done[f.c] = 1; });
   const missing = lib.COLLS.filter(c => !done[c]);
   const total = Object.keys(counts).reduce((n, k) => n + (Number(counts[k]) || 0), 0);
   const bytes = files.reduce((n, f) => n + (Number(f.bytes) || 0), 0);
   const doc = {
-    orgId, date, at: now(), counts, total, bytes, files,
-    status: missing.length ? 'partial' : 'ok',
-    stoppedAt: missing.length ? (stopped || missing[0]) : '',
+    orgId, date, tag, at: now(), counts, total, bytes, files,
+    status: failed.length ? 'failed' : (missing.length ? 'partial' : 'ok'),
+    stoppedAt: stopped || (missing.length ? missing[0] : ''),
+    failed, missing,
     truncated: Object.keys(counts).some(k => counts[k] >= lib.MAX_DOCS),
     safety: !!o.safety || !!(prev && prev.safety)
   };
-  await saveManifest(orgId, date, doc);
-  doc.missing = missing;
+  // 先把清单落地，再删旧分片。反过来的话，清单写失败会让它指向已经被删掉的文件，
+  // 那一天的备份就永久恢复不了了。
+  await saveManifest(orgId, date, doc, tag);
+  if (stale.length) await cloud.deleteFile({ fileList: stale }).catch(() => ({}));
   return doc;
 }
 
@@ -164,15 +203,22 @@ async function listManifests(orgId, limit) {
 }
 
 // 过期清理：清单和它指向的文件一起删。只删 backups 自己的东西，业务集合一个字节都不碰。
-async function prune(orgId) {
-  const rows = await listManifests(orgId, 100);
-  const dead = lib.expired(rows, lib.ymd(now()), lib.KEEP_DAYS);
-  if (!dead.length) return { removed: 0, files: 0 };
+// keepId 是"正在写的那一份"，永远不动它（恢复前快照可能刚好在同一天里被判定为多余）。
+async function prune(orgId, keepId) {
+  const rows = await listManifests(orgId, 200);
+  const dead = lib.expired(rows, lib.ymd(now()), lib.KEEP_DAYS).concat(lib.extraSafety(rows, 2));
+  const seen = {};
+  const list = dead.filter(m => {
+    if (!m || !m._id || m._id === keepId || seen[m._id]) return false;
+    seen[m._id] = 1;
+    return true;
+  });
+  if (!list.length) return { removed: 0, files: 0 };
   const fileList = [];
-  dead.forEach(m => (m.files || []).forEach(f => { if (f.fileID) fileList.push(f.fileID); }));
+  list.forEach(m => (m.files || []).forEach(f => { if (f.fileID) fileList.push(f.fileID); }));
   if (fileList.length) await cloud.deleteFile({ fileList }).catch(() => ({}));
   let removed = 0;
-  for (const m of dead) {
+  for (const m of list) {
     const r = await db.collection(BACKUP).doc(m._id).remove().catch(() => null);
     if (r) removed++;
   }
@@ -207,11 +253,16 @@ async function upsertOne(coll, orgId, doc) {
   }
 }
 
-// 恢复一个集合（浏览器/后台分集合多次调用，单次不超过 60 秒）
-async function restoreColl(orgId, date, coll, t0) {
+// 恢复一个集合（浏览器/后台分集合多次调用，单次不超过 60 秒）。
+// from / limit 让恢复可续：超过 RESTORE_CAP 时返回 nextFrom，
+// 调用方带着 from 再来一次，最终能走到集合末尾——以前每次从 0 开始切，
+// "再点一次继续"永远回到同一个起点，尾部永远修不回来。
+async function restoreColl(orgId, date, coll, t0, opt) {
+  const o = opt || {};
   if (lib.COLLS.indexOf(coll) < 0) return { ok: false, code: 'BAD_COLL', msg: '不认识的集合名' };
-  const rows = await listManifests(orgId, 40);
-  const man = rows.filter(m => m.date === date)[0];
+  const tag = lib.cleanTag(o.tag);
+  const rows = await listManifests(orgId, 200);
+  const man = rows.filter(m => m.date === date && lib.cleanTag(m.tag) === tag)[0];
   if (!man) return { ok: false, code: 'NO_BACKUP', msg: '没有这一天的备份' };
   const parts = (man.files || []).filter(f => f.c === coll && f.fileID);
   if (!parts.length) return { ok: false, code: 'NO_PART', msg: '这份备份里没有 ' + coll + '（可能当天没跑完）' };
@@ -220,21 +271,32 @@ async function restoreColl(orgId, date, coll, t0) {
     const dl = await cloud.downloadFile({ fileID: p.fileID });
     let j = null;
     try { j = JSON.parse(dl.fileContent.toString('utf8')); } catch (e) { j = null; }
-    if (j && Array.isArray(j.docs)) docs = docs.concat(j.docs);
+    if (!j || !Array.isArray(j.docs)) {
+      return { ok: false, code: 'BAD_FILE', msg: '备份文件读不出来：' + coll + ' 第 ' + p.part + ' 片' };
+    }
+    docs = docs.concat(j.docs);
   }
-  const list = docs.slice(0, lib.RESTORE_CAP);
-  const skipped = docs.length - list.length;
+  const from = Math.max(0, Number(o.from) || 0);
+  const cap = Math.max(1, Number(o.limit) || lib.RESTORE_CAP);
+  const list = docs.slice(from, from + cap);
+  const nextFrom = from + list.length;
+  const skipped = Math.max(0, docs.length - nextFrom);
   let srv = now();
   const out = await mapLimit(list, CONC, async d => {
     if (!d || d.id === undefined || d.id === null) return 0;
     srv += 1;                                   // 严格递增，手机端增量拉取才捞得到
     const doc = lib.restoreDoc(d, { now: now(), srvAt: srv, orgId });
-    try { await upsertOne(coll, orgId, doc); return 1; } catch (e) { return 0; }
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try { await upsertOne(coll, orgId, doc); return 1; } catch (e) { /* 重试一次再算失败 */ }
+    }
+    return 0;
   });
   const written = out.reduce((n, x) => n + x, 0);
   return {
-    ok: true, coll, date, written, failed: list.length - written, skipped,
-    ms: now() - t0
+    ok: true, coll, date, tag, from, nextFrom, skipped,
+    written, failed: list.length - written,
+    done: skipped === 0 && written === list.length,
+    total: docs.length, ms: now() - t0
   };
 }
 
@@ -268,15 +330,18 @@ async function main(event) {
     const coll = str(ev.coll);
     if (coll && lib.COLLS.indexOf(coll) < 0) return { ok: false, code: 'BAD_COLL', msg: '不认识的集合名' };
     const colls = coll ? [coll] : null;
+    // tag 由调用方给（后台恢复前的快照用它把 9 步串成一份），只允许字母数字
+    const tag = lib.cleanTag(ev.tag);
     const orgs = target.all ? await allOrgs() : [target.orgId].filter(Boolean);
     if (!orgs.length) return { ok: false, code: 'NO_ORG', msg: '还没有机构需要备份' };
     const items = [];
     for (const orgId of orgs) {
-      const m = await runOrg(orgId, { colls, safety: !!ev.safety });
-      const p = await prune(orgId);
+      const m = await runOrg(orgId, { colls, safety: !!ev.safety, tag });
+      const p = await prune(orgId, lib.manifestId(orgId, m.date, tag));
       items.push({
-        orgId: m.orgId, date: m.date, at: m.at, total: m.total, bytes: m.bytes,
-        counts: m.counts, status: m.status, stoppedAt: m.stoppedAt, missing: m.missing, pruned: p.removed
+        orgId: m.orgId, date: m.date, tag: m.tag, at: m.at, total: m.total, bytes: m.bytes,
+        counts: m.counts, status: m.status, stoppedAt: m.stoppedAt,
+        failed: m.failed, missing: m.missing, pruned: p.removed
       });
     }
     return { ok: true, at: now(), orgs: items.length, items };
@@ -284,19 +349,24 @@ async function main(event) {
 
   if (action === 'list' || action === 'info') {
     if (target.all) return { ok: false, code: 'NEED_ORG', msg: '请指定机构' };
-    const rows = await listManifests(target.orgId, action === 'info' ? 1 : 30);
+    const rows = await listManifests(target.orgId, 60);
     const items = rows.map(m => ({
-      date: m.date, at: m.at, total: m.total, bytes: m.bytes, counts: m.counts,
-      status: m.status, stoppedAt: m.stoppedAt, truncated: m.truncated, safety: m.safety
+      date: m.date, tag: m.tag || '', at: m.at, total: m.total, bytes: m.bytes, counts: m.counts,
+      status: m.status, stoppedAt: m.stoppedAt, truncated: m.truncated, safety: m.safety,
+      failed: (m.failed || []).length
     }));
-    return { ok: true, keepDays: lib.KEEP_DAYS, latest: items[0] || null, items };
+    // latest 只认日常备份：恢复前快照不该在"最近备份"里冒充每日备份
+    const daily = items.filter(x => !x.safety);
+    return { ok: true, keepDays: lib.KEEP_DAYS, latest: daily[0] || null, items };
   }
 
   if (action === 'restore') {
     if (target.all) return { ok: false, code: 'NEED_ORG', msg: '请指定机构' };
     const date = str(ev.date);
     if (!lib.isDate(date)) return { ok: false, code: 'BAD_DATE', msg: '日期格式应为 2026-11-05' };
-    return restoreColl(target.orgId, date, str(ev.coll), now());
+    return restoreColl(target.orgId, date, str(ev.coll), now(), {
+      tag: ev.tag, from: ev.from, limit: ev.limit
+    });
   }
 
   if (action === 'prune') {

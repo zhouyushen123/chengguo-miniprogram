@@ -708,8 +708,8 @@
       row.style.cssText = 'padding:10px 0;border-top:1px solid var(--line)';
       var head = el('div', '', m.date + ' · ' + (m.total || 0) + ' 条 · ' + fmtBytes(m.bytes));
       head.style.cssText = 'font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px';
-      if (m.status === 'partial') {
-        var tag = el('span', '', '不完整');
+      if (m.status === 'partial' || m.status === 'failed') {
+        var tag = el('span', '', m.status === 'failed' ? '有集合没读到' : '不完整');
         tag.style.cssText = 'font-size:11px;color:#b42318;border:1px solid #f3c2bb;border-radius:999px;padding:1px 8px;font-weight:400';
         head.appendChild(tag);
       }
@@ -729,9 +729,15 @@
         tip.style.cssText = 'margin-top:4px;color:#8a6d3b;font-size:12px;line-height:1.5';
         row.appendChild(tip);
       }
+      if (m.status === 'failed') {
+        var tip2 = el('div', '', (m.failed ? '有 ' + m.failed + ' 个集合' : '有集合') + '这次没读成功，这份备份是不全的。'
+          + '过一会儿再点「立刻备份」补一次；用这份恢复会少掉那部分数据。');
+        tip2.style.cssText = 'margin-top:4px;color:#b42318;font-size:12px;line-height:1.5';
+        row.appendChild(tip2);
+      }
       var btn = el('button', 'btn ghost', '恢复到这一天');
       btn.style.marginTop = '8px';
-      btn.onclick = function () { restoreTo(m.date); };
+      btn.onclick = function () { restoreTo(m.date, m.tag || ''); };
       row.appendChild(btn);
       box.appendChild(row);
     });
@@ -746,7 +752,7 @@
         if (i >= CB_COLLS.length) { resolve(); return; }
         var c = CB_COLLS[i];
         if (o.onStep) o.onStep(c, i);
-        post('cbRun', { coll: c, safety: !!o.safety }).then(function (r) {
+        post('cbRun', { coll: c, tag: o.tag || '', safety: !!o.safety }).then(function (r) {
           if (!r || !r.ok) { reject(new Error((r && r.msg) || '备份失败')); return; }
           i++; step();
         }).catch(reject);
@@ -755,14 +761,43 @@
     });
   }
 
-  function restoreTo(date) {
-    if (!window.confirm('恢复到 ' + date + ' 的云端备份？\n\n'
-      + '会先给当前数据再备份一份（标记为「恢复前」），然后把这天的学生、老师、机构、班级、报名与记录写回云端。\n\n'
+  // 恢复一个集合，超过单次上限就自动带上 from 接着写，直到写完。
+  // 以前每次从第 0 条开始切，界面上写"再点一次继续"，其实永远回到同一个起点。
+  function restoreColl(coll, date, tag, onProgress) {
+    var from = 0;
+    var guard = 0;
+    function round() {
+      guard++;
+      if (guard > 60) return Promise.resolve({ ok: true, done: false, guard: true });
+      if (onProgress) onProgress(from);
+      return post('cbRestore', { date: date, coll: coll, tag: tag || '', from: from })
+        .then(function (x) {
+          // 当天没跑到这个集合（不完整的备份）→ 跳过，不当成失败
+          if (x && x.code === 'NO_PART') return { ok: true, done: true, skip: true };
+          if (!x || !x.ok) return { ok: false, msg: (x && x.msg) || '未知原因' };
+          if (x.failed) return { ok: false, msg: '有 ' + x.failed + ' 条没写回' };
+          if (!x.skipped) return { ok: true, done: true, written: x.total || 0 };
+          // 没有前进（异常情况）→ 停下来，别死循环
+          if (!(x.nextFrom > from)) return { ok: false, msg: '恢复没有前进，已停止' };
+          from = x.nextFrom;
+          return round();
+        });
+    }
+    return round();
+  }
+
+  function restoreTo(date, tag) {
+    // 每次恢复用一个新的 tag：快照落在独立清单与独立目录里，绝不覆盖每日备份
+    var snap = 's' + Date.now().toString(36);
+    if (!window.confirm('恢复到 ' + date + ' 的备份？\n\n'
+      + '会先给当前数据单独备一份（标为「恢复前」，不会覆盖每日备份），'
+      + '然后把这天的学生、老师、机构、班级、报名与记录写回云端。\n\n'
       + '只写回、不删除：备份之后新录的数据不会消失。')) return;
     var box = $('cbBox');
     box.textContent = '先给当前数据存一份…';
     stepBackup({
       safety: true,
+      tag: snap,
       onStep: function (c, i) { box.textContent = '先备份当前数据 · ' + (CB_NAME[c] || c) + '（' + (i + 1) + '/' + CB_COLLS.length + '）…'; }
     }).then(function () {
       var i = 0;
@@ -770,17 +805,13 @@
         if (i >= CB_COLLS.length) { toast('恢复完成，让老师打开一次小程序同步到手机'); loadCb(); return; }
         var c = CB_COLLS[i];
         box.textContent = '正在写回 ' + (CB_NAME[c] || c) + '（' + (i + 1) + '/' + CB_COLLS.length + '）…';
-        post('cbRestore', { date: date, coll: c }).then(function (x) {
-          // 当天没跑到这个集合（不完整的备份）→ 跳过，不当成失败
-          if (x && x.code === 'NO_PART') { i++; step(); return; }
-          if (!x || !x.ok) { box.textContent = '恢复中断在「' + (CB_NAME[c] || c) + '」：' + ((x && x.msg) || '未知原因'); return; }
-          if (x.skipped) {
-            box.textContent = (CB_NAME[c] || c) + ' 还有 ' + x.skipped + ' 条没写回，再点一次「恢复到这一天」继续';
-            return;
-          }
+        restoreColl(c, date, tag, function (from) {
+          if (from) box.textContent = '正在写回 ' + (CB_NAME[c] || c) + '（第 ' + (from + 1) + ' 条起，' + (i + 1) + '/' + CB_COLLS.length + '）…';
+        }).then(function (x) {
+          if (!x.ok) { box.textContent = '恢复中断在「' + (CB_NAME[c] || c) + '」：' + (x.msg || '未知原因'); return; }
           i++; step();
         }).catch(function () {
-          box.textContent = '恢复中断（网络不通）。已经写回的部分是安全的，重新点一次会接着覆盖。';
+          box.textContent = '恢复中断（网络不通）。已经写回的部分是安全的，重新点一次会从第一条重新覆盖。';
         });
       }
       step();

@@ -507,9 +507,14 @@ async function api(action, data, headers) {
     case 'backup': return backupData(orgId);
     case 'audit': return auditData(orgId);
     // 云端每日自动备份：列表、立刻备份、按集合分步恢复
+    // tag 用来区分「日常备份」与「恢复前快照」——两者必须落在不同的清单和目录里，
+    // 否则恢复到今天时，恢复前的快照会先把今天的好备份覆盖掉。
     case 'cbList': return cbCall(orgId, 'list');
-    case 'cbRun': return cbCall(orgId, 'run', { coll: str((data || {}).coll), safety: !!(data || {}).safety });
-    case 'cbRestore': return cbCall(orgId, 'restore', { date: str((data || {}).date), coll: str((data || {}).coll) });
+    case 'cbRun': return cbCall(orgId, 'run', { coll: str((data || {}).coll), tag: str((data || {}).tag), safety: !!(data || {}).safety });
+    case 'cbRestore': return cbCall(orgId, 'restore', {
+      date: str((data || {}).date), coll: str((data || {}).coll), tag: str((data || {}).tag),
+      from: Number((data || {}).from) || 0
+    });
     case 'resetPin': return resetPin(orgId);
     default: return { ok: false, msg: '未知操作' };
   }

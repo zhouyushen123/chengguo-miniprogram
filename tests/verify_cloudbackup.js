@@ -109,6 +109,40 @@ ok('目标机构：没有 openid（定时器/后台）才允许指定或全量',
   assert.strictEqual(lib.resolveOrg({}).all, true);
 });
 
+ok('清单 id 与文件路径带 tag 时，和每日备份完全分开（覆盖事故的根因）', () => {
+  assert.strictEqual(lib.manifestId('org_a', '2026-11-05', 's1'), 'org_a_2026-11-05_s1');
+  assert.strictEqual(lib.manifestId('org_a', '2026-11-05'), 'org_a_2026-11-05');
+  assert.notStrictEqual(lib.manifestId('org_a', '2026-11-05', 's1'), lib.manifestId('org_a', '2026-11-05'));
+  assert.strictEqual(lib.pathOf('org_a', '2026-11-05', 'students', 1, 's1'),
+    'chengguo/backup/org_a/2026-11-05_s1/students.json');
+  assert.notStrictEqual(lib.pathOf('org_a', '2026-11-05', 'students', 1, 's1'),
+    lib.pathOf('org_a', '2026-11-05', 'students', 1));
+});
+
+ok('tag 会进云存储路径，只允许字母数字且限长', () => {
+  assert.strictEqual(lib.cleanTag('s1a2b3'), 's1a2b3');
+  assert.strictEqual(lib.cleanTag('../../etc'), 'etc');
+  assert.strictEqual(lib.cleanTag('a/b\\c'), 'abc');
+  assert.strictEqual(lib.cleanTag(''), '');
+  assert.strictEqual(lib.cleanTag(undefined), '');
+  assert.strictEqual(lib.cleanTag('x'.repeat(40)).length, 12);
+});
+
+ok('恢复前快照按天只留最近 N 份', () => {
+  const rows = [
+    { _id: 'd', date: '2026-11-05' },                              // 每日备份，不参与
+    { _id: 'a', date: '2026-11-05', safety: true, at: 100 },       // 05 日最老 → 删
+    { _id: 'b', date: '2026-11-05', safety: true, at: 300 },
+    { _id: 'c', date: '2026-11-05', safety: true, at: 200 },
+    { _id: 'e', date: '2026-11-04', safety: true, at: 50 },        // 04 日最老 → 删
+    { _id: 'f', date: '2026-11-04', safety: true, at: 60 },
+    { _id: 'g', date: '2026-11-04', safety: true, at: 70 }
+  ];
+  const dead = lib.extraSafety(rows, 2).map(x => x._id).sort();
+  assert.deepStrictEqual(dead, ['a', 'e'], '每个日期各留最新 2 份，每日备份不参与');
+  assert.deepStrictEqual(lib.extraSafety(rows, 0).map(x => x._id).sort(), ['a', 'b', 'c', 'e', 'f', 'g']);
+});
+
 ok('恢复写回：盖新 updatedAt + 递增 srvAt，且不带 _id', () => {
   const d = lib.restoreDoc({ _id: 'db1', id: 3, orgId: 'org_old', name: '小明', srvAt: 1, updatedAt: 1 },
     { now: 1000, srvAt: 2000, orgId: 'org_abc' });
@@ -405,17 +439,90 @@ function put(name, doc) {
     assert.strictEqual(c.code, 'BAD_COLL');
   });
 
-  await ok('恢复按集合分次调用（单次不超过 RESTORE_CAP），剩余量如实报', async () => {
+  await ok('记录超过单次上限时继续调用能走到末尾（不是原地打转）', async () => {
     resetCloud();
     put('orgs', { id: 'org_a' });
     for (let i = 1; i <= 2100; i++) put('records', { id: i, orgId: 'org_a', sid: 1 });
     await bf.main({});
     const date = rowsOf('backups')[0].date;
     rowsOf('records').forEach(r => { r.sid = 0; });
-    const r = await bf.main({ action: 'restore', orgId: 'org_a', date, coll: 'records' });
+    let from = 0;
+    let rounds = 0;
+    let r = null;
+    do {
+      r = await bf.main({ action: 'restore', orgId: 'org_a', date, coll: 'records', from });
+      assert.ok(r.ok, JSON.stringify(r));
+      if (rounds) assert.ok(r.nextFrom > from, '每次都要真的往前推进，不能回到起点');
+      from = r.nextFrom;
+      rounds++;
+    } while (r.skipped && rounds < 10);
+    assert.strictEqual(rounds, 2, '2100 条应该两次写完');
+    assert.strictEqual(r.skipped, 0);
+    assert.strictEqual(r.done, true);
+    assert.strictEqual(rowsOf('records').filter(x => x.sid === 1).length, 2100,
+      '2100 条必须全部修回来，不能只剩前 2000 条');
+  });
+
+  await ok('恢复前快照落在独立清单和目录里，不覆盖当天的每日备份', async () => {
+    resetCloud();
+    put('orgs', { id: 'org_a' });
+    put('students', { id: 1, orgId: 'org_a', name: '小明（好数据）' });
+    await bf.main({});
+    const date = rowsOf('backups')[0].date;
+    const dailyPath = lib.pathOf('org_a', date, 'students', 1);
+
+    rowsOf('students')[0].name = '小明（被改坏）';
+    await bf.main({ action: 'run', orgId: 'org_a', coll: 'students', safety: true, tag: 's1' });
+
+    assert.ok(files[dailyPath].toString('utf8').indexOf('好数据') > -1,
+      '每日备份那份不能被恢复前快照覆盖');
+    assert.ok(files[lib.pathOf('org_a', date, 'students', 1, 's1')], '快照要落在独立目录');
+    assert.strictEqual(rowsOf('backups').filter(x => x.safety).length, 1);
+    assert.strictEqual(rowsOf('backups').filter(x => !x.safety).length, 1, '每日那份还在');
+
+    // 后台点「恢复到这一天」（指向每日备份）→ 必须恢复出好数据
+    const r = await bf.main({ action: 'restore', orgId: 'org_a', date, coll: 'students' });
     assert.ok(r.ok, JSON.stringify(r));
-    assert.strictEqual(r.written, lib.RESTORE_CAP);
-    assert.strictEqual(r.skipped, 100, '剩下的要如实报出来，不能装作全恢复了');
+    assert.strictEqual(rowsOf('students')[0].name, '小明（好数据）',
+      '恢复到今天必须恢复出备份里的内容，而不是刚被写进去的坏数据');
+  });
+
+  await ok('恢复前快照只留最近 2 份，写的时候不会把自己清掉', async () => {
+    resetCloud();
+    put('orgs', { id: 'org_a' });
+    put('students', { id: 1, orgId: 'org_a', name: 'A' });
+    await bf.main({});
+    const setAt = (tag, at) => { const m = rowsOf('backups').filter(x => x.tag === tag)[0]; if (m) m.at = at; };
+    const snap = async (tag, at) => {
+      await bf.main({ action: 'run', orgId: 'org_a', coll: 'students', safety: true, tag });
+      setAt(tag, at);
+    };
+    await snap('s1', 1000);
+    await snap('s2', 2000);
+    await snap('s3', 3000);
+    await snap('s4', 4000);
+    const tags = rowsOf('backups').map(x => x.tag || '').sort();
+    assert.deepStrictEqual(tags, ['', 's3', 's4'], '每日备份 + 最近 2 份快照');
+    assert.ok(!files[lib.pathOf('org_a', lib.ymd(Date.now()), 'students', 1, 's1')], '被清掉的快照文件要一起删');
+  });
+
+  await ok('读云端失败不再当成"这个集合是空的"，清单标 failed', async () => {
+    resetCloud();
+    put('orgs', { id: 'org_a' });
+    put('students', { id: 1, orgId: 'org_a', name: 'S1', sid: 1 });
+    put('students', { id: 2, orgId: 'org_a', name: 'S2', sid: 2 });
+    // 让这一行的序列化抛错，等价于"读这一页时网络断了"
+    Object.defineProperty(rowsOf('students')[0], 'boom', {
+      enumerable: true, get() { throw new Error('网络抖动'); }
+    });
+    const r = await bf.main({ action: 'run', orgId: 'org_a', coll: 'students' });
+    assert.ok(r.ok, '整次调用不算失败，失败的是这个集合');
+    assert.strictEqual(r.items[0].status, 'failed', '必须标 failed，不能装作备好了');
+    assert.strictEqual(r.items[0].failed.length, 1);
+    assert.strictEqual(r.items[0].failed[0].c, 'students');
+    const man = rowsOf('backups').filter(x => x.date === lib.ymd(Date.now()))[0];
+    assert.strictEqual(man.status, 'failed', '清单里也要记下来，30 天后不能悄悄过期');
+    assert.ok(man.missing.indexOf('students') > -1, '没备成功的集合仍然算"缺"');
   });
 
   console.log('\n全部 ' + pass + ' 项云端备份断言通过');

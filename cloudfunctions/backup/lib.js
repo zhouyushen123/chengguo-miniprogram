@@ -35,14 +35,24 @@ function isDate(date) {
   return !isNaN(dayNum(date));
 }
 
-// 一个机构一天一份清单，用固定 id 保证"同一天重复跑"是覆盖而不是堆一堆副本
-function manifestId(orgId, date) {
-  return String(orgId) + '_' + String(date);
+// 一个机构一天一份清单，用固定 id 保证"同一天重复跑"是覆盖而不是堆一堆副本。
+// tag 是"同一时间点上的另一份"：恢复前快照必须和日常备份分开存，
+// 否则"恢复到今天"会先把今天的好备份覆盖成坏数据，再从这个位置恢复。
+function manifestId(orgId, date, tag) {
+  const t = String(tag || '');
+  return String(orgId) + '_' + String(date) + (t ? '_' + t : '');
 }
 
-function pathOf(orgId, date, coll, part) {
+function pathOf(orgId, date, coll, part, tag) {
   const n = Number(part) || 1;
-  return 'chengguo/backup/' + orgId + '/' + date + '/' + coll + (n > 1 ? '-' + n : '') + '.json';
+  const t = String(tag || '');
+  const dir = t ? date + '_' + t : date;
+  return 'chengguo/backup/' + orgId + '/' + dir + '/' + coll + (n > 1 ? '-' + n : '') + '.json';
+}
+
+// tag 会进云存储路径，只允许字母数字，长度封顶（防止有人传 ../ 之类的东西）
+function cleanTag(tag) {
+  return String(tag === undefined || tag === null ? '' : tag).replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
 }
 
 // 云库自己的主键 _id 不属于业务数据（换环境会变）；_openid 是"谁写的"，
@@ -70,6 +80,24 @@ function expired(rows, today, keepDays) {
     const d = dayNum(r && r.date);
     return !isNaN(d) && t - d > keep;
   });
+}
+
+// 恢复前快照只留最近 keep 份（同一天点五次恢复不该堆五份）。
+// 返回该删的清单（调用方负责连文件一起删）。
+function extraSafety(rows, keep) {
+  const n = Math.max(0, Number(keep) || 0);
+  const byDate = {};
+  (rows || []).forEach(r => {
+    if (!r || !r.safety) return;
+    const d = String(r.date || '');
+    (byDate[d] = byDate[d] || []).push(r);
+  });
+  const out = [];
+  Object.keys(byDate).forEach(d => {
+    const list = byDate[d].slice().sort((a, b) => (Number(b.at) || 0) - (Number(a.at) || 0));
+    list.slice(n).forEach(r => out.push(r));
+  });
+  return out;
 }
 
 // 谁能操作备份。孩子家长连机构有多少条记录都不该看到，更不该触发备份/恢复。
@@ -110,6 +138,6 @@ function countText(counts) {
 
 module.exports = {
   KEEP_DAYS, PART_DOCS, MAX_DOCS, RESTORE_CAP, COLLS,
-  ymd, dayNum, isDate, manifestId, pathOf, cleanDoc, chunk, expired,
+  ymd, dayNum, isDate, manifestId, pathOf, cleanTag, cleanDoc, chunk, expired, extraSafety,
   canRead, canWrite, resolveOrg, restoreDoc, countText
 };

@@ -136,4 +136,20 @@ function familyNotify(data) {
   return callFn('family', Object.assign({ action: 'send' }, data)).catch(() => ({ ok: false }));
 }
 
-module.exports = { initCloud, enabled, syncOn, login, pushRecord, pull, uploadFile, aiEvalDraft, stuImport, secText, secImage, requestSubscribe, familyBind, familyNotify, CLOUD_ENV };
+// 照片上云：前端直传云存储（不经过云函数）。与记录同步（SYNC_ENABLED）解耦：
+// 云通就能传，照片存云端后不怕清缓存/换手机，家长端将来也能直接看。
+// 传失败返回 null（调用方保留本地路径，不阻塞保存）。
+function uploadPhoto(filePath) {
+  if (!cloudReady) return Promise.resolve(null);
+  const ext = (String(filePath).match(/\.\w+$/) || ['jpg'])[0];
+  const p = 'chengguo/photo/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + ext;
+  return new Promise(resolve => {
+    wx.cloud.uploadFile({
+      cloudPath: p, filePath,
+      success: r => resolve(r.fileID || null),
+      fail: () => resolve(null)
+    });
+  });
+}
+
+module.exports = { initCloud, enabled, syncOn, login, pushRecord, pull, uploadFile, uploadPhoto, aiEvalDraft, stuImport, secText, secImage, requestSubscribe, familyBind, familyNotify, CLOUD_ENV };

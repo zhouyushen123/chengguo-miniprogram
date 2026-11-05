@@ -5,6 +5,7 @@ const theme = require('../../utils/theme');
 const voice = require('../../utils/voice');
 const firstrun = require('../../utils/firstrun');
 const sec = require('../../utils/sec');
+const photocloud = require('../../utils/photocloud');
 
 Page({
   data: {
@@ -76,6 +77,8 @@ Page({
       const cs = db.students.of(c.id);
       return { id: c.id, name: c.name, count: cs.length, pending: cs.some(notToday) };
     });
+    // 历史照片补传云端（幂等：传完的记录不再进队列；防重入/云未开时自动跳过）
+    photocloud.migrateAll();
     const recent = recs.slice(0, 5).map(r => ({
       id: r.id, sid: r.sid, name: db.students.name(r.sid) || '—',
       clsName: db.classes.name(r.cid), date: r.date,

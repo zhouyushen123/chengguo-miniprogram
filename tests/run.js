@@ -22,6 +22,7 @@ const SUITES = [
   ['verify_session.js', '课次结清'],
   ['verify_batch.js', '批量录入成绩单'],
   ['verify_sec.js', '安全与触达'],
+  ['verify_photocloud.js', '照片上云'],
   ['verify_ava.js', '头像统一'],
   ['verify_import.js', '批量导入'],
   ['verify_onboard.js', '新手引导'],

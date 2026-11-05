@@ -146,7 +146,7 @@ const db = {
   records: {
     list: records.recordList, ofStudent: records.recordOfStudent, ofClass: records.recordOfClass,
     get: records.recordGet, latest: records.recordLatest, save: records.recordSave,
-    markSent: records.recordMarkSent, remove: records.recordRemove,
+    markSent: records.recordMarkSent, attachCloud: records.recordAttachCloud, remove: records.recordRemove,
     // 批量保存（成绩单模式）：一个事务逐条过权限/校验/消课，一次落盘
     batch: records.recordBatchSave,
     // 结清本次课：发布当前课次未发布记录 + 课次 +1（一个事务，失败整体回滚）

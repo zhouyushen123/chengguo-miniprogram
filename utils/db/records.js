@@ -188,6 +188,22 @@ function recordBatchSave(items, send) {
     return { ok: true, saved, failed, results };
   });
 }
+// 照片上云：把记录里的本地路径替换成云存储 fileID（photocloud 后台传完回调这里）。
+// 只动 photos 数组，其余字段一律不碰；幂等（已是 fileID / 无变化直接返回）。
+// 本地文件保留当缓存，垃圾清理由「我的·存储空间」按引用扫描处理。
+function recordAttachCloud(rid, photos) {
+  const id = Number(rid);
+  const list = Array.isArray(photos) ? photos.filter(p => p && schema.str(p).trim()) : null;
+  if (!list) return { ok: false, msg: '照片列表不合法' };
+  return core.tx(() => {
+    const r = oc('records').find(y => y.id === id && !y.removed);
+    if (!r) return { ok: false, msg: '记录不存在' };
+    if (r.photos && r.photos.join('\n') === list.join('\n')) return { ok: true, changed: false };
+    r.photos = list; r.updatedAt = now();
+    if (!core.persist('records')) return { ok: false, msg: core.SAVE_FAIL };
+    return { ok: true, changed: true };
+  });
+}
 // 批量标记已发送（单条发送 / 整班统一发送都走这里），返回实际变更条数
 function recordMarkSent(ids) {
   const list = (Array.isArray(ids) ? ids : [ids]).map(Number);
@@ -217,5 +233,5 @@ function recordRemove(id) {
 
 module.exports = {
   recordList, recordOfStudent, recordOfClass, recordGet, recordLatest,
-  canSend, recordSave, recordBatchSave, recordMarkSent, recordRemove, sessionSettle
+  canSend, recordSave, recordBatchSave, recordMarkSent, recordAttachCloud, recordRemove, sessionSettle
 };

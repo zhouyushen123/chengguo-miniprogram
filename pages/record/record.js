@@ -5,6 +5,7 @@ const voice = require('../../utils/voice');
 const icons = require('../../utils/icons');
 const media = require('../../utils/media');
 const sec = require('../../utils/sec');
+const photocloud = require('../../utils/photocloud');
 const theme = require('../../utils/theme');
 
 // 媒体限制：单个文件 50MB；照片/视频张数取数据层那一份（db.LIMITS），不在这里再写一遍
@@ -339,6 +340,9 @@ Page({
       return;
     }
     api.pushRecord(res.record); // 线上模式自动上推，本地模式静默跳过
+    // 照片云备份：后台直传云存储，传完把记录里的本地路径换成 fileID；
+    // 慢/失败都不阻塞保存主流程（失败保留本地路径，首页空闲时会补传）
+    if (api.enabled() && (res.record.photos || []).length) photocloud.flushRecord(res.rid);
     // 直接发布给家长时，顺手把订阅通知交出去（未配模板/云未通时 familyNotify 静默跳过）
     if (res.record.sent) api.familyNotify({ items: sec.itemsFromRecords([res.record], db.students.name, db.classes.name) });
     // warn：记录已存下，但关联的课时账没记上（空间不足），得让老师知道

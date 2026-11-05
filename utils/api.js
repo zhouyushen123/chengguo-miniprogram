@@ -86,4 +86,54 @@ function stuImport(data) {
   });
 }
 
-module.exports = { initCloud, enabled, syncOn, login, pushRecord, pull, uploadFile, aiEvalDraft, stuImport, CLOUD_ENV };
+// 通用云函数调用：业务错误码用 result 原样带回，不走 callSync（它把 ok:false 当 reject）
+function callFn(name, data) {
+  if (!cloudReady) return Promise.reject(new Error('CLOUD_OFF'));
+  return new Promise((resolve, reject) => {
+    wx.cloud.callFunction({
+      name, data: data || {},
+      success: r => resolve(r.result || { ok: false, msg: '云函数无返回' }),
+      fail: e => reject(new Error((e && e.errMsg) || '云函数调用失败'))
+    });
+  });
+}
+
+// 内容安全：文本（老师/AI 评语等 UGC）。云没通时跳过（fail-open，本地开发不拦人），
+// 云函数侧只拦 87014，接口抖动不误伤业务。
+function secText(content) {
+  if (!cloudReady) return Promise.resolve({ ok: true, skipped: true });
+  return callFn('secCheck', { action: 'msg', content }).catch(() => ({ ok: true, warn: true }));
+}
+// 内容安全：图片（云存储 fileID）
+function secImage(fileID) {
+  if (!cloudReady) return Promise.resolve({ ok: true, skipped: true });
+  return callFn('secCheck', { action: 'img', fileID }).catch(() => ({ ok: true, warn: true }));
+}
+
+// ===== 家长订阅消息（备案通过 + 模板申请好之前，全家链路静默降级，零影响） =====
+// 家长授权订阅：模板 ID 从 family 云函数取（mp 后台配环境变量 NOTIFY_TEMPLATE_ID）
+function requestSubscribe() {
+  if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF' });
+  return callFn('family', { action: 'tpl' }).then(r => {
+    if (!r.ready || !r.tpl) return { ok: false, code: 'NO_TPL' };
+    return new Promise(resolve => {
+      wx.requestSubscribeMessage({
+        tmplIds: [r.tpl],
+        success: res => resolve({ ok: res[r.tpl] === 'accept', res }),
+        fail: e => resolve({ ok: false, code: (e && e.errMsg) || 'SUB_FAIL' })
+      });
+    });
+  }).catch(() => ({ ok: false, code: 'CLOUD_OFF' }));
+}
+// 家长 openid 登记到云端（openid 由云函数上下文自动取，前端只交孩子列表）
+function familyBind(data) {
+  if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF' });
+  return callFn('family', Object.assign({ action: 'bind' }, data)).catch(() => ({ ok: false }));
+}
+// 老师发布后触达：未配模板/没通云时静默跳过，绝不阻塞发布主流程
+function familyNotify(data) {
+  if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF' });
+  return callFn('family', Object.assign({ action: 'send' }, data)).catch(() => ({ ok: false }));
+}
+
+module.exports = { initCloud, enabled, syncOn, login, pushRecord, pull, uploadFile, aiEvalDraft, stuImport, secText, secImage, requestSubscribe, familyBind, familyNotify, CLOUD_ENV };

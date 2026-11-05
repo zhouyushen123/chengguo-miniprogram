@@ -174,7 +174,19 @@ exports.main = async (event) => {
     if (!students.length) return { ok: false, msg: '缺少学生名单' };
     try {
       const notes = await batchNotes(key, students, String(event.topic || '').slice(0, 100));
-      return { ok: true, notes };
+      // AI 生成的评语也是 UGC，逐条过微信内容安全；命中违规的直接置 null（前端保留原值并提示）。
+      // fail-open：检查接口本身报错（非 87014）不拦截，保证 AI 主链路不被安全服务抖动拖死。
+      let blocked = 0;
+      await Promise.all(notes.map(async n => {
+        if (!n || !n.note) return;
+        try {
+          const r = await cloud.openapi.security.msgSecCheck({ content: n.note });
+          if (r && r.result && r.result.suggest && r.result.suggest !== 'pass') { n.note = null; blocked++; }
+        } catch (e) {
+          if (e && (e.errCode === 87014 || String(e.errMsg || '').indexOf('87014') > -1)) { n.note = null; blocked++; }
+        }
+      }));
+      return { ok: true, notes, blocked };
     } catch (e) {
       return { ok: false, msg: (e && e.message) || 'AI 调用失败' };
     }

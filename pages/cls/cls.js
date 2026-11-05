@@ -1,5 +1,6 @@
 const db = require('../../utils/db');
 const api = require('../../utils/api');
+const sec = require('../../utils/sec');
 const icons = require('../../utils/icons');
 const theme = require('../../utils/theme');
 
@@ -135,6 +136,12 @@ Page({
         if (out.sent) tip = '已发布 ' + out.sent + ' 条，' + tip;
         if (out.denied) tip += ('，' + out.denied + ' 条无权发布');
         wx.showToast({ title: tip, icon: out.denied ? 'none' : 'success' });
+        // 触达已订阅的家长（未配模板/没人订阅时云端静默跳过，不阻塞结清主流程）
+        const published = db.records.ofClass(this.clsId)
+          .filter(r => r.session === cur && r.sent);
+        if (out.sent || published.length) {
+          api.familyNotify({ items: sec.itemsFromRecords(published, db.students.name, db.classes.name) });
+        }
         this.render(); // 课次已推进，三状态/计数/筛选即时刷新
       }
     });

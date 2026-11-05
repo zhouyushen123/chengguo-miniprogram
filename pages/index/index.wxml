@@ -132,6 +132,15 @@
     <view wx:for="{{kids}}" wx:key="id" class="kchip {{kidId===item.id?'on':''}}" bindtap="pickKid" data-id="{{item.id}}">{{item.name}}</view>
   </view>
 
+  <!-- 订阅成绩通知：微信服务通知（唯一官方免费触达）。未配置模板时点了解并跳过，不弹窗也不报错 -->
+  <view wx:if="{{notifyTip}}" class="notifybar" hover-class="btn-hover" bindtap="onSubscribe">
+    <view class="notifybar-main">
+      <view class="notifybar-t">开启成绩通知</view>
+      <view class="notifybar-d">老师发布成果后微信提醒，不再漏看</view>
+    </view>
+    <text class="notifybar-btn">开启</text>
+  </view>
+
   <!-- 孩子卡 + 统计 -->
   <view class="card">
     <view class="pstu">

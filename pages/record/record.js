@@ -4,6 +4,7 @@ const stt = require('../../utils/stt');
 const voice = require('../../utils/voice');
 const icons = require('../../utils/icons');
 const media = require('../../utils/media');
+const sec = require('../../utils/sec');
 const theme = require('../../utils/theme');
 
 // 媒体限制：单个文件 50MB；照片/视频张数取数据层那一份（db.LIMITS），不在这里再写一遍
@@ -311,6 +312,25 @@ Page({
     };
     this._saving = true;
     this.setData({ saving: true });
+    // 评语属 UGC：云在线时先过内容安全再落库（87014 拦下让老师改）；
+    // 离线（本地开发/测试环境没有 wx.cloud）保持同步直存，不引入无谓的异步。
+    if (api.enabled() && this.data.note && this.data.note.trim()) {
+      sec.checkMany([this.data.note]).then(secOut => {
+        if (secOut.risky.size) {
+          this._saving = false;
+          this.setData({ saving: false });
+          wx.showModal({
+            title: '评语未通过安全检查', content: '这段评语可能含有不合适的内容，请修改后再发布。', showCancel: false
+          });
+          return;
+        }
+        this._doSave(payload, send);
+      });
+      return;
+    }
+    this._doSave(payload, send);
+  },
+  _doSave(payload, send) {
     const res = db.records.save(payload, send);
     if (!res.ok) {
       this._saving = false;
@@ -319,6 +339,8 @@ Page({
       return;
     }
     api.pushRecord(res.record); // 线上模式自动上推，本地模式静默跳过
+    // 直接发布给家长时，顺手把订阅通知交出去（未配模板/云未通时 familyNotify 静默跳过）
+    if (res.record.sent) api.familyNotify({ items: sec.itemsFromRecords([res.record], db.students.name, db.classes.name) });
     // warn：记录已存下，但关联的课时账没记上（空间不足），得让老师知道
     wx.showToast({ title: res.warn || (send ? '已发布' : '已存草稿'), icon: res.warn ? 'none' : 'success' });
     setTimeout(() => wx.navigateBack(), 800);

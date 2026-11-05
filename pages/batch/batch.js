@@ -5,6 +5,7 @@
 // 保存走 db.records.batch（一个事务批量落库，归当前课次）。
 const db = require('../../utils/db');
 const api = require('../../utils/api');
+const sec = require('../../utils/sec');
 const theme = require('../../utils/theme');
 const draft = require('../../utils/draft');
 
@@ -97,7 +98,8 @@ Page({
   },
   onNote(e) {
     const i = +e.currentTarget.dataset.i;
-    this.setData({ ['rows[' + i + '].note']: e.detail.value });
+    // 改评语即视为已重写，撤销安全检查标红
+    this.setData({ ['rows[' + i + '].note']: e.detail.value, ['rows[' + i + '].hit']: false });
     this._saveDraft();
   },
   onTopic(e) { this.setData({ topic: e.detail.value }); this._saveDraft(); },
@@ -162,11 +164,28 @@ Page({
     }
     next();
   },
-  // 保存：一个事务批量落库；请假的不生成记录
+  // 保存：云在线时先全班评语过内容安全（只查不同的文本，重复评语不重复计费），命中行标红不保存；
+  // 离线（本地开发/测试）直接走同步确认，不引入无谓的异步。
   save() {
     if (this.data.saving) return;
     const rows = this.data.rows.filter(r => !r.leave);
     if (!rows.length) { wx.showToast({ title: '除了请假没有人要录', icon: 'none' }); return; }
+    if (!api.enabled()) { this._confirmSave(rows); return; }
+    sec.checkMany(rows.map(r => r.note)).then(secOut => {
+      if (secOut.risky.size) {
+        const rows2 = this.data.rows.map(r => Object.assign({}, r, { hit: !r.leave && !!r.note && secOut.risky.has(String(r.note || '').trim()) }));
+        this.setData({ rows: rows2, risky: rows2.filter(r => r.hit).length });
+        wx.showModal({
+          title: '有评语未通过安全检查',
+          content: rows2.filter(r => r.hit).length + ' 条评语可能含有不合适的内容（已标红），请修改后再保存。',
+          showCancel: false
+        });
+        return;
+      }
+      this._confirmSave(rows);
+    });
+  },
+  _confirmSave(rows) {
     const items = rows.map(r => ({
       cls: this.clsId, sid: r.id, score: r.score, tag: r.tag,
       note: r.note, course: r.course, courseId: r.courseId,

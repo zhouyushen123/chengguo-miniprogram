@@ -21,6 +21,9 @@
 }
 .srow:last-child { border-bottom: none; }
 .srow.off { opacity: 0.45; }
+/* 安全检查命中行：浅红底 + 行首描边，改过评语后自动取消 */
+.srow.hit { background: rgba(229, 72, 77, 0.07); box-shadow: inset 4rpx 0 0 var(--danger); border-radius: 12rpx; }
+.lvtag.bad { background: var(--danger); }
 .rmain { flex: 1; min-width: 0; }
 .rhead { display: flex; align-items: baseline; gap: 12rpx; }
 .lvtag {

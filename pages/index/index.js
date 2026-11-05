@@ -4,6 +4,7 @@ const icons = require('../../utils/icons');
 const theme = require('../../utils/theme');
 const voice = require('../../utils/voice');
 const firstrun = require('../../utils/firstrun');
+const sec = require('../../utils/sec');
 
 Page({
   data: {
@@ -47,7 +48,11 @@ Page({
       // 家长端首页：统计 + 最近一次详情 + 需要注意 + 历史列表（数据已经权限层过滤，只见已发布）
       const kids = db.students.list().map(s => ({ id: s.id, name: s.name, photo: s.photo || '' }));
       const kidId = kids.some(k => k.id === this.data.kidId) ? this.data.kidId : (kids[0] ? kids[0].id : 0);
-      this.setData({ isParent: true, kids, kidId, roleLabel: '家长端', uName: u.name, dateStr });
+      // 订阅横幅：开过就不再骚扰；云/模板未配时点击后静默降级，横幅也收起（家长少一块无用区域）
+      this.setData({
+        isParent: true, kids, kidId, roleLabel: '家长端', uName: u.name, dateStr,
+        notifyTip: kids.length > 0 && !sec.subscribed()
+      });
       if (kidId) this.renderKid(kidId);
       return;
     }
@@ -175,6 +180,25 @@ Page({
     this.renderKid(id);
   },
   goKidPage() { wx.navigateTo({ url: '/pages/student/student?id=' + this.data.kidId }); },
+  // 开启成绩通知：微信订阅消息授权 → openid 登记（bind 记授权额度）。
+  // 模板未配（备案/类目未过）时云函数返回 NO_TPL，这里静默收起横幅，不弹任何报错。
+  onSubscribe() {
+    api.requestSubscribe().then(r => {
+      if (!r.ok) {
+        this.setData({ notifyTip: false }); // 暂不可订阅（无模板/未开云），收起横幅别堵眼
+        return;
+      }
+      // 一次性订阅：授权一次 = 可收一条；发完额度自动清零，家长下次想收再点一次即可
+      api.familyBind({
+        sids: this.data.kids.map(k => k.id),
+        name: this.data.uName,
+        grants: 1
+      });
+      sec.markSubscribed();
+      this.setData({ notifyTip: false });
+      wx.showToast({ title: '已开启，发布后会提醒你', icon: 'success' });
+    });
+  },
   onSearch(e) {
     // 模糊搜索：输入单字（如"周"）即可匹配所有名字中含该字的学生
     const q = (e.detail.value || '').trim().replace(/\s+/g, '');

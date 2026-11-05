@@ -1,5 +1,6 @@
 const db = require('../../utils/db');
 const api = require('../../utils/api');
+const sec = require('../../utils/sec');
 const icons = require('../../utils/icons');
 const theme = require('../../utils/theme');
 
@@ -132,6 +133,8 @@ Page({
         const out = db.records.markSent([r.id]);
         if (!out.count) { wx.showToast({ title: '该记录不在你的发布范围', icon: 'none' }); return; }
         api.pushRecord(Object.assign({}, r, { sent: true }));
+        // 触达已订阅的该生家长（未配模板/没人订阅时云端静默跳过）
+        api.familyNotify({ items: sec.itemsFromRecords([Object.assign({}, r, { sent: true })], db.students.name, db.classes.name) });
         wx.showToast({ title: '已发布', icon: 'success' });
         this.refresh();
       }

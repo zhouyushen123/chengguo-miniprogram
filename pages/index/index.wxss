@@ -18,6 +18,19 @@
   flex: none; font-size: 23rpx; font-weight: 800; color: #fff;
   background: var(--brand); border-radius: 999rpx; padding: 8rpx 24rpx;
 }
+/* ---------- 订阅成绩通知横幅：与演示横幅同构，家长端专用 ---------- */
+.notifybar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16rpx;
+  margin: 0 24rpx 18rpx; padding: 18rpx 16rpx 18rpx 24rpx;
+  background: var(--brand-tint); border: 2rpx solid var(--brand-border);
+  border-radius: 16rpx;
+}
+.notifybar-t { font-size: 27rpx; font-weight: 700; color: var(--text); }
+.notifybar-d { font-size: 22rpx; color: var(--faint); margin-top: 4rpx; }
+.notifybar-btn {
+  flex: none; font-size: 23rpx; font-weight: 800; color: #fff;
+  background: var(--brand); border-radius: 999rpx; padding: 10rpx 28rpx;
+}
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 6rpx 30rpx 28rpx;

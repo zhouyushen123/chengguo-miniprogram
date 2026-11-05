@@ -19,7 +19,7 @@
 
   <!-- 成绩单：一列学生 -->
   <view class="card" wx:if="{{rows.length}}">
-    <view class="srow {{row.leave ? 'off' : ''}}" wx:for="{{rows}}" wx:for-index="ri" wx:for-item="row" wx:key="id"
+    <view class="srow {{row.leave ? 'off' : ''}} {{row.hit ? 'hit' : ''}}" wx:for="{{rows}}" wx:for-index="ri" wx:for-item="row" wx:key="id"
       bindlongpress="toggleLeave" data-i="{{ri}}">
       <ava name="{{row.name}}" src="{{row.photo}}" size="{{64}}" />
       <view class="rmain">
@@ -27,13 +27,15 @@
           <b>{{row.name}}</b>
           <text wx:if="{{row.carried && !row.leave}}" class="mi">沿用上次</text>
           <text wx:if="{{row.leave}}" class="lvtag">请假</text>
+          <text wx:if="{{row.hit}}" class="lvtag bad">未过安全检查</text>
         </view>
         <view class="chips tchips">
           <view wx:for="{{tags}}" wx:for-item="tg" wx:key="*this"
             class="chip {{row.tag === tg ? 'on' : ''}}" catchtap="pickTag" data-i="{{ri}}" data-t="{{tg}}">{{tg}}</view>
         </view>
         <input class="noteinput" placeholder="评语（可留空，用 AI 生成）" placeholder-class="ph"
-          value="{{row.note}}" bindinput="onNote" data-i="{{ri}}" disabled="{{row.leave}}" />
+          value="{{row.note}}" bindinput="onNote" data-i="{{ri}}" disabled="{{row.leave}}"
+          bindfocus="clearHit" data-i="{{ri}}" />
       </view>
     </view>
   </view>

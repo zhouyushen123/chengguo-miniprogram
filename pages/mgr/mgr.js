@@ -44,6 +44,7 @@ Page({
     enrollYearOpts: [{ y: 0, name: '未填' }], stuEnrollYearIdx: 0,
     // 成员表单弹层（chips = 预计算好 on 标记的渲染数组，WXML 不做任何方法调用）
     userForm: null, userClsSel: [], userStuSel: [], userCrsSel: [], userBindNo: '',
+    memTab: 'all', memShown: [],   // 人员页签：全部/老师/家长三个分类，默认全部
     userClsChips: [], userStuChips: [], userCrsChips: [],
     roleOpts: ROLE_OPTS
   },
@@ -156,6 +157,7 @@ Page({
     }
     this._applyStuFilter(stuAll);
     this._applyClsMembers();
+    this._applyMemFilter();   // 人员列表按当前分类（全部/老师/家长）过滤
   },
   /* ================= 班级：展开看本班学生 ================= */
   // 点班级卡展开/收起；展开时列出该班学生，输入框实时筛选（姓名/家长）
@@ -211,6 +213,19 @@ Page({
     const keys = this.data.isManager ? ['org', 'cls', 'course', 'stu', 'member'] : ['cls', 'course', 'stu'];
     this.setData({ tab: i, tabK: keys[i] || 'cls' });
     if (keys[i] === 'org' && !this._orgLoaded) this.loadOrgForm();
+  },
+
+  // 人员页签顶部分类：全部 / 老师（负责人·管理员·老师）/ 家长
+  pickMemTab(e) {
+    this.setData({ memTab: e.currentTarget.dataset.k });
+    this._applyMemFilter();
+  },
+  _applyMemFilter() {
+    const t = this.data.memTab, all = this.data.members || [];
+    const shown = t === 'parent' ? all.filter(m => m.role === 'parent')
+      : t === 'teacher' ? all.filter(m => m.role !== 'parent')
+      : all;
+    this.setData({ memShown: shown });
   },
 
   /* ================= 机构资料（负责人） ================= */

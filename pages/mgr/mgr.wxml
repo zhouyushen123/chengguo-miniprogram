@@ -160,16 +160,16 @@
 </view>
 
 <!-- ============ 成员管理（负责人/管理员可见） ============ -->
-<view wx:if="{{tabK==='member' && isManager}}" class="wrap">
-  <view class="card">
-    <view class="row2">
-      <view class="btn ghost" hover-class="btn-hover" bindtap="addUserTeacher">＋ 加老师</view>
-      <view class="btn ghost" hover-class="btn-hover" bindtap="addUserParent">＋ 加家长</view>
-    </view>
-    <view class="mi">老师只能看到并录入自己负责班级的成果；家长只能看自己孩子「已发布」的成果；管理员与负责人可见全机构。点成员卡片底部可切换身份预览效果。</view>
+<!-- ============ 人员：顶部分类（全部/老师/家长） + 中间列表 + 底部双添加按钮（与班级/学生同结构） ============ -->
+<view wx:if="{{tabK==='member' && isManager}}" class="wrap clswrap">
+  <view class="gswitch" style="align-self:flex-start">
+    <view class="gopt {{memTab==='all'?'on':''}}" bindtap="pickMemTab" data-k="all">全部</view>
+    <view class="gopt {{memTab==='teacher'?'on':''}}" bindtap="pickMemTab" data-k="teacher">老师</view>
+    <view class="gopt {{memTab==='parent'?'on':''}}" bindtap="pickMemTab" data-k="parent">家长</view>
   </view>
+  <view class="mi" style="margin:16rpx 4rpx 0">老师只能看到并录入自己负责班级的成果；家长只能看自己孩子「已发布」的成果。点成员卡片可切身份预览，「分配」设定范围。</view>
 
-  <view class="card item" wx:for="{{members}}" wx:key="id">
+  <view class="card item" wx:for="{{memShown}}" wx:key="id">
     <view bindtap="goTeacher" data-id="{{item.id}}">
       <view class="itrow">
         <ava src="{{item.photo}}" name="{{item.name}}" size="{{76}}" radius="{{24}}" tone="{{item.avaTone}}" />
@@ -184,6 +184,13 @@
       <view class="mi act" catchtap="editUser" data-id="{{item.id}}">分配</view>
       <view wx:if="{{item.role!=='owner'}}" class="mi del" catchtap="delUser" data-id="{{item.id}}">移除</view>
     </view>
+  </view>
+  <view wx:if="{{!memShown.length}}" class="empty slim">这个分类下还没有成员，点下面按钮添加</view>
+</view>
+<view wx:if="{{tabK==='member' && isManager}}" class="stufab">
+  <view class="stufab2">
+    <view class="btn" hover-class="btn-hover" bindtap="addUserParent">＋ 添加家长</view>
+    <view class="btn" hover-class="btn-hover" bindtap="addUserTeacher">＋ 添加老师</view>
   </view>
 </view>
 

@@ -400,7 +400,11 @@ exports.main = async (event) => {
       let r = { data: [] };
       // 首次部署集合可能不存在：跳过一次并在下一轮补建（pull 不能因为一个集合报错全挂）
       try {
-        r = await db.collection(c).where({ orgId, srvAt: _.gt(since) }).limit(PAGE).get();
+        // 必须按 srvAt 升序：没有排序时数据库返回顺序不确定，取到的 100 条可能是
+        // 一段时间里最晚的那些，游标一推就越过了中间没取到的数据（下面的截断保护只能兜住
+        // 同一毫秒的边界，兜不住这种跳跃）。升序 + 复合索引（orgId, srvAt）才是增量拉取的形状。
+        r = await db.collection(c).where({ orgId, srvAt: _.gt(since) })
+          .orderBy('srvAt', 'asc').limit(PAGE).get();
       } catch (e) {
         await ensureCollections();
         continue;

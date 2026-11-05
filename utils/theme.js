@@ -26,17 +26,17 @@ const DANGER = { warm: '#C0564A', blue: '#D9534F', min: '#C0453B' };
 // 各主题的原生 chrome 取值（导航栏 / tabBar / 窗口背景）
 const CHROME = {
   warm: {
-    navBg: '#FFFFFF', winBg: '#FAF9F7', line: '#F0EEEA',
+    navBg: '#FAF9F7', winBg: '#FAF9F7', line: '#F0EEEA',   /* navBg=winBg：背景通铺到状态栏，不出现上白下米两截 */
     tab: { color: '#9C948A', selectedColor: '#E8590C', backgroundColor: '#FFFFFF', borderStyle: 'white' },
     tabDir: '/assets/tabbar/warm/'
   },
   blue: {
-    navBg: '#EAF4FF', winBg: '#F3F8FE', line: '#E4EEF8',
+    navBg: '#F3F8FE', winBg: '#F3F8FE', line: '#E4EEF8',
     tab: { color: '#8FA3BC', selectedColor: '#59A8FF', backgroundColor: '#FDFEFF', borderStyle: 'white' },
     tabDir: '/assets/tabbar/blue/'
   },
   min: {
-    navBg: '#FFFFFF', winBg: '#F6F7F9', line: '#E2E4E8',
+    navBg: '#F6F7F9', winBg: '#F6F7F9', line: '#E2E4E8',
     tab: { color: '#8E949D', selectedColor: '#1F2329', backgroundColor: '#FFFFFF', borderStyle: 'white' },
     tabDir: '/assets/tabbar/min/'
   }

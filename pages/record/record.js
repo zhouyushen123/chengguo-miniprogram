@@ -25,6 +25,8 @@ Page({
   data: {
     clsId: null, students: [], stuShow: [], stuQuery: '', stuExpanded: false, over45: false,
     courses: [], courseIdx: 0, course: '',
+    // 补录切换：归入哪次课（默认本次）。只有班上已经结清过（sessMax>1）才出现
+    sessMax: 1, sessOpts: ['第1次课'], sessIdx: 0,
     score: 85, tags: TAGS, tag: '',
     note: '', photos: [], videos: [], audio: null, recording: false, recognizing: false, canSend: false, aiBusy: false,
     selCount: 0, editing: false, saving: false,
@@ -49,8 +51,19 @@ Page({
     const students = db.students.of(clsId); // 已按姓氏拼音排序
     // 编辑已有记录时按记录里的课程名定位到下拉项，避免默认落到第一门课
     const ci = Math.max(0, courses.findIndex(c => c.name === pick.course));
+    // 课次：默认归入班级当前课次；编辑老记录时默认落在它本来的课次上
+    const clsRaw = db.classes.get(clsId);
+    const sessMax = Math.max(1, (clsRaw && clsRaw.session) || 1);
+    let sess = sessMax;
+    if (pick.rid) {
+      const r0 = db.records.get(pick.rid);
+      if (r0 && r0.session >= 1 && r0.session <= sessMax) sess = r0.session;
+    }
+    const sessOpts = [];
+    for (let i = 1; i <= sessMax; i++) sessOpts.push('第' + i + '次课' + (i === sessMax ? '（本次）' : ''));
     this.setData({
       clsId, students, courses, courseIdx: ci,
+      sessMax, sessOpts, sessIdx: sess - 1,
       over45: students.length > 45,
       course: courses[ci] ? courses[ci].name : '',
       sid: pick.sid || null, score: pick.score || 85, tag: pick.tag || '',
@@ -110,6 +123,8 @@ Page({
     const c = this.data.courses[e.detail.value];
     this.setData({ courseIdx: e.detail.value, course: c ? c.name : '' });
   },
+  // 归入课次（补录用）：默认本次，可改选更早的课
+  onSess(e) { this.setData({ sessIdx: +e.detail.value }); },
   onNote(e) { this.setData({ note: e.detail.value }); this.refreshCan(); },
   goTpls() { wx.navigateTo({ url: '/pages/tpls/tpls?mode=select' }); },
 
@@ -290,7 +305,9 @@ Page({
     const payload = {
       cls: this.data.clsId, sid: this.data.sid, rid: this.data.rid,
       course: this.data.course, score: this.data.score, tag: this.data.tag,
-      note: this.data.note, photos: this.data.photos, videos: this.data.videos, audio: this.data.audio
+      note: this.data.note, photos: this.data.photos, videos: this.data.videos, audio: this.data.audio,
+      // 归入课次：默认本次；补录时是老师改选的那一课（编辑记录时数据层会忽略它，保留原课次）
+      session: this.data.sessIdx + 1
     };
     this._saving = true;
     this.setData({ saving: true });

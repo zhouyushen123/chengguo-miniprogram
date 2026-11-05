@@ -45,9 +45,9 @@
 .sendbtn.off { background: var(--line); color: var(--faint); font-weight: 400; }
 
 /* 班级记录筛选 */
-.rechead { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.rechead { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; flex-wrap: wrap; }
 .rechead .label { flex: none; }
-.pickers { display: flex; gap: 12rpx; }
+.pickers { display: flex; gap: 12rpx; flex-wrap: wrap; justify-content: flex-end; }
 .pkbox {
   font-size: 22rpx; color: var(--sub); background: var(--bg);
   border: 2rpx solid var(--line-2); border-radius: 999rpx; padding: 8rpx 20rpx;

@@ -3,7 +3,9 @@ const api = require('../../utils/api');
 const icons = require('../../utils/icons');
 const theme = require('../../utils/theme');
 
-// 班级详情页：学生今日录入三状态（未录/已录/已发布）+ 筛选；下方本班记录支持按日期、等级筛选
+// 班级详情页：学生「本次录入」三状态（未录/已录/已发布）+ 筛选；下方本班记录支持按课次、日期、等级筛选
+// 三状态按【课次】算而不是自然日：同一节课两个老师分两天录，状态依然准确。
+// 节点由老师手动「结清」推进，不要求全员录完（请假/缺席的直接略过）。
 // 色块排序：未录入 > 已录入 > 已发布（未录入的排最前，提醒优先录入），同状态内保持姓氏拼音序
 const TAGS = ['待提高', '加油', '良好', '优秀', '最佳'];
 const ST_WEIGHT = { none: 0, rec: 1, sent: 2 };
@@ -14,10 +16,12 @@ Page({
     tiles: [], shown: [],
     counts: { none: 0, rec: 0, sent: 0 }, pending: 0,
     filts: ['全部', '未录入', '已录入', '已发布'], filt: '全部',
-    // 记录筛选：日期 + 等级
+    // 记录筛选：课次 + 日期 + 等级
+    sess: 1, sessOpts: ['不限课次'], sessIdx: 0,
     dateOpts: ['不限日期'], dateIdx: 0,
     tagOpts: ['全部等级'].concat(TAGS), tagIdx: 0,
     recs: [], recTotal: 0, allCount: 0,
+    canSettle: false,
     icoChevD: icons.chevronDown, icoChev: icons.chevron
   },
   onLoad(q) {
@@ -33,18 +37,19 @@ Page({
       return;
     }
     wx.setNavigationBarTitle({ title: cls.name });
-    const t = db.today();
+    // 本次录入 = 班级当前课次（session），不再按自然日
+    const cur = Math.max(1, cls.session || 1);
     const students = db.students.of(this.clsId);
     const all = db.records.ofClass(this.clsId);
-    // 今日该班每名学生的记录 → 三状态
-    const today = {};
+    // 本次课每名学生的记录 → 三状态
+    const curRecs = {};
     all.forEach(r => {
-      if (r.date !== t) return;
-      const arr = today[r.sid] || (today[r.sid] = []);
+      if (r.session !== cur) return;
+      const arr = curRecs[r.sid] || (curRecs[r.sid] = []);
       arr.push(r);
     });
     const statusOf = sid => {
-      const arr = today[sid];
+      const arr = curRecs[sid];
       if (!arr || !arr.length) return 'none';
       return arr.some(r => r.sent) ? 'sent' : 'rec';
     };
@@ -55,15 +60,19 @@ Page({
       rec: tiles.filter(x => x.st === 'rec').length,
       sent: tiles.filter(x => x.st === 'sent').length
     };
-    // 今日待发送记录数（已录入但未发布）
-    const pending = all.filter(r => r.date === t && !r.sent).length;
-    // 记录日期选项（从新到旧）
+    // 本次待发布记录数（已录入但未发布）
+    const pending = all.filter(r => r.session === cur && !r.sent).length;
+    // 记录筛选：课次（从新到旧）+ 日期（从新到旧）
+    const sesses = [...new Set(all.map(r => r.session).filter(s => s > 0))].sort((a, b) => b - a);
+    const sessOpts = ['不限课次'].concat(sesses.map(s => '第' + s + '课'));
     const dates = [...new Set(all.map(r => r.date))].sort((a, b) => b.localeCompare(a));
     const dateOpts = ['不限日期'].concat(dates);
     this._all = all;
     this.setData({
       cls: { id: cls.id, name: cls.name },
-      tiles, counts, dateOpts, pending,
+      sess: cur, sessOpts, tiles, counts, dateOpts, pending,
+      // 结清 = 开启下一课的节点动作，能往这个班录课的人才能做
+      canSettle: db.auth.can('record.create', { clsId: this.clsId }),
       allCount: this._all.length
     }, () => { this._applyTiles(); this._applyRecs(); });
   },
@@ -77,43 +86,56 @@ Page({
     const st = map[f];
     this.setData({ shown: st ? this.data.tiles.filter(x => x.st === st) : this.data.tiles });
   },
-  // 记录筛选：日期 + 等级
+  // 记录筛选：课次 + 日期 + 等级
+  onSess(e) { this.setData({ sessIdx: +e.detail.value }, () => this._applyRecs()); },
   onDate(e) { this.setData({ dateIdx: +e.detail.value }, () => this._applyRecs()); },
   onTag(e) { this.setData({ tagIdx: +e.detail.value }, () => this._applyRecs()); },
   _applyRecs() {
+    const sessV = this.data.sessOpts[this.data.sessIdx];
     const date = this.data.dateOpts[this.data.dateIdx];
     const tag = this.data.tagOpts[this.data.tagIdx];
     const list = this._all.filter(r =>
+      (this.data.sessIdx === 0 || r.session === Number(sessV.replace(/[^0-9]/g, ''))) &&
       (this.data.dateIdx === 0 || r.date === date) &&
       (this.data.tagIdx === 0 || r.tag === tag)
     );
     const recs = list.slice(0, 50).map(r => {
-      return { id: r.id, sid: r.sid, name: db.students.name(r.sid) || '—', course: r.course, date: r.date, score: r.score, tag: r.tag || '', sent: r.sent };
+      return { id: r.id, sid: r.sid, name: db.students.name(r.sid) || '—', course: r.course, date: r.date, score: r.score, tag: r.tag || '', sent: r.sent, sess: r.session || 0 };
     });
     this.setData({ recs, recTotal: list.length });
   },
-  // 统一发布：把今日该班所有「已录入未发布」的记录对家长开放
+  // 结清本次课：发布本次未发布的记录 + 进入下一课。不要求全员录完（请假/缺席直接略过）。
   sendAll() {
-    const t = db.today();
-    // 权限：只有能对这批记录执行"发布"的人才进得来（家长/无关老师直接挡回）
-    const targets = db.records.ofClass(this.clsId).filter(r => r.date === t && !r.sent);
-    if (!targets.length) { wx.showToast({ title: '今天没有待发布的记录', icon: 'none' }); return; }
-    if (!db.auth.can('record.send', { record: targets[0] })) {
-      wx.showToast({ title: db.auth.denyReason('record.send'), icon: 'none' });
+    if (!this.data.canSettle) {
+      wx.showToast({ title: db.auth.denyReason('record.create'), icon: 'none' });
       return;
     }
+    const cur = this.data.sess;
+    const recs = db.records.ofClass(this.clsId).filter(r => r.session === cur);
+    const unSent = recs.filter(r => !r.sent).length;
+    const unRec = this.data.counts.none;
+    const parts = ['本次已录 ' + (recs.length ? this.data.counts.rec + this.data.counts.sent : 0) + ' 人'];
+    if (unRec) parts.push('未录 ' + unRec + ' 人（请假/缺席将略过）');
+    if (unSent) parts.push(unSent + ' 条将发布给家长');
     wx.showModal({
-      title: '统一发布到家长端',
-      content: '将把今天已录入的 ' + targets.length + ' 条成果记录对家长开放可见，确认发布？',
-      confirmText: '发布',
+      title: '结清第 ' + cur + ' 次课？',
+      content: parts.join('，') + '。结清后进入第 ' + (cur + 1) + ' 次课的录入。',
+      confirmText: '结清',
       success: res => {
         if (!res.confirm) return;
-        const out = db.records.markSent(targets.map(r => r.id));
-        if (!out.count) { wx.showToast({ title: '没有可发布的记录', icon: 'none' }); return; }
-        targets.forEach(r => api.pushRecord(Object.assign({}, r, { sent: true })));
-        const tip = out.denied ? ('已发布 ' + out.count + ' 条，' + out.denied + ' 条无权发布') : ('已发布 ' + out.count + ' 条');
+        // 结清前记下要发布的清单：settle 成功后把这批推到云端（数据层不碰 api，推送归页面）
+        const toPush = recs.filter(r => !r.sent).map(r => r.id);
+        const out = db.records.settle(this.clsId);
+        if (!out.ok) { wx.showToast({ title: out.msg || '结清失败，请重试', icon: 'none' }); return; }
+        toPush.forEach(id => {
+          const r = db.records.get(id);
+          if (r && r.sent) api.pushRecord(r);
+        });
+        let tip = '已进入第 ' + out.session + ' 次课';
+        if (out.sent) tip = '已发布 ' + out.sent + ' 条，' + tip;
+        if (out.denied) tip += ('，' + out.denied + ' 条无权发布');
         wx.showToast({ title: tip, icon: out.denied ? 'none' : 'success' });
-        this.render(); // 返回后色块绿变蓝、计数即时刷新
+        this.render(); // 课次已推进，三状态/计数/筛选即时刷新
       }
     });
   },

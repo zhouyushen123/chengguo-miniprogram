@@ -234,6 +234,8 @@ function buildDemoData() {
   }), o, stamp)));
   d.records = demo.DEMO_RECORDS.map(r =>
     schema.normalizeRecord(Object.assign({ tid: d.meta.me }, r), o, stamp));
+  // v7：演示记录同样盖课次号（同班同一天 = 同一课），班级页「第 N 次课」才有意义
+  schema.assignRecordSessions(d.classes, d.records);
 
   // 家长演示账号绑第一个孩子：权限在 member 上，不在 user 上
   const p = d.members.find(m => m.role === 'parent');

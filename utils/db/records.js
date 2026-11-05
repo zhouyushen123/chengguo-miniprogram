@@ -90,6 +90,16 @@ function recordSave(pick, send) {
   const courseId = Number(p.courseId) ||
     ((oc('courses').find(c => c.clsId === cid && c.name === course) || {}).id || 0);
 
+  // 课次：新建时默认归入班级当前课次；补录（隔天补上一课）可显式传更早的课次。
+  // 只允许 1 ~ 当前课次：传未来课次/0/负数都拒绝，不静默回落——
+  // 静默归错课次会让「本次录入」的统计悄悄失真，比直接报错难发现得多。
+  let sess = cls.session;
+  if (!rid && p.session !== undefined && p.session !== null && p.session !== '') {
+    const s = Number(p.session);
+    if (!(s >= 1 && s <= cls.session)) return { ok: false, msg: '归入课次不合法' };
+    sess = s;
+  }
+
   const base = {
     // type 不传则沿用原有类型（编辑时不要把它冲掉），新建时默认 achievement
     type: p.type,
@@ -98,14 +108,18 @@ function recordSave(pick, send) {
     tag: schema.str(p.tag).trim(),
     note: schema.str(p.note),
     photos: p.photos, videos: p.videos, audio: p.audio,
-    sent: !!send
+    sent: !!send,
+    // 新建盖课次；编辑不带 session（base 多余字段会被 Object.assign 里的 r 覆盖回原值）
+    session: sess
   };
 
   if (rid) {
     const r = oc('records').find(y => y.id === rid);
     // 没显式传日期时保留原日期：编辑一条上周的记录不能把它改到今天
     const date = schema.normDate(p.date) || r.date;
-    const next = schema.normalizeRecord(Object.assign({}, r, base, { date }), org(), now());
+    // 编辑不改课次：base.session 是"新建默认值"，编辑时必须显式压回原记录的课次，
+    // 否则老师改一条历史记录的分数，它就从第 1 课跳到当前课次去了
+    const next = schema.normalizeRecord(Object.assign({}, r, base, { date, session: r.session }), org(), now());
     const ev = schema.validate('record', next);
     if (ev) return { ok: false, msg: ev };
     next.id = r.id; next.tid = r.tid || core.meta().me || ''; next.updatedAt = now();
@@ -127,6 +141,32 @@ function recordSave(pick, send) {
   const hr = enrollments.consumeHours(e);
   if (hr && hr.ok === false) return { ok: true, rid: e.id, record: e, warn: hr.msg };
   return { ok: true, rid: e.id, record: e };
+}
+// 结清本次课：把该班当前课次所有「已录入未发布」的记录发布给家长，然后课次 +1。
+// 这是「本次录入」的唯一收口动作——不要求全员录完（请假/缺席的学生直接略过，本次没有记录）。
+// 权限用 record.create：能往这个班录课的人才能结清它；发布部分仍逐条过 record.send，
+// 没有发布权的人结清时只推进课次，不发布（denied 数原样返回给页面提示）。
+function sessionSettle(clsId) {
+  const cid = Number(clsId);
+  const cls = oc('classes').find(c => c.id === cid && !c.removed);
+  if (!cls) return { ok: false, msg: '班级不存在' };
+  const err = deny('record.create', { clsId: cid });
+  if (err) return { ok: false, msg: err };
+  const cur = Math.max(1, Number(cls.session) || 1);
+  const ids = oc('records')
+    .filter(r => r.cid === cid && !r.removed && r.session === cur && !r.sent)
+    .map(r => r.id);
+  return core.tx(() => {
+    const out = recordMarkSent(ids);
+    if (out.ok === false) return out;          // 落盘失败，事务里 records 已回滚
+    const prev = cls.session;
+    cls.session = cur + 1; cls.updatedAt = now();
+    if (!core.persist('classes')) {
+      cls.session = prev;
+      return { ok: false, msg: core.SAVE_FAIL };
+    }
+    return { ok: true, session: cls.session, sent: out.count, denied: out.denied };
+  });
 }
 // 批量标记已发送（单条发送 / 整班统一发送都走这里），返回实际变更条数
 function recordMarkSent(ids) {
@@ -157,5 +197,5 @@ function recordRemove(id) {
 
 module.exports = {
   recordList, recordOfStudent, recordOfClass, recordGet, recordLatest,
-  canSend, recordSave, recordMarkSent, recordRemove
+  canSend, recordSave, recordMarkSent, recordRemove, sessionSettle
 };

@@ -24,7 +24,9 @@
 //
 // 公共审计字段（所有实体强制携带）：orgId 归属机构 / createdAt 创建时间 / updatedAt 更新时间 / removed 软删除
 // 软删除的意义：多端同步时"删掉"必须能被同步，硬删会被其它端的历史数据覆盖复活。
-const VERSION = 6;
+// v7：班级增加 session（课次号）——「本次录入」的节点由老师手动结清，不再由自然日自动切换；
+// 记录落库时盖上当前课次号，跨天/多人接力录同一节课也能算成同一次。
+const VERSION = 7;
 const DEFAULT_ORG = 'org1';
 
 // 评分五档（与录入页每档代表分对应，用于筛选与统计口径统一）
@@ -96,7 +98,10 @@ function normalizeClass(raw, orgId, stamp) {
     sort: num(r.sort, 0),
     termId: num(r.termId, 0),                                  // 归属学期（0 = 未挂靠，normalizeAll 会兜底挂到内置学期）
     mode: CLASS_MODES.indexOf(r.mode) > -1 ? r.mode : 'term',  // 学期制为默认，老数据无感
-    teacherId: num(r.teacherId, 0)                             // 主讲老师（member id），0 = 未指派
+    teacherId: num(r.teacherId, 0),                            // 主讲老师（member id），0 = 未指派
+    // 课次号：当前正录的是第几次课，从 1 起。结清（sessionSettle）时 +1。
+    // 老数据升级时由 assignRecordSessions 按历史日期分组补算，不小于 1。
+    session: Math.max(1, num(r.session, 1))
   }, audit(r, orgId, stamp));
 }
 
@@ -178,6 +183,36 @@ function assignStudentNos(list) {
   return arr;
 }
 
+// 课次补算：给没有 session 标的老记录（v6 及以前）按「同班同一天 = 同一次课」归组编号。
+// 同一班内日期升序编号：最早的一天 = 第 1 次课，依次递增；已有 session 的记录不动（幂等，重跑结果不变）。
+// 班级的当前课次 = max(自身 session, 该班记录的最大 session, 1) —— 老数据里"最近一天"往往就是
+// 正在录的这课，升级后班级页看到的还是同一批未录学生，行为无感。
+function assignRecordSessions(classes, records) {
+  const clsArr = Array.isArray(classes) ? classes : [];
+  const recArr = Array.isArray(records) ? records : [];
+  // 每个班出现过的日期集合（含有 session 的记录，保证混合数据也能对上号）
+  const datesOf = {};
+  recArr.forEach(r => {
+    if (!r || r.removed || !r.cid || !r.date) return;
+    const arr = datesOf[r.cid] || (datesOf[r.cid] = []);
+    if (arr.indexOf(r.date) < 0) arr.push(r.date);
+  });
+  Object.keys(datesOf).forEach(cid => {
+    const seq = {};
+    datesOf[cid].sort().forEach((d, i) => { seq[d] = i + 1; });
+    recArr.forEach(r => {
+      if (r && !r.removed && r.cid === Number(cid) && !r.session) r.session = seq[r.date] || 1;
+    });
+    const c = clsArr.find(x => x && x.id === Number(cid));
+    if (c) {
+      let maxS = 1;
+      recArr.forEach(r => { if (r && !r.removed && r.cid === Number(cid) && r.session > maxS) maxS = r.session; });
+      c.session = Math.max(num(c.session, 1), maxS, 1);
+    }
+  });
+  return records;
+}
+
 function normalizeRecord(raw, orgId, stamp) {
   const r = raw || {};
   const date = normDate(r.date) || ymd(new Date(num(r.createdAt, stamp)));
@@ -196,6 +231,9 @@ function normalizeRecord(raw, orgId, stamp) {
     videos: txtList(r.videos),
     audio: str(r.audio) || null,
     sent: r.sent === true,
+    // 课次号：录入时盖上班级当前课次（补录可显式指定更早的课次）。
+    // 0 表示未标注（只会出现在迁移前的老数据上，assignRecordSessions 会补算）。
+    session: num(r.session, 0),
     tid: str(r.tid),        // 录入老师，用于"XX老师的课堂语音"
     demo: r.demo === true
   }, audit(r, orgId, stamp));
@@ -338,5 +376,6 @@ module.exports = {
   normalizeOrg, normalizeMember,
   normalizeTerm, normalizeClass, normalizeCourse, normalizeStudent, normalizeEnrollment,
   assignStudentNos, NO_START,
+  assignRecordSessions,
   normalizeRecord, normalizeUser, normalizeTemplate
 };

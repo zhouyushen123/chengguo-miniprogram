@@ -146,7 +146,9 @@ const db = {
   records: {
     list: records.recordList, ofStudent: records.recordOfStudent, ofClass: records.recordOfClass,
     get: records.recordGet, latest: records.recordLatest, save: records.recordSave,
-    markSent: records.recordMarkSent, remove: records.recordRemove
+    markSent: records.recordMarkSent, remove: records.recordRemove,
+    // 结清本次课：发布当前课次未发布记录 + 课次 +1（一个事务，失败整体回滚）
+    settle: records.sessionSettle
   },
   users: {
     list: identity.userList, get: identity.userGet, name: identity.userName,

@@ -3,7 +3,7 @@
   <!-- 学生录入状态：三状态 + 分类筛选 -->
   <view class="card">
     <view class="clshead">
-      <view class="h1">{{cls.name}} · 今日录入</view>
+      <view class="h1">{{cls.name}} · 第{{sess}}次课</view>
       <view class="cnt">已发布 <b class="blue">{{counts.sent}}</b> · 已录 <b>{{counts.rec}}</b> · 未录 <b class="gray">{{counts.none}}</b></view>
     </view>
 
@@ -20,18 +20,21 @@
       <view class="lg"><view class="dot dg"></view>已录入</view>
       <view class="lg"><view class="dot db"></view>已发布</view>
       <view class="lg"><view class="dot dn"></view>未录入</view>
-      <view class="lg tip">点击学生即可录入今日成果</view>
+      <view class="lg tip">点击学生即可录入本次成果</view>
     </view>
-    <view class="sendbtn {{pending?'':'off'}}" hover-class="btn-hover" bindtap="sendAll">
-      {{pending ? '一键发布到家长端（' + pending + ' 条待发布）' : '今日已全部发布'}}
+    <view class="sendbtn {{canSettle ? '' : 'off'}}" hover-class="btn-hover" bindtap="sendAll">
+      {{pending ? '发布并结清本次课（' + pending + ' 条待发布）' : '结清本次课 · 进入第' + (sess + 1) + '次课'}}
     </view>
   </view>
 
-  <!-- 本班记录：日期 + 等级筛选 -->
+  <!-- 本班记录：课次 + 日期 + 等级筛选 -->
   <view class="card">
     <view class="rechead">
       <view class="label">班级记录<text class="mi"> · {{recTotal}}/{{allCount}} 条</text></view>
       <view class="pickers">
+        <picker mode="selector" range="{{sessOpts}}" value="{{sessIdx}}" bindchange="onSess">
+          <view class="pkbox">{{sessOpts[sessIdx]}}<image class="pico" src="{{icoChevD}}" mode="aspectFit" /></view>
+        </picker>
         <picker mode="selector" range="{{dateOpts}}" value="{{dateIdx}}" bindchange="onDate">
           <view class="pkbox">{{dateOpts[dateIdx]}}<image class="pico" src="{{icoChevD}}" mode="aspectFit" /></view>
         </picker>
@@ -43,7 +46,7 @@
     <view class="recrow" wx:for="{{recs}}" wx:key="id" hover-class="btn-hover" bindtap="openRec" data-sid="{{item.sid}}" data-rid="{{item.id}}">
       <view class="hleft">
         <b>{{item.name}}</b>
-        <view class="mi">{{item.course}} · {{item.date}}{{item.tag?' · '+item.tag:''}}</view>
+        <view class="mi">{{item.course}} · {{item.date}}{{item.sess ? ' · 第' + item.sess + '课' : ''}}{{item.tag ? ' · ' + item.tag : ''}}</view>
       </view>
       <text wx:if="{{item.sent}}" class="pill" style="background:#4a7ddc">已发布</text>
       <view class="score">{{item.score}}分</view>

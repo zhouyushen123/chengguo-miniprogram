@@ -132,6 +132,10 @@ function upgrade(loaded, stamp) {
   const terms = (loaded.terms || []).map(t => schema.normalizeTerm(t, orgId, stamp));
   ensureBuiltinTerm(terms, classes, orgId, stamp);
 
+  // v7：老记录按「同班同一天 = 同一课」补算课次号，班级 session 对齐到最新一课
+  const records = (loaded.records || []).map(r => schema.normalizeRecord(r, orgId, stamp));
+  schema.assignRecordSessions(classes, records);
+
   return {
     meta: Object.assign({}, meta, {
       version: schema.VERSION,
@@ -145,7 +149,7 @@ function upgrade(loaded, stamp) {
     courses: (loaded.courses || []).map(c => schema.normalizeCourse(c, orgId, stamp)),
     students: schema.assignStudentNos((loaded.students || []).map(s => schema.normalizeStudent(s, orgId, stamp))),
     enrollments: (loaded.enrollments || []).map(e => schema.normalizeEnrollment(e, orgId, stamp)),
-    records: (loaded.records || []).map(r => schema.normalizeRecord(r, orgId, stamp)),
+    records,
     users,
     templates: (loaded.templates || []).map(t => schema.normalizeTemplate(t, orgId, stamp))
   };
@@ -249,6 +253,9 @@ function build(loaded) {
   // v5：内置「长期班」学期 + 收编全部班级
   const terms = [];
   ensureBuiltinTerm(terms, classes, ORG, stamp);
+
+  // v7：老记录按「同班同一天 = 同一课」补算课次号
+  schema.assignRecordSessions(classes, records);
 
   return {
     meta: {

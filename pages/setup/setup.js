@@ -82,11 +82,12 @@ Page({
   onOrgName(e) { this.setData({ 'org.name': e.detail.value }); },
   pickType(e) { this.setData({ 'org.type': e.currentTarget.dataset.v }); },
   onContact(e) { this.setData({ 'org.contact': e.detail.value }); },
-  // 手机号边输边格式化（3-4-4）：存的是带横线的展示串，提交时 tel.digits 还原裸数字
+  // 手机号：输入中只放裸数字（type="number" 容不下 "-"，真机边输边格式化会调乱），失焦再分段
   onPhone(e) {
     const raw = tel.digits(e.detail.value);
-    this.setData({ 'org.phone': tel.fmt(raw), 'org.phoneBad': raw.length > 0 && !tel.valid(raw) });
+    this.setData({ 'org.phone': raw, 'org.phoneBad': raw.length > 0 && !tel.valid(raw) });
   },
+  onPhoneBlur() { this.setData({ 'org.phone': tel.fmt(this.data.org.phone) }); },
   onTermName(e) { this.setData({ 'term.name': e.detail.value }); },
   onStart(e) { this.setData({ 'term.startDate': e.detail.value }); },
   onEnd(e) { this.setData({ 'term.endDate': e.detail.value }); },

@@ -69,8 +69,11 @@ Page({
   onContact(e) { this.setData({ 'form.contact': e.detail.value }); },
   onPhone(e) {
     const raw = tel.digits(e.detail.value);
-    this.setData({ 'form.phone': tel.fmt(raw), 'form.phoneBad': raw.length > 0 && !tel.valid(raw) });
+    // 输入中只放裸数字：type="number" 的键盘容不下 "-"，真机上边输边格式化会把字符调乱。
+    // 分段显示推迟到失焦（onPhoneBlur），展示口径仍然是 tel.fmt。
+    this.setData({ 'form.phone': raw, 'form.phoneBad': raw.length > 0 && !tel.valid(raw) });
   },
+  onPhoneBlur() { this.setData({ 'form.phone': tel.fmt(this.data.form.phone) }); },
   onScale(e) { this.setData({ 'form.scale': e.currentTarget.dataset.v }); },
   onInvite(e) { this.setData({ 'form.invite': e.detail.value }); },
   toggleCourse(e) {

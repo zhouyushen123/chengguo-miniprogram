@@ -25,10 +25,11 @@ Page({
   onInput(e) {
     const f = Object.assign({}, this.data.f);
     const k = e.currentTarget.dataset.k;
-    // 手机号边输边格式化（3-4-4），其余字段原样
-    f[k] = k === 'phone' ? tel.fmt(e.detail.value) : e.detail.value;
+    // 手机号输入中只放裸数字（type="number" 容不下 "-"，真机边输边格式化会调乱），失焦再分段
+    f[k] = k === 'phone' ? tel.digits(e.detail.value) : e.detail.value;
     this.setData({ f });
   },
+  onPhoneBlur() { this.setData({ 'f.phone': tel.fmt(this.data.f.phone) }); },
   submit() {
     const f = this.data.f;
     const ph = tel.digits(f.phone);

@@ -261,11 +261,10 @@ Page({
   },
   onOrgPhone(e) {
     const raw = tel.digits(e.detail.value);
-    this.setData({
-      'orgForm.phone': tel.fmt(raw),
-      orgPhoneBad: raw.length > 0 && !tel.valid(raw)
-    });
+    // 输入中只放裸数字，失焦再分段（type="number" 容不下 "-"，真机会调乱）
+    this.setData({ 'orgForm.phone': raw, orgPhoneBad: raw.length > 0 && !tel.valid(raw) });
   },
+  onOrgPhoneBlur() { this.setData({ 'orgForm.phone': tel.fmt(this.data.orgForm.phone) }); },
   toggleOrgCourse(e) {
     const v = e.currentTarget.dataset.v;
     const cur = (this.data.orgForm.courses || []).slice();
@@ -503,8 +502,9 @@ Page({
   },
   onUserPhone(e) {
     const raw = tel.digits(e.detail.value);
-    this.setData({ 'userForm.phone': tel.fmt(raw) });
+    this.setData({ 'userForm.phone': raw });
   },
+  onUserPhoneBlur() { this.setData({ 'userForm.phone': tel.fmt(this.data.userForm.phone) }); },
   onUserWechat(e) { this.setData({ 'userForm.wechat': e.detail.value }); },
   pickRole(e) { this.setData({ 'userForm.role': e.currentTarget.dataset.k }); },
   userClsTgl(e) { this._tgl('userClsSel', 'classes', e); },

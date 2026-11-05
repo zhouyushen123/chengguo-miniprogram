@@ -612,11 +612,14 @@ ok('入驻表单：空机构名被拦', () => {
   assert.strictEqual(toasts[toasts.length - 1], '请填写机构名称');
   assert.strictEqual(applyUtil.get(), null, '校验不过不应落单');
 });
-ok('入驻表单：手机号格式不对被拦；合法号码边输边分段成 3-4-4', () => {
+ok('入驻表单：手机号格式不对被拦；输入中是裸数字，失焦才分段成 3-4-4', () => {
   applyPage.onName({ detail: { value: '橙果书法学堂' } });
   applyPage.onPhone({ detail: { value: '18674882783' } });
-  assert.strictEqual(applyPage.data.form.phone, '186-7488-2783', '展示串带横线');
+  // 输入中是裸数字：type="number" 的键盘容不下 "-"，真机边输边格式化会把字符调乱
+  assert.strictEqual(applyPage.data.form.phone, '18674882783', '输入中不带横线');
   assert.strictEqual(applyPage.data.form.phoneBad, false);
+  applyPage.onPhoneBlur();
+  assert.strictEqual(applyPage.data.form.phone, '186-7488-2783', '失焦后分段展示');
   applyPage.onPhone({ detail: { value: '12345' } });
   applyPage.submit();
   assert.strictEqual(toasts[toasts.length - 1], '请填写正确的 11 位手机号（1 开头）');

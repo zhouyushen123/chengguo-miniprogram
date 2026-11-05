@@ -43,6 +43,12 @@
   border-radius: 999rpx; padding: 20rpx 0;
 }
 .sendbtn.off { background: var(--line); color: var(--faint); font-weight: 400; }
+/* 批量录入入口：次级按钮，与发布结清按钮隔开 */
+.batchbtn {
+  margin-top: 16rpx; text-align: center;
+  background: var(--chip); color: var(--sub); font-size: 27rpx;
+  border-radius: 999rpx; padding: 18rpx 0; border: 2rpx solid var(--line-2);
+}
 
 /* 班级记录筛选 */
 .rechead { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; flex-wrap: wrap; }

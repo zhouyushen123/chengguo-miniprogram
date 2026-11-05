@@ -1,0 +1,43 @@
+/* pages/batch/batch.wxss —— 成绩单批量录入 */
+.bhead {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16rpx; margin-bottom: 8rpx;
+}
+.h1 { font-size: 32rpx; font-weight: 700; color: var(--text); }
+.cnt { font-size: 22rpx; color: var(--muted); flex: none; }
+
+.btnrow { display: flex; margin-top: 20rpx; }
+.aibtn {
+  flex: 1; text-align: center; padding: 18rpx 0;
+  background: var(--chip); color: var(--text); font-size: 27rpx; font-weight: 600;
+  border-radius: 999rpx; border: 2rpx solid var(--line-2);
+}
+.aibtn.busy { color: var(--muted); font-weight: 400; }
+
+/* 学生行 */
+.srow {
+  display: flex; gap: 16rpx; padding: 20rpx 0;
+  border-bottom: 2rpx solid var(--chip); align-items: flex-start;
+}
+.srow:last-child { border-bottom: none; }
+.srow.off { opacity: 0.45; }
+.rmain { flex: 1; min-width: 0; }
+.rhead { display: flex; align-items: baseline; gap: 12rpx; }
+.lvtag {
+  font-size: 20rpx; color: #fff; background: var(--warn);
+  border-radius: 6rpx; padding: 2rpx 10rpx;
+}
+.tchips { margin: 12rpx 0 0; gap: 12rpx; }
+.noteinput {
+  margin-top: 12rpx; font-size: 26rpx; color: var(--text);
+  background: var(--bg); border: 2rpx solid var(--line-2);
+  border-radius: 12rpx; padding: 12rpx 16rpx; width: auto;
+}
+
+/* 底部保存：与卡片同宽 */
+.savebtn {
+  margin-top: 24rpx; text-align: center;
+  background: var(--brand); color: #fff; font-size: 28rpx; font-weight: 600;
+  border-radius: 999rpx; padding: 20rpx 0;
+}
+.savebtn.busy { opacity: 0.6; }

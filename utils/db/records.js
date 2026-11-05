@@ -168,6 +168,26 @@ function sessionSettle(clsId) {
     return { ok: true, session: cls.session, sent: out.count, denied: out.denied };
   });
 }
+// 批量保存（成绩单模式：全班一次落库）。
+// 一个事务里逐条跑单条逻辑：权限、校验、课次、消课全部复用 recordSave，不另写一套口径；
+// 事务提交时所有脏集合（records + enrollments）一次落盘，45 条也只写一次磁盘。
+// 单条业务失败（如学生不在班）只记账不中断：成绩单里一行没填好，不该连累另外四十条白打；
+// 落盘级失败（空间不足）由事务整体回滚，不留半批次。
+function recordBatchSave(items, send) {
+  const arr = Array.isArray(items) ? items : [];
+  if (!arr.length) return { ok: false, msg: '没有要保存的记录' };
+  return core.tx(() => {
+    const results = [];
+    let saved = 0, failed = 0;
+    arr.forEach(p => {
+      const r = recordSave(p, send);
+      results.push(r);
+      if (r.ok) saved++; else failed++;
+    });
+    if (!saved) return { ok: false, msg: '没有一条能保存：' + ((results.find(r => !r.ok) || {}).msg || ''), results };
+    return { ok: true, saved, failed, results };
+  });
+}
 // 批量标记已发送（单条发送 / 整班统一发送都走这里），返回实际变更条数
 function recordMarkSent(ids) {
   const list = (Array.isArray(ids) ? ids : [ids]).map(Number);
@@ -197,5 +217,5 @@ function recordRemove(id) {
 
 module.exports = {
   recordList, recordOfStudent, recordOfClass, recordGet, recordLatest,
-  canSend, recordSave, recordMarkSent, recordRemove, sessionSettle
+  canSend, recordSave, recordBatchSave, recordMarkSent, recordRemove, sessionSettle
 };

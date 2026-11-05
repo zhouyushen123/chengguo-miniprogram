@@ -11,10 +11,13 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const https = require('https');
 const MODEL = 'glm-4v-flash';
+// 批量评语走纯文本模型：便宜、快、不需要识图
+const TEXT_MODEL = 'glm-4-flash';
 const HOST = 'open.bigmodel.cn';
 const PATH = '/api/paas/v4/chat/completions';
 const TIMEOUT_MS = 25000;
 const MAX_B64 = 4 * 1024 * 1024;   // base64 超过 4MB 直接拒绝（约 3MB 原图）
+const BATCH_SIZE = 10;             // 批量评语每批人数：一次太多容易超时/截断
 
 function buildPrompt(hint) {
   return [
@@ -35,6 +38,79 @@ function mimeOf(b64) {
   if (b64.indexOf('UklGR') === 0) return 'image/webp';
   if (b64.indexOf('/9j/') === 0) return 'image/jpeg';
   return 'image/jpeg';
+}
+
+// 纯文本调用（批量评语用）：不需要识图，走 glm-4-flash
+function callGLMText(key, messages, maxTokens) {
+  const body = JSON.stringify({
+    model: TEXT_MODEL,
+    temperature: 0.7,
+    max_tokens: maxTokens || 2000,
+    messages
+  });
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      host: HOST, path: PATH, method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + key,
+        'Content-Length': Buffer.byteLength(body)
+      },
+      timeout: TIMEOUT_MS
+    }, res => {
+      let raw = '';
+      res.on('data', c => { raw += c; });
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(raw);
+          if (res.statusCode !== 200) {
+            return reject(new Error('GLM_' + res.statusCode + ': ' + ((j.error && j.error.message) || raw.slice(0, 120))));
+          }
+          const text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+          if (!text) return reject(new Error('GLM 空响应'));
+          resolve(text);
+        } catch (e) { reject(new Error('GLM 响应解析失败')); }
+      });
+    });
+    req.on('timeout', () => { req.destroy(new Error('GLM 请求超时')); });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
+// 批量评语：一扫学生（姓名+分数+上次评语）+ 本课主题 → 逐人一条差异化评语。
+// 从模型回的 JSON 里按姓名对号；解析不了/漏掉的返回 null，由前端保留原值并提示。
+async function batchNotes(key, students, topic) {
+  const out = {};
+  for (let i = 0; i < students.length; i += BATCH_SIZE) {
+    const slice = students.slice(i, i + BATCH_SIZE);
+    const roster = slice.map((s, k) =>
+      (k + 1) + '. 姓名：' + s.name + '；本次等第：' + (s.tag || '未评') +
+      (s.prev ? '；上次评价：' + s.prev : '')).join('\n');
+    const prompt = [
+      '你是一位课外培训机构的授课老师。根据下面的学生名单和本次课程信息，给每位学生写一条发给家长的课后评价。',
+      '要求：',
+      '- 每条 50~100 字，亲切自然、具体可信，结尾给孩子一句鼓励',
+      '- 结合等第高低调子不同：优秀多表扬细节，待提高提期望但不批评',
+      '- 同一批人的评语不许雷同，各人侧重点不同',
+      topic ? '- 本次课程主题：' + topic : '',
+      '- 输出严格的 JSON 数组，不要任何其它文字：[{"name":"学生姓名","note":"评价正文"}]，姓名必须与名单完全一致',
+      '',
+      '学生名单：',
+      roster
+    ].filter(Boolean).join('\n');
+    const text = await callGLMText(key, [{ role: 'user', content: prompt }], 2000);
+    // 模型有时会包一层 ```json 围栏，剥掉再解析
+    const clean = String(text).replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    let arr = [];
+    try { arr = JSON.parse(clean); } catch (e) { arr = []; }
+    if (!Array.isArray(arr)) continue;
+    arr.forEach(item => {
+      if (item && item.name && item.note) out[String(item.name).trim()] = String(item.note).trim().slice(0, 300);
+    });
+  }
+  return students.map(s => ({ name: s.name, note: out[s.name] || null }));
 }
 
 function callGLM(key, prompt, b64) {
@@ -91,6 +167,18 @@ exports.main = async (event) => {
 
   const key = process.env.ZHIPU_API_KEY;
   if (!key) return { ok: false, code: 'NO_KEY', msg: '云函数缺 ZHIPU_API_KEY 环境变量' };
+
+  // 批量评语：纯文本通道，不需要照片
+  if (event && event.action === 'batch') {
+    const students = Array.isArray(event.students) ? event.students.slice(0, 60) : [];
+    if (!students.length) return { ok: false, msg: '缺少学生名单' };
+    try {
+      const notes = await batchNotes(key, students, String(event.topic || '').slice(0, 100));
+      return { ok: true, notes };
+    } catch (e) {
+      return { ok: false, msg: (e && e.message) || 'AI 调用失败' };
+    }
+  }
 
   let b64 = '';
   try {

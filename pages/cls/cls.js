@@ -139,6 +139,10 @@ Page({
       }
     });
   },
+  // 成绩单批量录入：全班一次补本次课（课后凭记忆/课堂照片批量处理的主入口）
+  goBatch() {
+    wx.navigateTo({ url: '/pages/batch/batch?id=' + this.clsId });
+  },
   // 点学生色块 → 录入页（班级、学生已带好）
   goRecord(e) {
     getApp().globalData.pick = {

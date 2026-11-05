@@ -22,6 +22,7 @@
       <view class="lg"><view class="dot dn"></view>未录入</view>
       <view class="lg tip">点击学生即可录入本次成果</view>
     </view>
+    <view class="batchbtn" hover-class="btn-hover" bindtap="goBatch">成绩单批量录入本次课</view>
     <view class="sendbtn {{canSettle ? '' : 'off'}}" hover-class="btn-hover" bindtap="sendAll">
       {{pending ? '发布并结清本次课（' + pending + ' 条待发布）' : '结清本次课 · 进入第' + (sess + 1) + '次课'}}
     </view>

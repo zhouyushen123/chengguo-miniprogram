@@ -9,6 +9,7 @@
     "pages/profile/profile",
     "pages/mgr/mgr",
     "pages/import/import",
+    "pages/batch/batch",
     "pages/terms/terms",
     "pages/mine/mine",
     "pages/tpls/tpls",

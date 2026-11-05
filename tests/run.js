@@ -20,6 +20,7 @@ const SUITES = [
   ['verify_pages.js', '页面级'],
   ['verify_phone.js', '手机号'],
   ['verify_session.js', '课次结清'],
+  ['verify_batch.js', '批量录入成绩单'],
   ['verify_ava.js', '头像统一'],
   ['verify_import.js', '批量导入'],
   ['verify_onboard.js', '新手引导'],

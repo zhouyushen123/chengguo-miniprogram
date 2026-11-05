@@ -1,0 +1,49 @@
+<view class="theme-root {{themeCls}}">
+<view class="wrap" wx:if="{{cls}}">
+
+  <!-- 顶部：课次 + 主题 + AI 评语 -->
+  <view class="card">
+    <view class="bhead">
+      <view class="h1">{{cls.name}} · 第{{sess}}次课</view>
+      <view class="cnt">{{filled}}/{{total}} 已填<text wx:if="{{leaveCount}}"> · 请假 {{leaveCount}}</text></view>
+    </view>
+    <view class="sec"><view class="label">本课主题<text class="mihint">（选填，AI 评语会围绕它写）</text></view></view>
+    <input class="input" placeholder="如：素描球体与光影" placeholder-class="ph" value="{{topic}}" bindinput="onTopic" />
+    <view class="btnrow">
+      <view class="aibtn {{aiBusy ? 'busy' : ''}}" hover-class="btn-hover" bindtap="aiAll">
+        {{aiBusy ? aiProg : 'AI 生成全班评语'}}
+      </view>
+    </view>
+    <view class="hint">长按学生一行可标记 / 取消请假；请假的人本次不生成记录</view>
+  </view>
+
+  <!-- 成绩单：一列学生 -->
+  <view class="card" wx:if="{{rows.length}}">
+    <view class="srow {{row.leave ? 'off' : ''}}" wx:for="{{rows}}" wx:for-index="ri" wx:for-item="row" wx:key="id"
+      bindlongpress="toggleLeave" data-i="{{ri}}">
+      <ava name="{{row.name}}" src="{{row.photo}}" size="{{64}}" />
+      <view class="rmain">
+        <view class="rhead">
+          <b>{{row.name}}</b>
+          <text wx:if="{{row.carried && !row.leave}}" class="mi">沿用上次</text>
+          <text wx:if="{{row.leave}}" class="lvtag">请假</text>
+        </view>
+        <view class="chips tchips">
+          <view wx:for="{{tags}}" wx:for-item="tg" wx:key="*this"
+            class="chip {{row.tag === tg ? 'on' : ''}}" catchtap="pickTag" data-i="{{ri}}" data-t="{{tg}}">{{tg}}</view>
+        </view>
+        <input class="noteinput" placeholder="评语（可留空，用 AI 生成）" placeholder-class="ph"
+          value="{{row.note}}" bindinput="onNote" data-i="{{ri}}" disabled="{{row.leave}}" />
+      </view>
+    </view>
+  </view>
+  <view wx:if="{{!rows.length}}" class="card"><view class="hint">这个班还没有学生，先到管理页添加或批量导入</view></view>
+
+  <!-- 底部保存 -->
+  <view class="savebtn {{saving ? 'busy' : ''}}" hover-class="btn-hover" bindtap="save">
+    {{saving ? '保存中…' : '保存本次课记录（' + (total - leaveCount) + ' 人）'}}
+  </view>
+
+</view>
+<privacy-popup />
+</view>

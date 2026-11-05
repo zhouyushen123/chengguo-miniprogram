@@ -76,6 +76,17 @@
 - **成员列表**：显示 `已绑定微信 / 未绑定微信`，管理者一眼看出哪些家长还没进来。
 - 守卫：`tests/verify_invite.js` 14 项（含"重装家长不提权""空库不抢绑""有数据不许加入"）。
 
+### 电脑端 Web 后台（11-05 下午，用户："能不能在电脑上管理整个系统的数据"）
+- **一个云函数 `admin` 同时当接口和页面**：GET 返回内联的 `public/index.html`，POST 走 JSON 接口。这样不用开静态托管、不用配域名、不用管 CORS，用户只需在云开发控制台给这个函数配一条 HTTP 访问服务路径 `/admin`，浏览器打开 `https://<环境ID>.service.tcloudbase.com/admin` 就能用。
+- **登录**：浏览器拿不到 openid，所以用「后台账号（6 位，去掉了 0/O/1/I/2/Z）+ 6 位口令」。账号由小程序「我的 → 电脑端后台」在服务端生成（`admin_accounts` 集合，一机构一条，只有 `members.role` 为 owner/admin 的 openid 能取）。密码错 5 次锁 10 分钟；token 存 `admin_sessions`，7 天有效；重置口令会删掉该账号全部会话（否则改了等于没改）。
+- **能力**：概览（学生/班级/记录/发布率 + 近 7 天柱状）、学生（搜索/按班筛选/新建/改姓名性别家长/软删）、课堂记录（按班/日期/评语关键字筛选、改评语与等级与发布状态、补录、软删）、班级（改名称与当前课次）、学生与记录的 CSV 导出（带 BOM，Excel 直接打开）。
+- **和同步的一致性**：所有写入都盖新的 `updatedAt` + `srvAt`。少 `srvAt` 小程序 pull 的增量游标捞不到这次改动，表现就是"电脑上改了，手机上看不见"。
+- **服务端约束**：成员表不在可编辑清单里（后台不能提权）；记录不能改 `sid/cid`（换人换班要走小程序，那里管课时账本和消课）；删除一律软删 `removed:true`，另一端的同步才知道"这条没了"。
+- **安全边界**：所有业务查询都带 orgId；口令错误不区分"账号不存在/口令错"；CSV 值以 `= + - @` 开头会加 `'` 前缀（防 Excel 公式注入）。
+- 守卫：`tests/verify_admin.js` 25 项（纯逻辑 + 源码纪律：每条 update 必须带 srvAt、每条 where 必须有机构范围）。
+- **部署（用户 GUI，一次）**：开发者工具里右键 `cloudfunctions/admin` →「上传并部署：云端安装依赖」→ 云开发控制台 →「HTTP 访问服务」→ 新建路径 `/admin` 指向 admin 函数 → 小程序「我的 → 电脑端后台」抄账号口令。
+- **仍待解决**：现有 orgId 全部是默认 `org1`（单机构部署）。真要做成多机构 SaaS，得让开通向导生成随机 orgId，否则两个机构的数据会在云端混在一起。
+
 ### 记录上云（11-05 下午，CR-005 重构第一步）
 - **云函数 `syncv2`**（新建，替代旧 openid 模型 `sync`；旧函数可择机在控制台删除）：`hello` 按 openid 绑定 orgId、`push` 逐条 LWW upsert（服务器更新则跳过）、`pull` 按 `srvAt > since` 拉增量（每集合 100 条/页，返回 more）。越权（orgId 不匹配）直接 FORBIDDEN。集合不存在时自动补建，不用手工建表。
 - **数据层**：`utils/db/sync.js` 挂 core 写钩子记「脏集合」到 `meta.sync.dirty`（持久化，杀进程不漏推）；`snapshot` 按机构打包（含软删文档）；`applyRemote` LWW 合并并屏蔽写钩子（防回声）。`utils/syncmerge.js` 纯函数（合并/切包/游标），单测直连。
@@ -157,6 +168,8 @@
 1. ~~云开发环境还没开通~~ ✅ 已开通（免费体验版），ID 已配。
 2. ~~部署 `cloudfunctions/aiEval`~~ ✅ 11-04 22:56 部署成功，`{"action":"ping"}` 返回 `hasKey:true`，链路全通。剩余：真机实测 AI 评生成质量，按反馈调 prompt。
 5. ~~拿到环境 ID 后改 `api.js`~~ ✅ 已改（`CLOUD_ENV` + `CLOUD_ENABLED=true`）。
+6. **部署电脑端后台 `cloudfunctions/admin`**（新函数，11-05）：右键「上传并部署：云端安装依赖」→ 云开发控制台 →「HTTP 访问服务」新建路径 `/admin` 指向它 → 小程序「我的 → 电脑端后台」取账号口令 → 浏览器登录。
+7. `syncv2` 也要重新部署一次（11-05 加了邀请码三动作 + 成员服务端保护）。
 
 ### B. 备案 / 认证通过后
 > **代码已全部备好（11-05）**，通过后只差配置，不用再写代码：
@@ -186,7 +199,11 @@ utils/db/records.js      markSent（本地状态）/ cid 别名（cid|cls|clsId�
 utils/db/storage.js      分片 + 脏片写（djb2 指纹，只写变化片）
 utils/api.js             云开关 / callSync / aiEvalDraft
 cloudfunctions/aiEval/   AI 识图生成评价（ZHIPU_API_KEY）
-cloudfunctions/sync/     记录与学生资料上推
+cloudfunctions/sync/     记录与学生资料上推（旧模型，已被 syncv2 取代）
+cloudfunctions/syncv2/   orgId 隔离 + LWW 同步 + 邀请码三动作
+cloudfunctions/admin/    电脑端后台：lib.js（纯函数）/ index.js（HTTP 接口）/ public/index.html（单页）
+utils/sync.js            同步编排：hello → pull → push，写后防抖
+utils/photocloud.js      照片上云（单条补传 + 历史幂等补传）
 pages/index/              首页（空库时显示开通卡 onboard 块）
 pages/setup/             开通向导（机构→学期→班级→学生，四步一页）
 pages/record/            录入页（AI 评 / 模板 / 语音）
@@ -205,3 +222,7 @@ utils/firstrun.js        首次进入的一次性标记（自动跳向导只跳�
 ## 5. 下一步建议（给接手的人）
 
 先做 A 的 1~5（用户 GUI，5 分钟），打通 aiEval 后让老师实测三张真实作业照片，收集评价质量反馈再调 prompt；然后等备案/认证，做 B 的 1（订阅消息），这是产品从"记录工具"变成"能触达家长的工具"的关键一步——B-2 的文案与守卫断言要跟它一起反转。
+
+11-05 之后功能面基本齐了（记录上云 + 家长邀请码 + 电脑后台）。下一步优先两件：
+1. **多机构 orgId**：现在是所有机构共用 `org1`，第二个客户进来就会串数据。改动小（开通向导生成随机 id + 迁移老数据），但不做就不能对外卖。
+2. **真机走一遍闭环**：老师批量录 → 发布 → 家长收到/看到 → 电脑后台改一条 → 手机同步到。这条链跑通比再加功能有价值。

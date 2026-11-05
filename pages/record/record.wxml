@@ -71,6 +71,7 @@
     <view class="notearea">
       <textarea class="noteta" placeholder="本节课表现、作品点评等；可用模板或语音快速生成" placeholder-class="ph" value="{{note}}" bindinput="onNote" maxlength="500" auto-height />
       <view class="notetools">
+        <image wx:if="{{note}}" class="noteclear" src="{{icoClose}}" mode="aspectFit" hover-class="btn-hover" catchtap="clearNote" />
         <text class="notecnt">{{note.length}}/500</text>
         <view class="barbtn" hover-class="btn-hover" bindtap="toggleTpl">模板<text wx:if="{{selCount}}" class="badge">{{selCount}}</text></view>
         <view class="barbtn aibtn {{aiBusy?'busy':''}}" hover-class="btn-hover" bindtap="aiDraft">AI 评</view>

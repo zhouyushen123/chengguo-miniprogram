@@ -128,6 +128,20 @@ Page({
   // 归入课次（补录用）：默认本次，可改选更早的课
   onSess(e) { this.setData({ sessIdx: +e.detail.value }); },
   onNote(e) { this.setData({ note: e.detail.value }); this.refreshCan(); },
+
+  // 一键清空课堂评语（字数左侧的 ✕）：评语可能是 AI 生成长文，误触代价高，先确认一次
+  clearNote() {
+    if (!this.data.note) return;
+    wx.showModal({
+      title: '清空课堂评语',
+      content: '评语内容将全部清空，不可恢复',
+      confirmText: '清空',
+      confirmColor: '#C0564A',
+      success: res => {
+        if (res.confirm) this.setData({ note: '' });
+      }
+    });
+  },
   goTpls() { wx.navigateTo({ url: '/pages/tpls/tpls?mode=select' }); },
 
   // AI 评：把第一张照片交给 aiEval 云函数（智谱 GLM-4V-Flash 识图），生成评价草稿填入输入框

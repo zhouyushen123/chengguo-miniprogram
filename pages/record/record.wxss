@@ -45,6 +45,8 @@
 }
 .noteta { width: 100%; min-height: 160rpx; font-size: 28rpx; line-height: 1.7; }
 .notetools { display: flex; align-items: center; gap: 14rpx; margin-top: 16rpx; }
+/* 一键清空评语：有文字才出现，点一下（确认后）清空输入框 */
+.noteclear { flex: none; width: 34rpx; height: 34rpx; padding: 8rpx; margin-right: 8rpx; }
 .notecnt { flex: 1; font-size: 22rpx; color: var(--faint); text-align: right; }
 .ph { color: var(--faint); }
 .barbtn {

@@ -203,10 +203,11 @@ function schedule() {
   }, 1500);
 }
 
-// 前台唤醒入口：节流 + 失败静默（页面不需要知道同步细节）
+// 前台唤醒入口：节流 + 失败静默（页面不需要知道同步细节）。
+// 返回 Promise 是给诊断用的：app.js 把结果记进 globalData，出问题不必再靠猜。
 function kick() {
-  if (!api.syncOn()) return;
-  syncNow().catch(() => {});
+  if (!api.syncOn()) return Promise.resolve({ ok: false, code: 'SYNC_OFF' });
+  return syncNow().catch(() => ({ ok: false, code: 'SYNC_FAIL' }));
 }
 
 db.sync.onDirty(schedule);

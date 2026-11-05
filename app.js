@@ -19,17 +19,29 @@ App({
 
     // 云开发：绑定机构 → 拉增量合并 → 推本地脏数据（云未通/未部署时全部静默降级）
     try { api.initCloud(); } catch (e) { console.warn('[app] 云开发初始化失败', e); }
+    // 【为什么要留痕】以前这里失败是全静默的：同步没跑起来，页面照常能用，只是云端永远空着。
+    // 现场只能靠"本机有 7 条、云端 0 条"来反推，排查成本极高。现在把结果记进 globalData
+    // （控制台里 getApp().globalData.syncBoot 能直接看），并在失败时打一条 warn。
+    this.globalData.syncBoot = null;
+    this.globalData.syncLast = null;
     try {
       sync.init().then(r => {
-        if (!r || !r.ok) return;
-        sync.kick();
-      }).catch(() => {});
-    } catch (e) { /* 未接云端时静默 */ }
+        this.globalData.syncBoot = r || null;
+        if (!r || !r.ok) { console.warn('[app] 同步未启动', r); return null; }
+        return sync.kick();
+      }).then(x => { this.globalData.syncLast = x || null; })
+        .catch(e => {
+          this.globalData.syncBoot = { ok: false, msg: (e && e.message) || String(e) };
+          console.warn('[app] 同步启动异常', e);
+        });
+    } catch (e) { console.warn('[app] 同步启动异常', e); }
   },
 
   // 回到前台时补一轮同步（节流 20s，失败静默）
   onShow() {
-    try { sync.kick(); } catch (e) { /* 同步不可用不影响使用 */ }
+    try {
+      Promise.resolve(sync.kick()).then(x => { this.globalData.syncLast = x || null; });
+    } catch (e) { /* 同步不可用不影响使用 */ }
   },
 
   // 启动异常时明确告知用户当前是只读，避免他以为"保存成功了"其实没落盘

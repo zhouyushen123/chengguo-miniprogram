@@ -46,6 +46,7 @@ const records = require('./records');
 const settle = require('./settle');
 const templates = require('./templates');
 const maintenance = require('./maintenance');
+const syncStore = require('./sync');
 
 const { org, actor, memberCurrent } = ctx;
 const today = () => schema.ymd();
@@ -164,7 +165,22 @@ const db = {
     addOption: templates.tplAddOption, updateOption: templates.tplUpdateOption,
     removeOption: templates.tplRemoveOption,
     replaceAll: templates.tplReplaceAll
-  }
+  },
+  // 同步的数据层半边（网络编排在 utils/sync.js）：脏集合、推送快照、远端合并、游标
+  sync: {
+    COLLS: syncStore.COLLS,
+    dirtyCols: syncStore.dirtyCols,
+    markDirty: syncStore.markDirty,
+    snapshot: syncStore.snapshot,
+    applyRemote: syncStore.applyRemote,
+    markAllDirty: syncStore.markAllDirty,
+    clearDirty: syncStore.clearDirty,
+    cursor: syncStore.cursor,
+    setCursor: syncStore.setCursor,
+    onDirty: syncStore.onDirty
+  },
+  // 设备级 meta 读写（仅同步层/身份层使用）
+  patchMeta: core.updateRealMeta
 };
 
 module.exports = db;

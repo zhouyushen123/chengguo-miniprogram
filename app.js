@@ -1,5 +1,6 @@
 const db = require('./utils/db');
 const api = require('./utils/api');
+const sync = require('./utils/sync');
 const theme = require('./utils/theme');
 
 App({
@@ -16,11 +17,19 @@ App({
     db.init();
     this.reportBoot();
 
-    // 云开发：未认证前是空实现，pull 直接返回 null，不影响本地使用
+    // 云开发：绑定机构 → 拉增量合并 → 推本地脏数据（云未通/未部署时全部静默降级）
     try { api.initCloud(); } catch (e) { console.warn('[app] 云开发初始化失败', e); }
     try {
-      api.pull().then(remote => { if (remote) db.merge(remote); }).catch(() => {});
+      sync.init().then(r => {
+        if (!r || !r.ok) return;
+        sync.kick();
+      }).catch(() => {});
     } catch (e) { /* 未接云端时静默 */ }
+  },
+
+  // 回到前台时补一轮同步（节流 20s，失败静默）
+  onShow() {
+    try { sync.kick(); } catch (e) { /* 同步不可用不影响使用 */ }
   },
 
   // 启动异常时明确告知用户当前是只读，避免他以为"保存成功了"其实没落盘

@@ -42,6 +42,10 @@ let readOnly = false;
 // 最近一次落盘失败（供「存储空间」页显示，排查"为什么刚才没存上"）
 let lastFail = null;        // { coll, at }
 
+// 写钩子：某集合落盘成功后回调（同步层用它记脏集合）。见 utils/db/sync.js
+let writeHook = null;
+function setWriteHook(fn) { writeHook = typeof fn === 'function' ? fn : null; }
+
 // 事务态：事务内所有 persist 只记脏不落盘，提交时统一写、失败统一回滚
 let txDepth = 0;
 let txDirty = {};
@@ -114,7 +118,9 @@ function persist(name) {
   // 落盘反而会让"重置演示数据"失效，也可能把演示内容混进真实 key。
   if (mode === 'demo') return true;
   if (txDepth) { txDirty[name] = 1; return true; }   // 事务内：先记账，提交时一起写
-  return writeNow(name);
+  const ok = writeNow(name);
+  if (ok && writeHook) writeHook(name);
+  return ok;
 }
 
 /* =====================================================================
@@ -165,6 +171,7 @@ function tx(fn) {
   for (let i = 0; i < dirty.length; i++) {
     if (!writeNow(dirty[i])) { ok = false; break; }
     written.push(dirty[i]);
+    if (writeHook) writeHook(dirty[i]);
   }
   if (ok) return res || { ok: true };
 
@@ -226,5 +233,5 @@ function health() {
 module.exports = {
   hydrate, hydrateDemo, isReady, isDemoReady, data, realData, coll, orgColl, meta, realMeta,
   setColl, persist, flushAll, updateMeta, updateRealMeta, setMode, isSandbox, nextId,
-  setReadOnly, isReadOnly, EMPTY, tx, health, SAVE_FAIL
+  setReadOnly, isReadOnly, EMPTY, tx, health, SAVE_FAIL, setWriteHook
 };

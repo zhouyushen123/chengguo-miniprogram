@@ -7,10 +7,9 @@ const CLOUD_ENV = 'cloud1-d9gca4e7q307c4564'; // 云开发环境 ID（微信认�
 // 测试环境才有 process.env，小程序运行时没有，必须先判存在再取值
 const ENV = (typeof process !== 'undefined' && process.env) || {};
 const CLOUD_ENABLED = ENV.CG_CLOUD !== '0';
-// ★ 同步链路单独上锁：sync 云函数还是旧 openid 模型（CR-005，与新架构的记录/成员模型不对齐）。
-// 重构完再打开，避免把本地记录推到还没对齐的库里、也避免云端半份数据反过来污染本地。
-// 开通方式：CG_SYNC=1 或把下面这行改成 true。
-const SYNC_ENABLED = ENV.CG_SYNC === '1';
+// ★ 同步链路开关：默认开启，靠 `syncv2` 云函数（orgId 隔离模型，取代旧 openid 模型）。
+// 云函数没部署时全部调用失败但静默降级——本地照样能用，只是不上云。CG_SYNC=0 可强制关掉。
+const SYNC_ENABLED = ENV.CG_SYNC !== '0';
 
 let cloudReady = false;
 function initCloud() {
@@ -25,25 +24,24 @@ const syncOn = () => cloudReady && SYNC_ENABLED;
 function callSync(action, data) {
   return new Promise((resolve, reject) => {
     wx.cloud.callFunction({
-      name: 'sync',
+      name: 'syncv2',
       data: Object.assign({ action }, data || {}),
-      success: r => (r.result && r.result.ok ? resolve(r.result) : reject(r.result)),
+      success: r => resolve(r.result || { ok: false, msg: '云函数无返回' }),
       fail: reject
     });
   });
 }
+// 同步协议调用（hello / push / pull）：业务错误码原样带回，由 utils/sync.js 决定降级
+function syncCall(action, data) {
+  if (!syncOn()) return Promise.reject(new Error('SYNC_OFF'));
+  return callSync(action, data);
+}
 function login() { return Promise.resolve(); } // 云开发免登录，openid 由云函数自动获取
 
-// 上推一条记录 / 学生资料（photo/audio 用云存储 fileID）
-function pushRecord(record) {
-  if (!syncOn()) return Promise.resolve();
-  return callSync('push', { doc: record }).catch(() => null);
-}
-// 拉取云端最新数据（记录 + 学生资料），返回 { records, profiles } 供合并
-function pull() {
-  if (!syncOn()) return Promise.resolve(null);
-  return callSync('pull').then(r => ({ records: r.db.records, profiles: r.profiles })).catch(() => null);
-}
+// 上推一条记录：已由 utils/sync.js 的脏集合机制接管，保留空实现兼容旧调用点
+function pushRecord() { return Promise.resolve(); }
+// 拉取云端数据：由 sync 引擎统一处理，保留接口给旧调用点
+function pull() { return Promise.resolve(null); }
 // 媒体上传 → 云存储，返回 cloud:// fileID（可直接用作 image src / audio src）
 function uploadFile(filePath, kind) {
   if (!syncOn()) return Promise.resolve(null);
@@ -152,4 +150,4 @@ function uploadPhoto(filePath) {
   });
 }
 
-module.exports = { initCloud, enabled, syncOn, login, pushRecord, pull, uploadFile, uploadPhoto, aiEvalDraft, stuImport, secText, secImage, requestSubscribe, familyBind, familyNotify, CLOUD_ENV };
+module.exports = { initCloud, enabled, syncOn, syncCall, login, pushRecord, pull, uploadFile, uploadPhoto, aiEvalDraft, stuImport, secText, secImage, requestSubscribe, familyBind, familyNotify, CLOUD_ENV };

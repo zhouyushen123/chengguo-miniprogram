@@ -61,6 +61,15 @@
 - **体积红线**：文件/照片 base64 上限 4MB（约 3MB 原文件），前端选文件时就拦 3MB。
 - 守卫：`tests/verify_import.js` 12 项（表头列名识别含「家长姓名 vs 姓名」坑、序号清洗、班级名行剔除、AI 烂输出防御、重名标记、批量落库）。
 
+### 记录上云（11-05 下午，CR-005 重构第一步）
+- **云函数 `syncv2`**（新建，替代旧 openid 模型 `sync`；旧函数可择机在控制台删除）：`hello` 按 openid 绑定 orgId、`push` 逐条 LWW upsert（服务器更新则跳过）、`pull` 按 `srvAt > since` 拉增量（每集合 100 条/页，返回 more）。越权（orgId 不匹配）直接 FORBIDDEN。集合不存在时自动补建，不用手工建表。
+- **数据层**：`utils/db/sync.js` 挂 core 写钩子记「脏集合」到 `meta.sync.dirty`（持久化，杀进程不漏推）；`snapshot` 按机构打包（含软删文档）；`applyRemote` LWW 合并并屏蔽写钩子（防回声）。`utils/syncmerge.js` 纯函数（合并/切包/游标），单测直连。
+- **编排 `utils/sync.js`**：init(hello) → pull（先拉后推，避免用旧值覆盖云端新值）→ push（50 条/包，全部成功才清脏）。写后 1.5s 防抖自动推；前台 onShow 节流 20s；失败一律静默降级为纯本地。
+- **换手机恢复**：同一微信 openid → hello 返回原 orgId → 本机空库则先按云端 orgId pull，拉成功后才切本地 meta（离线时本机照常可用）；本机有数据但云端是另一个机构 → 判定冲突、停手不合并。
+- 开关 `SYNC_ENABLED` 默认开启，`CG_SYNC=0` 可关；云函数未部署时全部静默失败，不影响本地。
+- **边界**：本步只解决「同一微信账号换手机不丢」；**家长端/第二老师看到数据仍需成员绑定（邀请码）**，属下一步。
+- 守卫：`tests/verify_sync.js` 13 项。
+
 ### 照片云端备份（11-05 11:55，用户提出"照片存手机不行"）
 - 照片保存后后台直传云存储（`api.uploadPhoto`，不经过云函数，与 SYNC 解耦：云通就能传）；传完 `db.records.attachCloud` 把记录里的本地路径换成 `cloud://` fileID（`<image>` 原生支持，同环境任何设备可显示）。
 - `utils/photocloud.js`：`flushRecord`（单条补传，内容安全 secImage 逐张过，违规剔除、检查挂了 fail-open 不误删、上传失败留本地下次再试）+ `migrateAll`（历史照片首页空闲时幂等补传，防重入）。
@@ -129,7 +138,7 @@
 ### A. 需要用户在微信开发者工具 / 后台操作
 > 资质进度（11-04 用户截图）：**微信认证已完成**（云开发门槛已过）；小程序备案管局审核中（只挡提审发布，不挡开发）。
 > 云开发已开通（11-04 22:33），环境 ID **`cloud1-d9gca4e7q307c4564`**，已填进 `utils/api.js`，`CLOUD_ENABLED` 默认 true。剩下只有「部署 aiEval + 配 Key」两步（见下 2~4），完成后 ping 自检。
-> ⚠️ `SYNC_ENABLED` 仍为 false：`pushRecord` / `pull` / `uploadFile` 一律空转，因为 sync 云函数还是旧 openid 模型（CR-005）。**AI 评不受影响**（`aiEvalDraft` 只要求云通）。
+> ✅ `SYNC_ENABLED` 已默认开启，同步走新云函数 **`syncv2`**（orgId 隔离 + LWW）。**部署 `syncv2` 后**：老师换手机（同一微信）可自动拉回全部数据。未部署时所有同步调用静默失败，本地使用不受影响。旧的 `sync` 云函数已无引用，可在控制台删除。
 1. ~~云开发环境还没开通~~ ✅ 已开通（免费体验版），ID 已配。
 2. ~~部署 `cloudfunctions/aiEval`~~ ✅ 11-04 22:56 部署成功，`{"action":"ping"}` 返回 `hasKey:true`，链路全通。剩余：真机实测 AI 评生成质量，按反馈调 prompt。
 5. ~~拿到环境 ID 后改 `api.js`~~ ✅ 已改（`CLOUD_ENV` + `CLOUD_ENABLED=true`）。

@@ -320,6 +320,19 @@ ok('rawCounts 能区分「数据丢了」和「数据挂在别的机构号下」
   assert.ok(row.label, '要有中文名，界面上直接显示');
 });
 
+ok('rawCounts 不数死行：removed 的成员不能把坏档伪装成好的', () => {
+  const seed = fixture.richSeed();
+  // 模拟 2026-11-05 真机现场：成员关系是条 removed 死行 → 身份判定为空 → 到处「请先登录」。
+  // 诊断卡若连死行一起数，就会显示 1/1 让人以为"有人在"，排查方向直接被带偏。
+  seed['chengguo_v3_members'] = seed['chengguo_v3_members'].map(m =>
+    Object.assign({}, m, { removed: true, removedAt: 1 }));
+  const { db } = bootDb(seed);
+  const row = db.rawCounts().find(x => x.k === 'members');
+  assert.strictEqual(row.all, 0, '全部死行时总条数应为 0');
+  assert.strictEqual(row.mine, 0, '全部死行时本机构条数应为 0');
+  assert.strictEqual(db.auth.actor(), null, '死行不参与身份判定');
+});
+
 ok('存储页必须有重置入口与诊断区块（没有出口，坏档就只能卸载重装）', () => {
   const fs = require('fs');
   const path = require('path');

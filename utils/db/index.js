@@ -90,8 +90,11 @@ const db = {
   rawCounts: () => {
     const raw = core.realData() || {};
     const cur = core.meta().orgId || '';
+    // 只数有效行（排除已删除）：2026-11-05 真机踩过——成员表 1/1 看着有人，
+    // 其实那一条是 removed 的死行，身份判定（走 oc 视图）看不到它，于是到处「请先登录」。
+    // 诊断卡如果连死行一起数，就会把「坏了」显示成「好的」，误导排查方向。
     return entities.ALL_COLLS.map(n => {
-      const list = Array.isArray(raw[n]) ? raw[n] : [];
+      const list = (Array.isArray(raw[n]) ? raw[n] : []).filter(x => x && !x.removed);
       const mine = n === 'orgs'
         ? list.filter(x => String(x && x.id) === String(cur)).length
         : list.filter(x => String((x && x.orgId) || cur) === String(cur)).length;

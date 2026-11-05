@@ -179,7 +179,9 @@ const db = {
     clearDirty: syncStore.clearDirty,
     cursor: syncStore.cursor,
     setCursor: syncStore.setCursor,
-    onDirty: syncStore.onDirty
+    onDirty: syncStore.onDirty,
+    // 机构号换代：只在服务端刚发号（minted）时用，别的地方调用等于把两个机构的数据搅在一起
+    reorg: syncStore.reorg
   },
   // 设备级 meta 读写（仅同步层/身份层使用）
   patchMeta: core.updateRealMeta

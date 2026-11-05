@@ -55,6 +55,16 @@ function newCode() {
   for (let i = 0; i < 6; i++) s += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
   return s;
 }
+// 机构号：首次绑定由服务端发。客户端带上来的是出厂号（org1）时一律重新发一个——
+// 出厂号是所有新装设备共用的，直接拿它当机构号，两个客户的数据就会在云端混成一团。
+// 只有邀请码加入（带着明确的机构号）才沿用客户端给的号。
+const FACTORY_ORG = 'org1';
+const ORG_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';
+function newOrgId() {
+  let s = '';
+  for (let i = 0; i < 10; i++) s += ORG_CHARS[Math.floor(Math.random() * ORG_CHARS.length)];
+  return 'org_' + s;
+}
 // 成员 id：客户端 id 是小整数（nextId），云端发号用「毫秒 ×1000 + 随机」，
 // 量级完全错开，永远不会撞到客户端已经发出的号，也不用为两张表维护同一套序列。
 function newMemberId() { return Date.now() * 1000 + Math.floor(Math.random() * 1000); }
@@ -70,8 +80,21 @@ exports.main = async (event) => {
     const u = await userOf(OPENID);
     if (u) return { ok: true, orgId: u.orgId, firstTime: false, openid: OPENID };
     if (!want) return { ok: false, msg: '缺少机构标识' };
-    await db.collection('users').add({ data: { _openid: OPENID, orgId: want, createdAt: db.serverDate() } });
-    return { ok: true, orgId: want, firstTime: true, openid: OPENID };
+    // 出厂号不是真实机构号：发一个新的，客户端会把本机数据整体改挂过来（minted=true）。
+    // 这条分支只会在"这台设备第一次上云"时走到，云端这个号下一条数据都没有，改挂是安全的。
+    const minted = want === FACTORY_ORG;
+    const orgId = minted ? newOrgId() : want;
+    await db.collection('users').add({ data: { _openid: OPENID, orgId, createdAt: db.serverDate() } });
+    return { ok: true, orgId, firstTime: true, minted, openid: OPENID };
+  }
+
+  // 只读探测：这个微信绑过机构吗？换手机/重装时客户端用它判断"该恢复还是该从零开始"，
+  // 不能在探测阶段就建立绑定——那会让新装家长的微信号被绑到出厂机构上，再也加入不了真正的机构。
+  if (action === 'whoami') {
+    const u = await userOf(OPENID);
+    // openid 一起带回去：恢复数据后要靠它认出"我是成员表里的谁"，
+    // 否则数据拉下来了却因为查不到身份而一条都看不见（actor 为空 → 权限过滤全挡）。
+    return { ok: true, bound: !!u, orgId: u ? String(u.orgId) : '', openid: OPENID };
   }
 
   // ---- 邀请码：这两个动作必须在"已绑定机构"之前，因为用它们的人本来就还没绑定 ----

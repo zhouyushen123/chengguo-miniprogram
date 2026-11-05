@@ -8,6 +8,12 @@
   <text class="demobar-t">演示数据 · 只看不改</text>
   <text class="demobar-btn" hover-class="btn-hover" bindtap="startReal">开始使用</text>
 </view>
+<!-- 同步冲突：本机数据和云端绑的不是同一个机构（多是换手机前后各建了一份）。
+     绝不自动合并，但必须说出来——否则用户只会觉得"同事怎么看不到我录的东西"。 -->
+<view wx:if="{{syncConflict}}" class="demobar">
+  <text class="demobar-t">这台手机的数据没和云端同步</text>
+  <text class="demobar-btn" hover-class="btn-hover" bindtap="explainConflict">怎么办</text>
+</view>
 <view wx:if="{{!isParent}}">
   <!-- 全新机构：库里没有班级也没有学生。这时候摆"开始录入"和三块 0 只会让人以为东西是坏的，
        所以换成一张开通卡，把"先建机构 → 学期 → 班级 → 学生"这条路直接铺在首页上 -->

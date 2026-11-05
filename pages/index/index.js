@@ -6,6 +6,7 @@ const voice = require('../../utils/voice');
 const firstrun = require('../../utils/firstrun');
 const sec = require('../../utils/sec');
 const photocloud = require('../../utils/photocloud');
+const sync = require('../../utils/sync');
 
 Page({
   data: {
@@ -24,7 +25,9 @@ Page({
     // 演示数据：独立的一套数据，只看不改（横幅在导航栏下方，随时能一键开始使用）
     sandbox: false,
     // 空库：没有班级也没有学生 → 首页改摆开通卡（见 wxml 的 onboard 块）
-    empty: false
+    empty: false,
+    // 同步冲突：本机数据与云端绑定的机构不一致（换手机前后各建了一份），横幅提示 + 说明
+    syncConflict: false
   },
   onLoad() {
     // 自定义导航要自己腾出状态栏的空间；取不到时用常见默认值兜底
@@ -37,7 +40,12 @@ Page({
     theme.apply(this); // 主题：根类名 + 图标 + 原生 chrome
     // 导航栏标题跟随机构名称（在「我的-成员管理」里设置）；未设置时兜底「橙果」
     const st = db.settings();
-    this.setData({ navTitle: st.orgName || '橙果', sandbox: !!st.sandbox });
+    this.setData({
+      navTitle: st.orgName || '橙果',
+      sandbox: !!st.sandbox,
+      // 冲突是同步层判的（见 utils/sync.js init）：这里只负责让人看见
+      syncConflict: sync.isConflict()
+    });
     const u = db.users.current() || { role: 'teacher', name: '' };
     const d = new Date();
     const dateStr = (d.getMonth() + 1) + '月' + d.getDate() + '日 周' + '日一二三四五六'[d.getDay()];
@@ -244,6 +252,15 @@ Page({
         this.onShow();
         wx.showToast({ title: '已回到你的机构', icon: 'none' });
       }
+    });
+  },
+  // 同步冲突说明：不吓人，讲清楚"数据没丢、只是没合并"，并给出下一步
+  explainConflict() {
+    wx.showModal({
+      title: '这台手机的数据没上云',
+      content: '这个微信以前绑定过另一个机构（常见于换了手机后重新开通）。为了不把两家的学生混在一起，这台手机上新建的内容先留在本机，既没推上去，也没拉下云端的旧数据。\n\n内容还在，别卸载小程序。把情况告诉技术同学，可以从云端把两边合并。\n\n如果本来就是要另开一家机构：换一个微信号登录即可。',
+      showCancel: false,
+      confirmText: '知道了'
     });
   },
   goCls(e) { wx.navigateTo({ url: '/pages/cls/cls?id=' + e.currentTarget.dataset.id }); },

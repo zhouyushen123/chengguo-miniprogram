@@ -90,7 +90,41 @@ function applyRemote(items) {
   return { added, updated };
 }
 
+// 机构号换代：把本机全部数据从出厂号挪到服务端刚发的机构号上。
+//
+// 【只在什么情况下用】服务端 hello 返回 minted=true —— 意味着"这台设备第一次上云，
+// 云端还没有这个机构，刚给你发了一个新号"。这时云端那个号下一条数据都没有，
+// 整体改挂不会跟任何人撞车，也不需要合并，所以可以放心一把全改。
+// 其它情况（云端已经是别人的号）绝不能调它：那是把两个机构的数据揉在一起。
+//
+// 【为什么必须连本地一起改】读取走 core.orgColl，按 meta.orgId 过滤。
+// 只改 meta 不改文档，等于本地数据瞬间"看不见"；只改文档不改 meta，push 又会全被跳过。
+function reorg(to) {
+  const id = String(to || '');
+  if (!id) return { ok: false, msg: '缺少新机构号' };
+  if (core.isSandbox()) return { ok: false, msg: '演示模式下不能改机构' };
+  const d = core.data();
+  let moved = 0;
+  COLLS.forEach(name => {
+    (d[name] || []).forEach(x => {
+      if (!x) return;
+      if (name === 'orgs') {
+        // 机构表的主键就是机构号，id 和 orgId 必须一起改
+        if (String(x.id) === id && String(x.orgId || '') === id) return;
+        x.id = id; x.orgId = id; moved++;
+      } else if (String(x.orgId || '') !== id) {
+        x.orgId = id; moved++;
+      }
+    });
+  });
+  core.updateRealMeta({ orgId: id });
+  // 每个集合都落一次盘：少写一个，下次启动那一类数据就回到出厂号、彻底看不见了
+  COLLS.forEach(name => core.persist(name));
+  markAllDirty();
+  return { ok: true, orgId: id, moved };
+}
+
 module.exports = {
   COLLS, dirtyCols, markDirty, clearDirty, markAllDirty, snapshot, applyRemote,
-  cursor, setCursor, onWrite, onDirty
+  cursor, setCursor, onWrite, onDirty, reorg
 };

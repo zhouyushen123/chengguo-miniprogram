@@ -203,18 +203,48 @@ t('加入成功：改挂机构、记住 openid 与自己的成员 id，并全量
   assert.ok(pulled >= 1, '加入后必须拉一次全量');
 });
 
-t('空库不抢先绑定机构（否则家长之后再拿邀请码会被"已加入其他机构"挡死）', async () => {
+t('空库不抢先绑定机构（只读探测，绝不建绑定）', async () => {
   reset();
   freshDb();
   const api = require('../utils/api');
   const sync = require('../utils/sync');
-  let hellos = 0;
+  let hellos = 0, whoami = 0;
   api.syncOn = () => true;
-  api.syncCall = () => { hellos++; return Promise.resolve({ ok: true, orgId: 'org-local' }); };
+  api.syncCall = action => {
+    if (action === 'whoami') { whoami++; return Promise.resolve({ ok: true, bound: false, orgId: '' }); }
+    if (action === 'hello') hellos++;
+    return Promise.resolve({ ok: true, orgId: 'org-local' });
+  };
   const r = await sync.init();
   assert.strictEqual(r.skipped, true, '空库应跳过');
   assert.strictEqual(r.code, 'EMPTY');
-  assert.strictEqual(hellos, 0, '一次 hello 都不该发');
+  assert.strictEqual(hellos, 0, '一次 hello 都不该发（发了就把家长绑到出厂机构上了）');
+  assert.strictEqual(whoami, 1, '应该只读探测一次，判断是不是换手机');
+});
+
+t('换手机：空库但云端已绑定 → 按云端机构号恢复，不从零开始', async () => {
+  reset();
+  freshDb();
+  const db = require('../utils/db');
+  db.init();
+  const api = require('../utils/api');
+  const sync = require('../utils/sync');
+  api.syncOn = () => true;
+  api.syncCall = action => {
+    if (action === 'whoami') return Promise.resolve({ ok: true, bound: true, orgId: 'org_mine', openid: 'openid-x' });
+    if (action === 'pull') return Promise.resolve({ ok: true, cursor: 5, more: false, docs: [
+      { c: 'classes', srvAt: 1, d: { id: 11, orgId: 'org_mine', name: '恢复班', session: 1, updatedAt: 1 } },
+      { c: 'members', srvAt: 2, d: { id: 21, orgId: 'org_mine', openid: 'openid-x', role: 'owner', name: '张老师', userId: 'u1', clsIds: [], courseIds: [], studentIds: [], status: 'active', updatedAt: 2 } },
+      { c: 'students', srvAt: 3, d: { id: 12, orgId: 'org_mine', name: '恢复的孩子', clsIds: [11], no: '1001', updatedAt: 3 } }
+    ] });
+    return Promise.resolve({ ok: true });
+  };
+  const r = await sync.syncNow({ force: true });
+  assert.ok(r.ok, JSON.stringify(r));
+  assert.strictEqual(db.real().meta.orgId, 'org_mine', '机构号要采纳云端的');
+  assert.strictEqual(db.students.list().length, 1, '云端数据要拉回本地');
+  assert.strictEqual(db.students.list()[0].name, '恢复的孩子');
+  assert.strictEqual(db.classes.list().length, 1);
 });
 
 /* ================= E. 页面与入口 ================= */

@@ -151,6 +151,146 @@ t('门面完整：同步能力都挂在 db.sync 上（页面不得自己拼协�
   });
 });
 
+// ---------- 多机构：机构号换代（reorg） ----------
+// 背景：出厂号 org1 是所有新装设备共用的，不能当真实机构号。首次上云时服务端发一个新号，
+// 客户端把本机全部数据整体改挂过去。这一段守的就是"改挂不许丢、不许漏、不许把演示数据带进去"。
+t('机构号：格式规整、随机不重复、能认出出厂号', () => {
+  const schema = require('../utils/db/schema');
+  const seen = {};
+  for (let i = 0; i < 200; i++) {
+    const id = schema.newOrgId();
+    assert.ok(/^org_[a-z2-9]{10}$/.test(id), '格式不对：' + id);
+    assert.ok(!/[0o1li]/.test(id.slice(4)), '不该出现易混字符：' + id);
+    assert.ok(!seen[id], '机构号撞了：' + id);
+    seen[id] = 1;
+  }
+  assert.ok(schema.isFactoryOrg('org1'));
+  assert.ok(!schema.isFactoryOrg('org_abcdefghjk'));
+  assert.ok(!schema.isFactoryOrg(''));
+});
+
+t('reorg：本机所有集合整体改挂到新机构号', () => {
+  for (const k in mem) delete mem[k];
+  const db = freshDb();
+  db.init();
+  const c = db.classes.create({ name: '改挂班' }).item;
+  const s = db.students.create({ name: '小朋友', clsIds: [c.id] }).item;
+  db.records.save({ sid: s.id, cid: c.id, note: '一条记录' });
+
+  const before = { cls: db.classes.list().length, stu: db.students.list().length, rec: db.records.list().length };
+  const newId = 'org_abcdefghjk';
+  const r = db.sync.reorg(newId);
+  assert.ok(r.ok, r.msg);
+  assert.ok(r.moved >= 3, '至少班级/学生/记录各一条被改挂，实际 ' + r.moved);
+
+  // 读取口径（orgColl 按 meta.orgId 过滤）：改挂后原来的数据必须仍然看得见
+  assert.strictEqual(db.real().meta.orgId, newId);
+  assert.strictEqual(db.classes.list().length, before.cls, '班级改挂后不见了');
+  assert.strictEqual(db.students.list().length, before.stu, '学生改挂后不见了');
+  assert.strictEqual(db.records.list().length, before.rec, '记录改挂后不见了');
+});
+
+t('reorg：机构表主键也跟着改（id 与 orgId 同为机构号）', () => {
+  const db = freshDb();
+  db.init();
+  db.sync.reorg('org_zzzzzzzzzz');
+  const o = db.orgs.current();
+  assert.ok(o, '机构表里找不到当前机构');
+  assert.strictEqual(o.id, 'org_zzzzzzzzzz');
+  assert.strictEqual(o.orgId, 'org_zzzzzzzzzz');
+});
+
+t('reorg：改完把所有集合都标脏（下一步要全量推上去）', () => {
+  const db = freshDb();
+  db.init();
+  db.sync.clearDirty(db.sync.COLLS);
+  db.sync.reorg('org_qqqqqqqqqq');
+  const dirty = db.sync.dirtyCols();
+  db.sync.COLLS.forEach(c => assert.ok(dirty.indexOf(c) > -1, c + ' 没标脏，推不上去'));
+});
+
+t('reorg：落盘了（下次启动不会又回到出厂号）', () => {
+  const db = freshDb();
+  db.init();
+  db.sync.reorg('org_kkkkkkkkkk');
+  const again = freshDb();   // 重新加载（读的是同一份模拟存储）
+  again.init();
+  assert.strictEqual(again.real().meta.orgId, 'org_kkkkkkkkkk');
+});
+
+t('reorg：幂等 —— 同一个号再改一次不动任何数据', () => {
+  const db = freshDb();
+  db.init();
+  db.classes.create({ name: '幂等班' });
+  db.sync.reorg('org_wwwwwwwwww');
+  const second = db.sync.reorg('org_wwwwwwwwww');
+  assert.ok(second.ok);
+  assert.strictEqual(second.moved, 0, '第二次不该再有数据被改');
+});
+
+t('reorg：空号直接拒绝（否则数据会挂到一个不存在的机构上）', () => {
+  const db = freshDb();
+  db.init();
+  const r = db.sync.reorg('');
+  assert.strictEqual(r.ok, false);
+  assert.ok(r.msg);
+});
+
+t('reorg：演示模式下拒绝（样板间不能改机构号）', () => {
+  const db = freshDb();
+  db.init();
+  db.demo.enter();
+  const r = db.sync.reorg('org_dddddddddd');
+  assert.strictEqual(r.ok, false);
+  db.demo.exit();
+});
+
+t('init：服务端发号（minted）→ 本机整体改挂，不是冲突', async () => {
+  for (const k in mem) delete mem[k];
+  const db = freshDb();
+  db.init();
+  const c = db.classes.create({ name: '首次上云班' }).item;
+  db.students.create({ name: '第一个孩子', clsIds: [c.id] });
+
+  const api = require('../utils/api');
+  api.syncOn = () => true;
+  api.syncCall = action => {
+    if (action === 'hello') return Promise.resolve({ ok: true, orgId: 'org_mintmintmi', firstTime: true, minted: true, openid: 'openid-x' });
+    return Promise.reject(new Error('STOP'));
+  };
+  const sync = require('../utils/sync');
+  const r = await sync.init();
+  assert.ok(r.ok, JSON.stringify(r));
+  assert.strictEqual(r.minted, true);
+  assert.strictEqual(db.real().meta.orgId, 'org_mintmintmi', '本机机构号要换成服务端发的号');
+  assert.strictEqual(db.classes.list().length, 1, '改挂后班级必须还看得见');
+  assert.strictEqual(db.students.list().length, 1, '改挂后学生必须还看得见');
+  assert.strictEqual(sync.isConflict(), false, '发号不是冲突');
+});
+
+t('init：云端已是别人的号 + 本机有数据 → 冲突并停手（绝不自动合并）', async () => {
+  for (const k in mem) delete mem[k];
+  const db = freshDb();
+  db.init();
+  const c = db.classes.create({ name: '本机班' }).item;
+  db.students.create({ name: '本机孩子', clsIds: [c.id] });
+
+  const api = require('../utils/api');
+  api.syncOn = () => true;
+  api.syncCall = action => {
+    if (action === 'hello') return Promise.resolve({ ok: true, orgId: 'org_otherother', firstTime: false, openid: 'openid-x' });
+    return Promise.reject(new Error('STOP'));
+  };
+  const sync = require('../utils/sync');
+  const r = await sync.init();
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(r.code, 'ORG_CONFLICT');
+  assert.strictEqual(sync.isConflict(), true);
+  // 冲突时一个字段都不能动：既不改机构号，也不清本地数据
+  assert.strictEqual(db.real().meta.orgId, 'org1');
+  assert.strictEqual(db.students.list().length, 1);
+});
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {

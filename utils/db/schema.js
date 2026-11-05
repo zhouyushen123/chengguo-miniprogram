@@ -27,7 +27,25 @@
 // v7：班级增加 session（课次号）——「本次录入」的节点由老师手动结清，不再由自然日自动切换；
 // 记录落库时盖上当前课次号，跨天/多人接力录同一节课也能算成同一次。
 const VERSION = 8;
+// 出厂机构号：每台新装设备的本地库都挂它，**它不是一个真实机构**。
+// 首次上云时由服务端发一个随机机构号（见 syncv2 的 hello），本地整体改挂过去。
+// 以前它被当成真实机构号用，结果所有客户的数据都落在 org1 里混成一团——
+// 那在单客户测试期看不出来，第二个客户进来就是灾难。
 const DEFAULT_ORG = 'org1';
+const FACTORY_ORG = DEFAULT_ORG;
+// 机构号字符集：去掉容易看错的 0/o/1/l/i，它是会被人从日志里念出来的
+const ORG_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';
+function newOrgId(rand) {
+  const r = rand || Math.random;
+  let s = '';
+  for (let i = 0; i < 10; i++) {
+    const x = Math.min(0.999999, Math.max(0, Number(r()) || 0));
+    s += ORG_CHARS[Math.floor(x * ORG_CHARS.length)];
+  }
+  return 'org_' + s;
+}
+// 还挂在出厂号上 = 这台设备的机构号还没被服务端换成真实值
+const isFactoryOrg = id => String(id || '') === FACTORY_ORG;
 
 // 评分五档（与录入页每档代表分对应，用于筛选与统计口径统一）
 const TAGS = ['待提高', '加油', '良好', '优秀', '最佳'];
@@ -372,7 +390,8 @@ function validate(entity, e) {
 }
 
 module.exports = {
-  VERSION, DEFAULT_ORG, TAGS, LIMITS, RECORD_TYPES, ROLES, MEMBER_STATUS, ORG_STATUS,
+  VERSION, DEFAULT_ORG, FACTORY_ORG, newOrgId, isFactoryOrg, ORG_CHARS,
+  TAGS, LIMITS, RECORD_TYPES, ROLES, MEMBER_STATUS, ORG_STATUS,
   TERM_STATUS, CLASS_MODES, ENROLL_STATUS, DEFAULT_TEMPLATES,
   str, num, list, numList, txtList, ymd, normDate,
   normalize, validate,

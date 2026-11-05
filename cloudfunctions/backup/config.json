@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "openapi": []
+  },
+  "triggers": [
+    {
+      "name": "dailyBackup",
+      "type": "timer",
+      "config": "0 0 3 * * * *"
+    }
+  ]
+}

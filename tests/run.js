@@ -33,6 +33,7 @@ const SUITES = [
   ['verify_demo.js', '演示隔离'],
   ['verify_hardening.js', '加固'],
   ['verify_backup.js', '备份与恢复'],
+  ['verify_cloudbackup.js', '云端每日备份'],
   ['verify_protect.js', '数据保护机制'],
   ['verify_arch.js', '架构守卫']
 ];

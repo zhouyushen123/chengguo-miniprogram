@@ -10,6 +10,7 @@
 const db = require('../../utils/db');
 const media = require('../../utils/media');
 const theme = require('../../utils/theme');
+const api = require('../../utils/api');
 
 const KB = 1024;
 const MB = 1024 * 1024;
@@ -41,11 +42,13 @@ Page({
     auditOk: true, auditErr: 0, auditWarn: 0, auditItems: [], fixable: false,
     // 本地备份：核心资产的滚动快照（最多 3 份）
     snaps: [], snapCount: 0, snapHint: '还没有备份',
+    // 云端备份：云开发每天凌晨 3 点自动打包（云数据库被改坏时的最后一道保险）
+    cbShow: true, cbBusy: false, cbHint: '读取中…',
     // 被云端拒绝的改动：本地改成功了、云端没接受，不说出来就是静默不一致
     rejects: [], rejectCount: 0, trashCount: 0
   },
 
-  onShow() { theme.apply(this); this.refresh(); },
+  onShow() { theme.apply(this); this.refresh(); this.refreshCloud(); },
 
   refresh() {
     const h = db.health();
@@ -170,6 +173,58 @@ Page({
         });
       }
     });
+  },
+
+  // 云端备份：只给能看到全班数据的人（家长看到"机构有多少条记录"没有意义）
+  refreshCloud() {
+    if (db.auth.isParent()) { this.setData({ cbShow: false }); return; }
+    this.setData({ cbShow: true });
+    api.cloudBackup('info').then(r => {
+      if (!r || !r.ok) {
+        this.setData({ cbHint: (r && r.code === 'FORBIDDEN') ? '仅负责人/管理员可操作' : '暂时读不到' });
+        return;
+      }
+      const m = r.latest;
+      this.setData({
+        cbHint: m ? ('最近 ' + m.date + ' · ' + (m.total || 0) + ' 条') : '还没有备份'
+      });
+    }).catch(() => {});
+  },
+
+  // 一次只备一个集合：云函数 60 秒超时，整包一次数据多的机构会被掐断，掐断时还不知道停在哪。
+  // 中途失败不谎报成功——剩下一半会在提示里说清楚。
+  doCloudBackup() {
+    if (this.data.cbBusy) return;
+    const COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'students', 'enrollments', 'records', 'templates'];
+    this.setData({ cbBusy: true });
+    wx.showLoading({ title: '备份中 1/' + COLLS.length, mask: true });
+    let i = 0;
+    const step = () => {
+      if (i >= COLLS.length) {
+        wx.hideLoading();
+        this.setData({ cbBusy: false });
+        this.refreshCloud();
+        wx.showToast({ title: '已备份到云端', icon: 'none' });
+        return;
+      }
+      api.cloudBackup('run', { coll: COLLS[i] }).then(r => {
+        if (!r || !r.ok) {
+          wx.hideLoading();
+          this.setData({ cbBusy: false });
+          wx.showToast({ title: (r && r.msg) || '备份失败', icon: 'none' });
+          this.refreshCloud();
+          return;
+        }
+        i++;
+        wx.showLoading({ title: '备份中 ' + (i + 1) + '/' + COLLS.length, mask: true });
+        step();
+      }).catch(() => {
+        wx.hideLoading();
+        this.setData({ cbBusy: false });
+        wx.showToast({ title: '网络不通，请重试', icon: 'none' });
+      });
+    };
+    step();
   },
 
   clean() {

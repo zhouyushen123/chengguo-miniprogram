@@ -466,6 +466,27 @@ function stamp() {
   return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes());
 }
 
+/* ============================ 云端每日备份（backup 云函数） ============================ */
+// 后台是"服务端调服务端"，没有 openid；backup 云函数对内部调用信任传入的 orgId，
+// 而已登录的会话里本来就带 orgId，所以这里不存在"用户随便指一个机构"的口子。
+const CB_COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'students', 'enrollments', 'records', 'templates'];
+
+function cbCall(orgId, action, extra) {
+  const data = Object.assign({ action, orgId }, extra || {});
+  return cloud.callFunction({ name: 'backup', data }).then(r => (r && r.result) || { ok: false, msg: '备份函数没有返回' })
+    .catch(e => {
+      const msg = String((e && (e.errMsg || e.message)) || e);
+      // 没部署时给出下一步，而不是一句"调用失败"让人去猜
+      if (/FUNCTION_NOT_FOUND|not found|-501000|FunctionName/i.test(msg)) {
+        return {
+          ok: false, code: 'NO_FN',
+          msg: '备份云函数还没部署：请在开发者工具里对 cloudfunctions/backup「上传并部署：云端安装依赖」，并上传定时触发器'
+        };
+      }
+      return { ok: false, code: 'NET', msg: '备份服务调用失败：' + msg };
+    });
+}
+
 /* ============================ 路由 ============================ */
 async function api(action, data, headers) {
   if (action === 'login') return doLogin(data || {});
@@ -485,6 +506,10 @@ async function api(action, data, headers) {
     case 'export': return exportData(orgId, data || {});
     case 'backup': return backupData(orgId);
     case 'audit': return auditData(orgId);
+    // 云端每日自动备份：列表、立刻备份、按集合分步恢复
+    case 'cbList': return cbCall(orgId, 'list');
+    case 'cbRun': return cbCall(orgId, 'run', { coll: str((data || {}).coll), safety: !!(data || {}).safety });
+    case 'cbRestore': return cbCall(orgId, 'restore', { date: str((data || {}).date), coll: str((data || {}).coll) });
     case 'resetPin': return resetPin(orgId);
     default: return { ok: false, msg: '未知操作' };
   }

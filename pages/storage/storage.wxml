@@ -72,6 +72,15 @@
       </view>
     </view>
 
+    <!-- 云端每日备份：云数据库被改坏时的最后一道保险 -->
+    <view wx:if="{{cbShow}}" class="card">
+      <view class="sec"><view class="label">云端备份</view><view class="sechint">{{cbHint}}</view></view>
+      <view class="hint note">云端每天凌晨 3 点自动把学生、老师、机构、班级与课堂记录打包存一份，保留 30 天。手机上的备份救不了"云端数据被改坏"，这一层才是那种情况的保险；需要找回时在电脑后台「数据安全」里恢复到某一天。</view>
+      <view class="btn clean {{cbBusy ? 'idle' : ''}}" hover-class="btn-hover" bindtap="doCloudBackup">
+        {{cbBusy ? '正在备份…' : '立刻备份到云端'}}
+      </view>
+    </view>
+
     <view class="card note">
       <view class="tip">照片和视频存在这台手机上：换手机、清理小程序存储或卸载重装都会丢失。文字评价与分数存在上面几张卡片里，不受影响。</view>
       <view class="tip">视频最占空间（每条约 10–50 MB）。空间紧张时，删掉几条不需要的视频就能腾出很多。</view>

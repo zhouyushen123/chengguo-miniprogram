@@ -188,6 +188,21 @@
       <button class="btn primary" id="doBackup" style="margin-top:12px">下载完整备份</button>
       <div style="margin-top:8px;color:var(--ink-3);font-size:12px">建议每周下载一次，存到自己的网盘或电脑里。</div>
     </div>
+    <div class="card">
+      <div style="font-weight:600">云端每日备份</div>
+      <div style="margin-top:6px;color:var(--ink-3);font-size:13px;line-height:1.6">
+        云开发每天凌晨 3 点自动把全部数据打包存到云存储，保留 30 天。这是「云数据库被改坏了」
+        时的最后一道保险：手机快照救不了这种情况，因为它拉回来的也是坏数据。
+      </div>
+      <div id="cbBox" style="margin-top:12px"></div>
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button class="btn primary" id="cbRun">立刻备份</button>
+        <button class="btn" id="cbReload">刷新</button>
+      </div>
+      <div style="margin-top:8px;color:var(--ink-3);font-size:12px">
+        恢复只写回、不删除：备份之后新录的数据不会被抹掉。恢复完让老师打开一次小程序即可同步到手机。
+      </div>
+    </div>
   </section>
 
   <!-- 班级 -->
@@ -320,13 +335,14 @@
   function goTab(k) {
     S.tab = k;
     Array.prototype.forEach.call(tabs, function (t) { t.classList.toggle('on', t.getAttribute('data-tab') === k); });
-    ['overview', 'students', 'records', 'classes'].forEach(function (n) {
+    ['overview', 'students', 'records', 'classes', 'data'].forEach(function (n) {
       $('tab-' + n).classList.toggle('hide', n !== k);
     });
     if (k === 'overview') loadOverview();
     if (k === 'students') loadList('students');
     if (k === 'records') loadList('records');
     if (k === 'classes') loadList('classes');
+    if (k === 'data') loadCb();
   }
 
   /* ---------- 概览 ---------- */
@@ -648,6 +664,131 @@
     }
   }
 
+  /* ---------- 云端每日备份 ---------- */
+  // 备份在 backup 云函数里，这里只是"看清单 / 点一下 / 分集合逐步恢复"。
+  // 恢复按集合分 9 次请求：云函数 60 秒超时，一次全量很容易被掐断，掐断时又不知道写到哪了。
+  var CB_COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'students', 'enrollments', 'records', 'templates'];
+  var CB_NAME = {
+    orgs: '机构', members: '老师/成员', terms: '学期', classes: '班级', courses: '课程',
+    students: '学生', enrollments: '报名', records: '课堂记录', templates: '评价模板'
+  };
+
+  function fmtBytes(n) {
+    var v = Number(n) || 0;
+    if (v >= 1048576) return (v / 1048576).toFixed(v >= 10485760 ? 0 : 1) + ' MB';
+    if (v >= 1024) return Math.round(v / 1024) + ' KB';
+    return v + ' B';
+  }
+
+  function loadCb() {
+    var box = $('cbBox');
+    if (!box) return;
+    box.textContent = '读取中…';
+    post('cbList', {}).then(function (r) {
+      if (!r || !r.ok) { box.textContent = (r && r.msg) || '读取失败'; return; }
+      renderCb(r);
+    }).catch(function () { box.textContent = '读取失败，请点「刷新」重试'; });
+  }
+
+  function renderCb(r) {
+    var box = $('cbBox');
+    box.innerHTML = '';
+    var items = r.items || [];
+    if (!items.length) {
+      var none = el('div', '', '还没有云端备份。先点「立刻备份」存一份，之后每天凌晨 3 点会自动跑。');
+      none.style.cssText = 'color:var(--ink-3);font-size:13px;line-height:1.6';
+      box.appendChild(none);
+      return;
+    }
+    var keep = el('div', '', '保留最近 ' + (r.keepDays || 30) + ' 天 · 共 ' + items.length + ' 份');
+    keep.style.cssText = 'color:var(--ink-3);font-size:12px;margin-bottom:4px';
+    box.appendChild(keep);
+    items.forEach(function (m) {
+      var row = el('div');
+      row.style.cssText = 'padding:10px 0;border-top:1px solid var(--line)';
+      var head = el('div', '', m.date + ' · ' + (m.total || 0) + ' 条 · ' + fmtBytes(m.bytes));
+      head.style.cssText = 'font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px';
+      if (m.status === 'partial') {
+        var tag = el('span', '', '不完整');
+        tag.style.cssText = 'font-size:11px;color:#b42318;border:1px solid #f3c2bb;border-radius:999px;padding:1px 8px;font-weight:400';
+        head.appendChild(tag);
+      }
+      if (m.safety) {
+        var tag2 = el('span', '', '恢复前');
+        tag2.style.cssText = 'font-size:11px;color:var(--ink-3);border:1px solid var(--line);border-radius:999px;padding:1px 8px;font-weight:400';
+        head.appendChild(tag2);
+      }
+      row.appendChild(head);
+      var c = m.counts || {};
+      var sub = el('div', '', '学生 ' + (c.students || 0) + ' · 老师 ' + (c.members || 0)
+        + ' · 班级 ' + (c.classes || 0) + ' · 记录 ' + (c.records || 0));
+      sub.style.cssText = 'margin-top:4px;color:var(--ink-3);font-size:12px';
+      row.appendChild(sub);
+      if (m.status === 'partial') {
+        var tip = el('div', '', '当天跑到「' + (CB_NAME[m.stoppedAt] || m.stoppedAt) + '」就到时间了，之后的集合没有备。需要完整的一份请点「立刻备份」。');
+        tip.style.cssText = 'margin-top:4px;color:#8a6d3b;font-size:12px;line-height:1.5';
+        row.appendChild(tip);
+      }
+      var btn = el('button', 'btn ghost', '恢复到这一天');
+      btn.style.marginTop = '8px';
+      btn.onclick = function () { restoreTo(m.date); };
+      row.appendChild(btn);
+      box.appendChild(row);
+    });
+  }
+
+  // 按集合分步备份：云函数 60 秒超时，整包一次很容易被掐断，掐断时又不知道停在哪
+  function stepBackup(opts) {
+    var o = opts || {};
+    return new Promise(function (resolve, reject) {
+      var i = 0;
+      function step() {
+        if (i >= CB_COLLS.length) { resolve(); return; }
+        var c = CB_COLLS[i];
+        if (o.onStep) o.onStep(c, i);
+        post('cbRun', { coll: c, safety: !!o.safety }).then(function (r) {
+          if (!r || !r.ok) { reject(new Error((r && r.msg) || '备份失败')); return; }
+          i++; step();
+        }).catch(reject);
+      }
+      step();
+    });
+  }
+
+  function restoreTo(date) {
+    if (!window.confirm('恢复到 ' + date + ' 的云端备份？\n\n'
+      + '会先给当前数据再备份一份（标记为「恢复前」），然后把这天的学生、老师、机构、班级、报名与记录写回云端。\n\n'
+      + '只写回、不删除：备份之后新录的数据不会消失。')) return;
+    var box = $('cbBox');
+    box.textContent = '先给当前数据存一份…';
+    stepBackup({
+      safety: true,
+      onStep: function (c, i) { box.textContent = '先备份当前数据 · ' + (CB_NAME[c] || c) + '（' + (i + 1) + '/' + CB_COLLS.length + '）…'; }
+    }).then(function () {
+      var i = 0;
+      function step() {
+        if (i >= CB_COLLS.length) { toast('恢复完成，让老师打开一次小程序同步到手机'); loadCb(); return; }
+        var c = CB_COLLS[i];
+        box.textContent = '正在写回 ' + (CB_NAME[c] || c) + '（' + (i + 1) + '/' + CB_COLLS.length + '）…';
+        post('cbRestore', { date: date, coll: c }).then(function (x) {
+          // 当天没跑到这个集合（不完整的备份）→ 跳过，不当成失败
+          if (x && x.code === 'NO_PART') { i++; step(); return; }
+          if (!x || !x.ok) { box.textContent = '恢复中断在「' + (CB_NAME[c] || c) + '」：' + ((x && x.msg) || '未知原因'); return; }
+          if (x.skipped) {
+            box.textContent = (CB_NAME[c] || c) + ' 还有 ' + x.skipped + ' 条没写回，再点一次「恢复到这一天」继续';
+            return;
+          }
+          i++; step();
+        }).catch(function () {
+          box.textContent = '恢复中断（网络不通）。已经写回的部分是安全的，重新点一次会接着覆盖。';
+        });
+      }
+      step();
+    }).catch(function (e) {
+      box.textContent = '恢复中止：' + ((e && e.message) || '当前数据没能备份');
+    });
+  }
+
   /* ---------- 绑定 ---------- */
   $('stuSearch').onclick = function () { S.page.students = 1; loadList('students'); };
   $('recSearch').onclick = function () { S.page.records = 1; loadList('records'); };
@@ -667,6 +808,21 @@
       toast(r.truncated ? '已下载（记录超过 5000 条，这份不含更早的记录）' : '已下载完整备份');
     }).catch(function () {});
   };
+  $('cbRun').onclick = function () {
+    if (!window.confirm('立刻把当前全部数据备份到云端？\n\n会分 9 步逐类备份，数据多的机构需要一会儿，别关页面。')) return;
+    var box = $('cbBox');
+    box.textContent = '正在备份…';
+    stepBackup({
+      onStep: function (c, i) { box.textContent = '正在备份 ' + (CB_NAME[c] || c) + '（' + (i + 1) + '/' + CB_COLLS.length + '）…'; }
+    }).then(function () {
+      toast('已备份到云端');
+      loadCb();
+    }).catch(function (e) {
+      box.textContent = '备份中断：' + ((e && e.message) || '网络不通');
+      loadCb();
+    });
+  };
+  $('cbReload').onclick = loadCb;
   $('recExport').onclick = function () { doExport('records'); };
   $('stuNew').onclick = function () { openNew('students'); };
   $('recNew').onclick = function () {

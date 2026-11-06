@@ -639,3 +639,21 @@ utils/firstrun.js        首次进入的一次性标记（自动跳向导只跳�
 
 **口径澄清（值得记住）**：老师删除本班学生是允许的（student.write 有 scoped 无 own），
 删错能在回收站恢复；代发本班草稿也允许（record.send 不 own）。这两条是设计选择，不是漏判。
+
+---
+
+## 16. 2026-11-06 中午：修邀请码「无权访问机构数据」（体验版 1117）
+
+**现象**：我的页 → 邀请成员 → 生成中 → toast「无权访问机构数据」。家长/老师/管理员三种码全都拿不到。
+
+**根因**：`syncv2.inviteGet` 服务端 fail-closed：`event.orgId` 必须等于云端 users 表里
+我绑定的机构。客户端 `api.inviteGet(role)` 从上线起就没传 orgId → `'' !== u.orgId` →
+每次必 FORBIDDEN。**功能上线以来从未通过过**；服务端校验没问题，缺的是客户端参数。
+
+**修复（commit `af0cce8`，体验版 1117）**
+- `utils/api.js`：`inviteGet(role, orgId)`，请求体带 `orgId`
+- `pages/mine/mine.js`：传 `db.auth.member().orgId`
+- 服务端不动（校验本来就该严格）。守门：verify_teacher T9 静态断言（api 与调用点必须带 orgId），32 项。
+
+**用户操作**：重进体验版 1117 → 我的 → 邀请成员 → 家长邀请码 → 应弹出码
+（30 天有效，家长填码 + 孩子学号即可加入）。

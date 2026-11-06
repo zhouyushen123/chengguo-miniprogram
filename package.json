@@ -13,5 +13,8 @@
   },
   "dependencies": {
     "miniprogram-ci": "^2.1.9"
+  },
+  "devDependencies": {
+    "miniprogram-automator": "^0.13.0"
   }
 }

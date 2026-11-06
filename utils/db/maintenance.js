@@ -77,10 +77,10 @@ function init() {
     if (hadDemo || purged) ensureDemo();
     const repaired = repairRefs();
     const linked = integrity.repairLinks();   // 关系表与三处外键的悬空行：启动即修
+    const adopted = integrity.adoptFactoryRows(org());  // 登录前用出厂号建的骨架：收编到当前机构
     const mediaFixed = repairMedia();
-    // 一次性补标：学科/知识点是 v9 新加的表。升级到 v9 那次启动写种子会被 markRegrown 抓到，
-    // 但"已经升到 v9、种子只在本地、云端一条没有"的设备（本修复之前升级的）条数不会再变，
-    // 只能靠这个戳补推一次 —— 否则它永远停在"本机有、云端没有"。
+    // 一次性补标：v9 新加的学科/知识点。"已升级但种子只在本地"的旧设备靠这个戳补推一次，
+    // 否则永远停在"本机有、云端没有"。
     if (core.realMeta().subjStamp !== schema.VERSION) {
       core.updateRealMeta({ subjStamp: schema.VERSION });
       core.persist('subjects');
@@ -88,7 +88,7 @@ function init() {
     const regrew = markRegrown(beforeCount);   // 迁移新增的行为什么必须标脏，见 markRegrown
     resolveMode(purged);                 // 该进演示还是回真实机构
     const linkedFixed = (linked.bindings + linked.dupBind + linked.records + linked.members + linked.students) > 0;
-    if (changed || purged || repaired || mediaFixed || regrew || linkedFixed) core.flushAll();
+    if (changed || purged || repaired || mediaFixed || regrew || linkedFixed || adopted.rows) core.flushAll();
 
     if (snapRestored) {
       // 恢复出来的数据必须立刻落盘，否则磁盘上还是那份缺了片的旧数据，
@@ -495,5 +495,5 @@ module.exports = {
   mediaRefs,
   init, status, normalizeAll, repairRefs, repairMedia, restoreSnapshot,
   integrity: integrity.integrity, repairLinks: integrity.repairLinks, integrityGroups: integrity.integrityGroups,
-  buildDemoData, ensureDemo, purgeSeed, resolveMode, demo: demoApi, merge
+  adoptFactoryRows: integrity.adoptFactoryRows, buildDemoData, ensureDemo, purgeSeed, resolveMode, demo: demoApi, merge
 };

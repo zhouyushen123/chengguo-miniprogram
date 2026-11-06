@@ -359,4 +359,41 @@ ok('G2 存储页的体检入口在页面上真的接上了（模板绑的事件�
   assert.ok(wxml.indexOf('headHint') > -1 && wxml.indexOf('auditOk ?') === -1, '头部不能只按 audit 判断');
 });
 
+ok('G3 骨架收编：切换机构号后，出厂号建的学期/模板/学科跟着换，orgs 例外', () => {
+  // 独立起一台"新装手机"：init 走 buildFresh，骨架全部挂出厂号
+  const mem2 = {};
+  const db2 = boot(mem2);
+  const core2 = require(path.join(ROOT, 'utils/db/core'));
+  const termBefore = core2.coll('terms').filter(x => !x.removed).length;
+  assert.ok(termBefore > 0, '新装库应该有内置学期（骨架）');
+
+  // 模拟 hello：云端发了真实机构号，本机切过去 —— 骨架行不会自己跟着换
+  db2.patchMeta({ orgId: 'org_x9' });
+  const kinds = db2.integrity().map(x => x.kind);
+  assert.ok(kinds.some(k => /^org\./.test(k)), '切完机构体检应该报出骨架残留：' + kinds.join(','));
+  // 体检的分组名要能看出是哪张表，不能只说"混入其它机构的数据"
+  const g = db2.integrityGroups().find(x => /^org\./.test(x.kind));
+  assert.ok(/（.+）/.test(g.label), '分组名要带表名：' + g.label);
+
+  db2.adoptFactoryRows('org_x9');
+  core2.coll('terms').concat(core2.coll('templates')).concat(core2.coll('subjects'))
+    .forEach(d => { if (d) assert.strictEqual(d.orgId, 'org_x9', '骨架行要收编到新机构号'); });
+  // orgs 例外：id 即机构号，云端登录后会拉回本机构的行，出厂那行不动
+  core2.coll('orgs').forEach(o => { if (o) assert.strictEqual(o.id, 'org1', 'orgs 不该被收编改动'); });
+  assert.deepStrictEqual(db2.integrity().filter(x => /^org/.test(x.kind)), [], '收编后机构残留应清零');
+
+  // 幂等：第二次调用是空操作，不会再动任何行
+  const again = db2.adoptFactoryRows('org_x9');
+  assert.strictEqual(again.rows, 0, '收编必须幂等（重复调用不改任何行）');
+});
+
+ok('G4 同步的两处机构切换点都调用了骨架收编（漏一处就复发）', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'utils/sync.js'), 'utf8');
+  // 切换 meta.orgId 的地方一共两处：hello 采纳（pull 成功后）与邀请码 join
+  const switches = src.split('db.patchMeta({ orgId').length - 1;
+  const calls = src.split('db.adoptFactoryRows(').length - 1;
+  assert.strictEqual(switches, 2, '机构切换点变了（现在 ' + switches + ' 处），这条断言要同步改');
+  assert.strictEqual(calls, 2, '每处切换后都必须紧跟收编，现在只有 ' + calls + ' 处');
+});
+
 console.log('\n全部 ' + pass + ' 项地基断言通过');

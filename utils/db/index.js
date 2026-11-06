@@ -86,10 +86,10 @@ const db = {
   // 回到出厂：本机数据坏档（成员表丢失 → 所有写操作都被「请先登录」拦住）时的唯一自救出口。
   // 只清本机，云端不动；重置后重走开通向导，第一次同步会重新绑定机构。
   resetReal: factory.resetReal,
-  // 半坏档自救：机构在、成员表空 → 到处「请先登录」。向导/页面遇到写被拦时可先调这个
-  // 修身份再重试一次；空壳回出厂，有业务数据则原地重建负责人，不清有用数据。
+  // 半坏档自救：机构在、成员表空 → 到处「请先登录」。遇到写被拦时可先修身份再重试一次
   repairIdentity: factory.repairIdentity,
   integrity: maintenance.integrity, integrityGroups: maintenance.integrityGroups, repairLinks: maintenance.repairLinks,  // 引用完整性
+  adoptFactoryRows: maintenance.adoptFactoryRows,   // 骨架收编：登录前用出厂号建的行跟着换机构号
   // 原始条数：每张表「总条数 / 当前机构条数」。数据"看着少了"时用它分辨是丢了还是身份不对
   rawCounts: () => {
     const raw = core.realData() || {};

@@ -5,6 +5,8 @@
 // 依赖：core（全量集合）+ ctx（机构/时间）。不依赖任何领域模块，不产生环。
 const core = require('./core');
 const { now, org } = require('./ctx');
+const schema = require('./schema');
+const entities = require('./entities');
 
 /* =====================================================================
  * 引用完整性：体检与自愈（V10 起有了纯关系表，这一层必须兜住）
@@ -108,9 +110,11 @@ function integrity() {
     });
   });
 
-  // 跨机构残留：读取已经按 orgId 过滤，但残留行会污染计数、也会被整表推上云
+  // 跨机构残留：读取已经按 orgId 过滤，但残留行会污染计数、也会被整表推上云。
+  // orgs 例外：它的 id 本身就是机构号、行上 orgId 语义不同，单独处理不在这里查。
   const o = org();
-  ['classes', 'courses', 'class_courses', 'students', 'records', 'enrollments', 'members'].forEach(name => {
+  ['classes', 'courses', 'class_courses', 'students', 'records', 'enrollments',
+    'members', 'terms', 'templates', 'subjects'].forEach(name => {
     (core.coll(name) || []).forEach(d => {
       if (!d) return;
       if (!d.orgId) bad('orgId.' + name, d.id, name + ' 里有一行没有 orgId（会被当成当前机构推上云）');
@@ -219,9 +223,15 @@ const KIND_LABEL = {
 function labelOf(kind) {
   if (/\.dupId$/.test(kind)) return '数据主键重复';
   if (/^tombstone\./.test(kind)) return '删除记录缺少批次时间';
-  if (/^orgId\./.test(kind)) return '数据缺少机构号';
-  if (/^org\./.test(kind)) return '混入其它机构的数据';
+  // 带上具体哪张表：只说"混入其它机构的数据"，用户没法定位、也没法判断要不要紧
+  if (/^orgId\./.test(kind)) return '缺少机构号的数据（' + collLabel(kind.slice(6)) + '）';
+  if (/^org\./.test(kind)) return '混入其它机构的数据（' + collLabel(kind.slice(4)) + '）';
   return KIND_LABEL[kind.replace(/\./g, '_')] || kind;
+}
+
+function collLabel(name) {
+  const e = entities.byColl(name);
+  return (e && e.label) || name;
 }
 
 function integrityGroups() {
@@ -235,4 +245,36 @@ function integrityGroups() {
   return Object.keys(groups).map(k => groups[k]).sort((a, b) => (a.wait - b.wait) || (b.count - a.count));
 }
 
-module.exports = { integrity, repairLinks, integrityGroups };
+// 【骨架收编】新装设备的骨架（内置学期、模板、学科、示例账号）在登录前用出厂号建
+// （buildFresh 全部挂 schema.DEFAULT_ORG）；首次 hello 时云端发真实机构号、
+// 本机 meta.orgId 切换过去，但已经落盘的骨架行不会自己跟着换——
+// 它们从此被机构过滤挡住：学期页/模板页看不见、体检报「混入其它机构的数据」。
+//
+// 这里把这些行统一收编到指定机构号。
+// 【为什么安全】云端拉取按 orgId 过滤，本机的出厂号行只可能是本机自己建的骨架，
+// 不可能是别人的数据（别人的数据根本拉不进来）；收编只是把它们挂到本来
+// 就该属于的机构号上，一条内容都不改。
+// 【orgs 为什么跳过】它的 id 本身就是机构号，云端登录后会拉回本机构的行，
+// 出厂那行留着无害；改它的 id 会牵连 ownerId 引用，不值得。
+// 【幂等】收编后行上不再有出厂号，重复调用是空操作。
+function adoptFactoryRows(newOrgId) {
+  const n = { rows: 0, colls: [] };
+  if (core.isReadOnly()) return n;
+  if (!newOrgId || schema.isFactoryOrg(newOrgId)) return n;
+  const touched = {};
+  entities.ALL_COLLS.forEach(name => {
+    if (name === 'orgs') return;
+    (core.coll(name) || []).forEach(d => {
+      if (!d || !schema.isFactoryOrg(d.orgId)) return;
+      d.orgId = newOrgId;
+      d.updatedAt = now();
+      n.rows++;
+      touched[name] = 1;
+    });
+  });
+  n.colls = Object.keys(touched);
+  if (n.rows) n.colls.forEach(core.persist);
+  return n;
+}
+
+module.exports = { integrity, repairLinks, integrityGroups, adoptFactoryRows };

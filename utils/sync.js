@@ -160,6 +160,9 @@ function syncNow(opts) {
           // 恢复完成：pull 成功即切换（本机原本是空库，切换不会丢东西）
           if (pendingOrg) {
             db.patchMeta({ orgId: pendingOrg });
+            // 切机构号后，登录前用出厂号建的骨架（内置学期/模板/学科）要收编过来：
+            // 不然它们被机构过滤挡住——学期页空、模板页空、体检报"混入其它机构的数据"
+            db.adoptFactoryRows(pendingOrg);
             pendingOrg = '';
           }
           // 恢复完成后补一次认领：成员表已经是自己的了，此时把 openid 固化到成员上才安全
@@ -188,6 +191,8 @@ function join(code, name, stuNo) {
       if (!r || !r.ok) return r || { ok: false, msg: '加入失败' };
       const m = r.member || {};
       db.patchMeta({ orgId: String(r.orgId), me: String(m.userId || ''), openid: String(m.openid || '') });
+      // 同上：骨架行跟着换机构号，否则内置学期/模板在本机构里永远看不见
+      db.adoptFactoryRows(String(r.orgId));
       // 换机构：游标归零，从头拉一遍；本地那份空库不需要推
       db.sync.setCursor(0);
       db.sync.clearDirty(db.sync.COLLS);

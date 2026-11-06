@@ -21,15 +21,23 @@ const STATE = path.join(ROOT, '.release.json');
 const QR = path.join(ROOT, '.preview', 'qr.png');
 
 function loadState() {
-  try { return JSON.parse(fs.readFileSync(STATE, 'utf8')); } catch (e) { return { version: '1000' }; }
+  try {
+    const st = JSON.parse(fs.readFileSync(STATE, 'utf8'));
+    // 版本号必须是数字形态，否则当作没记录过（见 bump 的注释）
+    if (!/^\d+(\.\d+)*$/.test(String(st.version || ''))) return { version: '1000', desc: st.desc || '' };
+    return st;
+  } catch (e) { return { version: '1000' }; }
 }
 
 function bump(v) {
   // 纯数字就 +1；带点的按最后一段 +1（1.0.7 → 1.0.8）
-  const s = String(v || '1000');
+  const s = String(v || '').trim();
   if (/^\d+$/.test(s)) return String(Number(s) + 1);
   const parts = s.split('.');
-  parts[parts.length - 1] = String((Number(parts[parts.length - 1]) || 0) + 1);
+  // 状态文件被写坏（比如把中文描述当版本号写进去）时不能算出 "1"，
+  // 那种版本号在后台无法排序也不好认，直接退回一个干净的起点。
+  if (!/^\d+$/.test(parts[parts.length - 1])) return '1001';
+  parts[parts.length - 1] = String(Number(parts[parts.length - 1]) + 1);
   return parts.join('.');
 }
 
@@ -50,8 +58,11 @@ function preview() {
 
 function ship() {
   const st = loadState();
-  const version = rest[0] || bump(st.version);
-  const desc = rest[1] || st.desc || ('体验版 ' + version);
+  // 参数顺序放宽：只有"像版本号"的才当版本，否则整串当描述。
+  // （之前写成 rest[0] 一律当版本，`ship "修某问题"` 会把中文描述传成版本号。）
+  const isVer = s => /^\d+(\.\d+)*$/.test(String(s || ''));
+  const version = isVer(rest[0]) ? rest[0] : bump(st.version);
+  const desc = isVer(rest[0]) ? (rest[1] || st.desc || ('体验版 ' + version)) : (rest[0] || st.desc || ('体验版 ' + version));
 
   console.log('① 门禁：lint + 体积 + 全量测试');
   try {

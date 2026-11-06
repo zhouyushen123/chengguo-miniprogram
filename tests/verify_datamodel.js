@@ -390,4 +390,13 @@ ok('结课前随时可改：学生页每条记录有「修改」入口，能改�
   assert.ok(rec.indexOf('>修改<') > -1, '记录列表的按钮统一叫「修改」');
 });
 
+ok('首页统计卡直达对应页签：班级卡去班级、学生卡去学生，不许都丢给管理页默认页', () => {
+  const wxml = fs.readFileSync(path.join(__dirname, '../pages/index/index.wxml'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '../pages/index/index.js'), 'utf8');
+  const mgr = fs.readFileSync(path.join(__dirname, '../pages/mgr/mgr.js'), 'utf8');
+  assert.ok(wxml.indexOf('data-k="cls"') > -1 && wxml.indexOf('data-k="stu"') > -1, '班级/学生卡要分别带页签名');
+  assert.ok(js.indexOf('mgr?tabK=') > -1, '跳转要带 tabK 参数');
+  assert.ok(mgr.indexOf('_tabKWant') > -1, '管理页要支持按页签名定位（负责人/老师序号不同，名字不会漂）');
+});
+
 console.log('\n全部 ' + pass + ' 项数据模型断言通过');

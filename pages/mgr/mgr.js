@@ -48,10 +48,12 @@ Page({
     userClsChips: [], userStuChips: [], userCrsChips: [],
     roleOpts: ROLE_OPTS
   },
-  // 从个人中心带参进入：?tab=3 直达人员管理
+  // 从个人中心带参进入：?tab=3 直达人员管理；?tabK=cls/stu 按页签名跳（首页统计卡用，
+  // 负责人和老师的页签序号不同，传名字才能两边都落对）
   onLoad(q) {
     // 从别的页面带页签跳转过来（q.tab 传的是页签序号，按负责人全量页签 0-4）
     if (q && q.tab !== undefined) { this._tabReady = true; this.setData({ tab: Math.max(0, Math.min(+q.tab || 0, 4)) }); }
+    if (q && q.tabK) this._tabKWant = String(q.tabK);
   },
   onShow() { theme.apply(this); this.refresh(); },
   // 阻止弹窗内点击冒泡到遮罩层（关闭弹窗）的空处理
@@ -62,6 +64,12 @@ Page({
     const isManager = db.auth.isAdmin();
     let tab = this.data.tab;
     if (!this._tabReady) { this._tabReady = true; tab = isManager ? 1 : 0; }  // 默认落在「班级」，与旧版一致
+    // 按页签名定位（优先于序号）：负责人是 0-4、老师是 0-2，序号会因角色漂移，名字不会
+    if (this._tabKWant) {
+      const i = (isManager ? ['org', 'cls', 'course', 'stu', 'member'] : ['cls', 'course', 'stu']).indexOf(this._tabKWant);
+      if (i > -1) { tab = i; this.setData({ tab: i }); }
+      this._tabKWant = null;
+    }
     tab = Math.max(0, Math.min(tab, isManager ? 4 : 2));
     const tabK = (isManager ? ['org', 'cls', 'course', 'stu', 'member'] : ['cls', 'course', 'stu'])[tab] || 'cls';
     if (tabK === 'org' && !this._orgLoaded) this.loadOrgForm();

@@ -264,6 +264,8 @@ Page({
     });
   },
   goCls(e) { wx.navigateTo({ url: '/pages/cls/cls?id=' + e.currentTarget.dataset.id }); },
+  // 统计卡直达对应页签：传页签名（cls/stu），负责人和老师的序号不同，名字不会漂
+  goTab(e) { wx.navigateTo({ url: '/pages/mgr/mgr?tabK=' + e.currentTarget.dataset.k }); },
   // mgr 已从 tab 降为二级页，只能 navigateTo（switchTab 会静默失败）
   goMgr() { wx.navigateTo({ url: '/pages/mgr/mgr' }); },
   openRec(e) { wx.navigateTo({ url: '/pages/student/student?rid=' + e.currentTarget.dataset.rid + '&sid=' + e.currentTarget.dataset.sid }); },

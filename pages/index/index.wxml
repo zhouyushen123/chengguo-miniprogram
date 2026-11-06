@@ -79,11 +79,11 @@
 
   <!-- 统计 -->
   <view class="stats">
-    <view class="stat" hover-class="btn-hover" bindtap="goMgr">
+    <view class="stat" hover-class="btn-hover" bindtap="goTab" data-k="cls">
       <view class="num">{{clsCount}}</view>
       <view class="sl">班级 ›</view>
     </view>
-    <view class="stat" hover-class="btn-hover" bindtap="goMgr">
+    <view class="stat" hover-class="btn-hover" bindtap="goTab" data-k="stu">
       <view class="num">{{stuCount}}</view>
       <view class="sl">学生 ›</view>
     </view>

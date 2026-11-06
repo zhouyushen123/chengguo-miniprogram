@@ -36,7 +36,6 @@ const entities = require('./entities');
 const factory = require('./factory');
 const storage = require('./storage');
 const perms = require('./permissions');
-
 const ctx = require('./ctx');
 const orgs = require('./org');
 const identity = require('./identity');
@@ -90,6 +89,7 @@ const db = {
   repairIdentity: factory.repairIdentity,
   integrity: maintenance.integrity, integrityGroups: maintenance.integrityGroups, repairLinks: maintenance.repairLinks,  // 引用完整性
   adoptFactoryRows: maintenance.adoptFactoryRows,   // 骨架收编：登录前用出厂号建的行跟着换机构号
+  dedupeBindings: maintenance.dedupeBindings,       // 同一微信多条成员关系：留一条，其余进回收站
   // 原始条数：每张表「总条数 / 当前机构条数」。数据"看着少了"时用它分辨是丢了还是身份不对
   rawCounts: () => {
     const raw = core.realData() || {};

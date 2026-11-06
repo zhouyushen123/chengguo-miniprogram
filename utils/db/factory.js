@@ -66,6 +66,21 @@ function repairIdentity() {
   }
 
   const org = orgs.find(x => String(x.id) === cur) || orgs[0];
+
+  // ① 本机构其实还有成员（只是 me 断链，actor 找不到人）→ 直接认旧身份，绝不新建。
+  //    新建会造出同一个微信的第二条成员关系：云端有硬约束推不上去（MEM_TAKEN），
+  //    本机权限判定又按第一条取 —— 真机上就是这么长出两条「负责人」的。
+  const cand = alive('members').filter(x => String(x.orgId || '') === String(org.id));
+  if (cand.length) {
+    const meta = core.meta() || {};
+    const pick =
+      (meta.openid && cand.find(x => x.openid === meta.openid && x.role === 'owner')) ||
+      (meta.openid && cand.find(x => x.openid === meta.openid)) ||
+      cand.find(x => x.role === 'owner') || cand[0];
+    core.updateMeta({ me: pick.userId, orgId: org.id });
+    return { ok: true, code: 'ADOPTED', msg: '已找回本机身份（' + (pick.name || '成员') + '）' };
+  }
+
   const stamp = Date.now();
   const uid = 'u' + stamp;
   const u = schema.normalizeUser({ id: uid, name: '负责人', role: 'owner' }, org.id, stamp);

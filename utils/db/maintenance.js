@@ -69,8 +69,7 @@ function init() {
     // 只在"规范化口径变了"时跑全量——靠 meta.normStamp 记住口径版本，改 normalizeXxx 时递增它。
     const changed = normalizeAll(core.meta().normStamp !== NORM_STAMP);
     const purged = purgeSeed();          // 老版本混在真实库里的演示数据 → 请出去（演示包里另有一份）
-    // 演示包改成「点了才建」：新用户手机里不该先躺着一整套用不到的示例学生与记录
-    // （十几个 key、几百 KB），真实第一屏就该是空的。
+    // 演示包改成「点了才建」：新用户手机里不该先躺着一整套用不到的示例数据（几百 KB）。
     // 例外两种：①磁盘上已经有包（含老版本），要跟着版本重建；②这次升级会把人送进演示
     // （老版本把演示数据混在真实库里，清掉后不能让他面对空白），必须先备好包再切模式。
     const hadDemo = !!storage.demo.load().meta;
@@ -78,6 +77,7 @@ function init() {
     const repaired = repairRefs();
     const linked = integrity.repairLinks();   // 关系表与三处外键的悬空行：启动即修
     const adopted = integrity.adoptFactoryRows(org());  // 登录前用出厂号建的骨架：收编到当前机构
+    const deduped = integrity.dedupeBindings();  // 同一微信多条成员关系：留一条，其余进回收站
     const mediaFixed = repairMedia();
     // 一次性补标：v9 新加的学科/知识点。"已升级但种子只在本地"的旧设备靠这个戳补推一次，
     // 否则永远停在"本机有、云端没有"。
@@ -88,7 +88,7 @@ function init() {
     const regrew = markRegrown(beforeCount);   // 迁移新增的行为什么必须标脏，见 markRegrown
     resolveMode(purged);                 // 该进演示还是回真实机构
     const linkedFixed = (linked.bindings + linked.dupBind + linked.records + linked.members + linked.students) > 0;
-    if (changed || purged || repaired || mediaFixed || regrew || linkedFixed || adopted.rows) core.flushAll();
+    if (changed || purged || repaired || mediaFixed || regrew || linkedFixed || adopted.rows || deduped.rows || deduped.renamed) core.flushAll();
 
     if (snapRestored) {
       // 恢复出来的数据必须立刻落盘，否则磁盘上还是那份缺了片的旧数据，
@@ -495,5 +495,5 @@ module.exports = {
   mediaRefs,
   init, status, normalizeAll, repairRefs, repairMedia, restoreSnapshot,
   integrity: integrity.integrity, repairLinks: integrity.repairLinks, integrityGroups: integrity.integrityGroups,
-  adoptFactoryRows: integrity.adoptFactoryRows, buildDemoData, ensureDemo, purgeSeed, resolveMode, demo: demoApi, merge
+  adoptFactoryRows: integrity.adoptFactoryRows, dedupeBindings: integrity.dedupeBindings, buildDemoData, ensureDemo, purgeSeed, resolveMode, demo: demoApi, merge
 };

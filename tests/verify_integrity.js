@@ -396,4 +396,81 @@ ok('G4 同步的两处机构切换点都调用了骨架收编（漏一处就复�
   assert.strictEqual(calls, 2, '每处切换后都必须紧跟收编，现在只有 ' + calls + ' 处');
 });
 
+ok('G5 重复绑定收口：同一微信两条成员关系只留一条，me 改指保留行', () => {
+  const mem2 = {};
+  const db2 = boot(mem2);
+  const core2 = require(path.join(ROOT, 'utils/db/core'));
+  db2.patchMeta({ orgId: 'org_x9' });
+
+  // 造两条同 openid 的成员：A 建得早没名字，B 建得晚有名字且 me 指着它
+  const mk = (id, userId, name, createdAt) => ({
+    id, orgId: 'org_x9', userId, role: 'owner', name: name || '',
+    openid: 'oX', status: 'active', createdAt, updatedAt: createdAt,
+    clsIds: [], courseIds: [], studentIds: []
+  });
+  core2.coll('members').push(mk(9001, 'uA', '', 1000));
+  core2.coll('members').push(mk(9002, 'uB', '张老师', 2000));
+  core2.persist('members');
+  db2.patchMeta({ me: 'uB' });
+
+  const r = db2.dedupeBindings();
+  assert.strictEqual(r.rows, 1, '该删掉一条：' + JSON.stringify(r));
+  const alive = core2.coll('members').filter(x => !x.removed && x.openid === 'oX');
+  assert.strictEqual(alive.length, 1);
+  assert.strictEqual(alive[0].id, 9002, 'me 指着、有名字的该留');
+  assert.strictEqual(core2.coll('members').find(x => x.id === 9001).removed, true, '另一条进回收站（打墓碑，不是物理删）');
+  // me 本来就指着保留行，不该被动过
+  assert.strictEqual(db2.real().meta.me, 'uB');
+  // 幂等：再跑一遍是空操作
+  assert.deepStrictEqual(db2.dedupeBindings(), { rows: 0, renamed: 0 });
+
+  // 反过来：me 指着的是没名字的旧行 → 留旧行（me 优先级最高），并把名字从账号表借来
+  const mem3 = {};
+  const db3 = boot(mem3);
+  const core3 = require(path.join(ROOT, 'utils/db/core'));
+  db3.patchMeta({ orgId: 'org_x9' });
+  core3.coll('members').push(mk(9101, 'uC', '', 1000));
+  core3.coll('members').push(mk(9102, 'uD', '李老师', 2000));
+  core3.coll('users').push({ id: 'uC', orgId: 'org_x9', name: '真正的名字', role: 'owner', createdAt: 1000, updatedAt: 1000 });
+  core3.persist('members');
+  core3.persist('users');
+  db3.patchMeta({ me: 'uC' });
+  const r3 = db3.dedupeBindings();
+  assert.strictEqual(r3.rows, 1);
+  const alive3 = core3.coll('members').filter(x => !x.removed && x.openid === 'oX');
+  assert.strictEqual(alive3[0].id, 9101, 'me 指着的行优先保留（权限判定按它走）');
+  assert.strictEqual(alive3[0].name, '真正的名字', '保留行没名字要从账号表补，记录署名靠它');
+  assert.strictEqual(db3.real().meta.me, 'uC');
+});
+
+ok('G6 身份自救不重人：机构里还有成员时认旧身份，绝不新建第二条', () => {
+  const mem2 = {};
+  const db2 = boot(mem2);
+  const core2 = require(path.join(ROOT, 'utils/db/core'));
+  db2.patchMeta({ orgId: 'org_x9' });
+  core2.coll('orgs').push({ id: 'org_x9', name: '测试机构', createdAt: 1000, updatedAt: 1000 });
+  // 机构里有业务数据 + 两条成员（都还没认领 openid），me 指向不存在的账号
+  // → memberCurrent 解析出人（两条成员时单成员兜底失效），老逻辑会在这里重建负责人
+  core2.coll('members').push({
+    id: 9201, orgId: 'org_x9', userId: 'uOld', role: 'owner', name: '老王',
+    openid: '', status: 'active', createdAt: 1000, updatedAt: 1000,
+    clsIds: [], courseIds: [], studentIds: []
+  });
+  core2.coll('members').push({
+    id: 9203, orgId: 'org_x9', userId: 'uT', role: 'teacher', name: '张老师',
+    openid: '', status: 'active', createdAt: 1100, updatedAt: 1100,
+    clsIds: [], courseIds: [], studentIds: []
+  });
+  core2.coll('students').push({ id: 9202, orgId: 'org_x9', name: '小明', no: 'S001', removed: false, createdAt: 1000, updatedAt: 1000 });
+  core2.persist('members');
+  core2.persist('students');
+  db2.patchMeta({ me: 'uGhost' });
+
+  const r = db2.repairIdentity();
+  assert.ok(r.ok, '自救应该成功：' + JSON.stringify(r));
+  assert.strictEqual(r.code, 'ADOPTED', '该认旧身份而不是重建：' + r.code);
+  assert.strictEqual(db2.real().meta.me, 'uOld', 'me 要指到已有的成员');
+  assert.strictEqual(core2.coll('members').filter(x => !x.removed && x.orgId === 'org_x9').length, 2, '不能多出第三条成员（原有的两条都原样保留）');
+});
+
 console.log('\n全部 ' + pass + ' 项地基断言通过');

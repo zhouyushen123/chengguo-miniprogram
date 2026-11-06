@@ -4,7 +4,7 @@
 // 而这套东西是"库级"的，不属于任何一个业务领域，单独一层最清楚。
 // 依赖：core（全量集合）+ ctx（机构/时间）。不依赖任何领域模块，不产生环。
 const core = require('./core');
-const { now, org } = require('./ctx');
+const { now, org, markRemoved } = require('./ctx');
 const schema = require('./schema');
 const entities = require('./entities');
 
@@ -277,4 +277,47 @@ function adoptFactoryRows(newOrgId) {
   return n;
 }
 
-module.exports = { integrity, repairLinks, integrityGroups, adoptFactoryRows };
+// 同一微信绑了多条成员关系（自救重建过负责人、向导重走都可能造成）。
+// 云端对「一个 openid 一条成员关系」有硬约束，重复的那条永远推不上去（报 MEM_TAKEN），
+// 本机权限判定又按第一条取，等于随机生效 —— 启动时收口：每组保留一条，其余打墓碑进回收站。
+// 保留谁：me 指着的 > 有姓名的 > 建得早的。me 若断链（空或指向被删行）改指保留行；
+// 保留行没姓名就向账号表借（记录署名要用）。
+function dedupeBindings() {
+  const n = { rows: 0, renamed: 0 };
+  if (core.isReadOnly()) return n;
+  const o = org();
+  if (!o || schema.isFactoryOrg(o)) return n;
+  const alive = (core.coll('members') || []).filter(x => x && !x.removed && String(x.orgId) === String(o) && x.openid);
+  const meta = core.meta() || {};
+  const byOpen = {};
+  alive.forEach(m => (byOpen[m.openid] || (byOpen[m.openid] = [])).push(m));
+  Object.keys(byOpen).forEach(k => {
+    const g = byOpen[k];
+    if (g.length < 2) return;
+    const score = m =>
+      (String(meta.me || '') === String(m.userId) ? 4 : 0) +
+      (String(m.name || '').trim() ? 2 : 0) -
+      (Number(m.createdAt) || Number(m.id) || 0) / 1e15;
+    g.sort((a, b) => score(b) - score(a));
+    const keep = g[0];
+    g.slice(1).forEach(m => {
+      markRemoved(m, now());
+      m.updatedAt = now();
+      n.rows++;
+    });
+    const meAlive = String(meta.me || '') && alive.some(x => String(x.userId) === String(meta.me));
+    if (!meAlive) core.updateMeta({ me: keep.userId });
+    if (!String(keep.name || '').trim()) {
+      const u = (core.coll('users') || []).find(x => x && String(x.id) === String(keep.userId) && !x.removed);
+      if (u && String(u.name || '').trim()) {
+        keep.name = String(u.name).trim();
+        keep.updatedAt = now();
+        n.renamed++;
+      }
+    }
+  });
+  if (n.rows || n.renamed) core.persist('members');
+  return n;
+}
+
+module.exports = { integrity, repairLinks, integrityGroups, adoptFactoryRows, dedupeBindings };

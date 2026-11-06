@@ -252,10 +252,9 @@ function repairRefs() {
       const s = students.find(x => x.id === r.sid);
       if (s && s.clsIds.length) { r.cid = s.clsIds[0]; changed++; }
     }
-    if (!r.courseId && r.course) {
-      const c = courses.find(x => x.clsId === r.cid && x.name === r.course && !x.removed);
-      if (c) { r.courseId = c.id; changed++; }
-    }
+    // V10 起同名即同一门课（课程不再挂班级），不再按 clsId 找
+    const cm = (r.courseId || !r.course) ? null : courses.find(x => x.name === r.course && !x.removed);
+    if (cm) { r.courseId = cm.id; changed++; }
     // tid 必须有值：为空会让"只能改自己录的"这条规则失效。
     // 但绝不能拿"当前登录人"回填——启动时可能恰好是家长身份，
     // 那样历史记录会被记成家长录入，而 own 规则下老师从此改不了这条记录。

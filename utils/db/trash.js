@@ -66,8 +66,13 @@ function list(kind) {
     });
   }
   if (want.indexOf('courses') > -1) {
-    ocAll('courses').filter(x => x.removed && perms.canSeeClass(a, x.clsId)).forEach(c => {
-      push('courses', 'courses', c, c.name || '未命名课程', '归属：' + ((core.coll('classes').find(y => y.id === c.clsId) || {}).name || '已删班级'));
+    ocAll('courses').filter(x => x.removed).forEach(c => {
+      // 课程不再有 clsId：老师能看到的是"曾开在自己班上的课"（含已解绑的那批）
+      const cl = courses.classIdsOf(c.id, true);
+      if (!a || (!a.all && !cl.some(id => perms.canSeeClass(a, id)))) return;
+      const names = cl.map(id => (core.coll('classes').find(y => y.id === id) || {}).name).filter(Boolean);
+      push('courses', 'courses', c, c.name || '未命名课程',
+        names.length ? '开设：' + names.join('、') : '未分配给任何班级');
     });
   }
   if (want.indexOf('records') > -1) {

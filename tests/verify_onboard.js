@@ -160,7 +160,7 @@ ok('课程默认跟班级同名预填；提交后课程随班级一起建（录�
   const crs = db.courses.list();
   assert.strictEqual(crs.length, 1, '课程应随班级一起建');
   assert.strictEqual(crs[0].name, '软笔书法');
-  assert.strictEqual(crs[0].clsId, cs[0].id, '课程要挂在刚建的班上');
+  assert.deepStrictEqual(crs[0].classIds, [cs[0].id], '课程要开在刚建的班上（V10 走绑定表）');
 });
 
 console.log('\n【向导 · 第 4 步 学生】');

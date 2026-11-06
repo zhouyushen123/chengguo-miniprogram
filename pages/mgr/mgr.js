@@ -135,7 +135,12 @@ Page({
       clsTeachers: [{ id: 0, name: '暂不指派' }].concat(staff),
       clsTeacherIdx: this.data.clsTeacherIdx || 0,
       stuYears, stuYearIdx, enrollYearOpts,
-      courses: db.courses.list().map(c => ({ id: c.id, name: c.name, cls: db.classes.name(c.clsId) })),
+      // V10：课程是独立的内容单元，可能同时开在多个班，也可能暂时没开在任何班
+      courses: db.courses.list().map(c => ({
+        id: c.id, name: c.name,
+        clsList: (c.classIds || []).map(id => ({ id, name: db.classes.name(id) })).filter(x => x.name),
+        canBind: (c.classIds || []).length < classes.length
+      })),
       members: isManager ? db.members.list().map(m => {
         const v = db.members.view(m);
         return {
@@ -157,7 +162,9 @@ Page({
           clsIds: v.clsIds, courseIds: v.courseIds, studentIds: v.studentIds
         };
       }) : [],
-      courseClsIdx: Math.min(this.data.courseClsIdx, Math.max(0, classes.length - 1))
+      courseClsIdx: Math.min(this.data.courseClsIdx, Math.max(0, classes.length - 1)),
+      // 建课时的班级选择：班级之后多一项「暂不开设」——课程可以先建进课程库，之后再开到班上
+      courseClsPick: classes.concat([{ id: 0, name: '暂不开设（先进课程库）' }])
     });
     // 展开的班级被删掉后要收回展开态，避免指向不存在的班
     if (this.data.clsExpand && !classes.some(c => c.id === this.data.clsExpand)) {
@@ -329,7 +336,7 @@ Page({
     const id = +e.currentTarget.dataset.id;
     wx.showModal({
       title: '删除这个班级？',
-      content: '该班课程会一并删除，学生变为未分班，历史成果记录保留，负责该班的老师会同步失去这个班。',
+      content: '该班会进回收站（可恢复），学生变为未分班，历史成果记录保留。该班开设的课程只是取消开设，课程本身不会被删掉。负责该班的老师会同步失去这个班。',
       success: r => {
         if (!r.confirm) return;
         const res = db.classes.remove(id);
@@ -342,11 +349,48 @@ Page({
   onCourseCls(e) { this.setData({ courseClsIdx: +e.detail.value }); },
   addCourse() {
     const n = (this.data.newCourse || '').trim();
-    const c = this.data.classes[this.data.courseClsIdx];
-    if (!c) { wx.showToast({ title: '请先添加班级', icon: 'none' }); return; }
-    const r = db.courses.create({ name: n, clsId: c.id });
+    if (!n) { wx.showToast({ title: '请填写课程名称', icon: 'none' }); return; }
+    // 选「暂不开设」时 clsId 为空：课程进课程库，之后再在任意班开设
+    const pick = (this.data.courseClsPick || [])[this.data.courseClsIdx] || {};
+    const r = db.courses.create({ name: n, clsId: pick.id || undefined });
     if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
     this.setData({ newCourse: '', courseFormOpen: false }); this.refresh();
+    // 课程库里已有同名课时不会新建，直接复用它开到班上——得让人知道发生了什么
+    if (r.reused) wx.showToast({ title: '课程库已有「' + n + '」，已直接开设', icon: 'none' });
+  },
+  // 把一门课开到另一个班（V10：同一门课可同时开在多个班，不复制课程）
+  addCourseCls(e) {
+    const id = +e.currentTarget.dataset.id;
+    const have = db.courses.classIdsOf(id);
+    const pool = this.data.classes.filter(c => have.indexOf(c.id) < 0);
+    if (!pool.length) { wx.showToast({ title: '每个班都已开设这门课', icon: 'none' }); return; }
+    wx.showActionSheet({
+      itemList: pool.slice(0, 6).map(c => c.name),
+      success: r => {
+        const c = pool[r.tapIndex];
+        if (!c) return;
+        const res = db.courses.bind(c.id, id);
+        if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
+        this.refresh();
+        wx.showToast({ title: '已开设到' + c.name, icon: 'none' });
+      }
+    });
+  },
+  // 取消某班的这门课：只解绑，课程本身和其他班不受影响
+  delCourseCls(e) {
+    const id = +e.currentTarget.dataset.id;
+    const cid = +e.currentTarget.dataset.cid;
+    const name = e.currentTarget.dataset.name || '';
+    wx.showModal({
+      title: '取消「' + name + '」的开设？',
+      content: '只是这个班不再开这门课。课程本身保留（其他班照常），历史记录也不受影响。',
+      success: r => {
+        if (!r.confirm) return;
+        const res = db.courses.unbind(cid, id);
+        if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
+        this.refresh();
+      }
+    });
   },
   openCourseForm() { this.setData({ courseFormOpen: true }); },
   // E-01 课程支持改名（showModal 自带输入框，不另做弹层）

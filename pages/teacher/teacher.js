@@ -35,7 +35,9 @@ Page({
         modeLabel: db.classes.mode(c.id) === 'carry' ? '课时结转' : '学期制',
         stuN: stuAll.filter(s => (s.clsIds || []).indexOf(c.id) > -1).length
       }));
-    const crsList = db.courses.list().filter(c => m.courseIds.indexOf(c.id) > -1);
+    // V10：课程不再挂班级，可见范围由「自己班上的绑定 ∪ 成员显式授权」算出来，
+    // list() 已经按这个口径过滤过，不能再叠加 courseIds（大多数老师上它是空的）
+    const crsList = db.courses.list();
     const stuN = stuAll.filter(s => (s.clsIds || []).some(cid => m.clsIds.indexOf(cid) > -1)).length;
 
     // 成果记录：tid = 录入老师（user id），配合当前身份的可见性过滤

@@ -55,9 +55,9 @@ const nameOf = f => f.replace(/\.js$/, '');
 // 基础组（BASIC）是数据层的底座：schema 定义、storage 读写、core 内存集合、permissions 规则、migrate 迁移。
 // 它们天生互相依赖（core 要用 storage 和 schema），所以组内允许互相引用；
 // 业务领域之间的依赖则必须严格下行。
-const BASIC = ['subject-seeds', 'schema', 'entities', 'storage', 'core', 'permissions', 'migrate'];
+const BASIC = ['subject-seeds', 'schema-base', 'schema', 'entities', 'storage', 'core', 'permissions', 'migrate'];
 const LAYER = {
-  'subject-seeds': 0, schema: 0, entities: 0, storage: 0, core: 0, permissions: 0, migrate: 0,  // 基础组
+  'subject-seeds': 0, 'schema-base': 0, schema: 0, entities: 0, storage: 0, core: 0, permissions: 0, migrate: 0,  // 基础组
   ctx: 1,                                   // 底座：now/org/oc/actor/deny，只依赖基础组
   org: 2, terms: 2, courses: 2, students: 2, templates: 2, content: 2,  // content: 学科与知识点（只依赖基础组 + ctx）
   classes: 3,                               // → terms（新建班级默认挂进行中学期）

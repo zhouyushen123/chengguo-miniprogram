@@ -95,15 +95,27 @@ const ENTITIES = [
     ]
   },
   {
-    coll: 'courses', entity: 'course', label: '课程', domain: '教学域',
+    coll: 'courses', entity: 'course', label: '课程', domain: '内容域',
     idType: 'num', sync: true, writer: '客户端（负责人/管理员/老师）',
-    retention: '长期保留',
-    indexes: [['orgId + clsId', '复合'], ['orgId + subjectId', '复合（阶段二选题用）']],
+    retention: '长期保留（班级删除不影响课程本身）',
+    indexes: [['orgId + subjectId', '复合（按学科筛课 / 阶段二选题）']],
     fields: [
       { k: 'id', t: INT, d: '课程 id' },
-      { k: 'clsId', t: INT, d: '所属班级' },
       { k: 'subjectId', t: INT, d: '学科 subjects.id，0 = 未指定（V9 新增）' },
-      { k: 'name', t: STR, d: '课程名，如 楷书 / 素描 / 数学思维' }
+      { k: 'name', t: STR, d: '课程名，如 楷书 / 素描 / 数学思维。V10 起不再绑定班级' }
+    ]
+  },
+  {
+    coll: 'class_courses', entity: 'classCourse', label: '班级课程绑定', domain: '教学域',
+    idType: 'num', sync: true, writer: '客户端（负责人/管理员/老师）',
+    retention: '随班级存在；解绑即软删',
+    indexes: [['orgId + clsId', '复合（排课表）'], ['orgId + courseId', '复合（这门课在哪些班）']],
+    fields: [
+      { k: 'id', t: INT, d: '绑定 id' },
+      { k: 'clsId', t: INT, d: '班级 classes.id' },
+      { k: 'courseId', t: INT, d: '课程 courses.id，同一门课可绑多个班' },
+      { k: 'teacherId', t: INT, d: '该班这门课的任课老师 member.id，0 = 跟随班级主讲（预留）' },
+      { k: 'sort', t: INT, d: '同班内的教学顺序，上课选课按它排' }
     ]
   },
   {

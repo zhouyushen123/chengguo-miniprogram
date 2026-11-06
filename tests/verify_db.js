@@ -110,10 +110,14 @@ ok('新建班级成功并带审计字段', () => {
   assert.ok(r.item.id > 0 && r.item.orgId === 'org1');
   assert.strictEqual(db.classes.list().length, 3);
 });
-ok('课程必须归属班级', () => {
+ok('课程不再必须归属班级（V10 解耦），但名称必填、班级要真实存在', () => {
   const r = db.courses.create({ name: '写意' });
-  assert.strictEqual(r.ok, false);
-  assert.ok(/班级/.test(r.msg));
+  assert.strictEqual(r.ok, true, '无班级也能进课程库');
+  assert.strictEqual(r.item.clsId, undefined, '课程实体上不再带 clsId');
+  assert.strictEqual(db.courses.classIdsOf(r.item.id).length, 0, '还没开在任何班');
+  const bad = db.courses.create({ name: '油画', clsId: 9999 });
+  assert.strictEqual(bad.ok, false, '指向不存在班级的建课要被拒');
+  assert.strictEqual(db.courses.create({ name: '' }).ok, false);
 });
 ok('记录必须关联学生、分数有上下限', () => {
   assert.strictEqual(db.records.save({ sid: 0, note: 'x' }, false).ok, false);
@@ -174,7 +178,7 @@ ok('批量标记已发送只影响未发送的', () => {
 });
 
 console.log('\n【软删除与关联清理】');
-ok('删班级：课程一并软删、学生移出该班、记录保留', () => {
+ok('删班级：只解绑课程（课程保留）、学生移出该班、记录保留', () => {
   const c = db.classes.create({ name: '临时班' }).item;
   const course = db.courses.create({ name: '临时课', clsId: c.id }).item;
   const stu = db.students.create({ name: '临时学生', clsIds: [c.id] }).item;
@@ -182,7 +186,9 @@ ok('删班级：课程一并软删、学生移出该班、记录保留', () => {
 
   assert.strictEqual(db.classes.remove(c.id).ok, true);
   assert.strictEqual(db.classes.get(c.id), null, '班级应不可见');
-  assert.strictEqual(db.courses.get(course.id), null, '课程应一并软删');
+  // V10：课程是独立资产，删班只解除"这门课在这个班开过"，不连课一起删
+  assert.ok(db.courses.get(course.id), '课程本身应保留（可能还开在别的班）');
+  assert.strictEqual(db.courses.classIdsOf(course.id).length, 0, '但已不在任何班开设');
   assert.strictEqual(db.students.get(stu.id).clsIds.length, 0, '学生应移出该班');
   assert.ok(db.records.get(rec.id), '历史记录应保留');
   // 软删标记要落库，多端同步时才能传播删除
@@ -267,6 +273,84 @@ ok('切换身份后 current 跟着变（角色来自成员关系）', () => {
 ok('v2 里的首个老师升级为机构负责人', () => {
   assert.strictEqual(db.settings().role, 'owner');
   assert.strictEqual(db.orgs.current().ownerId, 't1');
+});
+
+console.log('\n【课程与班级解耦（V10）】');
+ok('迁移：老课程的 clsId 派生成绑定，课程实体上不再有 clsId', () => {
+  const ks = db.courses.list().find(c => c.name === '楷书');
+  assert.ok(ks, '楷书应随迁移保留');
+  assert.strictEqual(ks.clsId, undefined, '课程实体不该再带 clsId');
+  assert.deepStrictEqual(db.courses.classIdsOf(ks.id), [1], '楷书开在书法班(1)');
+});
+
+ok('同一门课可同时开在多个班，课程只存一条', () => {
+  const ks = db.courses.list().find(c => c.name === '楷书');
+  const a = db.classes.create({ name: '楷书A班' }).item;
+  const b = db.classes.create({ name: '楷书B班' }).item;
+  const n0 = db.courses.list().length;
+  assert.ok(db.courses.bind(a.id, ks.id).ok);
+  assert.ok(db.courses.bind(b.id, ks.id).ok);
+  assert.strictEqual(db.courses.list().length, n0, '不该复制出新课程');
+  const ids = db.courses.classIdsOf(ks.id);
+  assert.ok(ids.indexOf(a.id) > -1 && ids.indexOf(b.id) > -1);
+  // 上课选课：两个班都能选到这门课，而且指向同一条课程
+  assert.deepStrictEqual(db.courses.of(a.id).map(c => c.id), [ks.id]);
+  assert.deepStrictEqual(db.courses.of(b.id).map(c => c.id), [ks.id]);
+});
+
+ok('同名建课直接复用课程库里的那门，不制造第二条', () => {
+  const ks = db.courses.list().find(c => c.name === '楷书');
+  const n0 = db.courses.list().length;
+  const c = db.classes.create({ name: '楷书C班' }).item;
+  const r = db.courses.create({ name: '楷书', clsId: c.id });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.reused, true, '应复用而不是新建');
+  assert.strictEqual(r.item.id, ks.id);
+  assert.strictEqual(db.courses.list().length, n0);
+  assert.ok(db.courses.classIdsOf(ks.id).indexOf(c.id) > -1, '顺带开到新班');
+});
+
+ok('解绑只摘掉这个班，课程与其他班不受影响', () => {
+  const ks = db.courses.list().find(c => c.name === '楷书');
+  const before = db.courses.classIdsOf(ks.id);
+  const target = before[0];
+  const r = db.courses.unbind(target, ks.id);
+  assert.strictEqual(r.ok, true);
+  assert.ok(db.courses.get(ks.id), '课程本身还在');
+  assert.strictEqual(db.courses.classIdsOf(ks.id).indexOf(target), -1);
+  assert.strictEqual(db.courses.classIdsOf(ks.id).length, before.length - 1);
+});
+
+ok('删班不删课：绑定一起进回收站，班级还原时认回来', () => {
+  const ks = db.courses.list().find(c => c.name === '楷书');
+  const cls = db.classes.create({ name: '临时楷书班' }).item;
+  db.courses.bind(cls.id, ks.id);
+  db.classes.remove(cls.id);
+  assert.ok(db.courses.get(ks.id), '课程不能被连带删除');
+  assert.strictEqual(db.courses.classIdsOf(ks.id).indexOf(cls.id), -1, '暂时不在这个班');
+  assert.strictEqual(db.classes.restore(cls.id).ok, true);
+  assert.ok(db.courses.classIdsOf(ks.id).indexOf(cls.id) > -1, '还原班级，开设关系一起回来');
+});
+
+ok('删课连带解绑，还原时绑定全回来', () => {
+  const ks = db.courses.list().find(c => c.name === '楷书');
+  const ids = db.courses.classIdsOf(ks.id);
+  assert.strictEqual(db.courses.remove(ks.id).ok, true);
+  assert.strictEqual(db.courses.get(ks.id), null, '课程不可见');
+  assert.strictEqual(db.courses.classIdsOf(ks.id).length, 0, '绑定也一起失效');
+  const r = db.courses.restore(ks.id);
+  assert.strictEqual(r.ok, true);
+  assert.deepStrictEqual(db.courses.classIdsOf(ks.id), ids, '绑定按批次全认回来');
+});
+
+ok('录记录时按课程名反查课程 id（跨班同名也认）', () => {
+  const ks = db.courses.list().find(c => c.name === '楷书');
+  const cls = db.classes.create({ name: '楷书D班' }).item;
+  assert.ok(db.courses.bind(cls.id, ks.id).ok);
+  const stu = db.students.create({ name: '反查学生', clsIds: [cls.id] }).item;
+  const r = db.records.save({ cls: cls.id, sid: stu.id, course: '楷书', note: '解耦后录一条' }, true);
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.record.courseId, ks.id, '课程指针要挂上，题库将来靠它关联');
 });
 
 console.log('\n【持久化：模拟重启后数据还在】');

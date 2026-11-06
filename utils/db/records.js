@@ -87,8 +87,16 @@ function recordSave(pick, send) {
   }
 
   const course = schema.str(p.course).trim();
-  const courseId = Number(p.courseId) ||
-    ((oc('courses').find(c => c.clsId === cid && c.name === course) || {}).id || 0);
+  // 课程 id 反查：V10 起课程不再带 clsId，先在这个班开设的课里找同名，
+  // 找不到再退回全机构同名课程（老师可能录了一门这个班还没绑的课）。
+  // 都找不到就留 0——课程名文字仍然是记录的权威内容，指针只是给题库用的关联。
+  const courseId = Number(p.courseId) || (function () {
+    if (!course) return 0;
+    const bound = oc('class_courses').filter(b => b.clsId === cid).map(b => b.courseId);
+    const all = oc('courses').filter(c => c.name === course);
+    const inCls = all.find(c => bound.indexOf(c.id) > -1);
+    return (inCls || all[0] || {}).id || 0;
+  })();
 
   // 课次：新建时默认归入班级当前课次；补录（隔天补上一课）可显式传更早的课次。
   // 只允许 1 ~ 当前课次：传未来课次/0/负数都拒绝，不静默回落——

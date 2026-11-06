@@ -4,7 +4,7 @@
 > 门禁：`npm run check` 会跑 `node tools/schema-doc.js --check`，代码与本文不一致即失败。
 > 改字段的正确顺序：改 `schema.js` 的 normalize/validate → 改 `entities.js` 登记 → 重新生成本文。
 
-共 **12** 张表；参与同步的 **11** 张。
+共 **13** 张表；参与同步的 **12** 张。
 
 ## 1. 总览
 
@@ -14,7 +14,8 @@
 | `members` | 成员关系 | 组织域 | int（登记时刻） | ✅ | 客户端 + 云函数（认领/邀请） | 随机构存在 |
 | `terms` | 学期 | 教学域 | int 自增 | ✅ | 客户端（负责人/管理员） | 长期保留（历史成绩单依赖它） |
 | `classes` | 班级 | 教学域 | int 自增 | ✅ | 客户端（负责人/管理员/班主任） | 长期保留 |
-| `courses` | 课程 | 教学域 | int 自增 | ✅ | 客户端（负责人/管理员/老师） | 长期保留 |
+| `courses` | 课程 | 内容域 | int 自增 | ✅ | 客户端（负责人/管理员/老师） | 长期保留（班级删除不影响课程本身） |
+| `class_courses` | 班级课程绑定 | 教学域 | int 自增 | ✅ | 客户端（负责人/管理员/老师） | 随班级存在；解绑即软删 |
 | `subjects` | 学科 | 内容域 | int 自增 | ✅ | 客户端（首次使用种子化 + 负责人可改名） | 随机构存在 |
 | `knowledge_points` | 知识点 | 内容域 | int 自增 | ✅ | 阶段一：脚本/后台；阶段二：题库后台 | 长期保留；被题目引用时禁止物理删除 |
 | `students` | 学生 | 教学域 | int 自增 | ✅ | 客户端（负责人/管理员/老师） | 长期保留（离班后仍保留档案与历史记录） |
@@ -121,17 +122,37 @@
 
 ### `courses` 课程
 
-- 域：教学域　id：int 自增　同步：是
+- 域：内容域　id：int 自增　同步：是
 - 写入方：客户端（负责人/管理员/老师）
-- 保留期：长期保留
-- 索引：`orgId + clsId`（复合）；`orgId + subjectId`（复合（阶段二选题用））
+- 保留期：长期保留（班级删除不影响课程本身）
+- 索引：`orgId + subjectId`（复合（按学科筛课 / 阶段二选题））
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `id` | int | 课程 id |
-| `clsId` | int | 所属班级 |
 | `subjectId` | int | 学科 subjects.id，0 = 未指定（V9 新增） |
-| `name` | string | 课程名，如 楷书 / 素描 / 数学思维 |
+| `name` | string | 课程名，如 楷书 / 素描 / 数学思维。V10 起不再绑定班级 |
+| `orgId` | string | 归属机构。orgs 集合里等于 id |
+| `createdAt` | int(ms) | 创建时间 |
+| `updatedAt` | int(ms) | 更新时间，同步 LWW 的依据 |
+| `removed` | bool | 软删除标记（删除必须能被同步，不能硬删） |
+| `removedAt` | int(ms) | 哪一次删除：同一批次共用，回收站按它整批还原 |
+| `removedBy` | int | 操作人 member.id，0 = 系统 |
+
+### `class_courses` 班级课程绑定
+
+- 域：教学域　id：int 自增　同步：是
+- 写入方：客户端（负责人/管理员/老师）
+- 保留期：随班级存在；解绑即软删
+- 索引：`orgId + clsId`（复合（排课表））；`orgId + courseId`（复合（这门课在哪些班））
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `id` | int | 绑定 id |
+| `clsId` | int | 班级 classes.id |
+| `courseId` | int | 课程 courses.id，同一门课可绑多个班 |
+| `teacherId` | int | 该班这门课的任课老师 member.id，0 = 跟随班级主讲（预留） |
+| `sort` | int | 同班内的教学顺序，上课选课按它排 |
 | `orgId` | string | 归属机构。orgs 集合里等于 id |
 | `createdAt` | int(ms) | 创建时间 |
 | `updatedAt` | int(ms) | 更新时间，同步 LWW 的依据 |

@@ -152,7 +152,7 @@ ok('T2b 学生：只有 A 班 2 人，B 班 2 人看不见（R-02/R-05）', () =
 ok('T2c 课程：只有 A 班的课（R-02）', () => {
   const list = db.courses.list();
   assert.strictEqual(list.length, 1);
-  assert.strictEqual(list[0].clsId, ids.clsA);
+  assert.deepStrictEqual(list[0].classIds, [ids.clsA], '课程只开在 A 班');
 });
 
 ok('T2d 记录：只有 A 班记录，B 班记录看不到（R-02/R-05）', () => {

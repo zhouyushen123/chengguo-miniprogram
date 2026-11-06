@@ -16,6 +16,19 @@
 .del { color: var(--danger); font-size: 25rpx; padding: 10rpx 0 10rpx 24rpx; flex: none; }
 .act { color: var(--brand); font-size: 25rpx; font-weight: 600; padding: 10rpx 0 10rpx 24rpx; }
 .itrow { display: flex; align-items: center; gap: 20rpx; }
+/* 课程项：一门课可能同时开在多个班（V10 解耦），所以是两行——
+   上面名称与操作，下面可点击的班级 chip（点掉=取消这个班的开设，课程本身不删） */
+.crsitem { display: block; }
+.crsline { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
+.crscls { display: flex; flex-wrap: wrap; align-items: center; gap: 12rpx; margin-top: 16rpx; }
+.crscl {
+  font-size: 23rpx; color: var(--brand); background: var(--chip);
+  padding: 8rpx 18rpx; border-radius: 999rpx;
+}
+.crsadd {
+  font-size: 23rpx; color: var(--sub); border: 1rpx dashed var(--line-2);
+  padding: 8rpx 18rpx; border-radius: 999rpx;
+}
 /* 班级条目标识：大圆形色块改为窄圆角竖杠，弱化装饰、突出名称 */
 .clsbar { width: 8rpx; height: 52rpx; border-radius: 6rpx; background: linear-gradient(180deg, var(--brand-a), var(--brand-b)); flex: none; }
 /* 学生头像缩略图：小尺寸圆角方块；无照片时浅底首字占位（不再是实色色块） */

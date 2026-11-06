@@ -94,8 +94,8 @@
 <view wx:if="{{tabK==='course'}}" class="wrap">
   <view wx:if="{{courseFormOpen}}" class="card">
     <view class="sec"><view class="label">添加课程</view></view>
-    <picker mode="selector" range="{{classes}}" range-key="name" value="{{courseClsIdx}}" bindchange="onCourseCls">
-      <view class="pickerbox">所属班级：{{classes[courseClsIdx].name || '请先添加班级'}} ▾</view>
+    <picker mode="selector" range="{{courseClsPick}}" range-key="name" value="{{courseClsIdx}}" bindchange="onCourseCls">
+      <view class="pickerbox">开设到：{{courseClsPick[courseClsIdx].name || '请先添加班级'}} ▾</view>
     </picker>
     <view class="addrow">
       <view class="vin" style="flex:1;min-width:0">
@@ -106,10 +106,21 @@
     </view>
   </view>
   <view wx:if="{{!courses.length && !courseFormOpen}}" class="empty slim">还没有课程，点下面「添加课程」建一个</view>
-  <view class="card item" wx:for="{{courses}}" wx:key="id">
-    <view><b>{{item.name}}</b><view class="mi">归属：{{item.cls}}</view></view>
-    <view class="mi act" catchtap="renameCourse" data-id="{{item.id}}" data-name="{{item.name}}">改名</view>
-    <view class="mi del" catchtap="delCourse" data-id="{{item.id}}">删除</view>
+  <view class="card item crsitem" wx:for="{{courses}}" wx:key="id">
+    <view class="crsline">
+      <view style="flex:1;min-width:0">
+        <b>{{item.name}}</b>
+        <view class="mi" wx:if="{{!item.clsList.length}}">未开设到任何班级</view>
+      </view>
+      <view class="mi act" catchtap="renameCourse" data-id="{{item.id}}" data-name="{{item.name}}">改名</view>
+      <view class="mi del" catchtap="delCourse" data-id="{{item.id}}">删除</view>
+    </view>
+    <!-- 开设的班级：点一下就取消这个班的开设（课程本身不删） -->
+    <view class="crscls">
+      <text class="crscl" wx:for="{{item.clsList}}" wx:for-item="cc" wx:key="id"
+            data-id="{{item.id}}" data-cid="{{cc.id}}" data-name="{{cc.name}}" catchtap="delCourseCls">{{cc.name}} ×</text>
+      <text class="crsadd" wx:if="{{item.canBind && classes.length}}" data-id="{{item.id}}" catchtap="addCourseCls">＋ 开设到…</text>
+    </view>
   </view>
 </view>
 <view wx:if="{{tabK==='course'}}" class="clsfab">

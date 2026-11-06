@@ -62,10 +62,13 @@ function settle(plan) {
       if (!rc.ok) throw new Error(rc.msg);
       clsN++;
       const newId = rc.item.id;
-      // 复制勾选的课程到新班
+      // 勾选的课程开到新班。V10 起课程可跨班复用，这里直接绑同一门课，
+      // 不再复制出一条同名课程——否则连年结转会让课程库里堆满"楷书 × N"。
       (c.courses || []).filter(x => x.sel).forEach(x => {
-        const cr = courses.courseCreate({ name: x.name, clsId: newId });
-        if (!cr.ok) throw new Error(cr.msg);
+        const br = x.id
+          ? courses.courseBind(newId, x.id)
+          : courses.courseCreate({ name: x.name, clsId: newId });
+        if (!br.ok) throw new Error(br.msg);
       });
       (c.students || []).forEach(s => {
         if (s.act === 're') {

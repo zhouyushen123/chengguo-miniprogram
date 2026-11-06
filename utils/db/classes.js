@@ -63,7 +63,10 @@ function classUpdate(id, patch) {
   if (!applyEdit('classes', c, next)) return { ok: false, msg: core.SAVE_FAIL };
   return { ok: true, item: c };
 }
-// 删除班级：班级软删，其课程一并软删，学生从该班移除（学生与历史记录保留）
+// 删除班级：班级软删，该班的课程绑定跟着软删（课程本身保留），学生从该班移除
+// （学生与历史记录保留）。
+// 【V10 起不再连课一起删】课程已经是独立的可复用内容（可能还开在别的班），
+// 删班只解除"这门课在这个班开过"这个关系。以前连课删掉，别的班就被迫再建一条同名课。
 function classRemove(id) {
   const err = deny('class.write', { clsId: id });
   if (err) return { ok: false, msg: err };
@@ -72,7 +75,7 @@ function classRemove(id) {
   return core.tx(() => {
     const t = now();
     markRemoved(c, t);
-    oc('courses').forEach(x => {
+    oc('class_courses').forEach(x => {
       if (x.clsId === c.id && !x.removed) markRemoved(x, t);
     });
     // 名单与授权是被「摘掉」而不是被删除的，还原时得知道当初摘掉的是谁，
@@ -92,13 +95,13 @@ function classRemove(id) {
     oc('enrollments').forEach(en => {
       if (en.clsId === c.id && !en.removed) markRemoved(en, t);
     });
-    core.persist('classes'); core.persist('courses'); core.persist('students');
+    core.persist('classes'); core.persist('class_courses'); core.persist('students');
     core.persist('members'); core.persist('enrollments');
     return { ok: true };
   });
 }
 
-// 从回收站还原班级：班级 + 该班的课程 + 报名一起回来，
+// 从回收站还原班级：班级 + 该班的课程绑定 + 报名一起回来，
 // 并把当初从学生/成员身上摘掉的关联按记录补回去（不然是个"空班"）。
 function classRestore(id) {
   const c = ocAll('classes').find(x => x.id === Number(id) && x.removed);
@@ -112,8 +115,11 @@ function classRestore(id) {
     markAlive(c, t);
     c.detached = { students: [], members: [] };
     let crs = 0, enr = 0, stu = 0, mem = 0;
-    ocAll('courses').forEach(x => {
-      if (x.clsId === c.id && x.removed && x.removedAt === at) { markAlive(x, t); crs++; }
+    // 绑定按同批次认回来；课程本身如果也被单独删过，则跳过（课程还原时有自己的判断）
+    ocAll('class_courses').forEach(x => {
+      if (x.clsId !== c.id || !x.removed || x.removedAt !== at) return;
+      if (!oc('courses').some(k => k.id === x.courseId)) return;
+      markAlive(x, t); crs++;
     });
     ocAll('enrollments').forEach(en => {
       if (en.clsId === c.id && en.removed && en.removedAt === at) { markAlive(en, t); enr++; }
@@ -128,7 +134,7 @@ function classRestore(id) {
         m.clsIds.push(c.id); m.updatedAt = t; mem++;
       }
     });
-    core.persist('classes'); core.persist('courses'); core.persist('enrollments');
+    core.persist('classes'); core.persist('class_courses'); core.persist('enrollments');
     if (stu) core.persist('students');
     if (mem) core.persist('members');
     return { ok: true, courses: crs, enrollments: enr, students: stu, members: mem };

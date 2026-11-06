@@ -673,6 +673,58 @@ utils/firstrun.js        首次进入的一次性标记（自动跳向导只跳�
 | B-06 | 「本次未录入」卡该看到未录名单 | 记录页新增「今天未录」视图（口径与首页 pending 一致），行内「去录入」预选直达；首页卡直达该视图 |
 | B-05 | 学生卡停在班级 | 1114 已修（tabK 直达）；让测试者用 1118 复测 |
 | D-07 | 导入页要「新建 + 勾选已有」 | **待定**：涉及导入流程改版，等测试者确认具体页面 |
-| E-02 | 建课程建议不强制选班级 | **待定**：courses.clsId 是模型必填（列表/可见性都按 clsId 过滤），放宽需要动 schema 与权限判定，先不轻动 |
+| E-02 | 建课程建议不强制选班级 | **已在 V10 解决**（见第 18 节）：课程不再挂班级，可先建进课程库 |
 
 门禁 28 套件全绿；课程回收站链路手动验证通过（建课→引用→改名→删→回收站→恢复）。
+
+---
+
+## 18. 2026-11-06 下午：课程与班级彻底解耦（V10，为题库铺路）
+
+**决策**：用户拍板"从现在起就彻底分开"，不等做题库时再动。理由是 clsId 必填等于
+内容被组织绑死——同一门课开 N 个班就有 N 条课程、将来 N 份题库，改一处改 N 遍。
+
+### 模型变化
+
+| 之前 | 之后 |
+|---|---|
+| `course { id, clsId, name, subjectId }` | `course { id, name, subjectId }`（无 clsId） |
+| 一门课 = 一个班的一节课 | 一门课 = 内容单元，可开在任意多个班 |
+| 删班 → 连带软删课程 | 删班 → 只软删绑定，课程保留 |
+| 结转 → 复制课程到新班 | 结转 → 直接 `bind` 同一门课 |
+
+新表 `class_courses { id, clsId, courseId, teacherId, sort }`（多对多，软删，跟着班级走）。
+
+### 代码改动
+
+- `utils/db/entities.js`：新增 `class_courses`（第 13 张表），`courses` 移到内容域、去 clsId
+- `utils/db/schema.js`：VERSION 9→10；`normalizeCourse` 去 clsId；新增 `normalizeClassCourse` + 校验
+- `utils/db/schema-base.js`（新）：机构号/类型工具/audit 从 schema 抽出——schema 触到 500 行上限
+- `utils/db/courses.js`（重写）：`list/of/get/create/update/remove/restore` + `bind/unbind/setClasses/classIdsOf/courseIdsOf/bindingsOf/orphans`
+  - 可见性：管理级全见；老师 = 自己班绑定 ∪ 成员 courseIds
+  - **同名建课复用**（`reused: true`），否则解耦只是把复制从班级挪到课程库
+- `utils/db/classes.js`：`classRemove` 软删绑定（不再删课）；`classRestore` 按 removedAt 认回绑定
+- `utils/db/settle.js`：结转改为 `courseBind`，不再复制课程
+- `utils/db/terms.js` / `records.js` / `maintenance.js` / `trash.js`：改按绑定反查（课程回收站可见性 = 曾开在可见班上）
+- `utils/db/migrate.js`：`ensureClassCourses()` 把老 clsId 派生成绑定（v2→v10 与 v9→v10 两条路径都覆盖）
+- 云函数四处集合清单 + `tests/fixture.js` 补 `class_courses`
+- 页面：`mgr` 课程页改成"课程库"（班级 chip 可点掉、＋开设到…、暂不开设）；`teacher` 课程列表改用绑定口径
+- 测试：`verify_db` 新增「课程与班级解耦」7 项；`verify_onboard`/`verify_teacher` 断言改 classIds
+
+### 迁移策略（重要）
+
+**V10 迁移只建绑定，不自动合并同名课程。** 合并要重写 `records.courseId` 与
+`member.courseIds`，是唯一会动历史指针的动作，判断错就找不回来。
+所以同名课程会先并存，课程页能看到"楷书 × N"，由人决定是否合并（后续可加一次显式整理操作）。
+
+### 用户必须在微信开发者工具/控制台做
+
+1. **新建集合 `class_courses`**（云开发 → 数据库 → 新建集合），权限同 `courses`
+2. 建索引：`orgId + clsId`、`orgId + courseId`
+3. 重新部署 `syncv2`、`backup`、`admin` 三个云函数（集合清单变了，不部署会漏同步/漏备份）
+
+### 已知风险
+
+- 老数据里同名课程并存，课程数看起来变多；不影响功能
+- `member.courseIds` 里若存着被删课程的 id 会悬空（不报错，只是授权无效）
+

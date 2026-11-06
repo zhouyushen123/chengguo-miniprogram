@@ -7,7 +7,8 @@
 //   term     学期    { id, name, startDate, endDate, status, builtIn }   开班的时间段（2026春季班/第N期…）
 //   class    班级    { id, name, sort, termId, mode, teacherId }
 //                                                          mode: term=随学期结束归档 / carry=课时包可结转
-//   course   课程    { id, clsId, name }                    clsId → class.id
+//   course   课程    { id, name, subjectId }                内容单元，不绑定班级（v10）
+//   classCourse 班级课程 { id, clsId, courseId, teacherId, sort }  多对多：哪门课在哪个班开
 //   student  学生    { id, name, clsIds[], parent, wechat, photo, profile{} }
 //   enrollment 报名  { id, studentId, clsId, termId, totalHours, usedHours, status, carriedFrom }
 //                                                          课时账本：孩子在这个班买了多少课时、上了多少、剩多少
@@ -28,26 +29,14 @@
 // 记录落库时盖上当前课次号，跨天/多人接力录同一节课也能算成同一次。
 // v9：为阶段二题库留位——加 subjects / knowledge_points 两张表、课程挂学科、记录记满分口径。
 //     全部是"加空字段/空表"，老数据升级后行为完全不变；现在不做，将来要重挂全部历史数据。
-const VERSION = 9;
-// 出厂机构号：每台新装设备的本地库都挂它，**它不是一个真实机构**。
-// 首次上云时由服务端发一个随机机构号（见 syncv2 的 hello），本地整体改挂过去。
-// 以前它被当成真实机构号用，结果所有客户的数据都落在 org1 里混成一团——
-// 那在单客户测试期看不出来，第二个客户进来就是灾难。
-const DEFAULT_ORG = 'org1';
-const FACTORY_ORG = DEFAULT_ORG;
-// 机构号字符集：去掉容易看错的 0/o/1/l/i，它是会被人从日志里念出来的
-const ORG_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';
-function newOrgId(rand) {
-  const r = rand || Math.random;
-  let s = '';
-  for (let i = 0; i < 10; i++) {
-    const x = Math.min(0.999999, Math.max(0, Number(r()) || 0));
-    s += ORG_CHARS[Math.floor(x * ORG_CHARS.length)];
-  }
-  return 'org_' + s;
-}
-// 还挂在出厂号上 = 这台设备的机构号还没被服务端换成真实值
-const isFactoryOrg = id => String(id || '') === FACTORY_ORG;
+// v10：课程与班级彻底解耦。course 去掉 clsId，新增 class_courses 绑定表——
+//     一门课（楷书）只存一条，可以在任意多个班里开；删班只解绑，不删课。
+//     这是做题库的前提：题目挂在课程上，课程必须能跨班复用，否则每班一份题库。
+const VERSION = 10;
+// 机构号、类型工具、审计字段在 schema-base.js（与 schema 同层，方向 base ← schema）
+const base = require('./schema-base');
+const { DEFAULT_ORG, FACTORY_ORG, ORG_CHARS, newOrgId, isFactoryOrg,
+  str, num, list, numList, txtList, ymd, normDate, audit } = base;
 
 // 评分五档（与录入页每档代表分对应，用于筛选与统计口径统一）
 const TAGS = ['待提高', '加油', '良好', '优秀', '最佳'];
@@ -88,41 +77,7 @@ const DEFAULT_TEMPLATES = [
   { name: '课程注意', options: ['请课后复习本节内容，下节课将巩固练习', '请提前完成课后作业，下节课检查讲评', '下节课将学习新内容，请保持状态'] }
 ];
 
-/* ---------------- 基础类型工具（容错优先，脏数据不抛错） ---------------- */
-const str = (v, d) => (typeof v === 'string' ? v : (v === null || v === undefined ? (d || '') : String(v)));
-const num = (v, d) => { const x = Number(v); return isFinite(x) ? x : d; };
-const list = v => (Array.isArray(v) ? v : []);
-const numList = v => list(v).map(Number).filter(x => isFinite(x));
-const txtList = v => list(v).map(x => str(x).trim()).filter(Boolean);
-const pad2 = n => (n < 10 ? '0' : '') + n;
-
-// 统一日期格式 YYYY-MM-DD（历史数据里有 2026-11-1 这种没补零的写法，字符串排序会错位）
-function ymd(d) {
-  const x = d || new Date();
-  return x.getFullYear() + '-' + pad2(x.getMonth() + 1) + '-' + pad2(x.getDate());
-}
-function normDate(v) {
-  const m = str(v).trim().match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
-  return m ? m[1] + '-' + pad2(+m[2]) + '-' + pad2(+m[3]) : '';
-}
-
 /* ---------------- 各实体的规范化（白名单字段，多余字段一律丢弃） ---------------- */
-function audit(raw, orgId, stamp) {
-  const r = raw || {};
-  const created = num(r.createdAt, 0) || stamp;
-  const removed = r.removed === true;
-  return {
-    orgId: str(r.orgId, DEFAULT_ORG) || DEFAULT_ORG,
-    createdAt: created,
-    updatedAt: num(r.updatedAt, 0) || stamp,
-    removed,
-    // 删除痕迹：removedAt 是「哪一次删除」的标记。删学生/删班级会连带软删记录、报名、课程，
-    // 它们共用同一个 removedAt —— 回收站靠这个值把一整批认出来，一起还原。
-    // 已经删过的行不改写原值，否则后来的一次删除会把两次删的东西混成一批，还原时"复活"错的条目。
-    removedAt: removed ? (num(r.removedAt, 0) || num(r.updatedAt, 0) || stamp) : 0,
-    removedBy: removed ? num(r.removedBy, 0) : 0
-  };
-}
 
 function normalizeClass(raw, orgId, stamp) {
   const r = raw || {};
@@ -176,14 +131,29 @@ function normalizeEnrollment(raw, orgId, stamp) {
   }, audit(r, orgId, stamp));
 }
 
+// 课程：内容单元，不是"某班的课"。一门课可以被任意多个班开设（见 classCourses）。
+// v10 之前 clsId 是必填的，等于内容被组织绑死——同一门课 5 个班就有 5 条课程记录、
+// 5 份题库、改一次改 5 处。解耦后题库、教案、作业都能挂一次到处用。
 function normalizeCourse(raw, orgId, stamp) {
   const r = raw || {};
   return Object.assign({
     id: num(r.id, 0),
-    clsId: num(r.clsId, 0),
     // 学科：阶段二题库按学科筛题/组卷。0 = 未指定（猜不出来就留空，不影响任何现有功能）
     subjectId: num(r.subjectId, 0),
     name: str(r.name).trim()
+  }, audit(r, orgId, stamp));
+}
+
+// 班级课程绑定（多对多）。它是"关系"而不是"内容"：
+// 不独立进回收站（跟着班级走），没有名字，解绑就是软删一行。
+function normalizeClassCourse(raw, orgId, stamp) {
+  const r = raw || {};
+  return Object.assign({
+    id: num(r.id, 0),
+    clsId: num(r.clsId, 0),
+    courseId: num(r.courseId, 0),
+    teacherId: num(r.teacherId, 0),
+    sort: num(r.sort, 0)
   }, audit(r, orgId, stamp));
 }
 
@@ -395,6 +365,7 @@ function normalize(entity, raw, orgId, stamp) {
     case 'term': return normalizeTerm(raw, orgId, stamp);
     case 'class': return normalizeClass(raw, orgId, stamp);
     case 'course': return normalizeCourse(raw, orgId, stamp);
+    case 'classCourse': return normalizeClassCourse(raw, orgId, stamp);
     case 'subject': return normalizeSubject(raw, orgId, stamp);
     case 'knowledgePoint': return normalizeKnowledgePoint(raw, orgId, stamp);
     case 'student': return normalizeStudent(raw, orgId, stamp);
@@ -438,7 +409,11 @@ function validate(entity, e) {
       return null;
     case 'course':
       if (!e.name) return '课程名称不能为空';
-      if (!e.clsId) return '课程必须归属一个班级';
+      if (e.name.length > 20) return '课程名称过长';
+      return null;
+    case 'classCourse':
+      if (!e.clsId) return '绑定必须关联班级';
+      if (!e.courseId) return '绑定必须关联课程';
       return null;
     case 'subject':
       if (!e.gid) return '学科缺少全局标识（gid）';
@@ -487,7 +462,7 @@ module.exports = {
   str, num, list, numList, txtList, ymd, normDate,
   normalize, validate,
   normalizeOrg, normalizeMember,
-  normalizeTerm, normalizeClass, normalizeCourse, normalizeStudent, normalizeEnrollment,
+  normalizeTerm, normalizeClass, normalizeCourse, normalizeClassCourse, normalizeStudent, normalizeEnrollment,
   normalizeSubject, normalizeKnowledgePoint, buildSubjectSeeds, guessSubjectId,
   assignStudentNos, NO_START,
   assignRecordSessions,

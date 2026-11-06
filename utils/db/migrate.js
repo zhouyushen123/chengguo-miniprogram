@@ -65,6 +65,31 @@ function ensureCourseSubjects(courses, subjects, stamp) {
   return courses;
 }
 
+// 课程与班级解耦（v10）：老课程每条带 clsId，等于"一个班一条课"。
+// 这里只做一件事——把 clsId 派生成一条 class_courses 绑定，课程实体本身一条不重建。
+//
+// 【为什么不在迁移里自动合并同名课程】合并要重写 records.courseId 与 member.courseIds，
+// 是唯一会动历史指针的动作，一旦判断错就找不回来。所以迁移保持纯加法，
+// 合并做成课程库里由人点的一次显式操作（maintenance.mergeSameNameCourses）。
+function ensureClassCourses(rawCourses, classCourses, classRemovedAt, orgId, stamp) {
+  const arr = Array.isArray(classCourses) ? classCourses : [];
+  let max = 0;
+  arr.forEach(x => { if (x && x.id > max) max = x.id; });
+  (rawCourses || []).forEach(c => {
+    const cid = Number(c && c.clsId);
+    const kid = Number(c && c.id);
+    if (!cid || !kid) return;
+    if (arr.some(b => b && b.clsId === cid && b.courseId === kid)) return;   // 幂等
+    max += 1;
+    const b = { id: max, clsId: cid, courseId: kid };
+    // 课程或班级已经在回收站里 → 绑定跟着一起删，还原时才认得回来
+    const at = (c && c.removed && c.removedAt) || classRemovedAt[cid] || 0;
+    if (at) { b.removed = true; b.removedAt = at; }
+    arr.push(schema.normalizeClassCourse(b, orgId, stamp));
+  });
+  return arr;
+}
+
 // 全新安装的骨架。
 // opts.sample === false：不带「书法班/素描班/楷书/素描」这些示例内容。
 //   真实新用户第一次进来看到两个自己没建过的班，只会以为是别人的数据或系统坏了；
@@ -91,6 +116,11 @@ function buildFresh(stamp, opts) {
   const subjects = ensureSubjects([], ORG, stamp);
   ensureCourseSubjects(courses, subjects, stamp);
   const knowledgePoints = [];
+  // v10：示例课程与示例班级的绑定（楷书→书法班，素描→素描班）
+  const classCourses = withSample ? [
+    schema.normalizeClassCourse({ id: 1, clsId: 1, courseId: 1, sort: 0 }, ORG, stamp),
+    schema.normalizeClassCourse({ id: 2, clsId: 2, courseId: 2, sort: 0 }, ORG, stamp)
+  ] : [];
   const users = [
     schema.normalizeUser({ id: 't1', name: '', role: 'owner' }, ORG, stamp)
   ];
@@ -113,7 +143,7 @@ function buildFresh(stamp, opts) {
       version: schema.VERSION, orgId: ORG, orgName: '我的机构',
       teacher: '', me: 't1', createdAt: stamp, updatedAt: stamp
     },
-    orgs, members, terms, classes: cls, courses, subjects,
+    orgs, members, terms, classes: cls, courses, class_courses: classCourses, subjects,
     knowledge_points: knowledgePoints,
     students: [], enrollments: [], records: [], users, templates
   };
@@ -177,6 +207,15 @@ function upgrade(loaded, stamp) {
   const subjects = ensureSubjects((loaded.subjects || []).map(s => schema.normalizeSubject(s, orgId, stamp)), orgId, stamp);
   const courses = (loaded.courses || []).map(c => schema.normalizeCourse(c, orgId, stamp));
   ensureCourseSubjects(courses, subjects, stamp);
+
+  // v10：课程与班级解耦。normalizeCourse 已经把 clsId 丢掉，所以绑定要从原始行派生。
+  const classRemovedAt = {};
+  (loaded.classes || []).forEach(c => { if (c && c.removed && c.removedAt) classRemovedAt[c.id] = c.removedAt; });
+  const classCourses = ensureClassCourses(
+    loaded.courses,
+    (loaded.class_courses || []).map(b => schema.normalizeClassCourse(b, orgId, stamp)),
+    classRemovedAt, orgId, stamp
+  );
   const knowledgePoints = (loaded.knowledge_points || []).map(k => schema.normalizeKnowledgePoint(k, orgId, stamp));
 
   return {
@@ -190,6 +229,7 @@ function upgrade(loaded, stamp) {
     terms,
     classes,
     courses,
+    class_courses: classCourses,
     subjects, knowledge_points: knowledgePoints,
     students: schema.assignStudentNos((loaded.students || []).map(s => schema.normalizeStudent(s, orgId, stamp))),
     enrollments: (loaded.enrollments || []).map(e => schema.normalizeEnrollment(e, orgId, stamp)),
@@ -241,8 +281,15 @@ function build(loaded) {
   const classIds = {};
   (old.classes || []).forEach((c, i) => { classIds[c.id] = classes[i].id; });
 
-  const courses = (old.courses || []).map(c =>
-    schema.normalizeCourse({ id: uniqCrs(c.id), name: c.name, clsId: classIds[c.clsId] || c.clsId }, ORG, stamp));
+  // v10：课程 id 可能被去重器重排，绑定要跟着映射后的 id 走，所以边建边记关系
+  const courses = [];
+  const courseLinks = [];
+  (old.courses || []).forEach(c => {
+    const id = uniqCrs(c.id);
+    const cid = classIds[c.clsId] !== undefined ? classIds[c.clsId] : c.clsId;
+    courses.push(schema.normalizeCourse({ id, name: c.name }, ORG, stamp));
+    if (cid) courseLinks.push({ id, clsId: cid });
+  });
 
   const students = (old.students || []).map(s =>
     schema.normalizeStudent({
@@ -304,6 +351,8 @@ function build(loaded) {
   // v9：学科种子 + 课程归类 + 知识点空表
   const subjects = ensureSubjects([], ORG, stamp);
   ensureCourseSubjects(courses, subjects, stamp);
+  // v10：老课程的班级关系 → 绑定表
+  const classCourses = ensureClassCourses(courseLinks, [], {}, ORG, stamp);
 
   return {
     meta: {
@@ -314,7 +363,7 @@ function build(loaded) {
       migratedFrom: 'v2'
     },
     orgs, members,
-    terms, classes, courses, subjects,
+    terms, classes, courses, class_courses: classCourses, subjects,
     knowledge_points: [],
     students: schema.assignStudentNos(students), enrollments: [], records, users,
     templates: buildTemplates(legacy.tpls, stamp)

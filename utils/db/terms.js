@@ -74,7 +74,9 @@ function planSettle(termId) {
     .sort((a, b) => (a.sort - b.sort) || (a.id - b.id));
   const out = classes.map(c => ({
     cls: c,
-    courses: oc('courses').filter(x => x.clsId === c.id && !x.removed),
+    // V10：课程不再挂班级，这里按绑定表反查"这个班开了哪些课"。
+    // 直接读集合而不 require courses，是为了守住"terms 不依赖任何领域模块"这条单向规则。
+    courses: oc('courses').filter(x => oc('class_courses').some(b => b.clsId === c.id && b.courseId === x.id)),
     students: oc('students')
       .filter(s => !s.removed && s.clsIds.indexOf(c.id) > -1)
       .map(s => {

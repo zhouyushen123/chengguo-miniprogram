@@ -38,7 +38,8 @@ const SUITES = [
   ['verify_review.js', '审查机制'],
   ['verify_datamodel.js', '数据模型'],
   ['verify_arch.js', '架构守卫'],
-  ['verify_manual.js', '手册与用例']
+  ['verify_manual.js', '手册与用例'],
+  ['verify_journey.js', '用户旅程']
 ];
 
 let failed = 0;

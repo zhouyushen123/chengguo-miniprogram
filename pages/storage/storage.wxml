@@ -52,13 +52,13 @@
       <view class="btn clean" hover-class="btn-hover" bindtap="clearRejects">知道了，隐藏</view>
     </view>
 
-    <!-- 数据体检：学生 / 老师 / 机构之间的引用是否对得上 -->
+    <!-- 数据体检：两层 —— ① 人和机构本身对不对 ② 它们之间的连线有没有指着空气 -->
     <view class="card">
       <view class="sec">
         <view class="label">数据体检</view>
-        <view class="sechint">{{auditOk ? '一切正常' : (auditErr + ' 个问题')}}</view>
+        <view class="sechint {{headOk ? '' : 'bad'}}">{{headHint}}</view>
       </view>
-      <view wx:if="{{auditOk}}" class="hint note">学生 {{students}} 人、班级 {{classes}} 个、记录 {{records}} 条，互相引用都对得上。</view>
+      <view wx:if="{{auditOk}}" class="hint note">{{auditNote}}</view>
       <block wx:else>
         <view wx:for="{{auditItems}}" wx:key="k" class="mrow">
           <text class="mk">{{item.title}}</text>
@@ -66,6 +66,17 @@
         </view>
         <view wx:if="{{fixable}}" class="btn clean" hover-class="btn-hover" bindtap="fixData">修复可自动处理的问题</view>
         <view class="hint note">只摘掉指向已删除数据的引用、给重复或缺失的学号重新发号。学生、老师、机构本身一条都不会删。</view>
+      </block>
+
+      <!-- 关系检查：课程开设、记录的班级/学生/课程指针、学生与老师的范围、课时账 -->
+      <block wx:if="{{!linkOk}}">
+        <view class="sep"></view>
+        <view wx:for="{{linkItems}}" wx:key="kind" class="mrow">
+          <text class="mk">{{item.label}}</text>
+          <text class="mv {{item.wait ? 'mk' : 'bad'}}">{{item.text}}</text>
+        </view>
+        <view wx:if="{{linkWait}}" class="hint note">标「待同步」的是这台手机还没收到的数据（换了手机、或刚连上云）。同步一次就会自己消失，不用管。</view>
+        <view wx:if="{{linkFault}}" class="btn clean" hover-class="btn-hover" bindtap="fixLinks">修复断线</view>
       </block>
     </view>
 

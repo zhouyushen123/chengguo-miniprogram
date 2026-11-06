@@ -89,7 +89,7 @@ const db = {
   // 半坏档自救：机构在、成员表空 → 到处「请先登录」。向导/页面遇到写被拦时可先调这个
   // 修身份再重试一次；空壳回出厂，有业务数据则原地重建负责人，不清有用数据。
   repairIdentity: factory.repairIdentity,
-  integrity: maintenance.integrity, repairLinks: maintenance.repairLinks,   // 引用完整性：体检 / 自愈
+  integrity: maintenance.integrity, integrityGroups: maintenance.integrityGroups, repairLinks: maintenance.repairLinks,  // 引用完整性
   // 原始条数：每张表「总条数 / 当前机构条数」。数据"看着少了"时用它分辨是丢了还是身份不对
   rawCounts: () => {
     const raw = core.realData() || {};

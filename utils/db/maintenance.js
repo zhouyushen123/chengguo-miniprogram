@@ -494,6 +494,6 @@ function merge(remote) {
 module.exports = {
   mediaRefs,
   init, status, normalizeAll, repairRefs, repairMedia, restoreSnapshot,
-  integrity: integrity.integrity, repairLinks: integrity.repairLinks,
+  integrity: integrity.integrity, repairLinks: integrity.repairLinks, integrityGroups: integrity.integrityGroups,
   buildDemoData, ensureDemo, purgeSeed, resolveMode, demo: demoApi, merge
 };

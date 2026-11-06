@@ -40,7 +40,11 @@ Page({
     students: 0, records: 0, classes: 0,
     failed: false,
     // 数据体检：核心资产（学生 / 成员 / 机构）之间的引用是否对得上
-    auditOk: true, auditErr: 0, auditWarn: 0, auditItems: [], fixable: false,
+    auditOk: true, auditErr: 0, auditWarn: 0, auditItems: [], fixable: false, auditNote: '',
+    // 关系检查：课程开设、记录的班级/学生/课程指针、老师与学生的范围、课时账
+    // wait 的那一类是"本机还没收到这条数据"，不修，等同步自己补上
+    linkOk: true, linkItems: [], linkWait: 0, linkFault: 0,
+    headOk: true, headHint: '一切正常',
     // 本地备份：核心资产的滚动快照（最多 3 份）
     snaps: [], snapCount: 0, snapHint: '还没有备份',
     // 云端备份：云开发每天凌晨 3 点自动打包（云数据库被改坏时的最后一道保险）
@@ -77,8 +81,10 @@ Page({
     });
     this.refreshRaw();
     this.refreshAudit();
+    this.refreshLinks();
     this.refreshSnaps();
     this.refreshRejects();
+    this.syncHead();
   },
 
   // 体检与备份要单独 try：它们是"附加信息"，坏了不能让整页白屏
@@ -92,7 +98,53 @@ Page({
       auditWarn: a.warns,
       auditItems: (a.issues || []).map(x => ({ k: x.k, level: x.level, title: x.title, count: x.count })),
       // 只有这两类是"修了绝不会更糟"的，其它（比如重复学生）必须人来判断
-      fixable: (a.issues || []).some(x => x.k === 'stuDanglingCls' || x.k === 'memDangling' || x.k === 'dupNo' || x.k === 'noNo')
+      fixable: (a.issues || []).some(x => x.k === 'stuDanglingCls' || x.k === 'memDangling' || x.k === 'dupNo' || x.k === 'noNo'),
+      auditNote: '学生 ' + (this.data.students || 0) + ' 人、班级 ' + (this.data.classes || 0)
+        + ' 个、记录 ' + (this.data.records || 0) + ' 条，' + (a.healthy ? '互相引用都对得上。' : '人和机构本身的记录有问题。')
+    });
+  },
+
+  // 关系检查：这一层看的是"连线"，不是"人"。课程开设挂在哪个班、记录指向哪个学生、
+  // 老师负责哪些班——任何一条指着空气，表现出来都是"这个班选不到课"这种偶发怪事。
+  refreshLinks() {
+    let items = [];
+    try { items = db.integrityGroups() || []; } catch (e) { items = []; }
+    let wait = 0, fault = 0;
+    items.forEach(x => { if (x.wait) wait += x.count; else fault += x.count; });
+    this.setData({
+      linkOk: !items.length,
+      linkItems: items.map(x => ({
+        kind: x.kind, label: x.label,
+        // 数字后面的说明在这里拼好：模板里不做字符串运算
+        text: String(x.count) + (x.wait ? ' 待同步' : ''),
+        wait: x.wait
+      })),
+      linkWait: wait,
+      linkFault: fault
+    });
+  },
+
+  // 头部一句话要综合两层：只看 audit 会出现"一切正常"下面却列着断线的自相矛盾
+  syncHead() {
+    const d = this.data;
+    const n = (d.auditErr || 0) + (d.linkFault || 0);
+    this.setData({
+      headOk: n === 0,
+      headHint: n ? (n + ' 处需要处理') : (d.linkWait ? '正常（' + d.linkWait + ' 处待同步）' : '一切正常')
+    });
+  },
+
+  // 断线修复：启动时已经跑过一次，这里是给"刚同步完、想立刻再看一眼"的人一个按钮
+  fixLinks() {
+    let r = null;
+    try { r = db.repairLinks(); } catch (e) { r = null; }
+    const n = r ? (r.bindings + r.dupBind + r.records + r.members + r.students) : 0;
+    this.refreshLinks();
+    this.syncHead();
+    if (n) { wx.showToast({ title: '已修复 ' + n + ' 处', icon: 'none' }); return; }
+    wx.showToast({
+      title: this.data.linkWait ? '缺的数据要等同步补上' : '没有需要修的',
+      icon: 'none'
     });
   },
 
@@ -169,7 +221,8 @@ Page({
       else if (out.busy || out.throttled) hint = '刚同步过，稍等几秒再试';
       else hint = '同步失败' + (out.msg ? '：' + out.msg : (out.code ? '（' + out.code + '）' : ''));
       this.setData({ syncHint: hint, syncBusy: false });
-      this.refreshSync(); this.refreshAudit(); this.refreshRaw();
+      // 同步之后正好是"待同步的断线应该自己消失"的时刻：三层一起刷，别让旧数字留在屏幕上
+      this.refreshSync(); this.refreshAudit(); this.refreshLinks(); this.refreshRaw(); this.syncHead();
     }).catch(e => {
       wx.hideLoading();
       this.setData({ syncHint: '同步失败：' + ((e && e.errMsg) || '网络不通'), syncBusy: false });

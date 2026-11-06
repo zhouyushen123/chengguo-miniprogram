@@ -318,4 +318,45 @@ ok('W2 软删除一定带 removedAt（回收站靠它认批）', () => {
   assert.strictEqual(db.students.restore(s.id).ok, true, '还原应成功');
 });
 
+ok('G1 体检分组：缺行归「待同步」、墓碑归「故障」，两组不能混', () => {
+  const core = require(path.join(ROOT, 'utils/db/core'));
+  const schema = require(path.join(ROOT, 'utils/db/schema'));
+  const t = Date.now();
+  // 一条指向"本地有、但已删除"的课程（可证明是死的）
+  core.coll('class_courses').push(schema.normalizeClassCourse({ id: 881001, clsId: clsA.id, courseId: deadCrs.id }, 'org1', t));
+  // 一条指向"整行都不存在"的课程（可能只是还没同步下来）
+  core.coll('class_courses').push(schema.normalizeClassCourse({ id: 881002, clsId: clsB.id, courseId: 987654 }, 'org1', t));
+  core.persist('class_courses');
+
+  const by = {};
+  db.integrityGroups().forEach(x => { by[x.kind] = x; });
+  assert.ok(by['binding.courseDead'], '应报出指向已删课程的绑定');
+  assert.strictEqual(by['binding.courseDead'].wait, false, '墓碑是可证明的故障，不能算待同步');
+  assert.ok(by['binding.course'], '应报出指向不存在课程的绑定');
+  assert.strictEqual(by['binding.course'].wait, true, '整行不存在要算待同步：新设备分批拉取时这段关系是正常的');
+  // 分组名必须是给人看的中文，不能把 kind 直接甩到界面上
+  db.integrityGroups().forEach(x => assert.ok(/[\u4e00-\u9fa5]/.test(x.label), '分组说明要用中文：' + x.kind));
+
+  // 收尾：自愈能摘掉「死引用」，但「待同步」那条必须留着（这是这套口径的核心）
+  db.repairLinks();
+  const left = db.integrity();
+  assert.deepStrictEqual(left.map(x => x.kind), ['binding.course'],
+    '自愈后只该剩"缺行待同步"：' + JSON.stringify(left));
+  const list = core.coll('class_courses').filter(x => x.id !== 881002);
+  core.setColl('class_courses', list);
+  assert.deepStrictEqual(db.integrity(), [], '清掉待同步项后体检应归零');
+});
+
+ok('G2 存储页的体检入口在页面上真的接上了（模板绑的事件都有对应方法）', () => {
+  const wxml = fs.readFileSync(path.join(ROOT, 'pages/storage/storage.wxml'), 'utf8');
+  const js = fs.readFileSync(path.join(ROOT, 'pages/storage/storage.js'), 'utf8');
+  ['fixLinks', 'fixData'].forEach(fn => {
+    assert.ok(wxml.indexOf('bindtap="' + fn + '"') > -1, '模板里没有 ' + fn + ' 的入口');
+    assert.ok(new RegExp('\\b' + fn + '\\(\\)').test(js), 'js 里没有 ' + fn + ' 方法');
+  });
+  // 头部状态必须是综合结果：只写死"一切正常"会出现"下面列着断线、上面说正常"
+  assert.ok(js.indexOf('syncHead') > -1, '头部文案要综合两层检查');
+  assert.ok(wxml.indexOf('headHint') > -1 && wxml.indexOf('auditOk ?') === -1, '头部不能只按 audit 判断');
+});
+
 console.log('\n全部 ' + pass + ' 项地基断言通过');

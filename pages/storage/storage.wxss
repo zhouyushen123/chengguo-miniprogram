@@ -46,5 +46,7 @@
 
 /* ---------- 数据体检 ---------- */
 .bad { color: var(--danger); }
+/* 两层检查之间的分隔：一条细线，不要做成两个卡片（会让人以为要去两个地方看） */
+.sep { height: 2rpx; margin: 24rpx 0 8rpx; background: var(--chip); }
 .btnrow { display: flex; gap: 16rpx; margin-top: 22rpx; }
 .btnrow .btn { flex: 1; margin-top: 0; }

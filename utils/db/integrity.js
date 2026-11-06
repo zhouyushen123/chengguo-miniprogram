@@ -38,9 +38,13 @@ function classAlive(cls, id) {
 }
 
 // 只报告、不修改：给测试与"数据体检"用。返回空数组 = 地基是干净的。
+//
+// wait=true 表示「这一行整行不存在」——它极可能只是还没被同步下来（新设备分批拉取），
+// 不是坏了。界面上要把这一类单独说清楚，否则用户一看到红点就去点"修复"，
+// 而修复对这类故意不动，会显得点了没反应。
 function integrity() {
   const out = [];
-  const bad = (kind, id, msg) => out.push({ kind, id, msg });
+  const bad = (kind, id, msg, wait) => out.push({ kind, id, msg, wait: !!wait });
   const { cls, crs } = tableIndex();
   const ids = (name) => {
     const seen = {};
@@ -57,9 +61,9 @@ function integrity() {
   const bind = {};
   (core.coll('class_courses') || []).forEach(b => {
     if (!b || b.removed) return;
-    if (!cls[b.clsId]) bad('binding.cls', b.id, '绑定指向不存在的班级 ' + b.clsId);
+    if (!cls[b.clsId]) bad('binding.cls', b.id, '绑定指向不存在的班级 ' + b.clsId, true);
     else if (cls[b.clsId].removed) bad('binding.clsDead', b.id, '绑定指向已删除的班级 ' + b.clsId);
-    if (!crs[b.courseId]) bad('binding.course', b.id, '绑定指向不存在的课程 ' + b.courseId);
+    if (!crs[b.courseId]) bad('binding.course', b.id, '绑定指向不存在的课程 ' + b.courseId, true);
     else if (!courseAlive(crs, b.courseId)) bad('binding.courseDead', b.id, '绑定指向已删除/已合并的课程 ' + b.courseId);
     const k = b.clsId + '/' + b.courseId;
     if (bind[k]) bad('binding.dup', b.id, '同一个班有两门同名课程绑定：' + k);
@@ -71,27 +75,27 @@ function integrity() {
   (core.coll('students') || []).forEach(s => { if (s) stu[s.id] = s; });
   (core.coll('records') || []).forEach(r => {
     if (!r || r.removed) return;
-    if (r.cid && !classAlive(cls, r.cid)) bad('record.cid', r.id, '记录挂在不存在/已删的班级 ' + r.cid);
-    if (r.sid && !stu[r.sid]) bad('record.sid', r.id, '记录指向不存在的学生 ' + r.sid);
-    if (r.courseId && !courseAlive(crs, r.courseId)) bad('record.courseId', r.id, '记录的课程指针悬空 ' + r.courseId);
+    if (r.cid && !classAlive(cls, r.cid)) bad('record.cid', r.id, '记录挂在不存在/已删的班级 ' + r.cid, !cls[r.cid]);
+    if (r.sid && !stu[r.sid]) bad('record.sid', r.id, '记录指向不存在的学生 ' + r.sid, true);
+    if (r.courseId && !courseAlive(crs, r.courseId)) bad('record.courseId', r.id, '记录的课程指针悬空 ' + r.courseId, !crs[r.courseId]);
   });
 
   // 学生 / 成员的班级范围
   Object.keys(stu).forEach(k => {
     const s = stu[k];
-    (s.clsIds || []).forEach(cid => { if (!classAlive(cls, cid)) bad('student.clsIds', s.id, '学生挂在不存在/已删的班级 ' + cid); });
+    (s.clsIds || []).forEach(cid => { if (!classAlive(cls, cid)) bad('student.clsIds', s.id, '学生挂在不存在/已删的班级 ' + cid, !cls[cid]); });
   });
   (core.coll('members') || []).forEach(m => {
     if (!m) return;
-    (m.clsIds || []).forEach(cid => { if (!classAlive(cls, cid)) bad('member.clsIds', m.id, '成员负责范围含不存在/已删的班级 ' + cid); });
-    (m.courseIds || []).forEach(cid => { if (!courseAlive(crs, cid)) bad('member.courseIds', m.id, '成员课程授权悬空 ' + cid); });
+    (m.clsIds || []).forEach(cid => { if (!classAlive(cls, cid)) bad('member.clsIds', m.id, '成员负责范围含不存在/已删的班级 ' + cid, !cls[cid]); });
+    (m.courseIds || []).forEach(cid => { if (!courseAlive(crs, cid)) bad('member.courseIds', m.id, '成员课程授权悬空 ' + cid, !crs[cid]); });
   });
 
   // 报名（课时账）
   (core.coll('enrollments') || []).forEach(en => {
     if (!en || en.removed) return;
-    if (en.clsId && !classAlive(cls, en.clsId)) bad('enroll.cls', en.id, '课时账挂在不存在/已删的班级 ' + en.clsId);
-    if (en.studentId && !stu[en.studentId]) bad('enroll.stu', en.id, '课时账指向不存在的学生 ' + en.studentId);
+    if (en.clsId && !classAlive(cls, en.clsId)) bad('enroll.cls', en.id, '课时账挂在不存在/已删的班级 ' + en.clsId, !cls[en.clsId]);
+    if (en.studentId && !stu[en.studentId]) bad('enroll.stu', en.id, '课时账指向不存在的学生 ' + en.studentId, true);
   });
 
   // 软删必须带"哪一批删的"：回收站靠 removedAt 认批（删班级要连报名、绑定一起回来），
@@ -195,4 +199,40 @@ function repairLinks() {
   return n;
 }
 
-module.exports = { integrity, repairLinks };
+// 给人看的分组汇总。映射表放在这里而不是页面：kind 由数据层定义，
+// 页面只负责画——以后加一类检查，只要在这里补一行，界面自动跟着出现。
+const KIND_LABEL = {
+  binding_cls: '课程开设指向缺失的班级',
+  binding_clsDead: '课程开设指向已删除的班级',
+  binding_course: '课程开设指向缺失的课程',
+  binding_courseDead: '课程开设指向已删除的课程',
+  binding_dup: '同班同课重复开设',
+  record_cid: '记录挂在失效的班级',
+  record_sid: '记录指向缺失的学生',
+  record_courseId: '记录的课程指针已失效',
+  student_clsIds: '学生班级范围含失效班级',
+  member_clsIds: '老师负责范围含失效班级',
+  member_courseIds: '老师课程授权已失效',
+  enroll_cls: '课时账挂在失效的班级',
+  enroll_stu: '课时账指向缺失的学生'
+};
+function labelOf(kind) {
+  if (/\.dupId$/.test(kind)) return '数据主键重复';
+  if (/^tombstone\./.test(kind)) return '删除记录缺少批次时间';
+  if (/^orgId\./.test(kind)) return '数据缺少机构号';
+  if (/^org\./.test(kind)) return '混入其它机构的数据';
+  return KIND_LABEL[kind.replace(/\./g, '_')] || kind;
+}
+
+function integrityGroups() {
+  const groups = {};
+  integrity().forEach(x => {
+    const g = groups[x.kind] = groups[x.kind] || { kind: x.kind, label: labelOf(x.kind), count: 0, wait: true };
+    g.count += 1;
+    // 只要有一处是真故障，这一组就当故障算
+    if (!x.wait) g.wait = false;
+  });
+  return Object.keys(groups).map(k => groups[k]).sort((a, b) => (a.wait - b.wait) || (b.count - a.count));
+}
+
+module.exports = { integrity, repairLinks, integrityGroups };

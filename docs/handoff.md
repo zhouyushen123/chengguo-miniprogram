@@ -837,3 +837,30 @@ utils/firstrun.js        首次进入的一次性标记（自动跳向导只跳�
 用例 P 组 13 → 16 条（合计 205），手册 §12.1 补「待同步不用管 / 只有红字要处理」。
 
 **29 套件全绿**，主包 1191.2 KB（58.2%）。
+
+### 21:05 云端环境已就绪（V10 上线操作记录）
+
+| 项 | 状态 |
+|---|---|
+| 集合 `class_courses` | 已建（用户手动建，权限同 courses） |
+| 云函数 `syncv2` | 已重推 9.7 KB |
+| 云函数 `backup` | 已重推 10.6 KB |
+| 云函数 `admin` | 已重推 25.9 KB |
+
+**部署方式**：微信开发者工具 CLI 的 `cloud functions deploy`，参数
+`-e <env> -n <函数名> --path <函数目录> --remote-npm-install --project <仓库根>`。
+比 IDE 右键可靠，可脚本化。
+
+**三个踩过的坑**（记下来，别再花时间）：
+
+1. **env id 是 `cloud1-d9gca4e7q307c4564`（结尾 64），不是 `...456e`。**
+   打错时 CLI 报 `ResourceNotFound.Namespace`，看着像"环境没开通"，其实只是 ID 抄错。
+   正确值在 `utils/api.js` 的 `CLOUD_ENV`。
+2. **IDE 里同时上传多个云函数会报 `ResourceInUse.FunctionName`（"请勿重复创建"）。**
+   那不是配置问题，是并发撞车：前一个还在装依赖、占着通道。串行点，或改用 CLI。
+3. **CLI 每次收尾都会报 `reg.exe / WMIC.exe` 被安全策略拦**，但 `✔ deploy` 已经打印过，
+   功能已完成。**不要去撤这两个程序的黑名单**——`reg.exe` 能改注册表，
+   为消一条无害红字放开不值得。
+
+`cloud functions info` 只给 `status/timeout/runtime`，**看不到代码版本**；`download` 接口被拒。
+所以"是否部署成功"没法靠查，只能重推一次让结果确定——**重推比查证便宜**。

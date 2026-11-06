@@ -83,6 +83,22 @@ ok('三个云函数的集合清单都包含注册表里的每一张同步表', (
   });
 });
 
+// 客户端调一个云函数，云端就必须有它。漏部署不会报错（每个调用点都有 .catch 降级），
+// 只会静默失效 —— stuImport / secCheck / family 就这么"看起来正常、其实没功能"了很久。
+// 部署脚本 tools/cf-deploy.js 也从 api.js 自动推导清单，这里断言两边口径一致。
+ok('客户端调用到的云函数在本地都有目录（漏了，静默降级没人发现）', () => {
+  const api = fs.readFileSync(path.join(ROOT, 'utils/api.js'), 'utf8');
+  const names = new Set();
+  (api.match(/callFn\(\s*'([a-zA-Z0-9_]+)'/g) || []).forEach(s => names.add(s.replace(/.*'([a-zA-Z0-9_]+)'.*/, '$1')));
+  (api.match(/name:\s*'([a-zA-Z0-9_]+)'/g) || []).forEach(s => names.add(s.replace(/.*'([a-zA-Z0-9_]+)'.*/, '$1')));
+  assert.ok(names.size >= 6, 'api.js 里的云函数解析明显不对，只解析出：' + [...names].join(','));
+  const missing = [...names].filter(n => !fs.existsSync(path.join(ROOT, 'cloudfunctions', n, 'index.js')));
+  assert.deepStrictEqual(missing, [], '这些函数被客户端调用但本地没有代码：' + missing.join('、'));
+  // 部署脚本必须能自己推导出同一批名字，否则"一条命令部署"会漏
+  const deploy = fs.readFileSync(path.join(ROOT, 'tools/cf-deploy.js'), 'utf8');
+  assert.ok(/referencedFns/.test(deploy) && /callFn/.test(deploy), '部署脚本应从 api.js 自动推导函数清单');
+});
+
 /* ---------- C. 种子与猜测 ---------- */
 console.log('\n【C. 学科种子与课程归类】');
 

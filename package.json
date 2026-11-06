@@ -9,7 +9,9 @@
     "size": "node tools/size.js",
     "review": "node tools/review.js",
     "check": "node tools/lint.js && node tools/schema-doc.js --check && node tools/size.js && node tests/run.js",
-    "docs:schema": "node tools/schema-doc.js"
+    "docs:schema": "node tools/schema-doc.js",
+    "cloud": "node tools/cf-deploy.js",
+    "cloud:ls": "node tools/cf-deploy.js --list"
   },
   "dependencies": {
     "miniprogram-ci": "^2.1.9"

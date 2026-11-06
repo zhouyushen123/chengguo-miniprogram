@@ -14,38 +14,18 @@
 //   npm run cloud:ls                只看云端现状与差异（不部署）
 //
 // 退出码：0 全部成功 / 1 有函数失败（打印是哪一个，可单独重试）
-const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const wx = require('./wxcli');
 
-const ROOT = path.join(__dirname, '..');
+const ROOT = wx.ROOT;
 const CF_DIR = path.join(ROOT, 'cloudfunctions');
+const ENV = wx.envId();
+const run = wx.run;
+const judge = wx.judge;
 
-// CLI 位置：环境变量 WX_CLI 优先，否则按常见安装路径找
-const CLI = [
-  process.env.WX_CLI,
-  'C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\cli.bat',
-  'C:\\Program Files\\Tencent\\微信web开发者工具\\cli.bat',
-  'D:\\Program Files (x86)\\Tencent\\微信web开发者工具\\cli.bat'
-].filter(Boolean).find(p => fs.existsSync(p));
-
-if (!CLI) {
-  console.error('✘ 找不到微信开发者工具 CLI。\n  可用环境变量 WX_CLI 指定 cli.bat 完整路径。');
-  process.exit(1);
-}
-
-// 云环境 ID 只有一处真相：utils/api.js 的 CLOUD_ENV。
-// 以前手抄成结尾 456e 导致报 ResourceNotFound.Namespace，看着像"环境没开通"。
-function envId() {
-  const src = fs.readFileSync(path.join(ROOT, 'utils/api.js'), 'utf8');
-  const m = src.match(/CLOUD_ENV\s*=\s*['"]([^'"]+)['"]/);
-  if (!m) {
-    console.error('✘ utils/api.js 里找不到 CLOUD_ENV，无法确定云环境');
-    process.exit(1);
-  }
-  return m[1];
-}
-const ENV = envId();
+// 同步睡眠（脚本是线性的，不需要事件循环）
+const sleep = ms => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); };
 
 // 本地有目录的函数（有 package.json 或 index.js 才算）
 function localFns() {
@@ -66,25 +46,6 @@ function referencedFns() {
   const re2 = /name:\s*'([a-zA-Z0-9_]+)'/g;
   while ((m = re2.exec(src))) push(m[1]);
   return [...names];
-}
-
-const q = s => (/[\s"]/.test(String(s)) ? '"' + String(s) + '"' : String(s));
-
-// 同步睡眠（脚本是线性的，不需要事件循环）
-const sleep = ms => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); };
-
-function run(args) {
-  const cmd = [q(CLI)].concat(args.map(q)).join(' ');
-  const r = spawnSync(cmd, { shell: true, encoding: 'buffer', timeout: 600000 });
-  const out = ((r.stdout || Buffer.alloc(0)).toString('utf8') + (r.stderr || Buffer.alloc(0)).toString('utf8')).trim();
-  return { code: r.status, out };
-}
-
-// 成功判据不只看退出码：CLI 收尾时会因 reg.exe / WMIC.exe 在黑名单里打印红字并把
-// 退出码带偏，但 deploy 其实成功了。以输出里的标记为准。
-function judge(out) {
-  if (/✘|部署失败|上传失败|Error:|errCode/.test(out)) return false;
-  return /✔|部署成功|deploy success|success/i.test(out);
 }
 
 // 云端现有函数：list 输出形如 "* syncv2"，没有 JSON

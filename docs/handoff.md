@@ -933,3 +933,16 @@ npm run cloud -- syncv2 admin    # 只部署指定的
 **门禁 +1**（verify_datamodel）：客户端调用的每个云函数在本地必须有目录，
 且部署脚本必须是从 api.js 自动推导的（防止再出现"代码里有、云端没有"）。
 29 套件全绿，主包 1193.3 KB。
+
+### 21:40 发布工作流收口：`npm run preview` / `npm run ship`
+
+两个脚本共用 `tools/wxcli.js`（CLI 定位 / 成功判据看输出标记 / 云环境 ID 从 utils/api.js 读），
+`tools/cf-deploy.js` 也改成用它了。
+
+- **`npm run preview`**：生成预览二维码到 `.preview/qr.png`，手机微信扫码直接跑当前代码。
+  不上传、不占版本号、几十秒出结果 —— 改完想真机看效果就用它，**不碰上传**。
+- **`npm run ship`**（= upload）：先跑门禁（lint + 体积 + 全量测试），过了才上传；
+  版本号从 `.release.json` 自动 +1（当前 1123 → 下次 1124），成功才写回。
+- 唯一无法自动化的：后台「设为体验版」「提交审核」。微信没开接口，人工点一次，别处都省了。
+
+之前 `npm run cloud`（部署云函数）见上一节。

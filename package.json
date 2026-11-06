@@ -11,7 +11,10 @@
     "check": "node tools/lint.js && node tools/schema-doc.js --check && node tools/size.js && node tests/run.js",
     "docs:schema": "node tools/schema-doc.js",
     "cloud": "node tools/cf-deploy.js",
-    "cloud:ls": "node tools/cf-deploy.js --list"
+    "cloud:ls": "node tools/cf-deploy.js --list",
+    "preview": "node tools/mp-release.js preview",
+    "ship": "node tools/mp-release.js ship",
+    "upload": "node tools/mp-release.js ship"
   },
   "dependencies": {
     "miniprogram-ci": "^2.1.9"

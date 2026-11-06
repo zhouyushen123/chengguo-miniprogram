@@ -13,3 +13,6 @@ project.private.config.json
 # 云函数测试桩（tests 运行时写入；保留空壳防构建缓存 ENOENT）
 .fake-wx-sdk.js
 debug.log
+
+# 预览二维码（npm run preview 生成，不进仓库）
+.preview/

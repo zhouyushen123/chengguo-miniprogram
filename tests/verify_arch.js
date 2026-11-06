@@ -65,7 +65,8 @@ const LAYER = {
   identity: 4,                              // → org, classes, students（成员视图要班级/学生名）
   records: 5,                               // → students, enrollments（结转班消课）
   settle: 6,                                // 结转向导落地：→ terms, classes, courses, students, enrollments
-  maintenance: 6,                           // 库级维护，只用 ctx + 基础组
+  maintenance: 6,                           // 库级维护，只用 ctx + 基础组 + integrity
+  integrity: 5,                             // 引用完整性体检/自愈：只用 core + ctx，不碰领域模块
   sync: 6,                                  // 同步的数据层半边：→ core + 外部纯函数 syncmerge（不碰领域模块）
   factory: 6,                               // 回到出厂（坏档自救）：只用基础组，不碰领域模块
   audit: 5,                                 // 核心资产体检：只用 core + ctx，不碰领域模块

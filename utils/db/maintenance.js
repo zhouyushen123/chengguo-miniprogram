@@ -7,12 +7,13 @@ const storage = require('./storage');
 const schema = require('./schema');
 const core = require('./core');
 const migrate = require('./migrate');
+const integrity = require('./integrity');
 const media = require('../media');
 const demo = require('../demo-data');
 const { now, org, oc } = require('./ctx');
 
 /* =====================================================================
- * 启动：加载 → 迁移 → 规范化 → 演示数据包 → 引用修复 → 媒体自愈 → 决定看哪套数据
+ * 启动：加载 → 迁移 → 规范化 → 演示包 → 引用修复 → 关系自愈 → 媒体自愈 → 定模式
  * ===================================================================*/
 let inited = false;
 let bootError = '';
@@ -75,6 +76,7 @@ function init() {
     const hadDemo = !!storage.demo.load().meta;
     if (hadDemo || purged) ensureDemo();
     const repaired = repairRefs();
+    const linked = integrity.repairLinks();   // 关系表与三处外键的悬空行：启动即修
     const mediaFixed = repairMedia();
     // 一次性补标：学科/知识点是 v9 新加的表。升级到 v9 那次启动写种子会被 markRegrown 抓到，
     // 但"已经升到 v9、种子只在本地、云端一条没有"的设备（本修复之前升级的）条数不会再变，
@@ -85,7 +87,8 @@ function init() {
     }
     const regrew = markRegrown(beforeCount);   // 迁移新增的行为什么必须标脏，见 markRegrown
     resolveMode(purged);                 // 该进演示还是回真实机构
-    if (changed || purged || repaired || mediaFixed || regrew) core.flushAll();
+    const linkedFixed = (linked.bindings + linked.dupBind + linked.records + linked.members + linked.students) > 0;
+    if (changed || purged || repaired || mediaFixed || regrew || linkedFixed) core.flushAll();
 
     if (snapRestored) {
       // 恢复出来的数据必须立刻落盘，否则磁盘上还是那份缺了片的旧数据，
@@ -97,8 +100,7 @@ function init() {
       core.updateRealMeta({ sync: Object.assign({}, s, { cursor: 0, dirty: storage.COLLECTIONS.slice() }) });
     }
 
-    // 每日首启留一份滚动备份（保留最近 3 份 ≈ 最近三天）。
-    // 空库不备份：既没有可救的东西，又白占配额。
+    // 每日首启留一份滚动备份（3 份 ≈ 三天）；空库不备份，既没东西可救又白占配额
     const rd = core.realData();
     const hasAsset = (rd.students && rd.students.length) || (rd.members && rd.members.length);
     if (hasAsset && core.realMeta().lastSnap !== dayKey(Date.now())) {
@@ -106,8 +108,7 @@ function init() {
       if (r.ok) core.updateRealMeta({ lastSnap: dayKey(Date.now()) });
     }
   } catch (e) {
-    // 启动失败不能让整页白屏，也不能把坏状态写回磁盘：
-    // 降级成"内存空库 + 只读"，磁盘数据原样保留，页面照常渲染空态。
+    // 启动失败不能让整页白屏，也不能把坏状态写回磁盘 → 降级成"内存空库 + 只读"，磁盘原样保留
     bootError = (e && e.message) || '数据加载失败';
     core.setReadOnly(true);
     core.setMode('real');
@@ -152,9 +153,8 @@ function restoreSnapshot(id) {
   const data = { meta: Object.assign({}, snap.meta || {}, { version: schema.VERSION }) };
   storage.COLLECTIONS.forEach(n => { data[n] = Array.isArray(snap.data[n]) ? snap.data[n] : []; });
   core.hydrate(data);
-  // 快照可能是旧版本生成的：按当前 schema 重新过一遍，别让老结构直接进内存
-  normalizeAll(true);
-  repairRefs();
+  // 快照可能是旧版本生成的：按当前 schema 重过一遍（老快照没有 class_courses，顺手补关系）
+  normalizeAll(true); repairRefs(); integrity.repairLinks();
   const ok = core.flushAll();
   if (!ok) return { ok: false, msg: core.SAVE_FAIL };
   const s = core.realMeta().sync || {};
@@ -494,5 +494,6 @@ function merge(remote) {
 module.exports = {
   mediaRefs,
   init, status, normalizeAll, repairRefs, repairMedia, restoreSnapshot,
+  integrity: integrity.integrity, repairLinks: integrity.repairLinks,
   buildDemoData, ensureDemo, purgeSeed, resolveMode, demo: demoApi, merge
 };

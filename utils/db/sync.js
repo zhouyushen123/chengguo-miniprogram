@@ -92,16 +92,20 @@ function applyRemote(items) {
   });
   let added = 0, updated = 0;
   const names = Object.keys(byColl);
-  if (!names.length) return { added: 0, updated: 0 };
+  if (!names.length) return { ok: true, added: 0, updated: 0, failed: [] };
+  const failed = [];
   applying = true;
   try {
     names.forEach(c => {
       const res = syncmerge.mergeList(core.coll(c) || [], byColl[c]);
       added += res.added; updated += res.updated;
-      if (res.added || res.updated) core.setColl(c, res.list);
+      // 【落盘失败必须报出去】以前这里不看返回值：内存改了、磁盘没写进去，
+      // 而调用方照样推进同步游标 —— 这批文档以后永远不会再被拉一次，
+      // 表现就是"云端有、手机上没有"，重启后彻底消失。宁可这次同步报错重来。
+      if ((res.added || res.updated) && !core.setColl(c, res.list)) failed.push(c);
     });
   } finally { applying = false; }
-  return { added, updated };
+  return { ok: failed.length === 0, added, updated, failed };
 }
 
 // 机构号换代：把本机全部数据从出厂号挪到服务端刚发的机构号上。

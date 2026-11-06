@@ -90,7 +90,13 @@ function recordSave(pick, send) {
   // 课程 id 反查：V10 起课程不再带 clsId，先在这个班开设的课里找同名，
   // 找不到再退回全机构同名课程（老师可能录了一门这个班还没绑的课）。
   // 都找不到就留 0——课程名文字仍然是记录的权威内容，指针只是给题库用的关联。
-  const courseId = Number(p.courseId) || (function () {
+  //
+  // 【传进来的 courseId 必须验活】页面可能停在旧数据上：课程刚被合并/删除，
+  // 手里还攥着那个 id。直接写下去就得到一条指向空课程的记录——列表看着正常
+  // （显示的是 course 文字），但按课程统计、题库关联全都会漏掉它。
+  const wantId = Number(p.courseId) || 0;
+  const wantOk = wantId && oc('courses').some(c => c.id === wantId);
+  const courseId = wantOk ? wantId : (function () {
     if (!course) return 0;
     const bound = oc('class_courses').filter(b => b.clsId === cid).map(b => b.courseId);
     const all = oc('courses').filter(c => c.name === course);
@@ -206,6 +212,9 @@ function recordAttachCloud(rid, photos) {
   return core.tx(() => {
     const r = oc('records').find(y => y.id === id && !y.removed);
     if (!r) return { ok: false, msg: '记录不存在' };
+    // 后台补传照片会拿 rid 直接回来改，范围必须在这里再兜一次：
+    // 不走 record.update 的 own 规则（否则老师看得到的别人记录永远传不上云），但绝不能跨范围写。
+    if (!perms.canSeeRecord(actor(), r)) return { ok: false, msg: '记录不在你的范围内' };
     if (r.photos && r.photos.join('\n') === list.join('\n')) return { ok: true, changed: false };
     r.photos = list; r.updatedAt = now();
     if (!core.persist('records')) return { ok: false, msg: core.SAVE_FAIL };

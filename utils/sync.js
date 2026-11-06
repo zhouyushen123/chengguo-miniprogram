@@ -115,6 +115,9 @@ function pullNow() {
     return api.syncCall('pull', { orgId: targetOrg(), since: db.sync.cursor() }).then(r => {
       if (!r || !r.ok) throw new Error((r && r.msg) || 'pull 失败');
       const st = db.sync.applyRemote(r.docs);
+      // 有集合没写进磁盘时不能推进游标：推了这批文档就再也不会被拉下来，
+      // 变成"云端有、本机没有"。留在这里报错，下次同步从同一游标重拉（合并是幂等的）。
+      if (!st.ok) throw new Error('本地存储空间不足，' + st.failed.length + ' 个集合没能写入，稍后自动重试');
       added += st.added; updated += st.updated;
       const next = Math.max(syncmerge.cursorOf(r.docs, db.sync.cursor()), Number(r.cursor) || 0);
       if (next) db.sync.setCursor(next);

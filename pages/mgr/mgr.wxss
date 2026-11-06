@@ -29,6 +29,10 @@
   font-size: 23rpx; color: var(--sub); border: 1rpx dashed var(--line-2);
   padding: 8rpx 18rpx; border-radius: 999rpx;
 }
+/* 同名课程提示卡：不是错误（数据能正常用），是要不要在"内容单元"这件事上收一下 */
+.dupcard { background: var(--brand-tint); border: 1rpx solid var(--brand-border); }
+.duptxt { font-size: 25rpx; color: var(--text-2); line-height: 1.7; }
+.dupbtn { margin-top: 20rpx; padding: 18rpx 0; font-size: 27rpx; }
 /* 班级条目标识：大圆形色块改为窄圆角竖杠，弱化装饰、突出名称 */
 .clsbar { width: 8rpx; height: 52rpx; border-radius: 6rpx; background: linear-gradient(180deg, var(--brand-a), var(--brand-b)); flex: none; }
 /* 学生头像缩略图：小尺寸圆角方块；无照片时浅底首字占位（不再是实色色块） */

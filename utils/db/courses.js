@@ -192,6 +192,11 @@ function courseRemove(id) {
 function courseRestore(id) {
   const c = ocAll('courses').find(x => x.id === Number(id) && x.removed);
   if (!c) return { ok: false, msg: '回收站里没有这门课' };
+  // 已合并的副本不能还原：还原它等于把刚收拢的重复课又造回来
+  if (c.mergedInto) {
+    const keep = oc('courses').find(x => x.id === c.mergedInto);
+    return { ok: false, msg: '这门课已合并到「' + ((keep && keep.name) || '同名课程') + '」' };
+  }
   const err = deny('course.write');
   if (err) return { ok: false, msg: err };
   return core.tx(() => {
@@ -281,7 +286,105 @@ function courseOrphans() {
   return courseList().filter(c => !c.classIds.length);
 }
 
+/* ---------------- 合并同名课程 ---------------- */
+//
+// V10 之前"一个班一条课"，同一门楷书开 5 个班就是 5 条课程记录。解耦后同名即同一门课，
+// 这些副本必须能收拢——否则课程库里永远躺着「楷书 ×3」，将来挂题库要挂三份。
+//
+// 合并要改三处指针，一处漏了就会"记录不见了/老师突然看不到课"：
+//   ① class_courses.courseId  班级开设关系
+//   ② records.courseId        成果记录的课程指针（记录上的课程名文字不动，历史原样可读）
+//   ③ members.courseIds       成员的课程授权
+// 副本不物理删除，而是标 mergedInto + 软删：同步靠 removed 传播删除，
+// 本地抹掉云端还活着，下次合并又长回来。
+
+const nameKey = c => String(c.name || '').trim().toLowerCase();
+
+// 课程库里的同名分组（每组按 id 升序，第一条当"留下的那门"）
+// 同名但学科明确不同的不算重复：那可能是两门同名的课（"基础"在书法和数学里各有一门），
+// 合了就是把题目挂错学科。
+function courseDuplicates() {
+  const groups = {};
+  courseList().forEach(c => {
+    const k = nameKey(c);
+    if (!k) return;
+    (groups[k] = groups[k] || []).push(c);
+  });
+  return Object.keys(groups)
+    .map(k => groups[k].sort((a, b) => a.id - b.id))
+    .filter(g => g.length > 1)
+    .filter(g => {
+      const subs = g.map(c => c.subjectId).filter(Boolean);
+      return subs.filter((v, i) => subs.indexOf(v) === i).length < 2;
+    });
+}
+
+// 把 dropIds 并进 keepId。幂等：重复调用第二次就是 no-op。
+function courseMerge(keepId, dropIds) {
+  const keep = oc('courses').find(c => c.id === Number(keepId));
+  if (!keep) return { ok: false, msg: '课程不存在' };
+  const err = deny('course.write');
+  if (err) return { ok: false, msg: err };
+  const ids = schema.numList(dropIds).filter(id => id !== keep.id);
+  const drops = oc('courses').filter(c => ids.indexOf(c.id) > -1);
+  if (!drops.length) return { ok: true, merged: 0, bindings: 0, records: 0 };
+
+  return core.tx(() => {
+    const t = now();
+    let bindings = 0, records = 0, members = 0;
+    // 留下的那门没学科、副本有 → 继承过来（题库按学科筛，别丢）
+    const sub = keep.subjectId || (drops.find(c => c.subjectId) || {}).subjectId || 0;
+    if (sub && sub !== keep.subjectId) applyEdit('courses', keep, { subjectId: sub, updatedAt: t });
+
+    oc('class_courses').forEach(b => {
+      if (ids.indexOf(b.courseId) < 0) return;
+      // 这个班本来就开了 keep → 副本那条直接作废，不然同一个班会开出两遍同名课
+      if (bindingFind(b.clsId, keep.id)) { applyEdit('class_courses', b, markRemoved({}, t)); return; }
+      applyEdit('class_courses', b, { courseId: keep.id, updatedAt: t });
+      bindings++;
+    });
+
+    oc('records').forEach(r => {
+      if (ids.indexOf(r.courseId) < 0) return;
+      applyEdit('records', r, { courseId: keep.id, updatedAt: t });
+      records++;
+    });
+
+    core.coll('members').forEach(m => {
+      const list = m.courseIds || [];
+      if (!list.some(id => ids.indexOf(id) > -1)) return;
+      const next = [];
+      list.forEach(id => {
+        const to = ids.indexOf(id) > -1 ? keep.id : id;
+        if (next.indexOf(to) < 0) next.push(to);
+      });
+      applyEdit('members', m, { courseIds: next, updatedAt: t });
+      members++;
+    });
+
+    drops.forEach(c => applyEdit('courses', c, markRemoved({ mergedInto: keep.id }, t)));
+
+    core.persist('class_courses'); core.persist('records'); core.persist('members');
+    return { ok: true, merged: drops.length, bindings, records, members, keep: keep.id };
+  });
+}
+
+// 一键整理：把所有同名分组各并成一条。返回处理了几组、共并掉几条。
+function courseMergeAll() {
+  const err = deny('course.write');
+  if (err) return { ok: false, msg: err };
+  const groups = courseDuplicates();
+  if (!groups.length) return { ok: true, groups: 0, merged: 0 };
+  let merged = 0, done = 0;
+  groups.forEach(g => {
+    const r = courseMerge(g[0].id, g.slice(1).map(c => c.id));
+    if (r.ok) { merged += r.merged; done++; }
+  });
+  return { ok: true, groups: done, merged };
+}
+
 module.exports = {
   courseList, courseOf, courseGet, courseCreate, courseUpdate, courseRemove, courseRestore,
-  courseBind, courseUnbind, courseSetClasses, courseIdsOf, classIdsOf, bindingOf, courseOrphans
+  courseBind, courseUnbind, courseSetClasses, courseIdsOf, classIdsOf, bindingOf, courseOrphans,
+  courseDuplicates, courseMerge, courseMergeAll
 };

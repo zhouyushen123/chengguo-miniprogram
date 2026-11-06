@@ -180,13 +180,14 @@ const db = {
   },
   courses: {
     list: courses.courseList, of: courses.courseOf, get: courses.courseGet,
-    create: courses.courseCreate, update: courses.courseUpdate, remove: courses.courseRemove,
-    restore: courses.courseRestore,
+    create: courses.courseCreate, update: courses.courseUpdate, remove: courses.courseRemove, restore: courses.courseRestore,
     // V10：课程与班级解耦后的绑定能力——课程库一次建好，在任何班"开课"就是绑一条
     bind: courses.courseBind, unbind: courses.courseUnbind,
     setClasses: courses.courseSetClasses,
-    classIdsOf: courses.classIdsOf, courseIdsOf: courses.courseIdsOf,
-    bindingsOf: courses.bindingOf, orphans: courses.courseOrphans
+    classIdsOf: courses.classIdsOf, courseIdsOf: courses.courseIdsOf, bindingsOf: courses.bindingOf,
+    orphans: courses.courseOrphans,
+    // 同名课程收拢（老数据「一个班一条课」的清理入口）
+    duplicates: courses.courseDuplicates, merge: courses.courseMerge, mergeAll: courses.courseMergeAll
   },
   // 内容域：学科与知识点（阶段一只建表，不建界面；阶段二题库的挂载点）
   subjects: {

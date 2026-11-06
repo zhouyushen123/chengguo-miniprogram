@@ -28,7 +28,8 @@ mem['chengguo_v2'] = {
     { id: 'p1', name: '家长演示', role: 'parent', studentIds: [101] }
   ],
   classes: [{ id: 1, name: '书法班' }, { id: 2, name: '素描班' }],
-  courses: [{ id: 1, name: '楷书', clsId: 1 }, { id: 2, name: '素描', clsId: 2 }],
+  // 故意留一条"同一门素描开在书法班"的老数据：V10 之前一个班一条课，迁移要把它并掉
+  courses: [{ id: 1, name: '楷书', clsId: 1 }, { id: 2, name: '素描', clsId: 2 }, { id: 3, name: '素描', clsId: 1 }],
   students, records,
   demoVersion: demo.DEMO_VERSION        // 与当前版本一致 → 不重复灌演示数据
 };
@@ -281,6 +282,61 @@ ok('迁移：老课程的 clsId 派生成绑定，课程实体上不再有 clsId
   assert.ok(ks, '楷书应随迁移保留');
   assert.strictEqual(ks.clsId, undefined, '课程实体不该再带 clsId');
   assert.deepStrictEqual(db.courses.classIdsOf(ks.id), [1], '楷书开在书法班(1)');
+});
+
+ok('迁移：同名课程收拢成一条，各班开设关系都保留', () => {
+  const list = db.courses.list().filter(c => c.name === '素描');
+  assert.strictEqual(list.length, 1, '老数据里「素描」两条 → 迁移后只剩一条');
+  const sk = list[0];
+  assert.deepStrictEqual(db.courses.classIdsOf(sk.id).sort((a, b) => a - b), [1, 2], '素描班 + 书法班的开设都要在');
+  // 绑定指向被合并掉的课程 = 那个班上课时选不到课（指针没跟着改）
+  const core = require('../utils/db/core');
+  const alive = core.coll('courses').filter(c => !c.removed).map(c => c.id);
+  core.coll('class_courses').filter(b => !b.removed).forEach(b => {
+    assert.ok(alive.indexOf(b.courseId) > -1, '绑定不能指向已被合并的课程 ' + b.courseId);
+  });
+});
+
+ok('迁移后没有多余的同名分组，一键整理是空操作', () => {
+  assert.deepStrictEqual(db.courses.duplicates(), [], '不该再有同名分组');
+  const r = db.courses.mergeAll();
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.merged, 0);
+});
+
+ok('手动合并：绑定/记录指针一起改指，副本成为墓碑（不进回收站、不能还原）', () => {
+  const core = require('../utils/db/core');
+  const sk = db.courses.list().find(c => c.name === '素描');
+  // 造一条"历史遗留"副本：同名、另开一个班、有自己的成果记录
+  const dupId = 99001;
+  core.coll('courses').push(schema.normalizeCourse({ id: dupId, name: '素描', subjectId: sk.subjectId }, 'org1', Date.now()));
+  core.persist('courses');
+  const cls = db.classes.create({ name: '素描老班' }).item;
+  assert.strictEqual(db.courses.bind(cls.id, dupId).ok, true);
+  const stu = db.students.create({ name: '合并测试生', clsIds: [cls.id] }).item;
+  const rec = db.records.save({ cls: cls.id, sid: stu.id, course: '素描', courseId: dupId, note: '合并前' }, true).record;
+  assert.strictEqual(db.courses.duplicates().length, 1, '应识别出 1 组同名');
+
+  const r = db.courses.merge(sk.id, [dupId]);
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.merged, 1);
+  assert.ok(db.courses.classIdsOf(sk.id).indexOf(cls.id) > -1, '副本那个班改挂到留下的这门课');
+  assert.strictEqual(db.records.get(rec.id).courseId, sk.id, '记录的课程指针要跟着改');
+  assert.strictEqual(db.courses.get(dupId), null, '副本从课程库消失');
+  assert.strictEqual(db.courses.restore(dupId).ok, false, '合并掉的副本不能再还原成一条重复课');
+  const items = db.trash.list().items.filter(t => t.kind === 'courses');
+  assert.ok(!items.some(t => t.id === dupId), '墓碑不该出现在回收站里');
+});
+
+ok('同名但学科不同 = 两门课，不合并', () => {
+  const sub = db.subjects.list()[0];
+  const other = db.subjects.list().find(s => s.id !== sub.id) || sub;
+  const a = db.courses.create({ name: '基础', subjectId: sub.id });
+  const b = db.courses.create({ name: '基础', subjectId: other.id });
+  assert.strictEqual(a.ok && b.ok, true);
+  assert.notStrictEqual(a.item.id, b.item.id, '学科不同应各自建一条');
+  assert.strictEqual(db.courses.duplicates().length, 0, '学科不同不算重复');
+  db.courses.remove(b.item.id);
 });
 
 ok('同一门课可同时开在多个班，课程只存一条', () => {

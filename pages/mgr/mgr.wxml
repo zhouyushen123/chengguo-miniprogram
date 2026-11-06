@@ -105,6 +105,11 @@
       <view class="btn addbtn" hover-class="btn-hover" bindtap="addCourse">添加</view>
     </view>
   </view>
+  <!-- 同名课程提示：早期"一个班建一条课"，解耦后同名即同一门课，这里给一次收拢的机会 -->
+  <view wx:if="{{crsDupGroups}}" class="card dupcard">
+    <view class="duptxt">课程库里有 {{crsDupGroups}} 组同名课程，是早期「一个班建一条课」留下的。合并后各班照常开课，历史记录不受影响。</view>
+    <view class="btn ghost dupbtn" hover-class="btn-hover" bindtap="mergeCourses">一键合并同名课程</view>
+  </view>
   <view wx:if="{{!courses.length && !courseFormOpen}}" class="empty slim">还没有课程，点下面「添加课程」建一个</view>
   <view class="card item crsitem" wx:for="{{courses}}" wx:key="id">
     <view class="crsline">

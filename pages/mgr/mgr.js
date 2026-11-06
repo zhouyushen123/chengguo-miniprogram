@@ -141,6 +141,8 @@ Page({
         clsList: (c.classIds || []).map(id => ({ id, name: db.classes.name(id) })).filter(x => x.name),
         canBind: (c.classIds || []).length < classes.length
       })),
+      // 同名课程分组数：老数据「一个班一条课」留下的副本，给一键合并用
+      crsDupGroups: isManager ? db.courses.duplicates().length : 0,
       members: isManager ? db.members.list().map(m => {
         const v = db.members.view(m);
         return {
@@ -426,6 +428,24 @@ Page({
         const res = db.courses.remove(id);
         if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
         this.refresh();
+      }
+    });
+  },
+  // 一键合并同名课程：老数据里同一门课每个班各存一条，收拢成一条，
+  // 班级开设关系、成果记录的课程指针、成员课程授权一起改过去（记录上的课程名文字不动）
+  mergeCourses() {
+    const n = this.data.crsDupGroups || 0;
+    if (!n) return;
+    wx.showModal({
+      title: '合并同名课程？',
+      content: '有 ' + n + ' 组同名课程，合并后每组只留一条，各班照常开课，历史记录不受影响。合并不可撤销。',
+      confirmText: '合并',
+      success: r => {
+        if (!r.confirm) return;
+        const res = db.courses.mergeAll();
+        if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
+        this.refresh();
+        wx.showToast({ title: '已合并 ' + res.merged + ' 条', icon: 'none' });
       }
     });
   },

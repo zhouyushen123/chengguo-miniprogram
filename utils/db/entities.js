@@ -102,7 +102,8 @@ const ENTITIES = [
     fields: [
       { k: 'id', t: INT, d: '课程 id' },
       { k: 'subjectId', t: INT, d: '学科 subjects.id，0 = 未指定（V9 新增）' },
-      { k: 'name', t: STR, d: '课程名，如 楷书 / 素描 / 数学思维。V10 起不再绑定班级' }
+      { k: 'name', t: STR, d: '课程名，如 楷书 / 素描 / 数学思维。V10 起不再绑定班级' },
+      { k: 'mergedInto', t: INT, d: '同名课程合并到哪门课（0 = 未合并；非 0 的行是墓碑，不进回收站）' }
     ]
   },
   {

@@ -132,6 +132,7 @@
 | `id` | int | 课程 id |
 | `subjectId` | int | 学科 subjects.id，0 = 未指定（V9 新增） |
 | `name` | string | 课程名，如 楷书 / 素描 / 数学思维。V10 起不再绑定班级 |
+| `mergedInto` | int | 同名课程合并到哪门课（0 = 未合并；非 0 的行是墓碑，不进回收站） |
 | `orgId` | string | 归属机构。orgs 集合里等于 id |
 | `createdAt` | int(ms) | 创建时间 |
 | `updatedAt` | int(ms) | 更新时间，同步 LWW 的依据 |

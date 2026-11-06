@@ -90,6 +90,65 @@ function ensureClassCourses(rawCourses, classCourses, classRemovedAt, orgId, sta
   return arr;
 }
 
+// 同名课程合并（v10 一次性收拢）。
+//
+// 解耦前"一个班一条课"，同一门楷书开 5 个班就有 5 条课程行。V10 起同名即同一门课，
+// 这里把副本并进 id 最小（建得最早）的那条，并把三处指针一起改过去：
+// class_courses.courseId / records.courseId / members.courseIds。
+// 副本标 mergedInto + 软删（墓碑），不物理删除——同步靠 removed 传播删除。
+//
+// 只在 v10 以下的库上跑一次（见 upgrade）；之后新增的重复走课程页「一键合并同名课程」，
+// 由人决定，不在启动时悄悄动数据。
+function mergeSameNameCourses(courses, classCourses, records, members, stamp) {
+  const groups = {};
+  (courses || []).forEach(c => {
+    if (!c || c.removed) return;
+    const k = String(c.name || '').trim().toLowerCase();
+    if (!k) return;
+    (groups[k] = groups[k] || []).push(c);
+  });
+  let merged = 0;
+  Object.keys(groups).forEach(k => {
+    const g = groups[k].sort((a, b) => a.id - b.id);
+    if (g.length < 2) return;
+    // 同名但学科明确不同 → 两门课，别合（合了等于把内容挂错学科）
+    const subs = g.map(c => c.subjectId).filter(Boolean);
+    if (subs.filter((v, i) => subs.indexOf(v) === i).length > 1) return;
+    const keep = g[0];
+    const map = {};
+    g.slice(1).forEach(c => {
+      map[c.id] = keep.id;
+      if (!keep.subjectId && c.subjectId) keep.subjectId = c.subjectId;
+      c.removed = true;
+      c.removedAt = stamp;
+      c.mergedInto = keep.id;
+      merged++;
+    });
+    (classCourses || []).forEach(b => { if (map[b.courseId]) b.courseId = keep.id; });
+    (records || []).forEach(r => { if (map[r.courseId]) r.courseId = keep.id; });
+    (members || []).forEach(m => {
+      const list = m.courseIds || [];
+      if (!list.some(id => map[id])) return;
+      const next = [];
+      list.forEach(id => {
+        const to = map[id] || id;
+        if (next.indexOf(to) < 0) next.push(to);
+      });
+      m.courseIds = next;
+    });
+  });
+  // 同一个班同一门课只留一条绑定（副本的绑定挪过来后可能和 keep 原有的撞上）
+  const seen = {};
+  (classCourses || []).forEach(b => {
+    if (b.removed) return;
+    const key = b.clsId + '/' + b.courseId;
+    if (seen[key] === undefined) { seen[key] = b.id; return; }
+    b.removed = true; b.removedAt = stamp;
+  });
+  return merged;
+}
+
+
 // 全新安装的骨架。
 // opts.sample === false：不带「书法班/素描班/楷书/素描」这些示例内容。
 //   真实新用户第一次进来看到两个自己没建过的班，只会以为是别人的数据或系统坏了；
@@ -216,6 +275,8 @@ function upgrade(loaded, stamp) {
     (loaded.class_courses || []).map(b => schema.normalizeClassCourse(b, orgId, stamp)),
     classRemovedAt, orgId, stamp
   );
+  // v10：同名课程收拢成一条（只在 v10 以下的库上做一次）
+  if (Number(loaded.meta.version) < 10) mergeSameNameCourses(courses, classCourses, records, members, stamp);
   const knowledgePoints = (loaded.knowledge_points || []).map(k => schema.normalizeKnowledgePoint(k, orgId, stamp));
 
   return {
@@ -351,8 +412,9 @@ function build(loaded) {
   // v9：学科种子 + 课程归类 + 知识点空表
   const subjects = ensureSubjects([], ORG, stamp);
   ensureCourseSubjects(courses, subjects, stamp);
-  // v10：老课程的班级关系 → 绑定表
+  // v10：老课程的班级关系 → 绑定表；同名课程收拢（老版本一个班一条课）
   const classCourses = ensureClassCourses(courseLinks, [], {}, ORG, stamp);
+  mergeSameNameCourses(courses, classCourses, records, members, stamp);
 
   return {
     meta: {
@@ -370,4 +432,4 @@ function build(loaded) {
   };
 }
 
-module.exports = { build, buildFresh, upgrade, buildTemplates, ensureBuiltinTerm, ensureSubjects, ensureCourseSubjects };
+module.exports = { build, buildFresh, upgrade, buildTemplates, ensureBuiltinTerm, ensureSubjects, ensureCourseSubjects, mergeSameNameCourses };

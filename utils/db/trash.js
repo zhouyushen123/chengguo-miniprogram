@@ -66,7 +66,9 @@ function list(kind) {
     });
   }
   if (want.indexOf('courses') > -1) {
-    ocAll('courses').filter(x => x.removed).forEach(c => {
+    // 已合并的副本是墓碑（mergedInto > 0）：它没"消失",只是并进了同名课程，
+    // 列在回收站里只会让人反复还原出一个重复项。
+    ocAll('courses').filter(x => x.removed && !x.mergedInto).forEach(c => {
       // 课程不再有 clsId：老师能看到的是"曾开在自己班上的课"（含已解绑的那批）
       const cl = courses.classIdsOf(c.id, true);
       if (!a || (!a.all && !cl.some(id => perms.canSeeClass(a, id)))) return;

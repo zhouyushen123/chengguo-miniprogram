@@ -140,7 +140,11 @@ function normalizeCourse(raw, orgId, stamp) {
     id: num(r.id, 0),
     // 学科：阶段二题库按学科筛题/组卷。0 = 未指定（猜不出来就留空，不影响任何现有功能）
     subjectId: num(r.subjectId, 0),
-    name: str(r.name).trim()
+    name: str(r.name).trim(),
+    // 被合并进哪门课（0 = 没被合并）。同名课程收拢时，副本留一行墓碑指过来：
+    // 不能直接抹掉——多端同步靠 removed 传播删除，本地删了云端还活着，下次合并又长回来。
+    // 这类行只是墓碑，不进回收站、不能还原（见 trash.js / courses.courseRestore）。
+    mergedInto: num(r.mergedInto, 0)
   }, audit(r, orgId, stamp));
 }
 

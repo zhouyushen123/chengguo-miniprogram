@@ -473,4 +473,40 @@ ok('G6 身份自救不重人：机构里还有成员时认旧身份，绝不新�
   assert.strictEqual(core2.coll('members').filter(x => !x.removed && x.orgId === 'org_x9').length, 2, '不能多出第三条成员（原有的两条都原样保留）');
 });
 
+ok('G7 owner 残骸收口：无名且未认领的多余负责人进回收站，存活行借名', () => {
+  const mem2 = {};
+  const db2 = boot(mem2);
+  const core2 = require(path.join(ROOT, 'utils/db/core'));
+  db2.patchMeta({ orgId: 'org_x9' });
+  const mk = (id, userId, role, name, openid, createdAt) => ({
+    id, orgId: 'org_x9', userId, role, name: name || '', openid: openid || '',
+    status: 'active', createdAt, updatedAt: createdAt, clsIds: [], courseIds: [], studentIds: []
+  });
+  // 真机形状：A = 云端那条（认领过微信但没名字）；C = 自救重出来的残骸（无微信无名字）
+  core2.coll('members').push(mk(9301, 'uA', 'owner', '', 'oX', 1000));
+  core2.coll('members').push(mk(9302, 'uC', 'owner', '', '', 2000));
+  core2.coll('users').push({ id: 'uA', orgId: 'org_x9', name: '王校长', role: 'owner', createdAt: 1000, updatedAt: 1000 });
+  core2.persist('members');
+  core2.persist('users');
+  db2.patchMeta({ me: 'uA' });
+
+  const r = db2.dedupeBindings();
+  assert.strictEqual(r.rows, 1, '残骸该被收走：' + JSON.stringify(r));
+  const alive = core2.coll('members').filter(x => !x.removed && x.orgId === 'org_x9');
+  assert.deepStrictEqual(alive.map(x => x.id), [9301], '只剩云端那条');
+  assert.strictEqual(core2.coll('members').find(x => x.id === 9302).removed, true, '残骸是墓碑不是物理删');
+  assert.strictEqual(alive[0].name, '王校长', '存活行没名字要从账号表借');
+  // 三条保护：有名的不动、me 指着的不动、机构里没有已认领 owner 时不动
+  const mem3 = {};
+  const db3 = boot(mem3);
+  const core3 = require(path.join(ROOT, 'utils/db/core'));
+  db3.patchMeta({ orgId: 'org_x9' });
+  core3.coll('members').push(mk(9401, 'uP', 'owner', '', '', 1000));
+  core3.coll('members').push(mk(9402, 'uQ', 'owner', '', '', 2000));
+  core3.persist('members');
+  db3.patchMeta({ me: 'uP' });
+  const r3 = db3.dedupeBindings();
+  assert.strictEqual(r3.rows, 0, '两条 owner 都没绑微信：分不清哪条是残骸，不能自动删');
+});
+
 console.log('\n全部 ' + pass + ' 项地基断言通过');

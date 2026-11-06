@@ -287,7 +287,8 @@ function dedupeBindings() {
   if (core.isReadOnly()) return n;
   const o = org();
   if (!o || schema.isFactoryOrg(o)) return n;
-  const alive = (core.coll('members') || []).filter(x => x && !x.removed && String(x.orgId) === String(o) && x.openid);
+  const aliveAll = (core.coll('members') || []).filter(x => x && !x.removed && String(x.orgId) === String(o));
+  const alive = aliveAll.filter(x => x.openid);
   const meta = core.meta() || {};
   const byOpen = {};
   alive.forEach(m => (byOpen[m.openid] || (byOpen[m.openid] = [])).push(m));
@@ -305,7 +306,7 @@ function dedupeBindings() {
       m.updatedAt = now();
       n.rows++;
     });
-    const meAlive = String(meta.me || '') && alive.some(x => String(x.userId) === String(meta.me));
+    const meAlive = String(meta.me || '') && aliveAll.some(x => String(x.userId) === String(meta.me));
     if (!meAlive) core.updateMeta({ me: keep.userId });
     if (!String(keep.name || '').trim()) {
       const u = (core.coll('users') || []).find(x => x && String(x.id) === String(keep.userId) && !x.removed);
@@ -316,6 +317,34 @@ function dedupeBindings() {
       }
     }
   });
+
+  // 第二遍：自救重人留下的「无名、未认领 openid」的 owner 残骸。
+  // 机构里已有认领过微信的 owner 时，这种行永远推不上去（云端 OWNER_EXISTS，
+  // 就是同步页那条「机构已有负责人」），权限上也轮不到它生效 —— 收进回收站。
+  // 三条都满足才算残骸：没绑微信、没名字、me 也没指着它；三条缺一都留给人工判断。
+  const owners = aliveAll.filter(x => x.role === 'owner');
+  if (owners.length > 1 && owners.some(x => x.openid)) {
+    const metaNow = core.meta() || {};
+    owners.forEach(m => {
+      if (m.openid || String(m.name || '').trim()) return;
+      if (String(metaNow.me || '') === String(m.userId)) return;
+      markRemoved(m, now());
+      m.updatedAt = now();
+      n.rows++;
+    });
+  }
+
+  // 第三遍：存活的成员没名字就向账号表借（记录署名、@提醒都靠它）。
+  aliveAll.forEach(m => {
+    if (String(m.name || '').trim()) return;
+    const u = (core.coll('users') || []).find(x => x && String(x.id) === String(m.userId) && !x.removed);
+    if (u && String(u.name || '').trim()) {
+      m.name = String(u.name).trim();
+      m.updatedAt = now();
+      n.renamed++;
+    }
+  });
+
   if (n.rows || n.renamed) core.persist('members');
   return n;
 }

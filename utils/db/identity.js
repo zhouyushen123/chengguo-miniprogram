@@ -78,6 +78,17 @@ function expandKidIds(ids) {
   return out;
 }
 
+// 用户 id 用毫秒时间戳：跨设备唯一、不依赖自增序号。但同一毫秒里建两个人
+// （批量导入老师/家长、一次建多个账号）会撞成同一个 id —— 后建的那个人
+// 直接拿到前一个人的账号，两个人的身份就串了。撞了往后挪一毫秒。
+function nextUserId() {
+  const used = {};
+  core.coll('users').forEach(u => { if (u && u.id) used[u.id] = 1; });
+  let n = now();
+  while (used['u' + n]) n += 1;
+  return 'u' + n;
+}
+
 function memberCreate(data) {
   const err = deny('member.manage');
   if (err) return { ok: false, msg: err };
@@ -91,7 +102,7 @@ function memberCreate(data) {
     // 有 id 视为给已存在的人员补一条成员关系，没有则先建人
     let userId = schema.str(d.userId).trim();
     if (!userId) {
-      const u = schema.normalizeUser({ id: 'u' + now(), name: d.name, role: d.role }, org(), now());
+      const u = schema.normalizeUser({ id: nextUserId(), name: d.name, role: d.role }, org(), now());
       const eu = schema.validate('user', u);
       if (eu) return { ok: false, msg: eu };
       if (!pushSaved('users', u)) return { ok: false, msg: core.SAVE_FAIL };

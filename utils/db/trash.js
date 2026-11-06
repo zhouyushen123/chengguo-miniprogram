@@ -8,7 +8,8 @@
 // 这些行被同一个 removedAt 打上标记，还原时按 (外键指向 + removedAt 相同) 认批，
 // 所以「删学生→单独删了另一条记录→还原学生」不会把那条单独删的记录顺手复活。
 const core = require('./core');
-const { ocAll, memberCurrent } = require('./ctx');
+const { ocAll, memberCurrent, actor } = require('./ctx');
+const perms = require('./permissions');
 const students = require('./students');
 const classes = require('./classes');
 const records = require('./records');
@@ -28,11 +29,16 @@ function tsOf(doc) {
   return Number(doc.removedAt) || Number(doc.updatedAt) || 0;
 }
 
-// 最近删除（只读）。家长看不到：里面是别的孩子的姓名与评语。
+// 最近删除（只读）。
+// 可见性必须跟正常列表一致：回收站里是姓名、学号、评语正文——比列表还敏感。
+// 2026-11-06 实测漏了：老师能看到别的班删掉的学生（姓名 + 连带记录条数），
+// 等于从回收站绕过了班级范围。这里逐类按 perms 判可见性。
+// 家长整块看不到：里面全是别人家孩子的信息。
 function list(kind) {
   const me = memberCurrent();
   if (!me) return { ok: false, msg: '还没有身份' };
   if (me.role === 'parent') return { ok: false, msg: '家长看不到回收站' };
+  const a = actor();
 
   const want = KINDS.indexOf(kind) > -1 ? [kind] : KINDS;
   const out = [];
@@ -44,7 +50,7 @@ function list(kind) {
   };
 
   if (want.indexOf('students') > -1) {
-    ocAll('students').filter(x => x.removed).forEach(s => {
+    ocAll('students').filter(x => x.removed && perms.canSeeStudent(a, x)).forEach(s => {
       // 这一批带走了多少条记录：还原时会一起回来，得让人看见"恢复的是什么规模"
       const n = ocAll('records').filter(r => r.sid === s.id && r.removed && r.removedAt === s.removedAt).length;
       push('students', 'students', s, s.name || '未命名学生',
@@ -52,20 +58,21 @@ function list(kind) {
     });
   }
   if (want.indexOf('classes') > -1) {
-    ocAll('classes').filter(x => x.removed).forEach(c => {
+    ocAll('classes').filter(x => x.removed && perms.canSeeClass(a, x.id)).forEach(c => {
       const d = c.detached || { students: [] };
       push('classes', 'classes', c, c.name || '未命名班级',
         (d.students || []).length ? '名单 ' + d.students.length + ' 人会一起恢复' : '空班');
     });
   }
   if (want.indexOf('records') > -1) {
-    ocAll('records').filter(x => x.removed).forEach(r => {
+    ocAll('records').filter(x => x.removed && perms.canSeeRecord(a, x)).forEach(r => {
       const s = core.coll('students').find(x => x.id === r.sid);
       push('records', 'records', r, (s ? s.name : '已删除学生') + ' · ' + (r.date || ''),
         String(r.note || '').slice(0, 30));
     });
   }
-  if (want.indexOf('members') > -1) {
+  // 成员（人员变动）属管理级信息，老师不看
+  if (want.indexOf('members') > -1 && a && a.all) {
     ocAll('members').filter(x => x.removed).forEach(m => {
       push('members', 'members', m, m.name || '未命名成员', m.role === 'parent' ? '家长' : '老师');
     });

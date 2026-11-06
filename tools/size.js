@@ -33,6 +33,8 @@ const ALWAYS_SKIP_DIRS = new Set([
 ]);
 const ALWAYS_SKIP_FILES = new Set([
   'project.private.config.json',
+  // 依赖锁文件只是给本地 npm 用的，进包白占 500KB+（2026-11 装 automator 时踩过）
+  'package-lock.json',
 ]);
 
 /** 读 project.config.json 的 packOptions.ignore，转成 { dirs:Set, files:Set } */

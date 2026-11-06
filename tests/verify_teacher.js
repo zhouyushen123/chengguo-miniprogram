@@ -376,4 +376,13 @@ ok('T8c 回收站：老师恢复别班学生被拦（写权限同样按范围判
   db.users.switchTo(ids.teacher);
 });
 
+ok('T9 邀请家长链路：inviteGet 请求必须带机构 id（2026-11-06 真机踩坑）', () => {
+  // 服务端 fail-closed：event.orgId 必须等于我绑定的机构，客户端漏传 = 「无权访问机构数据」，
+  // 邀请码功能从上线起就没通过（服务端不缺校验，缺的是客户端那个参数）
+  const api = fs.readFileSync(path.join(ROOT, 'utils/api.js'), 'utf8');
+  assert.ok(/inviteGet',\s*role,\s*orgId/.test(api), 'api.inviteGet 请求体必须带 orgId');
+  const mine = fs.readFileSync(path.join(ROOT, 'pages/mine/mine.js'), 'utf8');
+  assert.ok(/inviteGet\(role[^;]*orgId/.test(mine), '我的页必须把机构 id 传给 inviteGet');
+});
+
 console.log('\n全部 ' + pass + ' 项老师角色断言通过');

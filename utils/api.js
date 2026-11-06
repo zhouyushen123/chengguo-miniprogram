@@ -50,9 +50,11 @@ function inviteJoin(data) {
   if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪' });
   return callFn('syncv2', Object.assign({ action: 'inviteJoin' }, data)).catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
 }
-function inviteGet(role) {
+function inviteGet(role, orgId) {
   if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪' });
-  return callFn('syncv2', { action: 'inviteGet', role }).catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
+  // 服务端按「event.orgId 必须等于我绑定的机构」判权限（fail-closed），
+  // 漏传等于自报空机构 → FORBIDDEN「无权访问该机构数据」。2026-11-06 真机踩坑。
+  return callFn('syncv2', { action: 'inviteGet', role, orgId: String(orgId || '') }).catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
 }
 
 // 上推一条记录：已由 utils/sync.js 的脏集合机制接管，保留空实现兼容旧调用点

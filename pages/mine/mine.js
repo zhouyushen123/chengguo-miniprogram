@@ -168,7 +168,8 @@ Page({
         wx.showLoading({ title: '生成中', mask: true });
         // 先同步一轮再取码：服务端判权限靠"成员表里有我这条 + openid 对得上"，
         // 刚建好的机构如果还没推上去，会白挨一个"不在成员表里"。
-        sync.syncNow({ force: true }).catch(() => {}).then(() => api.inviteGet(role)).then(out => {
+        // orgId 必须带上：服务端按它和我绑定机构的一致性判权限，漏传 = 无权访问
+        sync.syncNow({ force: true }).catch(() => {}).then(() => api.inviteGet(role, (db.auth.member() || {}).orgId)).then(out => {
           wx.hideLoading();
           if (!out || !out.ok) {
             const msg = out && out.code === 'NO_MEMBER'

@@ -238,7 +238,11 @@ Page({
     getApp().globalData.pick = { cls: vis[0] ? vis[0].id : null, sid: null, score: 85, photos: [], audio: null, tag: '', note: '', rid: null, course: '' };
     wx.navigateTo({ url: '/pages/record/record' });
   },
-  goRecords() { wx.switchTab({ url: '/pages/records/records' }); },
+  goRecords() {
+    // records 是 tabBar 页，switchTab 不带 query；用 globalData 传「今天未录」意图（B-06）
+    getApp().globalData.recMiss = true;
+    wx.switchTab({ url: '/pages/records/records' });
+  },
   // 开始使用：退出演示，回到自己的机构（演示数据不删，随时能再看）
   startReal() {
     wx.showModal({

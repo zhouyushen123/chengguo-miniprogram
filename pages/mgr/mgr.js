@@ -349,14 +349,41 @@ Page({
     this.setData({ newCourse: '', courseFormOpen: false }); this.refresh();
   },
   openCourseForm() { this.setData({ courseFormOpen: true }); },
+  // E-01 课程支持改名（showModal 自带输入框，不另做弹层）
+  renameCourse(e) {
+    const id = +e.currentTarget.dataset.id;
+    wx.showModal({
+      title: '修改课程名称', editable: true, placeholderText: '新的课程名称',
+      content: e.currentTarget.dataset.name || '',
+      success: r => {
+        if (!r.confirm) return;
+        const n = (r.content || '').trim();
+        if (!n) { wx.showToast({ title: '名称不能为空', icon: 'none' }); return; }
+        const res = db.courses.update(id, { name: n });
+        if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
+        this.refresh();
+      }
+    });
+  },
   delCourse(e) {
     const id = +e.currentTarget.dataset.id;
-    wx.showModal({ title: '确定删除该课程？', success: r => {
-      if (!r.confirm) return;
-      const res = db.courses.remove(id);
-      if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
-      this.refresh();
-    } });
+    // E-04：删除前先看有多少成果记录引用了这门课（按 id；老记录只有名字的按名字补计），
+    // 把影响说清楚再让确认；删除是软删、可从回收站恢复，历史记录上的课程名保留
+    const item = this.data.courses.find(c => c.id === id) || {};
+    const recs = db.records.list();
+    const n = recs.filter(x => x.courseId === id || (!x.courseId && x.course === item.name)).length;
+    wx.showModal({
+      title: '确定删除该课程？',
+      content: n
+        ? '已有 ' + n + ' 条成果记录使用了这门课：删除后历史记录照常保留，但录入时不能再选它。课程会进入回收站，可恢复。'
+        : '还没有成果记录使用这门课，删除后可在回收站恢复。',
+      success: r => {
+        if (!r.confirm) return;
+        const res = db.courses.remove(id);
+        if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
+        this.refresh();
+      }
+    });
   },
 
   /* ================= 学生：弹层表单（姓名+班级多选+家长+微信） ================= */

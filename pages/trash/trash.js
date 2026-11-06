@@ -9,6 +9,7 @@ const KINDS = [
   { k: '', label: '全部' },
   { k: 'students', label: '学生' },
   { k: 'classes', label: '班级' },
+  { k: 'courses', label: '课程' },
   { k: 'records', label: '记录' },
   { k: 'members', label: '成员' }
 ];

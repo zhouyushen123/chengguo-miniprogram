@@ -236,11 +236,14 @@ page {
 .vin { position: relative; }
 .vin .vin-in { padding-right: 80rpx; }
 .vin .vmic {
-  position: absolute; right: 24rpx; top: 50%; margin-top: -18rpx;
-  width: 36rpx; height: 36rpx; opacity: 0.5;
+  position: absolute; right: 16rpx; top: 50%; margin-top: -26rpx;
+  width: 36rpx; height: 36rpx; padding: 16rpx; box-sizing: content-box;
+  opacity: 0.7;
 }
+/* 热区说明：36rpx 的图标太小老是误点/点不中（用户实测 C-02），用 padding 撑出
+   68rpx 的触摸区，视觉不变大 */
 /* 行内搜索框里的麦克风：不套 .vin，直接排在输入框后面（flex 行内一枚小图标） */
-.smic { flex: none; width: 32rpx; height: 32rpx; opacity: 0.5; }
+.smic { flex: none; width: 32rpx; height: 32rpx; opacity: 0.7; padding: 10rpx; box-sizing: content-box; margin: 0 -6rpx; }
 
 /* 麦克风「正在聆听」：平时是半透明小灰图标，录音时变红底白图 + 脉冲光环，
    一眼能看出正在收音、再点一下就结束（用户反馈：选中与没选中区别不大） */

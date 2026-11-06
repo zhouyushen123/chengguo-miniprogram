@@ -1,6 +1,6 @@
 // utils/db/courses.js —— 课程（挂在班级下）
 // 依赖：ctx（底座）。课程不反向依赖班级模块：可见性判断统一走 perms.canSeeClass。
-const { now, org, oc, actor, deny, pushSaved, applyEdit, markRemoved, markAlive } = require('./ctx');
+const { now, org, oc, ocAll, actor, deny, pushSaved, applyEdit, markRemoved, markAlive } = require('./ctx');
 const core = require('./core');
 const schema = require('./schema');
 const perms = require('./permissions');
@@ -67,4 +67,17 @@ function courseRemove(id) {
   return { ok: true };
 }
 
-module.exports = { courseList, courseOf, courseGet, courseCreate, courseUpdate, courseRemove };
+// 从回收站还原。课程没有连带（历史记录上的课程名是独立文字，不受影响），markAlive 即可
+function courseRestore(id) {
+  const c = ocAll('courses').find(x => x.id === Number(id) && x.removed);
+  if (!c) return { ok: false, msg: '回收站里没有这门课' };
+  const err = deny('course.write', { clsId: c.clsId });
+  if (err) return { ok: false, msg: err };
+  // 班级也被删了（删班带删课）：先把课挂回一个不存在的班会成孤儿，这种连批还原才合理
+  const cls = oc('classes').find(x => x.id === c.clsId);
+  if (!cls) return { ok: false, msg: '它所属的班级也在回收站里，先还原班级再还原课程' };
+  if (!applyEdit('courses', c, markAlive({}, now()))) return { ok: false, msg: core.SAVE_FAIL };
+  return { ok: true };
+}
+
+module.exports = { courseList, courseOf, courseGet, courseCreate, courseUpdate, courseRemove, courseRestore };

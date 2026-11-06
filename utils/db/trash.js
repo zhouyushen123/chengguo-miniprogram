@@ -12,11 +12,12 @@ const { ocAll, memberCurrent, actor } = require('./ctx');
 const perms = require('./permissions');
 const students = require('./students');
 const classes = require('./classes');
+const courses = require('./courses');
 const records = require('./records');
 const identity = require('./identity');
 
 const KEEP = 60;          // 每类最多列 60 条：回收站是应急入口，不是归档系统
-const KINDS = ['students', 'classes', 'records', 'members'];
+const KINDS = ['students', 'classes', 'courses', 'records', 'members'];
 
 function whoName(id) {
   const n = Number(id) || 0;
@@ -64,6 +65,11 @@ function list(kind) {
         (d.students || []).length ? '名单 ' + d.students.length + ' 人会一起恢复' : '空班');
     });
   }
+  if (want.indexOf('courses') > -1) {
+    ocAll('courses').filter(x => x.removed && perms.canSeeClass(a, x.clsId)).forEach(c => {
+      push('courses', 'courses', c, c.name || '未命名课程', '归属：' + ((core.coll('classes').find(y => y.id === c.clsId) || {}).name || '已删班级'));
+    });
+  }
   if (want.indexOf('records') > -1) {
     ocAll('records').filter(x => x.removed && perms.canSeeRecord(a, x)).forEach(r => {
       const s = core.coll('students').find(x => x.id === r.sid);
@@ -85,6 +91,7 @@ function list(kind) {
 const FN = {
   students: students.studentRestore,
   classes: classes.classRestore,
+  courses: courses.courseRestore,
   records: records.recordRestore,
   members: identity.memberRestore
 };

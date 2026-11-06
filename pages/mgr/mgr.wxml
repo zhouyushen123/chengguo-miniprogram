@@ -51,11 +51,12 @@
     <view class="mi" style="margin-top:16rpx">这些信息来自开通引导里填的资料，改完点下面按钮保存；机构名称会同步到首页与记录页的展示。</view>
   </view>
 
-  <view class="btn" hover-class="btn-hover" bindtap="saveOrgFull">保存机构资料</view>
+  <view class="btn orgsave" hover-class="btn-hover" bindtap="saveOrgFull">保存机构资料</view>
 </view>
 
 <!-- ============ 班级 ============ -->
 <view wx:if="{{tabK==='cls'}}" class="wrap clswrap">
+  <view wx:if="{{!classes.length}}" class="card empty slim">还没有班级，点下面「添加班级」建一个</view>
   <view class="card clsitem" wx:for="{{classes}}" wx:key="id">
     <view class="clsrow">
       <view class="clshd" bindtap="onClsTap" data-id="{{item.id}}">
@@ -107,6 +108,7 @@
   <view wx:if="{{!courses.length && !courseFormOpen}}" class="empty slim">还没有课程，点下面「添加课程」建一个</view>
   <view class="card item" wx:for="{{courses}}" wx:key="id">
     <view><b>{{item.name}}</b><view class="mi">归属：{{item.cls}}</view></view>
+    <view class="mi act" catchtap="renameCourse" data-id="{{item.id}}" data-name="{{item.name}}">改名</view>
     <view class="mi del" catchtap="delCourse" data-id="{{item.id}}">删除</view>
   </view>
 </view>

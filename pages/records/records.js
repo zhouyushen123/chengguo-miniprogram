@@ -11,11 +11,16 @@ const TAGS = ['待提高', '加油', '良好', '优秀', '最佳'];
 Page({
   data: {
     tabs: [], tab: 0, role: 'teacher',
+    missMode: false, missList: [],
     termOpts: ['全部学期'], termIdx: 0,
     dateOpts: ['不限日期'], dateIdx: 0,
     tagOpts: ['全部等级'].concat(TAGS), tagIdx: 0,
     list: [], total: 0, allCount: 0,
     icoChevD: icons.chevronDown, icoCamera: icons.camera, icoAudio: icons.audio
+  },
+  onLoad(q) {
+    // 首页「本次未录入」卡直达：?miss=1 进页面就落在「今天未录」视图（B-06）
+    if (q && q.miss) this._missWant = true;
   },
   onShow() {
     theme.apply(this); // 主题：根类名 + 图标 + 原生 chrome
@@ -33,7 +38,42 @@ Page({
       getApp().globalData.recTab = null;
     }
     this.setData({ tabs, tabIds, tab: Math.min(tab, tabs.length - 1), role: db.auth.role() });
+    // 首页「本次未录入」卡进来：落在今天未录视图（switchTab 不能带参，走 globalData）
+    if (getApp().globalData.recMiss) {
+      getApp().globalData.recMiss = false;
+      this.setData({ missMode: true });
+      this.buildMiss();
+      return;
+    }
+    if (this._missWant) { this._missWant = false; this.setData({ missMode: true }); this.buildMiss(); return; }
+    if (this.data.missMode) this.buildMiss();
     this.refresh();
+  },
+  // 今天未录视图：口径与首页 pending 一致——学生所在班已开课（有课次），
+  // 但本课次还没有他/她的记录。班级页签（tab）继续生效：选中某个班就看那个班的。
+  pickMiss() {
+    const m = !this.data.missMode;
+    this.setData({ missMode: m });
+    if (m) this.buildMiss(); else this.refresh();
+  },
+  buildMiss() {
+    const cid = (this.data.tabIds || [])[this.data.tab];
+    const recs = db.records.list();
+    const list = [];
+    db.classes.list().forEach(c => {
+      if (cid && c.id !== cid) return;
+      const sess = Math.max(1, c.session || 1);
+      db.students.of(c.id).forEach(s => {
+        if (recs.some(r => r.sid === s.id && r.cid === c.id && r.session === sess)) return;
+        list.push({ key: s.id + '-' + c.id, sid: s.id, cid: c.id, name: s.name, clsName: c.name, session: sess });
+      });
+    });
+    this.setData({ missList: list });
+  },
+  // 从未录名单直达录入页：班级与学生都预选好，录完返回列表自动重算
+  goMissRec(e) {
+    getApp().globalData.pick = { sid: +e.currentTarget.dataset.sid, cls: +e.currentTarget.dataset.cid };
+    wx.navigateTo({ url: '/pages/record/record' });
   },
   // 第一层（班级）过滤。身份权限已由数据层在 list() 里按可见范围过滤过，
   // 页面只做业务维度筛选，不再重复写 role/clsIds 判断。
@@ -80,6 +120,8 @@ Page({
         };
       });
     this.setData({ _terms: terms, termOpts, termIdx, dateOpts, dateIdx, tagOpts, tagIdx, list, total: list.length, allCount });
+    // 录完回来 / 下拉刷新时，未录名单跟着重算（不然刚录完的人还挂在名单上）
+    if (this.data.missMode) this.buildMiss();
   },
   // 学期变化：下层筛选全部归位
   onTerm(e) {
@@ -88,7 +130,7 @@ Page({
   },
   // 班级变化：下层筛选全部归位
   pickTab(e) {
-    this.setData({ tab: +e.currentTarget.dataset.i, dateIdx: 0, tagIdx: 0 });
+    this.setData({ tab: +e.currentTarget.dataset.i, dateIdx: 0, tagIdx: 0, missMode: false });
     this.refresh();
   },
   // 日期变化：等级归位

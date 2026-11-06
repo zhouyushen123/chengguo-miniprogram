@@ -1,9 +1,10 @@
 <view class="theme-root {{themeCls}}">
-<!-- 筛选区：班级 → 日期 → 等级（级联） -->
+<!-- 筛选区：班级 → 日期 → 等级（级联）；行首的「今天未录」一键看哪些学生还没录（B-06） -->
 <view class="filtbar">
   <scroll-view scroll-x class="clsbar">
     <view class="clsrow">
-      <view wx:for="{{tabs}}" wx:key="*this" class="chip {{tab===index?'on':''}}" hover-class="btn-hover" bindtap="pickTab" data-i="{{index}}">{{item}}</view>
+      <view class="chip {{missMode?'on':''}}" hover-class="btn-hover" bindtap="pickMiss">今天未录</view>
+      <view wx:for="{{tabs}}" wx:key="*this" class="chip {{!missMode&&tab===index?'on':''}}" hover-class="btn-hover" bindtap="pickTab" data-i="{{index}}">{{item}}</view>
     </view>
   </scroll-view>
   <view class="pickers">
@@ -19,6 +20,17 @@
     <view class="cnt mi">共 {{total}}/{{allCount}} 条</view>
   </view>
 </view>
+<!-- 今天未录视图：学生行（复用记录卡视觉），每行一个「去录入」直达带预选的录入页 -->
+<block wx:if="{{missMode}}">
+  <view class="card rec" wx:for="{{missList}}" wx:key="key">
+    <view class="r1"><b>{{item.name}}</b><text class="mi">{{item.clsName}} · 课次 {{item.session}}</text></view>
+    <view class="btnrow">
+      <view class="btn send" hover-class="btn-hover" catchtap="goMissRec" data-sid="{{item.sid}}" data-cid="{{item.cid}}">去录入</view>
+    </view>
+  </view>
+  <view wx:if="{{!missList.length}}" class="empty">都录过了，一个不落</view>
+</block>
+<block wx:else>
 <view class="card rec" wx:for="{{list}}" wx:key="id">
   <view bindtap="openRec" data-rid="{{item.id}}" data-sid="{{item.sid}}">
     <view class="r1"><b>{{item.name}}</b><text class="mi">{{item.course}} · {{item.date}}</text><text class="scoretag">{{item.score}}分{{item.tag ? ' · ' + item.tag : ''}}</text></view>
@@ -37,6 +49,7 @@
 </view>
 <view wx:if="{{!list.length}}" class="empty">当前筛选条件下暂无记录</view>
 <view wx:if="{{list.length}}" class="note" style="margin:20rpx 24rpx 40rpx">「已发布」表示家长端已可见，家长打开小程序即可查看，目前不会收到微信消息通知。</view>
+</block>
 
 <!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
 <privacy-popup />

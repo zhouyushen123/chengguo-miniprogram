@@ -180,7 +180,8 @@ const db = {
   },
   courses: {
     list: courses.courseList, of: courses.courseOf, get: courses.courseGet,
-    create: courses.courseCreate, update: courses.courseUpdate, remove: courses.courseRemove
+    create: courses.courseCreate, update: courses.courseUpdate, remove: courses.courseRemove,
+    restore: courses.courseRestore
   },
   // 内容域：学科与知识点（阶段一只建表，不建界面；阶段二题库的挂载点）
   subjects: {

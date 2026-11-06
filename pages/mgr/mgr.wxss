@@ -184,3 +184,6 @@
 .ava-owner, .ava-admin { background: linear-gradient(135deg, #6B8FD6, #4A7DDC); }
 .ava-parent { background: linear-gradient(135deg, #7FB069, #3A9E5F); }
 .ava-teacher { background: linear-gradient(135deg, var(--brand-a), var(--brand-b)); }
+
+/* 机构页签的保存按钮：与卡片留出呼吸间距（用户实测 C-01：两侧与底部都没间距） */
+.orgsave { margin: 28rpx 6rpx 44rpx; }

@@ -1386,3 +1386,17 @@ stuImport 20 / syncv2 20`，末尾 `✔ 所有函数超时都 ≥ 20 秒`。
   **要人工点的只剩一步**：mp.weixin.qq.com → 版本管理 → 把 **1139** 设为体验版。
   真机按 `docs/user-test-cases.md` M-11～M-18 走一遍：一次选多张 → 点照片分给学生 /
   按学生选照片 → 全班共用 → 保存 → 到学生档案看照片是否各归各的。
+
+## 家长反馈闭环：已读回执 + 家长留言（11-07 23:03，**仅方案，未改代码**）
+
+- 用户新需求：①家长看没看过发布的内容要有反馈 ②家长要有回复通道（建议 / 感谢 / 意见）。
+- 方案写在 **`docs/family-feedback-plan.md`**，等用户拍板 4 项后开工。
+- 关键判断：**不能往 `records` 表或同步集合加字段**。`syncv2` 的 `COLLS` 按 orgId 全量 pull，
+  push 除 `members` 外服务端无角色校验；家长端目前只读。所以两张云端专属表
+  `record_views` / `parent_notes` + `family` 云函数 5 个 action，服务端按 `members.studentIds`
+  fail-closed 鉴权，不进本地库、不进同步。
+- 口径：打开成果详情才算已读（自动上报）；留言 200 字、文字或语音转文字、过 `secCheck`；
+  一期单向，老师可见「谁看了 / 谁没看」+ 留言列表 + 标记已处理 + 首页红点。
+- **实施必看**：`cloudfunctions/family/config.json` 缺 `timeout:20`（20 秒是控制台手工设的），
+  重部署前先补上，部署后 `npm run cloud:info` 复核。
+- 顺带发现（另开一轮）：`syncv2` push 除 `members` 外缺服务端 ACL，别和本功能混改。

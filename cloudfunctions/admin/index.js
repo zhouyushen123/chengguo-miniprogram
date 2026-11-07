@@ -112,12 +112,15 @@ async function mkAccount(openid) {
       const account = lib.newAccount();
       const dup = await db.collection(ACCOUNTS).doc(account).get().catch(() => null);
       if (dup && dup.data) continue;
+      // doc(id).set 的 data 里绝对不能带 _id：云数据库会报 -501007
+      // 「invalid parameters. 不能更新 _id」，函数抛错 → 客户端只看到「网络不通」。
+      // backup.saveManifest 早就 delete data._id 避开了，这里曾漏掉。
       const doc = {
-        _id: account, account, orgId, pin: lib.newPin(),
+        account, orgId, pin: lib.newPin(),
         fail: 0, lockUntil: 0, createdAt: now(), by: openid
       };
       await db.collection(ACCOUNTS).doc(account).set({ data: doc });
-      acc = doc;
+      acc = doc;   // 后面只用 account / pin，不需要本地补 _id
       break;
     }
     if (!acc) return { ok: false, msg: '后台账号生成失败，请重试' };
@@ -163,8 +166,9 @@ async function doLogin(data) {
   }
   const token = lib.newToken();
   await ensure(SESSIONS).catch(() => {});
-  await db.collection(SESSIONS).add({
-    data: { _id: token, token, account, orgId: str(rec.orgId), exp: t + lib.SESSION_MS, at: t }
+  // 同上：会话也用 doc(token).set，data 不带 _id（改 add 为 set 只是统一写法，token 随机唯一）
+  await db.collection(SESSIONS).doc(token).set({
+    data: { token, account, orgId: str(rec.orgId), exp: t + lib.SESSION_MS, at: t }
   });
   await db.collection(ACCOUNTS).doc(account).update({ data: { fail: 0, lockUntil: 0, lastAt: t } }).catch(() => {});
   let orgName = '';
@@ -536,8 +540,9 @@ function page() {
 exports.main = async (event) => {
   const ev = event || {};
   const { OPENID } = cloud.getWXContext() || {};
-  // 小程序里调用（callFunction）：只开放"取后台账号"这一个动作
-  if (ev.action === 'mkAccount') return mkAccount(OPENID);
+  // 小程序里调用（callFunction）：只开放"取后台账号"这一个动作。
+  // HTTP 访问服务是公开入口，绝不能让浏览器请求也能生成/读到机构口令。
+  if (ev.action === 'mkAccount' && !ev.httpMethod && !ev.requestContext) return mkAccount(OPENID);
   // HTTP 访问服务：GET 出页面、POST 走接口
   if (ev.httpMethod || ev.requestContext) {
     const method = str(ev.httpMethod || 'GET').toUpperCase();

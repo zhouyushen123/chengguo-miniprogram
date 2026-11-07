@@ -1023,6 +1023,9 @@ npm run cloud -- syncv2 admin    # 只部署指定的
 
 ### 11-07 11:22 「电脑端后台」报网络不通：3 秒超时 + 误导性错误提示（体验版 1126）
 
+> ⚠️ **本段把「3 秒超时」当主因是误判**，真因见下面 11:40 一节（`-501007 不能更新 _id`）。
+> 保留原文作排查过程记录：误导性错误提示与自动重试这两项修复本身仍然有效。
+
 - 云端 `admin` Active、HTTP GET 200/0.3s，7 个函数全在线，`/admin` 路由正常 → **不是部署问题**。
 - `cloud functions info` 实测：`admin` / `syncv2` / `aiEval` 的 timeout 都是 **3 秒**，
   只有 `backup` 是 60 秒（11-05 手动改过）。`mkAccount` 首次调用要冷启动 + `ensure` 建
@@ -1042,3 +1045,16 @@ npm run cloud -- syncv2 admin    # 只部署指定的
 - CLI `info`：`timeout=20`、短暂 `status=Updating`（下发中）；`GET /admin` 仍 200，
   耗时 0.3s → 2.3s 是函数重新部署，属正常，**不需重新部署或重传体验版**。
 - 仍建议顺手把 `syncv2` / `aiEval` 也改成 20 秒（都是 3 秒，同步数据多时同样会被掐断）。
+
+### 11-07 11:40 真因：`admin` 写库把 `_id` 塞进 set 的 data（已修并重部署）
+
+- 1126 的失败弹窗给出 `-504002 | document.set:fail -501007 invalid parameters. 不能更新 _id`
+  —— **不是超时，是首次生成账号必现的确定性失败**。
+- `mkAccount` 里 `doc(account).set({data:{_id: account, ...}})` 违反云数据库约束；
+  登录写会话 `.add({data:{_id: token,...}})` 同隐患。`backup.saveManifest` 早有 `delete data._id`，
+  唯独 admin 漏了 —— 这类「同一坑只在一处修」值得警惕。
+- 修：两处去 `_id`（会话改 `doc(token).set`）；`mkAccount` 增加 HTTP 入口判定，公开网关不能生成口令；
+  `verify_admin` +1 断言（30 项，钉死 `admin/index.js` 不得出现 `_id:` 字面量）。
+- `npm run cloud -- admin` 重部署 ✔；`info` = Active / **timeout 20**（部署不会打回 3 秒）；
+  `POST /admin {action:mkAccount}` → `AUTH 请先登录`，未泄露账号。
+- **小程序端代码没改，不用重传体验版**；用户手机已在 1126，重开再点一次即可验。

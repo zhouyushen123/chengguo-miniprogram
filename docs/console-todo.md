@@ -102,8 +102,7 @@
 
 **排查**：云端 `admin` 在线（Active）、HTTP 通道 GET 200 / 0.3s，不是没部署、不是路由问题。
 这句 toast 是 `api.adminAccount()` 把 `wx.cloud.callFunction` 的 fail **一律兜底**成的一句话，
-真实错误被吞了。最可能的原因：**admin 云函数超时只有 3 秒**（CLI `info` 实测），
-首次调用要冷启动 + 建 `admin_accounts` 集合，常被掐断；`backup` 当初就是手动改成 60 秒的。
+真实错误被吞了。当时怀疑是 3 秒超时，**11:40 拿到真实错误码后已纠正：真因是 `_id` 写进了 `set` 的 data（见下方 11:40 一节）**。超时改 20 秒仍是有益的加固，但不是这次失败的原因。
 
 **已做（代码，体验版 1126）**：
 
@@ -126,3 +125,25 @@
 CLI `info` 复核：`timeout=20`、`status=Updating`（配置下发中，等它变回 `Active` 再点）；
 后台 `GET /admin` 仍 200，但耗时从 0.3s 升到 2.3s，正是函数重新部署的表现。**不用重新部署、不用重传体验版**，控制台配置即时生效。
 下一步：等 1~2 分钟 → 手机点「我的 → 电脑端后台」取账号口令 → 浏览器登录 → 导出一次 Excel 验收。
+
+### 11:40 真因定位并修复：`-501007 不能更新 _id`（体验版 1126 的弹窗立了功）
+
+1126 的失败弹窗给出真实错误：
+`cloud.callFunction:fail -504002 | document.set:fail -501007 invalid parameters. 不能更新 _id`。
+
+**根因**：`admin/index.js` 的 `mkAccount` 首次生成后台账号时，把 `_id: account` 一起放进了
+`doc(account).set({ data: doc })`；云数据库**不允许 set 更新 `_id`**，必然抛错 →
+`callFunction` fail → 旧版本只显示「网络不通」。登录写会话的 `.add({ data: { _id: token ...}})` 同样有隐患。
+`backup/saveManifest` 里本来就有 `delete data._id` 避开这个坑，只有 `admin` 两处漏了。
+**所以这不是偶发超时，是首次取账号必现的确定性失败**——之前「多点几次就好」的建议是错的。
+
+**修法（只改云函数，已于 11:42 重部署，不需重传体验版）**：
+
+- `mkAccount` 的 `data` 去掉 `_id`（`acc = doc`，后续只用 account/pin）
+- 会话写入改成 `doc(token).set`，同样不带 `_id`
+- 顺手锁死公开入口：`mkAccount` 只在 `callFunction`（无 `httpMethod`/`requestContext`）时可触发，
+  HTTP 访问服务不能用来生成机构口令
+- `verify_admin` +1 源码级断言（30 项）；29 套件全绿
+- 复核：`info admin` = **Active / timeout 20**，部署没把超时打回 3 秒；HTTP `POST mkAccount` 回 `AUTH 请先登录`
+
+**下一步**：手机（已是 1126）再点一次「我的 → 电脑端后台」→ 应弹出账号/口令/网址 → 浏览器登录 → 导出 Excel 验收。

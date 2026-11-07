@@ -205,6 +205,18 @@ t('体检是只读的：auditData 里不能有任何写操作', () => {
   assert.ok(!/\.update\(|\.add\(|\.remove\(|\.set\(/.test(m[0]), '体检函数里出现了写操作');
 });
 
+/* ---------------- 源码级纪律：写库不能带 _id ---------------- */
+t('doc(id).set / add 的 data 里不能出现 _id（真机 -501007 踩过）', () => {
+  // 11-07 真机：cloud.callFunction:fail -504002 | document.set:fail -501007
+  // "invalid parameters. 不能更新 _id" —— 首次生成后台账号必失败，界面只显示「网络不通」。
+  // backup.saveManifest 早就 delete data._id 避开了，admin 两处曾漏掉。
+  assert.ok(!/_id\s*:/.test(SRC), 'admin/index.js 不该再出现 _id: 字面量（写库 data 含它会报 -501007）');
+  assert.ok(SRC.indexOf('.doc(account).set({ data: doc })') > -1, '账号写入要走 doc(account).set');
+  assert.ok(SRC.indexOf('.doc(token).set(') > -1, '会话写入要走 doc(token).set');
+  const mk = SRC.indexOf("ev.action === 'mkAccount'");
+  assert.ok(mk > -1 && /httpMethod/.test(SRC.slice(mk, mk + 140)), 'HTTP 请求不能触发生成后台口令');
+});
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {

@@ -193,13 +193,24 @@ Page({
     if (!name) return this._toast('请给班级起个名字');
     const course = (f.course || '').trim();
 
-    const r = db.classes.create({ name, termId: this._termId || 0, mode: f.mode });
-    if (!r.ok) return this._toast(r.msg || '班级创建失败');
-    this._clsId = r.item.id;
-    // 第一门课程随班级一起建（选填）：录入页、AI 评的提示语都依赖它
+    // 重进向导、上次点过但停在原地、重启后把出厂号的行收编回来，都会留下一个同名班。
+    // 这时直接复用它，不再造第二个；否则被选填课程卡住时点几次就多几个班。
+    let clsId = this._clsId;
+    if (!clsId || !db.classes.get(clsId)) {
+      const same = db.classes.list().find(c => c.name === name);
+      if (same) clsId = same.id;
+      else {
+        const r = db.classes.create({ name, termId: this._termId || 0, mode: f.mode });
+        if (!r.ok) return this._toast(r.msg || '班级创建失败');
+        clsId = r.item.id;
+      }
+    }
+    this._clsId = clsId;
+    // 第一门课程是选填：它建不成也不能把「新建班级 + 走完开通」卡住，
+    // 提示清楚去哪补，然后照常进下一步。
     if (course) {
-      const cr = db.courses.create({ name: course, clsId: this._clsId });
-      if (!cr.ok) return this._toast(cr.msg || '课程创建失败，可稍后在「管理 · 课程」里补');
+      const cr = db.courses.create({ name: course, clsId });
+      if (!cr.ok) this._toast('班级已建好，课程没建成（' + (cr.msg || '未知原因') + '），可在「管理 · 课程」里补');
     }
     this.setData({ step: 4 });
   },

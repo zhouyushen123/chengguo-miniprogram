@@ -1058,3 +1058,25 @@ npm run cloud -- syncv2 admin    # 只部署指定的
 - `npm run cloud -- admin` 重部署 ✔；`info` = Active / **timeout 20**（部署不会打回 3 秒）；
   `POST /admin {action:mkAccount}` → `AUTH 请先登录`，未泄露账号。
 - **小程序端代码没改，不用重传体验版**；用户手机已在 1126，重开再点一次即可验。
+
+### 11-07 11:47 向导第 3 步「新建班级却提示班级不存在或已删除」（已修，需重传体验版）
+
+- 现象（真机截图）：开通向导填「素描 / 几何石膏」点下一步，toast `班级不存在或已删除`。
+- **根因**：`utils/db/schema-base.js` 的 `audit(raw, orgId, stamp)` **把传进来的 orgId 参数丢了**，
+  一律写 `orgId: str(r.orgId, DEFAULT_ORG)` → 新行永远挂出厂号 `org1`。
+  设备首次上云时 `db.sync.reorg(cloudOrg)` 把 meta.orgId 和所有老行换成 `org_xxx`，
+  此后每新建一行都挂 org1，被 `core.orgColl()` 当场过滤掉。
+  所以 `classCreate` 返回 ok，紧接着 `courseCreate` 复查 `oc('classes')` 找不到刚建的班 → 报错。
+- **影响面比看上去大**：所有走 `audit()` 的实体（学期/班级/课程/绑定/学生/记录/成员/模板…）
+  在真实机构下新建后都当场"消失"；重启时 `adoptFactoryRows(org())` 又把它们收编回来，
+  于是出现"幽灵数据 + 重复建班"。`verify_onboard` 以前从空库（org1）起步，恰好绕开了这条路径。
+- 修法：
+  ① `audit()` 归属顺序改为「行上已有 orgId → 调用方给的 orgId → org1 兜底」，编辑/迁移不改写归属；
+  ② `pages/setup/setup.js` 的 `commitClass()`：同名班复用（重进向导/重启收编后不重复建），
+     选填课程建不成只提示去「管理 · 课程」补，不再卡住整个开通流程；
+  ③ `tests/verify_onboard.js` 末尾新增 4 项：用真实 `db.sync.reorg('org_abcdefghjk')` 模拟上云，
+     断言新建班级/课程/绑定行的 orgId 都等于当前机构、不再报「班级不存在」、重复提交不产生第二个班。
+- `node tests/run.js`：29 套件全绿（新手引导 19→23 项）。云函数未改，不用重新部署。
+- **需要重传体验版**（小程序端改了代码）；用户重开体验版后再走第 3 步验证。
+- 旧脏数据不用手工清：启动兜底 `adoptFactoryRows(org())` 会把 org1 的孤儿行收编回来，
+  向导的同名复用逻辑负责把它们接上课程，不会多出第二个班。

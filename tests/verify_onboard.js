@@ -235,4 +235,51 @@ ok('首次跳转的标记：跳成功才记，避免一次失败就永久不再�
   assert.ok(body.indexOf('success') < body.indexOf('markAutoShown'), '记账应在跳转成功之后');
 });
 
+/* ---------------------------------------------------------------------
+ * 真机回归（2026-11-07）：首次上云后，服务端会把机构号从 org1 换成 org_xxx。
+ * 此前 audit() 把新建行的 orgId 一律写成 org1，新行立刻被机构视图过滤掉——
+ * 向导里表现为「刚点新建班级，却提示班级不存在或已删除」。
+ * 下面用真实的 reorg 走一遍这条路径，钉死它不许回来。
+ * ------------------------------------------------------------------- */
+console.log('\n【已上云机构 · 新建数据归属】');
+const REAL_ORG = 'org_abcdefghjk';
+ok('模拟首次上云：机构号从出厂号换成服务端发的真实号，老数据仍可见', () => {
+  const mv = db.sync.reorg(REAL_ORG);
+  assert.strictEqual(mv.ok, true, '机构号迁移应成功');
+  assert.strictEqual(db.org(), REAL_ORG);
+  assert.strictEqual(db.classes.list().length, 1, '换号不该让已有班级消失');
+  assert.ok(db.auth.isOwner(), '换号后身份仍应是负责人');
+});
+ok('真实机构下走第 3 步：班级和第一门课程都建成，进到第 4 步', () => {
+  const p = loadPage('pages/setup/setup.js');
+  p.onLoad();
+  p.setData({ step: 3, 'cls.name': '素描', 'cls.course': '几何石膏', 'cls.mode': 'term' });
+  toasts.length = 0;
+  p.next();
+  assert.ok(!toasts.some(t => /班级不存在/.test(t)), '不该再报「班级不存在或已删除」，实际：' + toasts.join(' | '));
+  assert.strictEqual(p.data.step, 4, '应进到第 4 步，实际 toast：' + toasts.join(' | '));
+  const c = db.classes.list().find(x => x.name === '素描');
+  const k = db.courses.list().find(x => x.name === '几何石膏');
+  assert.ok(c, '新建班级要在当前机构可见');
+  assert.ok(k, '第一门课程要建成');
+  assert.deepStrictEqual(k.classIds, [c.id], '课程要开在刚建的班上');
+});
+ok('新建的班级/课程/绑定行 orgId 都跟当前机构一致（根因断言）', () => {
+  const c = db.coll('classes').find(x => x.name === '素描');
+  const k = db.coll('courses').find(x => x.name === '几何石膏');
+  assert.strictEqual(c.orgId, REAL_ORG, '班级不能挂回出厂号');
+  assert.strictEqual(k.orgId, REAL_ORG, '课程不能挂回出厂号');
+  const b = db.coll('class_courses').find(x => x.courseId === k.id);
+  assert.ok(b && b.orgId === REAL_ORG, '绑定行也要跟当前机构');
+});
+ok('重复提交第 3 步：复用同名班，不造出第二个班级', () => {
+  const p = loadPage('pages/setup/setup.js');
+  p.onLoad();
+  p.setData({ step: 3, 'cls.name': '素描', 'cls.course': '几何石膏', 'cls.mode': 'term' });
+  p.next();
+  assert.strictEqual(p.data.step, 4);
+  assert.strictEqual(db.classes.list().filter(x => x.name === '素描').length, 1);
+  assert.strictEqual(db.courses.list().filter(x => x.name === '几何石膏').length, 1, '同名课程也要复用');
+});
+
 console.log('\n全部 ' + pass + ' 项新手引导断言通过');

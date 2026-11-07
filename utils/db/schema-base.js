@@ -43,12 +43,19 @@ function normDate(v) {
 }
 
 // 公共审计字段：所有实体强制携带
+//
+// 【orgId 必须听调用方的】领域层新建时都传 org()（当前机构号）。这里以前写死回落
+// DEFAULT_ORG('org1')，把参数 orgId 整个丢了：设备首次上云后 meta.orgId 已被服务端换成
+// org_xxx，此后每新建一条行都还挂 org1，被 orgColl() 立刻过滤掉——页面表现为
+// 「刚建的班级查不到」「班级不存在或已删除」，重启后又被收编冒出来变成重复数据。
+// 顺序：行上已有 orgId 优先保留（迁移/编辑不改写归属）→ 调用方给的 → 出厂号兜底。
 function audit(raw, orgId, stamp) {
   const r = raw || {};
   const created = num(r.createdAt, 0) || stamp;
   const removed = r.removed === true;
+  const owner = str(r.orgId, '').trim() || str(orgId, '').trim() || DEFAULT_ORG;
   return {
-    orgId: str(r.orgId, DEFAULT_ORG) || DEFAULT_ORG,
+    orgId: owner,
     createdAt: created,
     updatedAt: num(r.updatedAt, 0) || stamp,
     removed,

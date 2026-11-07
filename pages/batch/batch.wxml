@@ -20,6 +20,35 @@
     <view class="hint">长按学生一行可标记 / 取消请假；请假的人本次不生成记录</view>
   </view>
 
+  <!-- 统一上传图片：一次拍/选整节课的照片 → 分给对应学生，或全班共用 -->
+  <view class="card">
+    <view class="phead">
+      <view class="label">本次课照片<text class="mihint">（选填 · 可一次选多张）</text></view>
+      <text class="mi">{{photos.length}}/{{maxPhotos}}</text>
+    </view>
+    <view class="mediarow">
+      <view class="mbtn" hover-class="btn-hover" bindtap="addPhotos" data-src="camera">
+        <image class="mico" src="{{icoCamera}}" mode="aspectFit" /><text>拍摄</text>
+      </view>
+      <view class="mbtn" hover-class="btn-hover" bindtap="addPhotos" data-src="album">
+        <image class="mico" src="{{icoAlbum}}" mode="aspectFit" /><text>相册 · 可多选</text>
+      </view>
+    </view>
+    <view class="photogrid" wx:if="{{photoCells.length}}">
+      <view class="ph" wx:for="{{photoCells}}" wx:key="p">
+        <image src="{{item.p}}" mode="aspectFill" bindtap="openPhoto" data-i="{{item.i}}" bindlongpress="previewPoolPhoto" data-i="{{item.i}}" />
+        <view class="pn {{item.n ? 'on' : ''}}" catchtap="openPhoto" data-i="{{item.i}}">{{item.n ? item.n + ' 人' : '待分配'}}</view>
+        <view class="rm" catchtap="rmPoolPhoto" data-i="{{item.i}}">×</view>
+      </view>
+    </view>
+    <view wx:if="{{photos.length}}" class="swrow">
+      <view class="sw {{shared ? 'on' : ''}}" catchtap="toggleShared"><view class="sdot" /></view>
+      <view class="swtxt" bindtap="toggleShared">全班共用这些照片<text class="mi">（合影 / 板书，自动加到每位同学记录）</text></view>
+    </view>
+    <view wx:if="{{unassigned && !shared}}" class="hint">还有 {{unassigned}} 张没分给学生：点照片勾给哪些同学；不分的话不会出现在任何记录里。</view>
+    <view wx:if="{{!photos.length}}" class="hint">点照片可勾给哪些同学，长按可看大图；也可按学生行里的「+ 选照片」逐人挑。</view>
+  </view>
+
   <!-- 成绩单：一列学生 -->
   <view class="card" wx:if="{{rows.length}}">
     <view class="srow {{row.leave ? 'off' : ''}} {{row.hit ? 'hit' : ''}}" wx:for="{{rows}}" wx:for-index="ri" wx:for-item="row" wx:key="id"
@@ -44,6 +73,12 @@
             src="{{micKey===('rows['+ri+'].note')?icoWhite:icoMic}}" mode="aspectFit"
             catchtap="onMic" data-k="rows[{{ri}}].note" />
         </view>
+        <!-- 这位同学的照片：缩略图 + 选照片入口；请假行不显示（本来也不落库） -->
+        <view wx:if="{{!row.leave}}" class="phrow">
+          <image wx:for="{{row.photos}}" wx:for-item="pp" wx:key="*this" class="pthumb" src="{{pp}}" mode="aspectFill" />
+          <text class="pbtn" catchtap="openStuPhotos" data-i="{{ri}}">{{row.photos.length ? '改照片' : '+ 选照片'}}</text>
+          <text wx:if="{{shared && photos.length}}" class="mi">全班共用 {{photos.length}} 张</text>
+        </view>
       </view>
     </view>
   </view>
@@ -55,5 +90,31 @@
   </view>
 
 </view>
-<privacy-popup />
+
+<!-- 照片分拣弹层：从照片进（勾学生）/ 从学生行进（勾照片）共用一套 -->
+<view wx:if="{{sheet}}" class="mask" catchtap="closeSheet">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-t">{{sheetTitle}}</view>
+    <image wx:if="{{sheetPhoto}}" class="sheetimg" src="{{sheetPhoto}}" mode="aspectFit" />
+    <view class="sheetbox">
+      <view wx:if="{{sheetMode==='photo'}}" class="chips">
+        <view wx:for="{{sheetStus}}" wx:key="id" class="chip {{item.on ? 'on' : ''}}"
+          catchtap="toggleSheetStu" data-i="{{index}}">{{item.name}}</view>
+      </view>
+      <view wx:else class="sheetgrid">
+        <view wx:for="{{sheetPhotos}}" wx:key="p" class="sp {{item.on ? 'on' : ''}}"
+          catchtap="toggleSheetPhoto" data-i="{{index}}">
+          <image src="{{item.p}}" mode="aspectFill" />
+          <view wx:if="{{item.on}}" class="spck">✓</view>
+        </view>
+      </view>
+    </view>
+    <view class="sheetacts">
+      <view class="btn ghost" catchtap="closeSheet">取消</view>
+      <view class="btn" catchtap="confirmSheet">确定</view>
+    </view>
+  </view>
+</view>
+
+<privacy-popup id="privacy" />
 </view>

@@ -2,6 +2,9 @@
 //
 // 场景：老师上课没空单个录，课后凭记忆/回忆一次性补全班。
 // 一屏一列学生：等级 chips（默认沿用上次）+ 评语（AI 一键全班生成）+ 长按标请假。
+// 【统一上传图片】一次拍/选一节课的全部照片进「照片池」，点照片勾给哪些学生（或全班共用），
+// 保存时每人只带自己那几张。落库前不做上传：保存后由 photocloud.flushBatch 把照片池
+// 去重上传一次、再把 fileID 回填到全班记录，老师点保存不用等网络。
 // 保存走 db.records.batch（一个事务批量落库，归当前课次）。
 const db = require('../../utils/db');
 const api = require('../../utils/api');
@@ -9,6 +12,15 @@ const sec = require('../../utils/sec');
 const theme = require('../../utils/theme');
 const draft = require('../../utils/draft');
 const voice = require('../../utils/voice');
+const media = require('../../utils/media');
+const icons = require('../../utils/icons');
+const photocloud = require('../../utils/photocloud');
+
+// 一次课最多传 30 张（约 10MB 压缩图），每人记录仍受数据层 9 张上限约束
+const MAX_POOL = 30;
+const MAX_PER_STU = db.LIMITS.photos;
+const MAX_FILE = 50 * 1024 * 1024;
+const uniq = arr => arr.filter((p, i) => p && arr.indexOf(p) === i);
 
 // 评分五档与代表分，与单人录入页（pages/record）同一套口径
 const TAGS = [
@@ -27,7 +39,14 @@ Page({
     rows: [], topic: '',
     tags: TAGS.map(x => x.t),
     aiBusy: false, aiProg: '', saving: false,
-    total: 0, filled: 0, leaveCount: 0
+    total: 0, filled: 0, leaveCount: 0,
+    // 统一上传图片：照片池 + 渲染角标 + 全班共用开关
+    photos: [], photoCells: [], shared: false,
+    maxPhotos: MAX_POOL, unassigned: 0,
+    // 分拣弹层：mode=photo 从一张照片进（勾学生）/ mode=stu 从学生行进（勾照片）
+    sheet: false, sheetMode: '', sheetTitle: '', sheetPhoto: '',
+    sheetStus: [], sheetPhotos: [], sheetIdx: -1, sheetSid: 0,
+    icoCamera: icons.camera, icoAlbum: icons.album
   },
   onLoad(q) {
     this.clsId = +q.id || 0;
@@ -56,6 +75,7 @@ Page({
         note: '',
         prev: (last && last.note) || '',              // 上次评语：给 AI 做差异化参考
         leave: false,
+        photos: [],                                   // 分给这位学生的照片（引用 photos 池里的路径）
         carried: !!(last && last.tag),                // 「沿用上次」小标：点过 chips 后消失
         course: (last && last.course) || '',
         courseId: (last && last.courseId) || 0
@@ -72,8 +92,13 @@ Page({
         cancelText: '不要',
         success: res => {
           if (!res.confirm) { draft.clear(this.clsId); return; }
-          this.setData({ rows: d.rows, topic: d.topic || '' });
-          this._count();
+          // 老草稿没有 photos 字段：按空池恢复，不让旧数据把页面卡住
+          this.setData({
+            rows: (d.rows || []).map(r => Object.assign({}, r, { photos: (r.photos || []).slice() })),
+            topic: d.topic || '',
+            photos: Array.isArray(d.photos) ? d.photos.slice(0, MAX_POOL) : [],
+            shared: !!d.shared
+          }, () => { this._syncPhotos(); this._count(); });
         }
       });
     }
@@ -85,6 +110,124 @@ Page({
       filled: rows.filter(r => !r.leave && (r.tag || r.note)).length,
       leaveCount: rows.filter(r => r.leave).length
     });
+  },
+  // ---------- 统一上传图片：照片池 → 分拣 → 随记录保存 ----------
+  // 角标显示每张照片分给了几人；没分出去的照片不会出现在任何学生记录里，必须让老师看得见
+  _syncPhotos() {
+    const pool = this.data.photos;
+    const rows = this.data.rows;
+    const cells = pool.map((p, i) => ({
+      p, i, n: rows.filter(r => !r.leave && (r.photos || []).indexOf(p) > -1).length
+    }));
+    this.setData({
+      photoCells: cells,
+      unassigned: this.data.shared ? 0 : cells.filter(c => !c.n).length
+    });
+  },
+  addPhotos(e) {
+    const src = e.currentTarget.dataset.src;  // camera | album
+    const left = MAX_POOL - this.data.photos.length;
+    if (left <= 0) { wx.showToast({ title: '一次课最多 ' + MAX_POOL + ' 张照片', icon: 'none' }); return; }
+    wx.chooseMedia({
+      count: Math.min(9, left), mediaType: ['image'], sourceType: [src], sizeType: ['compressed'],
+      camera: 'back',
+      success: r => {
+        const photos = this.data.photos.slice();
+        let lost = 0, over = 0;
+        (r.tempFiles || []).forEach(f => {
+          if ((f.size || 0) > MAX_FILE) { over++; return; }
+          // 临时路径退出小程序即被清理，必须先转存到用户目录，否则历史记录全是裂图
+          const p = media.persist(f.tempFilePath || f.path, 'photo');
+          if (!p) { lost++; return; }
+          if (photos.indexOf(p) < 0 && photos.length < MAX_POOL) photos.push(p);
+        });
+        const tips = [];
+        if (over) tips.push('跳过 ' + over + ' 个超大文件');
+        if (lost) tips.push(lost + ' 张没能保存（存储可能已满）');
+        if (tips.length) wx.showToast({ title: tips.join('，'), icon: 'none' });
+        this.setData({ photos }, () => this._syncPhotos());
+        this._saveDraft();
+      },
+      fail: err => media.handleChooseFail(err, this)
+    });
+  },
+  // 从池里删掉一张：同时清掉所有学生行里的引用，别留下指向已删图片的空壳
+  rmPoolPhoto(e) {
+    const i = +e.currentTarget.dataset.i;
+    const p = this.data.photos[i];
+    if (!p) return;
+    const photos = this.data.photos.filter((x, k) => k !== i);
+    const rows = this.data.rows.map(r => Object.assign({}, r, {
+      photos: (r.photos || []).filter(x => x !== p)
+    }));
+    this.setData({ photos, rows }, () => this._syncPhotos());
+    this._saveDraft();
+  },
+  previewPoolPhoto(e) {
+    const i = +e.currentTarget.dataset.i;
+    wx.previewImage({ urls: this.data.photos, current: this.data.photos[i] });
+  },
+  toggleShared() {
+    this.setData({ shared: !this.data.shared }, () => this._syncPhotos());
+    this._saveDraft();
+  },
+  // 从一张照片进：勾有哪些学生要用它
+  openPhoto(e) {
+    const i = +e.currentTarget.dataset.i;
+    const p = this.data.photos[i];
+    if (!p) return;
+    const stus = this.data.rows.filter(r => !r.leave).map(r => ({
+      id: r.id, name: r.name, on: (r.photos || []).indexOf(p) > -1
+    }));
+    if (!stus.length) { wx.showToast({ title: '没有人可分配（都请假了）', icon: 'none' }); return; }
+    this.setData({
+      sheet: true, sheetMode: 'photo', sheetIdx: i, sheetSid: 0,
+      sheetTitle: '这张照片给哪些同学？', sheetPhoto: p,
+      sheetStus: stus, sheetPhotos: []
+    });
+  },
+  // 从学生行进：勾他要哪几张照片
+  openStuPhotos(e) {
+    if (!this.data.photos.length) { wx.showToast({ title: '先拍照或从相册选照片', icon: 'none' }); return; }
+    const sid = this.data.rows[+e.currentTarget.dataset.i].id;
+    const row = this.data.rows.find(r => r.id === sid) || {};
+    this.setData({
+      sheet: true, sheetMode: 'stu', sheetIdx: -1, sheetSid: sid,
+      sheetTitle: '给「' + (row.name || '这位同学') + '」选照片',
+      sheetPhoto: '', sheetStus: [],
+      sheetPhotos: this.data.photos.map((p, i) => ({ p, i, on: (row.photos || []).indexOf(p) > -1 }))
+    });
+  },
+  toggleSheetStu(e) {
+    this.setData({ ['sheetStus[' + e.currentTarget.dataset.i + '].on']: !this.data.sheetStus[+e.currentTarget.dataset.i].on });
+  },
+  toggleSheetPhoto(e) {
+    this.setData({ ['sheetPhotos[' + e.currentTarget.dataset.i + '].on']: !this.data.sheetPhotos[+e.currentTarget.dataset.i].on });
+  },
+  closeSheet() { this.setData({ sheet: false }); },
+  confirmSheet() {
+    let rows = this.data.rows;
+    if (this.data.sheetMode === 'photo') {
+      const p = this.data.sheetPhoto;
+      const want = this.data.sheetStus.filter(s => s.on).map(s => s.id);
+      let over = '';
+      rows = rows.map(r => {
+        const has = (r.photos || []).indexOf(p) > -1;
+        const need = want.indexOf(r.id) > -1;
+        if (has === need) return r;
+        if (!need) return Object.assign({}, r, { photos: (r.photos || []).filter(x => x !== p) });
+        const next = (r.photos || []).concat([p]);
+        if (next.length > MAX_PER_STU) { over = over || r.name; return r; }
+        return Object.assign({}, r, { photos: next });
+      });
+      if (over) { wx.showToast({ title: over + ' 最多 ' + MAX_PER_STU + ' 张照片', icon: 'none' }); return; }
+    } else {
+      const picked = this.data.sheetPhotos.filter(x => x.on).map(x => x.p);
+      if (picked.length > MAX_PER_STU) { wx.showToast({ title: '每人最多 ' + MAX_PER_STU + ' 张照片', icon: 'none' }); return; }
+      rows = rows.map(r => r.id === this.data.sheetSid ? Object.assign({}, r, { photos: picked }) : r);
+    }
+    this.setData({ rows, sheet: false }, () => this._syncPhotos());
+    this._saveDraft();
   },
   pickTag(e) {
     const i = +e.currentTarget.dataset.i;
@@ -113,7 +256,11 @@ Page({
   },
   _saveDraft() {
     if (this.data.saving) return;
-    draft.set(this.clsId, { rows: this.data.rows, topic: this.data.topic });
+    // 照片池与分配关系一起进草稿：录到一半被打断，回来不用重选图、重分一遍
+    draft.set(this.clsId, {
+      rows: this.data.rows, topic: this.data.topic,
+      photos: this.data.photos, shared: this.data.shared
+    });
   },
   // 语音输入：本课主题与每位学生的评语框都能说；data-k 支持 rows[0].note 这种路径
   onMic(e) { voice.dictate(this, e.currentTarget.dataset.k); },
@@ -189,15 +336,31 @@ Page({
     });
   },
   _confirmSave(rows) {
-    const items = rows.map(r => ({
+    const pool = this.data.photos.slice();
+    const shared = this.data.shared;
+    // 只认池里还存在的路径（删过的照片不会残留在某条记录里）；全班共用时池 + 个人专属合并去重
+    const lists = rows.map(r => {
+      const own = uniq((r.photos || []).filter(p => pool.indexOf(p) > -1));
+      return uniq(shared ? pool.concat(own) : own);
+    });
+    const items = rows.map((r, i) => ({
       cls: this.clsId, sid: r.id, score: r.score, tag: r.tag,
       note: r.note, course: r.course, courseId: r.courseId,
-      session: this.data.sess
+      session: this.data.sess,
+      photos: lists[i].slice(0, MAX_PER_STU)
     }));
+    const clipped = lists.filter(a => a.length > MAX_PER_STU).length;
     const leaveTip = this.data.leaveCount ? ('，' + this.data.leaveCount + ' 人请假已跳过') : '';
+    let photoTip = '';
+    if (pool.length) {
+      photoTip = shared
+        ? '；' + pool.length + ' 张照片全班共用'
+        : (this.data.unassigned ? '；还有 ' + this.data.unassigned + ' 张照片没分给学生，不会出现在任何记录里' : '；照片已分给学生');
+    }
+    const clipTip = clipped ? '（' + clipped + ' 人超过 ' + MAX_PER_STU + ' 张，只取前 ' + MAX_PER_STU + ' 张）' : '';
     wx.showModal({
       title: '保存本次课记录？',
-      content: '将为 ' + items.length + ' 名学生保存第 ' + this.data.sess + ' 次课记录' + leaveTip + '。',
+      content: '将为 ' + items.length + ' 名学生保存第 ' + this.data.sess + ' 次课记录' + leaveTip + photoTip + clipTip + '。',
       confirmText: '保存',
       success: res => {
         if (!res.confirm) return;
@@ -210,6 +373,13 @@ Page({
         }
         draft.clear(this.clsId);
         this.setData({ saving: false, saving0: true });
+        // 照片池后台去重上传一次 → fileID 回填到每条记录；不等待、不阻塞保存主流程。
+        // 云未通/上传失败保留本地路径，首页 migrateAll 会幂等补传。
+        if (api.enabled() && out.results) {
+          const mediaRows = out.results.map((r, i) => (r && r.ok && r.rid && items[i].photos.length)
+            ? { rid: r.rid, photos: items[i].photos } : null).filter(Boolean);
+          if (mediaRows.length) photocloud.flushBatch(mediaRows);
+        }
         let tip = '已保存 ' + out.saved + ' 条';
         if (out.failed) tip += '，' + out.failed + ' 条失败';
         wx.showToast({ title: tip, icon: out.failed ? 'none' : 'success' });

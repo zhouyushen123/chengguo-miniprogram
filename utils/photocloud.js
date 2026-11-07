@@ -10,6 +10,9 @@
 // - 每张照片过内容安全（secImage）：违规图从记录里剔除（fail-open：检查挂了不误删）
 // - 只处理照片，视频/语音体积大（几十 MB），云存储免费额度有限，先不动（handoff 有记录）
 // - 依赖可注入（io 参数），逻辑可在 Node 测试里验证
+// - 【批量录入】prepare / flushBatch：一节课的照片池先去重上传一次，再把 fileID 回填到
+//   全班每条记录。若沿用 flushRecord 逐条补传，同一张合影会被传 45 次（云存储 + 内容
+//   安全都按次计费），而且 45 条记录里存的是 45 个不同 fileID，白白吃掉容量。
 
 const db = require('./db');
 const api = require('./api');
@@ -46,6 +49,58 @@ function flushRecord(rid, io) {
   });
 }
 
+/* ---------- 批量录入：照片池一次上传，全班共用 ---------- */
+// prepare(paths)：把一组本地路径换成云 fileID，同一路径只传一次、只过一次内容安全。
+// 返回 { list, map, uploaded, dropped, kept, total }；map[原路径] = 最终可用路径
+// （上传失败仍是原路径，违规图为 '' 表示要从记录里剔除）。
+// 云未通 / 上传失败一律降级保留本地路径：记录先落库，首页 migrateAll 后台再补，不阻塞老师。
+function prepare(paths, io) {
+  const list = (Array.isArray(paths) ? paths : []).filter(p => p && String(p).trim());
+  const dep = io || { upload: api.uploadPhoto, check: api.secImage };
+  const on = io ? true : api.enabled();
+  const pool = [];
+  list.forEach(p => { if (pool.indexOf(p) < 0) pool.push(p); });
+  const map = {};
+  let uploaded = 0, dropped = 0, kept = 0;
+  const chain = pool.reduce((acc, p) => acc.then(() => {
+    if (isCloud(p)) { map[p] = p; return null; }          // 已是 fileID，原样复用
+    if (!on) { map[p] = p; kept++; return null; }          // 云未通：留本地路径
+    return Promise.resolve(dep.upload(p)).then(fid => {
+      if (!fid) { map[p] = p; kept++; return null; }
+      // 内容检查挂在上传成功之后：接口挂了 fail-open（照片已在云端，别误删）
+      const check = dep.check ? dep.check(fid) : Promise.resolve(null);
+      return Promise.resolve(check).then(sec =>
+        (sec && sec.ok === false && sec.hit)
+          ? (map[p] = '', dropped++, null)
+          : (map[p] = fid, uploaded++, null)
+      ).catch(() => { map[p] = fid; uploaded++; return null; });
+    }).catch(() => { map[p] = p; kept++; return null; });
+  }), Promise.resolve());
+  return chain.then(() => ({
+    ok: true,
+    list: list.map(p => map[p] || '').filter(Boolean),
+    map, uploaded, dropped, kept, total: pool.length
+  }));
+}
+
+// flushBatch(records)：records = [{ rid, photos }]，来自 db.records.batch 的结果。
+// 保存主流程不等它（老师点保存立刻返回），后台把公共照片池上传一次后逐条回填。
+function flushBatch(records, io) {
+  const arr = (Array.isArray(records) ? records : []).filter(x => x && x.rid && (x.photos || []).length);
+  if (!arr.length) return Promise.resolve({ ok: true, uploaded: 0, dropped: 0, changed: 0 });
+  const pool = [];
+  arr.forEach(x => (x.photos || []).forEach(p => { if (p && pool.indexOf(p) < 0) pool.push(p); }));
+  return prepare(pool, io).then(prep => {
+    let changed = 0;
+    arr.forEach(x => {
+      const next = (x.photos || []).map(p => (p in prep.map ? prep.map[p] : p)).filter(Boolean);
+      if (next.join('|') === (x.photos || []).join('|')) return;   // 全留本地，无需写库
+      if (db.records.attachCloud(x.rid, next).ok) changed++;
+    });
+    return { ok: true, uploaded: prep.uploaded, dropped: prep.dropped, kept: prep.kept, changed };
+  }).catch(() => ({ ok: false, uploaded: 0, dropped: 0, changed: 0 }));
+}
+
 let running = false;   // 防重入：onShow 可能连发，别排队传两遍
 // 全库迁移：把所有还挂着本地照片的老记录逐条补传（后台静默，失败留下次）。
 // 首次开启上云时把历史照片也搬上去；传完的记录不再进队列，天然幂等。
@@ -71,4 +126,4 @@ function migrateAll(io) {
     .catch(() => { running = false; return { ok: false, uploaded, records }; });
 }
 
-module.exports = { flushRecord, migrateAll, isCloud };
+module.exports = { flushRecord, prepare, flushBatch, migrateAll, isCloud };

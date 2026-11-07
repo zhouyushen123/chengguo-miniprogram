@@ -44,3 +44,71 @@
   border-radius: 999rpx; padding: 20rpx 0;
 }
 .savebtn.busy { opacity: 0.6; }
+
+/* ---------- 统一上传图片：照片池 ---------- */
+.phead { display: flex; align-items: baseline; justify-content: space-between; gap: 16rpx; }
+.mediarow { display: flex; gap: 20rpx; margin-top: 16rpx; }
+.mbtn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8rpx;
+  background: var(--bg); border: 2rpx dashed var(--line-2);
+  border-radius: 22rpx; padding: 26rpx 0; font-size: 26rpx; color: var(--sub);
+}
+.mico { width: 44rpx; height: 44rpx; }
+.photogrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16rpx; margin-top: 20rpx; }
+.ph { position: relative; aspect-ratio: 1; }
+.ph image { width: 100%; height: 100%; border-radius: 18rpx; }
+.pn {
+  position: absolute; left: 10rpx; bottom: 10rpx;
+  background: var(--mask); color: #fff; font-size: 20rpx;
+  border-radius: 999rpx; padding: 4rpx 14rpx;
+}
+.pn.on { background: var(--brand); }
+.rm {
+  position: absolute; right: 10rpx; top: 10rpx; width: 44rpx; height: 44rpx;
+  border-radius: 50%; background: var(--mask); color: #fff;
+  text-align: center; line-height: 40rpx; font-size: 28rpx;
+}
+.swrow { display: flex; align-items: center; gap: 16rpx; margin-top: 22rpx; }
+.sw {
+  flex: none; width: 76rpx; height: 44rpx; border-radius: 999rpx;
+  background: var(--line-2); padding: 4rpx; box-sizing: border-box; transition: background .15s;
+}
+.sw.on { background: var(--brand); }
+.sdot { width: 36rpx; height: 36rpx; border-radius: 50%; background: #fff; transition: transform .15s; }
+.sw.on .sdot { transform: translateX(32rpx); }
+.swtxt { flex: 1; min-width: 0; font-size: 26rpx; color: var(--text); }
+.swtxt .mi { display: block; font-size: 22rpx; margin-top: 4rpx; }
+
+/* 学生行里的照片缩略图：固定高度不撑破行，按钮不换行 */
+.phrow { display: flex; align-items: center; flex-wrap: wrap; gap: 10rpx; margin-top: 12rpx; }
+.pthumb { width: 56rpx; height: 56rpx; border-radius: 10rpx; flex: none; }
+.pbtn {
+  flex: none; font-size: 23rpx; color: var(--brand); font-weight: 600;
+  border: 2rpx solid var(--brand-border); border-radius: 999rpx; padding: 6rpx 18rpx;
+}
+.phrow .mi { font-size: 21rpx; }
+
+/* ---------- 照片分拣弹层 ---------- */
+.mask {
+  position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 100;
+  background: rgba(0,0,0,.45); display: flex; align-items: flex-end;
+}
+.sheet {
+  width: 100%; background: #fff; border-radius: 32rpx 32rpx 0 0;
+  padding: 36rpx 32rpx calc(36rpx + env(safe-area-inset-bottom));
+  max-height: 88vh; overflow-y: auto; box-sizing: border-box;
+}
+.sheet-t { text-align: center; font-size: 32rpx; font-weight: 700; color: var(--text); margin-bottom: 20rpx; }
+.sheetimg { width: 100%; height: 320rpx; border-radius: 18rpx; background: var(--bg); }
+.sheetbox { margin: 24rpx 0; }
+.sheetgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14rpx; }
+.sp { position: relative; aspect-ratio: 1; border-radius: 14rpx; overflow: hidden; }
+.sp image { width: 100%; height: 100%; }
+.sp.on { box-shadow: 0 0 0 6rpx var(--brand); }
+.spck {
+  position: absolute; right: 8rpx; top: 8rpx; width: 40rpx; height: 40rpx;
+  border-radius: 50%; background: var(--brand); color: #fff;
+  text-align: center; line-height: 40rpx; font-size: 24rpx;
+}
+.sheetacts { display: flex; gap: 20rpx; }
+.sheetacts .btn { flex: 1; margin: 0; }

@@ -1349,5 +1349,12 @@ stuImport 20 / syncv2 20`，末尾 `✔ 所有函数超时都 ≥ 20 秒`。
   已注册 `tests/run.js`；lint 0 提醒、数据字典一致、**37 套件全绿**。
   `docs/user-manual.md` 3.4 / 13 章、`docs/user-test-cases.md` Q-12～Q-17（合计 211 条）、
   `docs/invite-card-plan.md` 第十二节已同步；`.gitignore` 加 `.fake-wx-sdk-card.js`。
-- **云函数改了**：必须 `npm run cloud -- syncv2` 重部署，控制台把 `syncv2` 超时设回 20 秒
-  并 `npm run cloud:info` 复核；小程序端 `npm run ship` 后后台「设为体验版」仍要人工点一次。
+- **云函数已重部署**：`npm run cloud -- syncv2` ✔；`npm run cloud:info` 复核
+  **7 个函数全 Active、超时 admin/aiEval/family/secCheck/stuImport/syncv2 = 20 秒、backup = 60 秒**，
+  重部署没有把超时打回 3 秒，**不用去控制台改**。新增 `cloudfunctions/syncv2/config.json`
+  记 `timeout:20`，与其它函数口径一致。
+- 提交 **`f8fc406`** 已推 GitHub；**体验版 1138** 已上传（描述「家长一人一卡免码加入
+  （阶段 1 专属卡闭环）」，取的是本轮提交标题），`.preview/qr.png` 已生成。
+  **要人工点的只剩一步**：mp.weixin.qq.com → 版本管理 → 把 **1138** 设为体验版。
+  真机按 `docs/user-test-cases.md` Q-12～Q-17 走一遍：老师发卡 → 家长点开 → 填姓名 →
+  确认 → 回首页看到孩子；再用另一个微信点同一张卡应被拒。

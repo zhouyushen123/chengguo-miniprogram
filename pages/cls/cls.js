@@ -22,7 +22,7 @@ Page({
     dateOpts: ['不限日期'], dateIdx: 0,
     tagOpts: ['全部等级'].concat(TAGS), tagIdx: 0,
     recs: [], recTotal: 0, allCount: 0,
-    canSettle: false,
+    canSettle: false, hasCurRecs: false,
     icoChevD: icons.chevronDown, icoChev: icons.chevron
   },
   onLoad(q) {
@@ -63,6 +63,9 @@ Page({
     };
     // 本次待发布记录数（已录入但未发布）
     const pending = all.filter(r => r.session === cur && !r.sent).length;
+    // 结清按钮的显隐只看「本次课有没有记录」：下面班级记录里全是往期课次时，
+    // 不该出现「结清本次课」——空课次没有可发布、可收尾的成果。
+    const curCount = all.filter(r => r.session === cur).length;
     // 记录筛选：课次（从新到旧）+ 日期（从新到旧）
     const sesses = [...new Set(all.map(r => r.session).filter(s => s > 0))].sort((a, b) => b - a);
     const sessOpts = ['不限课次'].concat(sesses.map(s => '第' + s + '课'));
@@ -79,8 +82,10 @@ Page({
     this.setData({
       cls: { id: cls.id, name: cls.name },
       sess: cur, sessOpts, tiles, counts, filts, dateOpts, pending,
-      // 结清 = 开启下一课的节点动作，能往这个班录课的人才能做
+      // 结清 = 开启下一课的节点动作，能往这个班录课的人才能做；
+      // 且本次课至少录了 1 条才显示（历史课次的记录不算）
       canSettle: db.auth.can('record.create', { clsId: this.clsId }),
+      hasCurRecs: curCount > 0,
       allCount: this._all.length
     }, () => { this._applyTiles(); this._applyRecs(); });
   },
@@ -120,6 +125,11 @@ Page({
     }
     const cur = this.data.sess;
     const recs = db.records.ofClass(this.clsId).filter(r => r.session === cur);
+    // 按钮已按本次记录数隐藏；这里再兜一层，防止旧渲染/外部调起把空课次白白推进
+    if (!recs.length) {
+      wx.showToast({ title: '本次课还没有录入记录', icon: 'none' });
+      return;
+    }
     const unSent = recs.filter(r => !r.sent).length;
     const unRec = this.data.counts.none;
     const parts = ['本次已录 ' + (recs.length ? this.data.counts.rec + this.data.counts.sent : 0) + ' 人'];

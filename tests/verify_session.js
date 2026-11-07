@@ -7,6 +7,8 @@
 //   3. 补录：录入可显式归入更早的课次；未来课次拒绝；编辑不改课次。
 // 外加：v6→v7 迁移（老记录按「同班同一天 = 同一课」补算）与家长无权结清。
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const schema = require('../utils/db/schema');
 
 /* ---------- 模拟 wx 存储 ---------- */
@@ -173,6 +175,92 @@ ok('schema.VERSION 不低于 7（课次从 v7 起）', () => {
 ok('normalizeClass 的 session 兜底不小于 1', () => {
   const c = schema.normalizeClass({ id: 9, name: 'x', session: 0 }, 'org1', Date.now());
   assert.strictEqual(c.session, 1);
+});
+
+/* ================= G. 结清按钮只在本次课有记录时出现 ================= */
+// 真机 2026-11-07：第 2 次课一条没录，下面班级记录全是第 1 课的，却赫然摆着
+// 「结清本次课 · 进入第 3 次课」。空课次没有成果可收尾，按钮不该出现。
+console.log('\n【G. 结清按钮显隐（页面层）】');
+let modalCalls = 0;
+Object.assign(global.wx, {
+  setNavigationBarTitle() {},
+  showToast() {},
+  showModal(o) { modalCalls++; if (o && o.success) o.success({ confirm: true }); }
+});
+
+const gdb = freshDb();
+gdb.init();
+const gCls = gdb.classes.create({ name: '按钮显隐班' }).item;
+const gStu = gdb.students.create({ name: '周诺昭', clsIds: [gCls.id] }).item;
+// 先造往期记录再结清：当前是空的第 2 课，历史里有记录（复刻真机截图）
+gdb.records.save({ cls: gCls.id, sid: gStu.id, score: 90, note: '第1课' }, false);
+gdb.records.settle(gCls.id);
+
+// 用假 Page 真加载页面，跑 render() 拿到真实 setData 结果，比正则盯源码更靠得住
+let pageCfg = null;
+global.Page = c => { pageCfg = c; };
+const clsPagePath = require.resolve('../pages/cls/cls.js');
+delete require.cache[clsPagePath];
+require('../pages/cls/cls.js');
+function clsPage(id) {
+  const p = Object.assign({}, pageCfg);
+  p.data = JSON.parse(JSON.stringify(pageCfg.data));
+  p.clsId = id;
+  p.setData = function (o, cb) {
+    Object.keys(o).forEach(k => { p.data[k] = o[k]; });
+    if (cb) cb.call(p);
+  };
+  return p;
+}
+const page = clsPage(gCls.id);
+
+ok('本次课零记录：结清按钮不出现（下面全是往期记录）', () => {
+  page.render();
+  assert.strictEqual(page.data.sess, 2);
+  assert.ok(page.data.allCount >= 1, '历史记录确实存在');
+  assert.strictEqual(page.data.hasCurRecs, false);
+});
+ok('往期课次补录不算本次录了，按钮仍不出现', () => {
+  gdb.records.save({ cls: gCls.id, sid: gStu.id, score: 70, session: 1 }, false);
+  page.render();
+  assert.strictEqual(page.data.hasCurRecs, false);
+});
+ok('本次课录 1 条 → 按钮出现且待发布数正确', () => {
+  gdb.records.save({ cls: gCls.id, sid: gStu.id, score: 88 }, false);
+  page.render();
+  assert.strictEqual(page.data.hasCurRecs, true);
+  assert.strictEqual(page.data.pending, 1);
+});
+ok('本次课录多条 → 按钮照常出现', () => {
+  gdb.records.save({ cls: gCls.id, sid: gStu.id, score: 92 }, false);
+  gdb.records.save({ cls: gCls.id, sid: gStu.id, score: 95 }, true);
+  page.render();
+  assert.strictEqual(page.data.hasCurRecs, true);
+  assert.strictEqual(page.data.pending, 2);
+});
+ok('结清推进到下一课后，空白新课次又把按钮收起来', () => {
+  const out = gdb.records.settle(gCls.id);
+  assert.ok(out.ok, out.msg);
+  page.render();
+  assert.strictEqual(page.data.sess, 3);
+  assert.strictEqual(page.data.hasCurRecs, false);
+});
+ok('空课次被调起 sendAll 也不推进课次、不弹确认框', () => {
+  assert.strictEqual(page.data.canSettle, true, 'owner 本来有权限，测的才是记录数这道闸');
+  const before = gdb.classes.get(gCls.id).session;
+  const modals = modalCalls;
+  page.sendAll();
+  assert.strictEqual(gdb.classes.get(gCls.id).session, before);
+  assert.strictEqual(modalCalls, modals);
+});
+ok('wxml 由 hasCurRecs 守卫按钮，按钮消失时给一句说明', () => {
+  const wxml = fs.readFileSync(path.join(__dirname, '../pages/cls/cls.wxml'), 'utf8');
+  assert.ok(/wx:if="\{\{hasCurRecs\}\}"[^>]*class="sendbtn/.test(wxml),
+    '结清按钮必须受本次记录数控制');
+  assert.ok(/wx:else class="hint settlehint"/.test(wxml));
+  const js = fs.readFileSync(path.join(__dirname, '../pages/cls/cls.js'), 'utf8');
+  assert.ok(/hasCurRecs: curCount > 0/.test(js));
+  assert.ok(/if \(!recs\.length\)/.test(js));
 });
 
 console.log('\n全部 ' + pass + ' 项课次断言通过');

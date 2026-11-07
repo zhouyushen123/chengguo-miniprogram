@@ -20,6 +20,16 @@ const ROOT = wx.ROOT;
 const STATE = path.join(ROOT, '.release.json');
 const QR = path.join(ROOT, '.preview', 'qr.png');
 
+// 版本描述默认取本轮最后一次提交标题：以前沿用 .release.json 里的旧 desc，
+// 结果 1136 传的是「修 G/H 五项」而代码其实是 I/J 四项，后台版本管理里会看错。
+// 手工传描述仍然优先（ship "本次说明"）。
+function lastCommitDesc() {
+  try {
+    const s = execFileSync('git', ['log', '-1', '--pretty=%s'], { cwd: ROOT, encoding: 'utf8' }).trim();
+    return s.replace(/^[a-zA-Z]+\([^)]*\):\s*/, '').slice(0, 60);
+  } catch (e) { return ''; }
+}
+
 function loadState() {
   try {
     const st = JSON.parse(fs.readFileSync(STATE, 'utf8'));
@@ -62,7 +72,8 @@ function ship() {
   // （之前写成 rest[0] 一律当版本，`ship "修某问题"` 会把中文描述传成版本号。）
   const isVer = s => /^\d+(\.\d+)*$/.test(String(s || ''));
   const version = isVer(rest[0]) ? rest[0] : bump(st.version);
-  const desc = isVer(rest[0]) ? (rest[1] || st.desc || ('体验版 ' + version)) : (rest[0] || st.desc || ('体验版 ' + version));
+  const fallback = lastCommitDesc() || st.desc || ('体验版 ' + version);
+  const desc = isVer(rest[0]) ? (rest[1] || fallback) : (rest[0] || fallback);
 
   console.log('① 门禁：lint + 体积 + 全量测试');
   try {

@@ -94,16 +94,24 @@
 <view wx:if="{{tabK==='course'}}" class="wrap">
   <view wx:if="{{courseFormOpen}}" class="card">
     <view class="sec"><view class="label">添加课程</view></view>
-    <picker mode="selector" range="{{courseClsPick}}" range-key="name" value="{{courseClsIdx}}" bindchange="onCourseCls">
-      <view class="pickerbox">开设到：{{courseClsPick[courseClsIdx].name || '请先添加班级'}} ▾</view>
-    </picker>
+    <view class="sec"><view class="label">课程名称</view></view>
     <view class="addrow">
       <view class="vin" style="flex:1;min-width:0">
-        <input class="input vin-in" style="margin-bottom:0" placeholder="课程名称" value="{{newCourse}}" bindinput="onNewCourse" />
+        <input class="input vin-in" style="margin-bottom:0" placeholder="如：语文 / 软笔书法" value="{{newCourse}}" bindinput="onNewCourse" maxlength="20" />
         <image class="vmic {{micKey==='newCourse'?'rec':''}}" src="{{micKey==='newCourse'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="newCourse" />
       </view>
-      <view class="btn addbtn" hover-class="btn-hover" bindtap="addCourse">添加</view>
     </view>
+    <view class="sec"><view class="label">课程介绍（选填，可语音）</view></view>
+    <view class="vin">
+      <textarea class="crstext vin-in" placeholder="这门课学什么、适合谁、怎么上…" placeholder-class="ph" value="{{newIntro}}" bindinput="onNewIntro" maxlength="500" auto-height />
+      <image class="vmic {{micKey==='newIntro'?'rec':''}}" src="{{micKey==='newIntro'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="newIntro" />
+    </view>
+    <view class="sec"><view class="label">开设到（可多选，不选 = 先进课程库）</view></view>
+    <view class="chips">
+      <view wx:for="{{courseClsChips}}" wx:key="id" class="chip {{item.on?'on':''}}" hover-class="btn-hover" bindtap="toggleCourseCls" data-id="{{item.id}}">{{item.name}}</view>
+      <text wx:if="{{!classes.length}}" class="mi">还没有班级，可以先建课程，之后随时开到班</text>
+    </view>
+    <view class="btn" style="margin-top:28rpx" hover-class="btn-hover" bindtap="addCourse">添加课程</view>
   </view>
   <!-- 同名课程提示：早期"一个班建一条课"，解耦后同名即同一门课，这里给一次收拢的机会 -->
   <view wx:if="{{crsDupGroups}}" class="card dupcard">
@@ -116,7 +124,9 @@
       <view style="flex:1;min-width:0">
         <b>{{item.name}}</b>
         <view class="mi" wx:if="{{!item.clsList.length}}">未开设到任何班级</view>
+        <view class="crsintro" wx:if="{{item.introBrief}}">{{item.introBrief}}</view>
       </view>
+      <view class="mi act" catchtap="openCrsDetail" data-id="{{item.id}}">详情</view>
       <view class="mi act" catchtap="renameCourse" data-id="{{item.id}}" data-name="{{item.name}}">改名</view>
       <view class="mi del" catchtap="delCourse" data-id="{{item.id}}">删除</view>
     </view>
@@ -364,6 +374,43 @@
     <view class="row2">
       <view class="btn ghost" hover-class="btn-hover" bindtap="closeClsForm">取消</view>
       <view class="btn" hover-class="btn-hover" bindtap="addClass">添加</view>
+    </view>
+  </view>
+</view>
+
+<!-- 一次把课程开设到多个班：列出全部班级，已开设的默认选中，取消勾选 = 从该班撤下 -->
+<view wx:if="{{crsBind}}" class="mask" bindtap="closeCrsBind">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-t">「{{crsBind.name}}」开设到</view>
+    <view class="mi" style="text-align:center;margin:6rpx 0 24rpx">一次可勾选多个班；取消勾选 = 从该班撤下（课程与历史记录都保留）</view>
+    <view class="chips">
+      <view wx:for="{{crsBind.chips}}" wx:key="id" class="chip {{item.on?'on':''}}" hover-class="btn-hover" bindtap="crsBindTgl" data-id="{{item.id}}">{{item.name}}</view>
+    </view>
+    <view class="sheet-tools">
+      <text class="act" catchtap="crsBindAll">全选</text>
+      <text class="mi" catchtap="crsBindNone">清空</text>
+      <text class="mi">已选 {{crsBind.sel.length}} / {{classes.length}} 个班</text>
+    </view>
+    <view class="row2">
+      <view class="btn ghost" hover-class="btn-hover" bindtap="closeCrsBind">取消</view>
+      <view class="btn" hover-class="btn-hover" bindtap="saveCrsBind">保存</view>
+    </view>
+  </view>
+</view>
+
+<!-- 课程详情：介绍是课程本体的一部分，改它不动班级开设关系与历史记录 -->
+<view wx:if="{{crsDetail}}" class="mask" bindtap="closeCrsDetail">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-t">课程详情 · {{crsDetail.name}}</view>
+    <view class="sec"><view class="label">课程介绍</view></view>
+    <view class="vin">
+      <textarea class="crstext vin-in" placeholder="这门课学什么、适合谁、怎么上…" placeholder-class="ph" value="{{crsDetail.intro}}" bindinput="onCrsIntro" maxlength="500" auto-height />
+      <image class="vmic {{micKey==='crsDetail.intro'?'rec':''}}" src="{{micKey==='crsDetail.intro'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="crsDetail.intro" />
+    </view>
+    <view class="mi" style="margin-top:12rpx">{{crsDetail.intro.length}}/500　以后还能接着加：适合年龄、课时、教材、教学目标、封面</view>
+    <view class="row2">
+      <view class="btn ghost" hover-class="btn-hover" bindtap="closeCrsDetail">取消</view>
+      <view class="btn" hover-class="btn-hover" bindtap="saveCrsDetail">保存</view>
     </view>
   </view>
 </view>

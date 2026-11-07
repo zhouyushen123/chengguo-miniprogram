@@ -36,7 +36,7 @@ const VERSION = 10;
 // 机构号、类型工具、审计字段在 schema-base.js（与 schema 同层，方向 base ← schema）
 const base = require('./schema-base');
 const { DEFAULT_ORG, FACTORY_ORG, ORG_CHARS, newOrgId, isFactoryOrg,
-  str, num, list, numList, txtList, ymd, normDate, audit } = base;
+  str, num, list, numList, txtList, metaObj, ymd, normDate, audit } = base;
 
 // 评分五档（与录入页每档代表分对应，用于筛选与统计口径统一）
 const TAGS = ['待提高', '加油', '良好', '优秀', '最佳'];
@@ -141,6 +141,10 @@ function normalizeCourse(raw, orgId, stamp) {
     // 学科：阶段二题库按学科筛题/组卷。0 = 未指定（猜不出来就留空，不影响任何现有功能）
     subjectId: num(r.subjectId, 0),
     name: str(r.name).trim(),
+    // 课程详细介绍：面向家长/新老师的课程说明，多行文本，可空
+    intro: str(r.intro).trim(),
+    // 扩展槽：以后加课程字段直接写这里，不必改表结构/迁移/动云函数
+    meta: metaObj(r.meta),
     // 被合并进哪门课（0 = 没被合并）。同名课程收拢时，副本留一行墓碑指过来：
     // 不能直接抹掉——多端同步靠 removed 传播删除，本地删了云端还活着，下次合并又长回来。
     // 这类行只是墓碑，不进回收站、不能还原（见 trash.js / courses.courseRestore）。
@@ -414,6 +418,7 @@ function validate(entity, e) {
     case 'course':
       if (!e.name) return '课程名称不能为空';
       if (e.name.length > 20) return '课程名称过长';
+      if (e.intro && e.intro.length > 500) return '课程介绍过长（最多 500 字）';
       return null;
     case 'classCourse':
       if (!e.clsId) return '绑定必须关联班级';

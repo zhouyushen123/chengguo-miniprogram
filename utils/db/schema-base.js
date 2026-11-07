@@ -30,6 +30,18 @@ const num = (v, d) => { const x = Number(v); return isFinite(x) ? x : d; };
 const list = v => (Array.isArray(v) ? v : []);
 const numList = v => list(v).map(Number).filter(x => isFinite(x));
 const txtList = v => list(v).map(x => str(x).trim()).filter(Boolean);
+// 扩展槽：课程这类内容资产以后会不断加字段（适合年龄/课时/教材/教学目标/封面…）。
+// 放进 meta 就不用每次改表结构、迁移历史数据、动云函数——同步按整行透传即可。
+// 只收可 JSON 序列化的标量，挡住脏数据里的函数/循环引用把整包同步写挂掉。
+function metaObj(v) {
+  const out = {};
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return out;
+  Object.keys(v).forEach(k => {
+    const x = v[k];
+    if (typeof x === 'string' || typeof x === 'number' || typeof x === 'boolean') out[k] = x;
+  });
+  return out;
+}
 const pad2 = n => (n < 10 ? '0' : '') + n;
 
 // 统一日期格式 YYYY-MM-DD（历史数据里有 2026-11-1 这种没补零的写法，字符串排序会错位）
@@ -69,5 +81,5 @@ function audit(raw, orgId, stamp) {
 
 module.exports = {
   DEFAULT_ORG, FACTORY_ORG, ORG_CHARS, newOrgId, isFactoryOrg,
-  str, num, list, numList, txtList, pad2, ymd, normDate, audit
+  str, num, list, numList, txtList, metaObj, pad2, ymd, normDate, audit
 };

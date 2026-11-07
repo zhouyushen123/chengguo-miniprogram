@@ -132,6 +132,8 @@
 | `id` | int | 课程 id |
 | `subjectId` | int | 学科 subjects.id，0 = 未指定（V9 新增） |
 | `name` | string | 课程名，如 楷书 / 素描 / 数学思维。V10 起不再绑定班级 |
+| `intro` | string | 课程详细介绍（面向家长/新老师的课程说明，多行文本，可空，≤500 字） |
+| `meta` | object | 课程扩展槽：以后加适合年龄/课时/教材/教学目标/封面等字段直接写这里，不改表结构、不迁移、不动云函数 |
 | `mergedInto` | int | 同名课程合并到哪门课（0 = 未合并；非 0 的行是墓碑，不进回收站） |
 | `orgId` | string | 归属机构。orgs 集合里等于 id |
 | `createdAt` | int(ms) | 创建时间 |

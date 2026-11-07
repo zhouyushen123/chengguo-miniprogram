@@ -1139,3 +1139,33 @@ npm run cloud -- syncv2 admin    # 只部署指定的
 `render()` 断言显隐：空课次隐藏 → 往期补录仍隐藏 → 录 1 条显示 → 多条仍显示 →
 结清后新课次再隐藏 → `sendAll` 空课次不推进不弹框 → wxml/js 守卫在。
 `node tools/lint.js` 0 提醒，**30 套件全绿**。`docs/user-manual.md` 9.1 补了按钮显隐说明。
+
+## 2026-11-07 12:50　课程：一次开给多个班 + 详细介绍字段 + 扩展槽
+
+用户问「语文能不能同时开给一班到六班」「课程是不是该加详细介绍、以后还能加更多字段」。
+结论：**多班能力 V10 就有了**（`courses` 是内容单元、`class_courses` 是多对多绑定，
+`courseSetClasses(courseId, clsIds)` 一次写定结果状态），卡的是界面和字段。
+
+界面两处限制已拆：
+- 建课表单原来是**单选 picker**（只能选 1 个班或「暂不开设」）→ 改成班级 chips **多选**，
+  `addCourse()` 直接把 `clsIds` 交给 `db.courses.create()`，一次可开给 N 个班。
+- 卡片「＋ 开设到…」原来是 `wx.showActionSheet` **一次挑 1 个班、且 `slice(0,6)` 只显示前 6 个**
+  （真机上「1~6 班」正好撞上限，第 7 个班根本选不到）→ 改成底部弹层列出**全部班级**，
+  已开设默认选中，取消勾选即撤下，支持全选/清空，一次保存走 `db.courses.setClasses()`。
+  单个班快捷取消的 `×` 保留（带二次确认）。
+
+字段（改字段正确顺序：schema → entities → `npm run docs:schema`）：
+- `normalizeCourse` 加 `intro`（详细介绍，≤500 字，`validate` 卡长度）与 `meta`（扩展槽）。
+- `metaObj()` 放 `schema-base.js`，只收可 JSON 序列化的标量，挡住函数/循环引用把整包同步写挂。
+  以后加适合年龄/课时/教材/教学目标/封面等直接写 `meta`，**不改表结构、不迁移、不动云函数**。
+- `courseCreate` 以前只透传 `name/subjectId`，填介绍会丢 → 现在透传 `intro/meta`；
+  同名课程复用时若老课没介绍，顺手补上（不覆盖已有内容）。
+- 课程卡片露一行介绍摘要，新增「详情」弹层编辑 `intro`（textarea + 全站统一麦克风）；
+  建课表单也能直接填介绍。`docs/user-manual.md` 3.3 重写了多班/详情/未来字段清单。
+
+**没动 `cloudfunctions/admin`**：后台静态页加字段要重部署 `admin`，而 CLI deploy 不应用
+`config.json` 的 timeout，会把用户手动设的 20 秒重置掉（见上午 `-501007` 那次修复）。
+等用户确认要在电脑后台编辑课程介绍时再一起部署 + 重设超时。
+
+回归：`tests/verify_course.js`（字段透传/复用补 intro/meta 容错/一次绑 N 个班/界面不再有
+6 个上限/弹层与麦克风守卫/字典一致）。`docs/data-dictionary.md` 已重新生成。

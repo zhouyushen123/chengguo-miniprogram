@@ -29,6 +29,18 @@
   font-size: 23rpx; color: var(--sub); border: 1rpx dashed var(--line-2);
   padding: 8rpx 18rpx; border-radius: 999rpx;
 }
+/* 课程介绍：列表里只露一行摘要，详情弹层里可整段编辑（右侧留麦克风热区） */
+.crsintro {
+  margin-top: 8rpx; font-size: 23rpx; color: var(--sub); line-height: 1.5;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.crstext {
+  display: block; width: 100%; box-sizing: border-box; min-height: 150rpx;
+  background: var(--bg); border-radius: 16rpx; padding: 20rpx;
+  font-size: 27rpx; color: var(--text-2); line-height: 1.6;
+}
+/* 批量开设弹层的「全选 / 清空 / 已选 N」一行 */
+.sheet-tools { display: flex; align-items: center; gap: 24rpx; margin: 26rpx 0 6rpx; font-size: 24rpx; }
 /* 同名课程提示卡：不是错误（数据能正常用），是要不要在"内容单元"这件事上收一下 */
 .dupcard { background: var(--brand-tint); border: 1rpx solid var(--brand-border); }
 .duptxt { font-size: 25rpx; color: var(--text-2); line-height: 1.7; }

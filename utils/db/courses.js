@@ -113,6 +113,8 @@ function courseCreate(data) {
   const d = data || {};
   const name = schema.str(d.name).trim();
   if (!name) return { ok: false, msg: '课程名称不能为空' };
+  // 详细介绍与扩展槽也是课程本体的一部分，建课时一并落库（以前只透传 name/subjectId，填了会丢）
+  const intro = schema.str(d.intro).trim().slice(0, 500);
 
   const clsIds = schema.numList(
     d.clsIds !== undefined ? d.clsIds : (d.clsId ? [d.clsId] : [])
@@ -136,14 +138,16 @@ function courseCreate(data) {
   // 不这么做的话"彻底分开"只是把复制从班级挪到了课程库，问题没解决。
   const same = oc('courses').find(c => c.name === name && (!subjectId || !c.subjectId || c.subjectId === subjectId));
   if (same) {
-    if (subjectId && !same.subjectId) {
-      applyEdit('courses', same, { subjectId, updatedAt: now() });
-    }
+    // 复用老课时顺手补齐空字段：学科、详细介绍。已有的内容不覆盖，免得别人写好的说明被冲掉。
+    const patch = {};
+    if (subjectId && !same.subjectId) patch.subjectId = subjectId;
+    if (intro && !same.intro) patch.intro = intro;
+    if (Object.keys(patch).length) { patch.updatedAt = now(); applyEdit('courses', same, patch); }
     for (let i = 0; i < clsIds.length; i++) bindQuiet(clsIds[i], same.id);
     return { ok: true, item: same, reused: true };
   }
 
-  const e = schema.normalizeCourse({ name, subjectId }, org(), now());
+  const e = schema.normalizeCourse({ name, subjectId, intro, meta: d.meta }, org(), now());
   const ev = schema.validate('course', e);
   if (ev) return { ok: false, msg: ev };
   e.id = core.nextId();

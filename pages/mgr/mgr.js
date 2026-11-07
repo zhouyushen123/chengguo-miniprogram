@@ -27,7 +27,11 @@ Page({
     orgForm: { name: '', type: ORG_TYPES[0], region: [], regionText: '', contact: '', phone: '', scale: ORG_SCALES[0], courses: [] },
     orgTypes: ORG_TYPES, orgScales: ORG_SCALES, orgCourseChips: [], orgPhoneBad: false,
     classes: [], courses: [], students: [], members: [],
-    newCls: '', newCourse: '', courseClsIdx: 0,
+    newCls: '', newCourse: '', newIntro: '',
+    // 建课时一次勾选多个班（课程是内容单元，可同时开在任意多个班）
+    courseClsSel: [], courseClsChips: [],
+    // 课程批量开设弹层 / 课程详情编辑弹层
+    crsBind: null, crsDetail: null,
     // 新建班级表单：学期 / 模式 / 主讲
     clsTerms: [], clsTermIdx: 0, clsMode: 'term', clsTeachers: [], clsTeacherIdx: 0,
     // 学生表单弹层
@@ -136,11 +140,15 @@ Page({
       clsTeacherIdx: this.data.clsTeacherIdx || 0,
       stuYears, stuYearIdx, enrollYearOpts,
       // V10：课程是独立的内容单元，可能同时开在多个班，也可能暂时没开在任何班
-      courses: db.courses.list().map(c => ({
-        id: c.id, name: c.name,
-        clsList: (c.classIds || []).map(id => ({ id, name: db.classes.name(id) })).filter(x => x.name),
-        canBind: (c.classIds || []).length < classes.length
-      })),
+      courses: db.courses.list().map(c => {
+        const intro = String(c.intro || '').replace(/\s+/g, ' ').trim();
+        return {
+          id: c.id, name: c.name, intro,
+          introBrief: intro.length > 42 ? intro.slice(0, 42) + '…' : intro,
+          clsList: (c.classIds || []).map(id => ({ id, name: db.classes.name(id) })).filter(x => x.name),
+          canBind: (c.classIds || []).length < classes.length
+        };
+      }),
       // 同名课程分组数：老数据「一个班一条课」留下的副本，给一键合并用
       crsDupGroups: isManager ? db.courses.duplicates().length : 0,
       members: isManager ? db.members.list().map(m => {
@@ -164,9 +172,8 @@ Page({
           clsIds: v.clsIds, courseIds: v.courseIds, studentIds: v.studentIds
         };
       }) : [],
-      courseClsIdx: Math.min(this.data.courseClsIdx, Math.max(0, classes.length - 1)),
-      // 建课时的班级选择：班级之后多一项「暂不开设」——课程可以先建进课程库，之后再开到班上
-      courseClsPick: classes.concat([{ id: 0, name: '暂不开设（先进课程库）' }])
+      // 建课时的班级多选：一个都不选 = 先进课程库，之后随时开到任意多个班
+      courseClsChips: this._chips(classes, this.data.courseClsSel)
     });
     // 展开的班级被删掉后要收回展开态，避免指向不存在的班
     if (this.data.clsExpand && !classes.some(c => c.id === this.data.clsExpand)) {
@@ -348,35 +355,63 @@ Page({
     });
   },
   onNewCourse(e) { this.setData({ newCourse: e.detail.value }); },
-  onCourseCls(e) { this.setData({ courseClsIdx: +e.detail.value }); },
+  onNewIntro(e) { this.setData({ newIntro: e.detail.value }); },
+  // 建课时一次勾选多个班；一个都不勾 = 先进课程库，之后随时开到任意多个班
+  toggleCourseCls(e) {
+    const id = +e.currentTarget.dataset.id;
+    const sel = this.data.courseClsSel.slice();
+    const i = sel.indexOf(id);
+    if (i > -1) sel.splice(i, 1); else sel.push(id);
+    this.setData({ courseClsSel: sel, courseClsChips: this._chips(this.data.classes, sel) });
+  },
   addCourse() {
     const n = (this.data.newCourse || '').trim();
     if (!n) { wx.showToast({ title: '请填写课程名称', icon: 'none' }); return; }
-    // 选「暂不开设」时 clsId 为空：课程进课程库，之后再在任意班开设
-    const pick = (this.data.courseClsPick || [])[this.data.courseClsIdx] || {};
-    const r = db.courses.create({ name: n, clsId: pick.id || undefined });
+    const picked = this.data.courseClsSel.slice();
+    const r = db.courses.create({ name: n, intro: this.data.newIntro || '', clsIds: picked });
     if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
-    this.setData({ newCourse: '', courseFormOpen: false }); this.refresh();
-    // 课程库里已有同名课时不会新建，直接复用它开到班上——得让人知道发生了什么
+    this.setData({ newCourse: '', newIntro: '', courseClsSel: [], courseFormOpen: false });
+    this.refresh();
+    // 课程库里已有同名课时不会新建，直接复用它开到勾选的班——得让人知道发生了什么
     if (r.reused) wx.showToast({ title: '课程库已有「' + n + '」，已直接开设', icon: 'none' });
+    else if (picked.length > 1) wx.showToast({ title: '已同时开设到 ' + picked.length + ' 个班', icon: 'none' });
   },
-  // 把一门课开到另一个班（V10：同一门课可同时开在多个班，不复制课程）
+  // 批量开设：列出全部班级一次勾选。原来用 ActionSheet 一次只能挑一个班、还只显示前 6 个，
+  // 「一门语文课开给 1~6 班」得点 6 次，第 7 个班根本选不到。
   addCourseCls(e) {
     const id = +e.currentTarget.dataset.id;
+    const c = db.courses.get(id);
+    if (!c) { wx.showToast({ title: '课程不存在', icon: 'none' }); return; }
+    if (!this.data.classes.length) { wx.showToast({ title: '请先添加班级', icon: 'none' }); return; }
     const have = db.courses.classIdsOf(id);
-    const pool = this.data.classes.filter(c => have.indexOf(c.id) < 0);
-    if (!pool.length) { wx.showToast({ title: '每个班都已开设这门课', icon: 'none' }); return; }
-    wx.showActionSheet({
-      itemList: pool.slice(0, 6).map(c => c.name),
-      success: r => {
-        const c = pool[r.tapIndex];
-        if (!c) return;
-        const res = db.courses.bind(c.id, id);
-        if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
-        this.refresh();
-        wx.showToast({ title: '已开设到' + c.name, icon: 'none' });
-      }
-    });
+    this.setData({ crsBind: { id, name: c.name, sel: have, chips: this._chips(this.data.classes, have) } });
+  },
+  crsBindTgl(e) {
+    const id = +e.currentTarget.dataset.id;
+    const b = this.data.crsBind;
+    if (!b) return;
+    const sel = b.sel.slice();
+    const i = sel.indexOf(id);
+    if (i > -1) sel.splice(i, 1); else sel.push(id);
+    this._crsBindSet(sel);
+  },
+  crsBindAll() { this._crsBindSet(this.data.classes.map(c => c.id)); },
+  crsBindNone() { this._crsBindSet([]); },
+  _crsBindSet(sel) {
+    this.setData({ 'crsBind.sel': sel, 'crsBind.chips': this._chips(this.data.classes, sel) });
+  },
+  closeCrsBind() { this.setData({ crsBind: null }); },
+  saveCrsBind() {
+    const b = this.data.crsBind;
+    if (!b) return;
+    // 一次写定结果状态：勾上的绑、没勾的解绑，历史记录与课程本身都不受影响
+    const r = db.courses.setClasses(b.id, b.sel);
+    if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
+    this.setData({ crsBind: null });
+    this.refresh();
+    let tip = '已开设到 ' + b.sel.length + ' 个班';
+    if (r.removed) tip += '，撤下 ' + r.removed + ' 个';
+    wx.showToast({ title: tip, icon: 'none' });
   },
   // 取消某班的这门课：只解绑，课程本身和其他班不受影响
   delCourseCls(e) {
@@ -395,6 +430,24 @@ Page({
     });
   },
   openCourseForm() { this.setData({ courseFormOpen: true }); },
+  // 课程详情：介绍是课程本体的一部分，改它不动班级开设关系与历史记录
+  openCrsDetail(e) {
+    const id = +e.currentTarget.dataset.id;
+    const c = db.courses.get(id);
+    if (!c) { wx.showToast({ title: '课程不存在', icon: 'none' }); return; }
+    this.setData({ crsDetail: { id, name: c.name, intro: c.intro || '' } });
+  },
+  onCrsIntro(e) { this.setData({ 'crsDetail.intro': e.detail.value }); },
+  closeCrsDetail() { this.setData({ crsDetail: null }); },
+  saveCrsDetail() {
+    const d = this.data.crsDetail;
+    if (!d) return;
+    const r = db.courses.update(d.id, { intro: String(d.intro || '').trim().slice(0, 500) });
+    if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
+    this.setData({ crsDetail: null });
+    this.refresh();
+    wx.showToast({ title: '课程介绍已保存', icon: 'success' });
+  },
   // E-01 课程支持改名（showModal 自带输入框，不另做弹层）
   renameCourse(e) {
     const id = +e.currentTarget.dataset.id;
@@ -696,5 +749,6 @@ Page({
   },
   // 语音输入：点输入框右端的麦克风说话，再点一次结束（utils/voice.js）
   onMic(e) { voice.dictate(this, e.currentTarget.dataset.k); },
-  onHide() { voice.stop(this); } // 离开页面别让麦克风一直开着
+  onHide() { voice.stop(this); }, // 离开页面别让麦克风一直开着
+  onUnload() { voice.stop(this); }
 });

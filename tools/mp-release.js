@@ -75,8 +75,20 @@ function ship() {
   }
 
   console.log('\n② 上传体验版 ' + version + '（' + desc + '）');
-  const r = wx.run(['upload', '--project', ROOT, '-v', version, '-d', desc]);
-  if (!wx.judge(r.out) || /上传失败|上传代码失败/.test(r.out)) {
+  // IDE 的编译启动偶尔会直接 × compile_start（跟代码无关，重跑即过）。
+  // 只在输出里没有成功标记时重试，最多两次，避免把一个版本传成两条记录。
+  const sleep = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+  const ok = out => wx.judge(out) && !/上传失败|上传代码失败/.test(out);
+  let r = null;
+  for (let i = 0; i < 3; i++) {
+    r = wx.run(['upload', '--project', ROOT, '-v', version, '-d', desc]);
+    if (ok(r.out)) break;
+    if (i < 2) {
+      console.log('  上传没起来（IDE 编译启动偶发失败），2 秒后重试 ' + (i + 1) + '/2 …');
+      sleep(2000);
+    }
+  }
+  if (!ok(r.out)) {
     console.error('✘ 上传失败，CLI 输出：\n' + r.out.split('\n').slice(-16).join('\n'));
     process.exit(1);
   }

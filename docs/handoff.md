@@ -1031,6 +1031,8 @@ npm run cloud -- syncv2 admin    # 只部署指定的
   真实 errMsg 被吞，超时 / 函数不存在 / 环境错三种原因分不清（又是「静默降级掩盖问题」）。
 - 修法：① 自动重试 2 次（0.8s / 1.5s）；② 失败弹窗显示真实 errMsg + 自检引导 + 再试一次；
   ③ G8 静态断言钉死；29 项地基断言 / 29 套件全绿，主包 1204.6 KB。
+- 顺带给 `tools/mp-release.js` 的上传加了重试（首次 `ship 1126` 撞上 IDE 偶发 `× compile_start`，
+  重跑即过；只在没有成功标记时最多重试 2 次，避免把同一版本传成两条记录）。
 - **试过但无效**：给 `cloudfunctions/admin/config.json` 加 `"timeout": 20` 再 `npm run cloud -- admin`，
   `info` 仍是 3 —— **微信 CLI 的 deploy 不应用 config.json 的 timeout**，跟 triggers 一样只能控制台点。
   config.json 保留作配置文档化（CloudBase CLI 会读）。

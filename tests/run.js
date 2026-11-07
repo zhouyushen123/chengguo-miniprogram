@@ -32,6 +32,7 @@ const SUITES = [
   ['verify_onboard.js', '新手引导'],
   ['verify_voice.js', '语音输入'],
   ['verify_course.js', '课程与多班开设'],
+  ['verify_layout.js', '页面左右对齐'],
   ['verify_demo.js', '演示隔离'],
   ['verify_hardening.js', '加固'],
   ['verify_backup.js', '备份与恢复'],

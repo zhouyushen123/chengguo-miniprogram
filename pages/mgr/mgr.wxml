@@ -51,7 +51,7 @@
     <view class="mi" style="margin-top:16rpx">这些信息来自开通引导里填的资料，改完点下面按钮保存；机构名称会同步到首页与记录页的展示。</view>
   </view>
 
-  <view class="btn orgsave" hover-class="btn-hover" bindtap="saveOrgFull">保存机构资料</view>
+  <view class="btn orgsave pagepad" hover-class="btn-hover" bindtap="saveOrgFull">保存机构资料</view>
 </view>
 
 <!-- ============ 班级 ============ -->
@@ -190,12 +190,14 @@
 <!-- ============ 成员管理（负责人/管理员可见） ============ -->
 <!-- ============ 人员：顶部分类（全部/老师/家长） + 中间列表 + 底部双添加按钮（与班级/学生同结构） ============ -->
 <view wx:if="{{tabK==='member' && isManager}}" class="wrap clswrap">
-  <view class="gswitch" style="align-self:flex-start">
+  <!-- 这两行不在卡片里：用 .pagepad 跟页签 / 成员卡片 / 底部按钮统一左右 24rpx，
+       别再贴着屏幕边。这里只写 margin-top，margin 简写会把 .pagepad 的左右边距冲掉 -->
+  <view class="gswitch pagepad" style="align-self:flex-start">
     <view class="gopt {{memTab==='all'?'on':''}}" bindtap="pickMemTab" data-k="all">全部</view>
     <view class="gopt {{memTab==='teacher'?'on':''}}" bindtap="pickMemTab" data-k="teacher">老师</view>
     <view class="gopt {{memTab==='parent'?'on':''}}" bindtap="pickMemTab" data-k="parent">家长</view>
   </view>
-  <view class="mi" style="margin:16rpx 4rpx 0">老师只能看到并录入自己负责班级的成果；家长只能看自己孩子「已发布」的成果。点成员卡片可切身份预览，「分配」设定范围。</view>
+  <view class="mi pagepad" style="margin-top:16rpx">老师只能看到并录入自己负责班级的成果；家长只能看自己孩子「已发布」的成果。点成员卡片可切身份预览，「分配」设定范围。</view>
 
   <view class="card item" wx:for="{{memShown}}" wx:key="id">
     <view bindtap="goTeacher" data-id="{{item.id}}">

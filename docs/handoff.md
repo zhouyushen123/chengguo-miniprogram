@@ -1169,3 +1169,22 @@ npm run cloud -- syncv2 admin    # 只部署指定的
 
 回归：`tests/verify_course.js`（字段透传/复用补 intro/meta 容错/一次绑 N 个班/界面不再有
 6 个上限/弹层与麦克风守卫/字典一致）。`docs/data-dictionary.md` 已重新生成。
+
+## 2026-11-07 12:45 · 管理页左右对齐（人员页签截图）
+
+真机截图：人员页「全部 / 老师 / 家长」筛选胶囊和下面那行说明文字贴着屏幕左边
+（左 0 / 4rpx），而顶部页签、成员卡片、底部双按钮都是 24rpx，整块看着歪。
+
+统一基线定为 **24rpx**（`.tabs` / `.card` / `.stufab` / `.clsfab` 原本就是这个值）：
+- `mgr.wxss` 新增 `.pagepad { margin-left:24rpx; margin-right:24rpx; }`，只管左右，
+  不许写 `margin` 简写（会把元素自己的上下间距冲掉）。
+- 人员页两处加 `pagepad`，说明文字 inline 改 `margin-top:16rpx`；机构页
+  「保存机构资料」原来 `margin:28rpx 6rpx 44rpx` 也贴边，同样交给 `.pagepad`，
+  `.orgsave` 只留上下 margin。
+- 「选择班级」的多选 chips（建课表单 / 批量开设弹层 / 分配老师弹层）本来就在
+  `.card` / `.sheet` 内，与标题共用内边距，无需改。
+- 新增 `tests/verify_layout.js` 7 项：基线值、两处 pagepad、旧 4rpx 不许回来、
+  **扫描五个页签的顶层元素禁止再裸奔**、班级 chips 必须在卡片/弹层内。
+  已注册 `tests/run.js`；lint 0 提醒，**32 套件全绿**。
+- 纯样式，云函数没动、不用重部署。体验版 **1131**（主包 1221.9 KB）已上传，
+  预览二维码已生成；设体验版仍需后台点一次。

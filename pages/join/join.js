@@ -9,6 +9,7 @@ const api = require('../../utils/api');
 const sync = require('../../utils/sync');
 const theme = require('../../utils/theme');
 const firstrun = require('../../utils/firstrun');
+const voice = require('../../utils/voice');
 
 const ROLE_LABEL = { parent: '家长', teacher: '老师', admin: '管理员' };
 
@@ -21,6 +22,11 @@ Page({
     busy: false,
     err: ''
   },
+  // 语音输入：填「你的姓名」时可以说；邀请码和学号是格式化字段，不配麦克风
+  onMic(e) { voice.dictate(this, e.currentTarget.dataset.k); },
+  onHide() { voice.stop(this); },
+  onUnload() { voice.stop(this); },
+
   onLoad(q) {
     theme.apply(this);
     // 直接进来时云可能还没初始化（比如从分享卡片冷启动到这一页），补一次

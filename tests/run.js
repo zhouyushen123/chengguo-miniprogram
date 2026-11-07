@@ -30,6 +30,7 @@ const SUITES = [
   ['verify_ava.js', '头像统一'],
   ['verify_import.js', '批量导入'],
   ['verify_onboard.js', '新手引导'],
+  ['verify_voice.js', '语音输入'],
   ['verify_demo.js', '演示隔离'],
   ['verify_hardening.js', '加固'],
   ['verify_backup.js', '备份与恢复'],

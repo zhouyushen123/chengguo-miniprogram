@@ -8,7 +8,10 @@
       <view class="cnt">{{filled}}/{{total}} 已填<text wx:if="{{leaveCount}}"> · 请假 {{leaveCount}}</text></view>
     </view>
     <view class="sec"><view class="label">本课主题<text class="mihint">（选填，AI 评语会围绕它写）</text></view></view>
-    <input class="input" placeholder="如：素描球体与光影" placeholder-class="ph" value="{{topic}}" bindinput="onTopic" />
+    <view class="vin">
+      <input class="input vin-in" placeholder="如：素描球体与光影" placeholder-class="ph" value="{{topic}}" bindinput="onTopic" />
+      <image class="vmic {{micKey==='topic'?'rec':''}}" src="{{micKey==='topic'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="topic" />
+    </view>
     <view class="btnrow">
       <view class="aibtn {{aiBusy ? 'busy' : ''}}" hover-class="btn-hover" bindtap="aiAll">
         {{aiBusy ? aiProg : 'AI 生成全班评语'}}
@@ -33,9 +36,14 @@
           <view wx:for="{{tags}}" wx:for-item="tg" wx:key="*this"
             class="chip {{row.tag === tg ? 'on' : ''}}" catchtap="pickTag" data-i="{{ri}}" data-t="{{tg}}">{{tg}}</view>
         </view>
-        <input class="noteinput" placeholder="评语（可留空，用 AI 生成）" placeholder-class="ph"
-          value="{{row.note}}" bindinput="onNote" data-i="{{ri}}" disabled="{{row.leave}}"
-          bindfocus="clearHit" data-i="{{ri}}" />
+        <view class="vin">
+          <input class="noteinput vin-in" placeholder="评语（可留空，用 AI 生成）" placeholder-class="ph"
+            value="{{row.note}}" bindinput="onNote" data-i="{{ri}}" disabled="{{row.leave}}"
+            bindfocus="clearHit" />
+          <image wx:if="{{!row.leave}}" class="vmic {{micKey===('rows['+ri+'].note')?'rec':''}}"
+            src="{{micKey===('rows['+ri+'].note')?icoWhite:icoMic}}" mode="aspectFit"
+            catchtap="onMic" data-k="rows[{{ri}}].note" />
+        </view>
       </view>
     </view>
   </view>

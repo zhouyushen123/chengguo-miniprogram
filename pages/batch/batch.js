@@ -8,6 +8,7 @@ const api = require('../../utils/api');
 const sec = require('../../utils/sec');
 const theme = require('../../utils/theme');
 const draft = require('../../utils/draft');
+const voice = require('../../utils/voice');
 
 // 评分五档与代表分，与单人录入页（pages/record）同一套口径
 const TAGS = [
@@ -114,8 +115,10 @@ Page({
     if (this.data.saving) return;
     draft.set(this.clsId, { rows: this.data.rows, topic: this.data.topic });
   },
-  onHide() { this._saveDraft(); },
-  onUnload() { this._saveDraft(); },
+  // 语音输入：本课主题与每位学生的评语框都能说；data-k 支持 rows[0].note 这种路径
+  onMic(e) { voice.dictate(this, e.currentTarget.dataset.k); },
+  onHide() { voice.stop(this); this._saveDraft(); },
+  onUnload() { voice.stop(this); this._saveDraft(); },
   // AI 一键全班评语：只对「未请假且评语为空」的行生成，10 人一批串行调用防超时
   aiAll() {
     if (this.data.aiBusy || this.data.saving) return;

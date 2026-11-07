@@ -5,32 +5,35 @@
     <view class="label">基本信息</view>
     <view class="vin">
       <input class="input vin-in" placeholder="{{fields[0].ph}}" value="{{f.nick}}" bindinput="onInput" data-k="nick" />
-      <image class="vmic {{micKey==='f.nick'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="f.nick" />
+      <image class="vmic {{micKey==='f.nick'?'rec':''}}" src="{{micKey==='f.nick'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="f.nick" />
     </view>
     <input class="input" placeholder="{{fields[1].ph}}" value="{{f.birth}}" bindinput="onInput" data-k="birth" />
     <view class="vin">
       <input class="input vin-in" placeholder="{{fields[2].ph}}" value="{{f.school}}" bindinput="onInput" data-k="school" />
-      <image class="vmic {{micKey==='f.school'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="f.school" />
+      <image class="vmic {{micKey==='f.school'?'rec':''}}" src="{{micKey==='f.school'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="f.school" />
     </view>
   </view>
   <view class="card">
     <view class="label">家长联系方式</view>
     <input class="input" type="number" placeholder="{{fields[3].ph}}" value="{{f.phone}}" bindinput="onInput" bindblur="onPhoneBlur" data-k="phone" />
-    <input class="input" placeholder="{{fields[4].ph}}" value="{{f.wechat}}" bindinput="onInput" data-k="wechat" />
+    <view class="vin">
+      <input class="input vin-in" placeholder="{{fields[4].ph}}" value="{{f.wechat}}" bindinput="onInput" data-k="wechat" />
+      <image class="vmic {{micKey==='f.wechat'?'rec':''}}" src="{{micKey==='f.wechat'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="f.wechat" />
+    </view>
   </view>
   <view class="card">
     <view class="label">学习情况</view>
     <view class="vin">
       <input class="input vin-in" placeholder="{{fields[5].ph}}" value="{{f.level}}" bindinput="onInput" data-k="level" />
-      <image class="vmic {{micKey==='f.level'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="f.level" />
+      <image class="vmic {{micKey==='f.level'?'rec':''}}" src="{{micKey==='f.level'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="f.level" />
     </view>
     <view class="vin">
       <input class="input vin-in" placeholder="{{fields[6].ph}}" value="{{f.goal}}" bindinput="onInput" data-k="goal" />
-      <image class="vmic {{micKey==='f.goal'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="f.goal" />
+      <image class="vmic {{micKey==='f.goal'?'rec':''}}" src="{{micKey==='f.goal'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="f.goal" />
     </view>
     <view class="vin">
       <input class="input vin-in" placeholder="{{fields[7].ph}}" value="{{f.note}}" bindinput="onInput" data-k="note" />
-      <image class="vmic {{micKey==='f.note'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="f.note" />
+      <image class="vmic {{micKey==='f.note'?'rec':''}}" src="{{micKey==='f.note'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="f.note" />
     </view>
   </view>
   <view class="btn" style="margin:0 24rpx" bindtap="submit">保存并提交</view>

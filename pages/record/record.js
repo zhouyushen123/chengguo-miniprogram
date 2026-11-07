@@ -256,16 +256,32 @@ Page({
   // 留言条麦克风：优先语音转文字（同声传译插件），识别结果写入留言可手动修改；
   // 插件不可用时降级为录音（MediaRecorder 等价物），语音作为附件随记录发送
   toggleRec() {
-    if (this.data.recognizing) { this.recog.stop(); return; }
+    if (this.data.recognizing) { if (this.recog) this.recog.stop(); return; }
     if (stt.available()) {
+      // 开录前已有的文字是「底稿」。识别过程中每次回调都拿全文重新拼一次（替换），
+      // 绝不能把中间结果一行行追加到 note 后面 —— 插件的 onRecognize 给的是累计全文，
+      // 追加会把同一句话越叠越长（11-07 真机截图的 8 行重复评语）。
+      const base = String(this.data.note || '').replace(/\s+$/, '');
+      const join = t => (base ? base + '\n' : '') + String(t || '').trim();
+      let last = '';
       this.recog = stt.createRecognizer({
-        onPartial: t => { if (t) this.setData({ note: (this.data.note ? this.data.note.replace(/\s+$/, '') + '\n' : '') + t }); },
+        onPartial: t => { if (this._leaving) return; last = t || ''; const v = join(t); if (v !== this.data.note) this.setData({ note: v }); },
         onDone: t => {
+          if (this._leaving) return;
+          this.recog = null;
           this.setData({ recognizing: false });
-          if (t) { this.setData({ note: (this.data.note ? this.data.note.replace(/\s+$/, '') + '\n' : '') + t }); this.refreshCan(); }
-          wx.showToast({ title: '已转成文字，可修改', icon: 'none' });
+          const final = t || last;
+          const v = join(final);
+          if (v !== this.data.note) this.setData({ note: v });
+          this.refreshCan();
+          wx.showToast({ title: final ? '已转成文字，可修改' : '没听清，再试一次？', icon: 'none' });
         },
-        onError: () => { this.setData({ recognizing: false }); wx.showToast({ title: '识别失败，请重试或手输', icon: 'none' }); }
+        onError: () => {
+          if (this._leaving) return;
+          this.recog = null;
+          this.setData({ recognizing: false, note: base });
+          wx.showToast({ title: '识别失败，请重试或手输', icon: 'none' });
+        }
       });
       this.setData({ recognizing: true });
       this.recog.start();
@@ -300,13 +316,18 @@ Page({
     this._audioCtx.play();
   },
   onUnload() {
+    this._leaving = true;
     if (this._audioCtx) { this._audioCtx.destroy(); this._audioCtx = null; }
     if (this.rec && this.data.recording) this.rec.stop();
+    if (this.recog) { this.recog.stop(); this.recog = null; }
     voice.stop(this); // 语音输入的录音也别带到页面外
   },
   // 语音输入：点搜索框后的麦克风说话，再点一次结束
   onMic(e) { voice.dictate(this, e.currentTarget.dataset.k); },
-  onHide() { voice.stop(this); },
+  onHide() {
+    if (this.recog) { this.recog.stop(); this.recog = null; this.setData({ recognizing: false }); }
+    voice.stop(this);
+  },
   rmAudio() { this.setData({ audio: null }); this.refreshCan(); },
   preview() {
     // 预览页要一并展示照片/视频/语音，跳转前把当前媒体同步进 pick

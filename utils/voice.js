@@ -6,9 +6,11 @@
 // 念一遍也得不到合法格式，配了反而制造废数据。
 const stt = require('./stt');
 
-// 读当前值，支持 'stuForm.name' 这类路径
+// 读当前值：支持 'stuForm.name' 和 'rows[0].note'（批量成绩单每行一个评语框）。
+// 小程序 setData 原生就认 'rows[0].note' 这种路径，所以读也按同一套路径解析，
+// 页面不必为语音输入单独造一份扁平数据。
 function current(page, key) {
-  const parts = key.split('.');
+  const parts = String(key || '').replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
   let v = page.data;
   for (let i = 0; i < parts.length; i++) v = v ? v[parts[i]] : '';
   return typeof v === 'string' ? v : '';
@@ -28,16 +30,18 @@ function dictate(page, key) {
   // 正在聆听时再点一次 = 结束（此时麦克风就是停止键）
   if (page._rec) { page._rec.stop(); return; }
   const base = current(page, key);
+  // 输入框里已经有字时，识别结果另起一段接在后面，不要黏成一团
+  const glue = base && !/\s$/.test(base) ? ' ' : '';
   setMic(page, key);
   wx.showToast({ title: '请说话…（说完再点一下麦克风）', icon: 'none', duration: 60000 });
   let done = false;
   const rec = stt.createRecognizer({
-    // 识别中间结果实时拼在已输入内容后面，所见即所得
-    onPartial(t) { if (!done) page.setData({ [key]: base + t }); },
+    // stt 给的一直是「本次识别的全文」，整体替换，绝不逐次追加
+    onPartial(t) { if (!done) page.setData({ [key]: base + glue + t }); },
     onDone(t) {
       if (done) return;
       done = true; page._rec = null; setMic(page, '');
-      page.setData({ [key]: (base + (t || '')).trim() });
+      page.setData({ [key]: (base + glue + (t || '')).trim() });
       wx.hideToast();
       if (!(t || '').trim()) wx.showToast({ title: '没听清，再试一次？', icon: 'none' });
     },
@@ -59,4 +63,4 @@ function stop(page) {
   if (page) setMic(page, '');
 }
 
-module.exports = { dictate, stop };
+module.exports = { dictate, stop, current };

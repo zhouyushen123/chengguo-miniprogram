@@ -5,7 +5,7 @@
       <view class="label">选择学生<text wx:if="{{over45 && !stuQuery}}" class="stucount">（{{stuExpanded ? '全部 ' + students.length + ' 人' : '前 45 人'}}）</text></view>
       <view class="stusearch-wrap" wx:if="{{over45}}">
         <input class="stusearch" placeholder="快速搜索姓名" placeholder-class="ph" value="{{stuQuery}}" bindinput="onStuQuery" confirm-type="search" />
-        <image class="smic {{micKey==='stuQuery'?'rec':''}}" src="{{icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuQuery" />
+        <image class="smic {{micKey==='stuQuery'?'rec':''}}" src="{{micKey==='stuQuery'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuQuery" />
       </view>
     </view>
     <view class="chips stuchips">

@@ -14,6 +14,7 @@ const db = require('../../utils/db');
 const theme = require('../../utils/theme');
 const applyUtils = require('../../utils/apply');
 const tel = require('../../utils/phone');
+const voice = require('../../utils/voice');
 
 const TYPES = ['培训机构', '学校', '幼儿园', '个人工作室'];
 const MODES = [{ k: 'term', t: '学期制' }, { k: 'carry', t: '课时结转' }];
@@ -77,6 +78,10 @@ Page({
   },
 
   onShow() { theme.apply(this); },
+  // 语音输入：输入框右端的麦克风，再点一次结束；离开页面别把麦克风开着
+  onMic(e) { voice.dictate(this, e.currentTarget.dataset.k); },
+  onHide() { voice.stop(this); },
+  onUnload() { voice.stop(this); },
 
   /* ---------------- 表单 ---------------- */
   onOrgName(e) { this.setData({ 'org.name': e.detail.value }); },

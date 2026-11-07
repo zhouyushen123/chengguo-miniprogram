@@ -38,7 +38,10 @@
     <view class="note">以「{{roleLabel}}」身份加入<text wx:if="{{role==='parent'}}">，需要孩子的学号来认领孩子</text>。</view>
     <view class="card">
       <view class="label">你的姓名</view>
-      <input class="input" value="{{name}}" bindinput="onName" maxlength="12" placeholder="如：张珊珊" placeholder-class="ph" />
+      <view class="vin">
+        <input class="input vin-in" value="{{name}}" bindinput="onName" maxlength="12" placeholder="如：张珊珊" placeholder-class="ph" />
+        <image class="vmic {{micKey==='name'?'rec':''}}" src="{{micKey==='name'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="name" />
+      </view>
       <block wx:if="{{role==='parent'}}">
         <view class="label">孩子的学号</view>
         <input class="input" type="number" value="{{stuNo}}" bindinput="onStuNo" maxlength="8"

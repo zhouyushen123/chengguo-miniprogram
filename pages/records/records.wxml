@@ -38,7 +38,10 @@
       <image wx:if="{{item.photo}}" class="thumb" src="{{item.photo}}" mode="aspectFill" />
       <view class="recinfo">
         <view wx:if="{{item.note}}" class="mi note">“{{item.note}}”</view>
-        <view class="mi footer"><image class="fico" src="{{icoCamera}}" /> {{item.photoCount}} 张<block wx:if="{{item.hasAudio}}"> · <image class="fico" src="{{icoAudio}}" /> 语音</block></view>
+        <view class="mi footer"><image class="fico" src="{{icoCamera}}" /> {{item.photoCount}} 张<block wx:if="{{item.hasAudio}}"> · <image class="fico" src="{{icoAudio}}" /> 语音</block>
+          <text wx:if="{{item.fbKnown}}" class="fbtag {{item.fbSeen ? 'on' : ''}}">{{item.fbSeen ? '家长已看' : '家长未看'}}</text>
+          <text wx:if="{{item.fbN}}" class="fbtag nt">留言 {{item.fbN}}</text>
+        </view>
       </view>
     </view>
   </view>

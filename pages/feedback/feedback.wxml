@@ -1,0 +1,52 @@
+<view class="theme-root {{themeCls}}">
+<view class="wrap">
+  <view wx:if="{{loading}}" class="empty">正在读取…</view>
+
+  <block wx:elif="{{err}}">
+    <view class="empty">{{err}}</view>
+  </block>
+
+  <block wx:else>
+    <!-- 顶部概览：一眼看出还有几条没处理 -->
+    <view class="card sum">
+      <view class="suml">
+        <view class="sumn {{unhandled ? 'warn' : ''}}">{{unhandled}}</view>
+        <view class="sumt">条待处理</view>
+      </view>
+      <view class="sumr">
+        <view class="mi">共 {{total}} 条家长留言</view>
+        <view class="mi">家长打开成果详情后，记录列表会显示「家长已看」</view>
+      </view>
+    </view>
+
+    <!-- 班级筛选：只列真的有留言的班级 -->
+    <scroll-view wx:if="{{tabs.length > 1}}" scroll-x class="clsbar">
+      <view class="clsrow">
+        <view wx:for="{{tabs}}" wx:key="*this" class="chip {{tab===index?'on':''}}" hover-class="btn-hover"
+          bindtap="pickTab" data-i="{{index}}">{{item}}</view>
+      </view>
+    </scroll-view>
+
+    <view wx:if="{{!shown.length}}" class="empty">
+      <view>还没有家长留言</view>
+      <view class="mi" style="margin-top:12rpx">家长在孩子的成果详情页可以「给老师留句话」</view>
+    </view>
+
+    <view wx:for="{{shown}}" wx:key="id" class="card fb {{item.handled?'done':''}}">
+      <view class="fbh">
+        <b>{{item.stuName}}</b>
+        <text wx:if="{{item.clsName}}" class="mi ell">{{item.clsName}}</text>
+        <text class="pill {{item.handled?'p-done':'p-new'}}">{{item.handled?'已处理':'待处理'}}</text>
+      </view>
+      <view class="mi">{{item.course}} · {{item.date}}{{item.session ? ' · 第' + item.session + '课' : ''}} · {{item.time}}</view>
+      <view class="fbt">{{item.text}}</view>
+      <view wx:if="{{!item.handled}}" class="btnrow">
+        <view class="btn ghost" hover-class="btn-hover" bindtap="markHandled" data-id="{{item.id}}">标记已处理</view>
+      </view>
+    </view>
+  </block>
+</view>
+
+<!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
+<privacy-popup />
+</view>

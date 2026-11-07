@@ -1,6 +1,8 @@
 const db = require('../../utils/db');
+const api = require('../../utils/api');
 const icons = require('../../utils/icons');
 const theme = require('../../utils/theme');
+const voice = require('../../utils/voice');
 
 // 评价分档配色：优秀/最佳绿、良好橙、加油/待提高蓝灰
 const TAG_GOOD = ['优秀', '最佳'];
@@ -18,7 +20,11 @@ Page({
     stats: null, profileFilled: true, clsFilters: [], clsF: 'all', tagCounts: [],
     hoursRemain: 0, hasCarry: false,
     playing: '', teacher: '', icoPlay: icons.play(icons.brand()), icoPause: icons.pause(icons.brand()),
-    icoChev: icons.chevron, icoPlus: icons.plus('#FFFFFF'), icoCam: icons.camera, icoUser: icons.user
+    icoChev: icons.chevron, icoPlus: icons.plus('#FFFFFF'), icoCam: icons.camera, icoUser: icons.user,
+    // 家长留言 / 已读回执：fbOn = 云通 + 真的是家长，入口才出现（失败就整块不显示，绝不吓家长）
+    fbOn: false, fbCard: [], fbMine: [],
+    fbSheet: false, fbRid: 0, fbCourse: '', fbDate: '',
+    fbText: '', fbBusy: false, fbErr: '', fbNotes: []
   },
   onLoad(q) {
     this.sid = +q.id || +q.sid || 0; // 兼容 id / sid 两种参数名
@@ -29,6 +35,8 @@ Page({
     // icoPlus 是品牌色按钮上的白色加号，std() 的整包刷新给的是品牌色版，这里单独纠正
     this.setData({ icoPlus: icons.plus('#FFFFFF') });
     this.render();
+    // 家长留言 / 已读回执：先问云端「我是谁、我写过什么」，成功才显示入口
+    this._initFb();
   },
   // 统一渲染：拉记录 → 按班级/课程双维过滤 → 首条做详情，其余进历史列表
   render() {
@@ -81,6 +89,9 @@ Page({
         filters: [], filt: '全部', total: 0, shown: 0, teacher: tname(rec)
       });
       this._sizePhotos((rec || {}).photos || []);
+      // 家长从记录列表/首页点进来的「单条成果」：打开即算看过
+      this._markSeen();
+      this._syncFbCard();
       return;
     }
 
@@ -136,6 +147,94 @@ Page({
       teacher: tname(list[0])
     });
     this._sizePhotos((list[0] || {}).photos || []);
+    // 学生页最新一次成果就是详情本身（首页只摆摘要，不算看过）
+    this._markSeen();
+    this._syncFbCard();
+  },
+  /* ================= 家长已读回执 + 留言 =================
+   * 口径：只有家长「真正打开某条已发布成果的详情」才算看过。进首页看摘要不算，
+   * 收到微信服务通知也不算 —— 否则老师会看到一片假已读。
+   * 两张表在云端（不进同步集合），所以这里只要失败就整块不显示，不做任何乐观假设。
+   */
+  _initFb() {
+    if (!db.auth.isParent()) return;
+    if (!api.enabled()) return;
+    api.fbList('parent').then(r => {
+      if (!r || !r.ok) return;
+      const mine = (r.notes || []).map(n => Object.assign({}, n, { time: this._fmtTime(n.createdAt) }));
+      this.setData({ fbOn: true, fbMine: mine });
+      // 首次进来时 fbOn 还是 false，render 里的上报会被跳过，这里补一次
+      this._markSeen();
+      this._syncFbCard();
+    });
+  },
+  _fmtTime(ts) {
+    const t = Number(ts) || 0;
+    if (!t) return '';
+    const d = new Date(t);
+    const hh = ('0' + d.getHours()).slice(-2), mm = ('0' + d.getMinutes()).slice(-2);
+    return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + hh + ':' + mm;
+  },
+  // 当前详情是哪条记录（单条视图优先，否则最新一次）
+  _curRec() { return this.data.rec || this.data.latest || null; },
+  _markSeen() {
+    if (!this.data.fbOn || !db.auth.isParent()) return;
+    const r = this._curRec();
+    if (!r || !r.id || !r.sent) return;
+    this._seen = this._seen || {};
+    if (this._seen[r.id]) return;
+    this._seen[r.id] = 1;
+    api.fbView(r.id, this.sid);   // 静默失败，不提示、不阻塞
+  },
+  _syncFbCard() {
+    if (!this.data.fbOn) return;
+    const r = this._curRec();
+    const rid = r ? r.id : 0;
+    const list = rid ? (this.data.fbMine || []).filter(n => Number(n.rid) === rid) : [];
+    this.setData({ fbCard: list });
+  },
+  openNote(e) {
+    const d = e.currentTarget.dataset;
+    const rid = Number(d.rid) || 0;
+    if (!rid) return;
+    const mine = (this.data.fbMine || []).filter(n => Number(n.rid) === rid);
+    this.setData({
+      fbSheet: true, fbRid: rid, fbCourse: d.course || '', fbDate: d.date || '',
+      fbText: '', fbErr: '', fbBusy: false, fbNotes: mine
+    });
+  },
+  closeNote() {
+    voice.stop(this);
+    this.setData({ fbSheet: false, fbText: '', fbErr: '' });
+  },
+  noop() { /* 弹层内的点击不穿透到遮罩 */ },
+  onFbInput(e) { this.setData({ fbText: e.detail.value, fbErr: '' }); },
+  onFbMic() { voice.dictate(this, 'fbText'); },
+  sendNote() {
+    if (this.data.fbBusy) return;
+    const text = String(this.data.fbText || '').trim();
+    if (!text) { this.setData({ fbErr: '先写一句再发吧' }); return; }
+    if (!this.data.fbOn) { this.setData({ fbErr: '网络未就绪，稍后再试' }); return; }
+    voice.stop(this);
+    this.setData({ fbBusy: true, fbErr: '' });
+    api.fbNote(this.data.fbRid, this.sid, text).then(r => {
+      if (!r || !r.ok) {
+        this.setData({ fbBusy: false, fbErr: (r && r.msg) || '发送失败，请重试' });
+        return;
+      }
+      const one = {
+        id: r.id, rid: this.data.fbRid, sid: this.sid, text,
+        createdAt: r.createdAt || Date.now(), handled: false, time: this._fmtTime(r.createdAt || Date.now())
+      };
+      const mine = [one].concat(this.data.fbMine || []);
+      this.setData({
+        fbBusy: false, fbText: '',
+        fbMine: mine,
+        fbNotes: [one].concat(this.data.fbNotes || []),
+        fbCard: mine.filter(n => Number(n.rid) === Number(this.data.fbRid))
+      });
+      wx.showToast({ title: '已送达老师', icon: 'success' });
+    });
   },
   // 照片轮播自适应：按真实宽高比算高度（宽度铺满卡片内容区 646rpx），取各图最高者并封顶；
   // 单图失败不影响整体，全失败回落默认 660rpx
@@ -186,7 +285,13 @@ Page({
   // 历史条目行内展开/收起（同一时间只展开一条）
   toggleExpand(e) {
     const id = +e.currentTarget.dataset.rid;
-    this.setData({ expandId: this.data.expandId === id ? 0 : id });
+    const next = this.data.expandId === id ? 0 : id;
+    this.setData({ expandId: next });
+    // 展开 = 真的看到了这条记录的内容 → 家长端上报已读（老师端无需上报）
+    if (next && this.data.fbOn && db.auth.isParent()) {
+      const item = (this.data.history || []).filter(h => h.id === id)[0];
+      if (item && item.sent) api.fbView(id, this.sid);
+    }
   },
   // 修改已有记录：J-07 以前只把 rid 挂在 URL 上，录入页却完全不读参数，
   // 于是变成空白新建态、还残留上一次的班级/学生（看起来像改到别的同学）。
@@ -226,5 +331,5 @@ Page({
       if (!this.data.swAuto) this.setData({ swAuto: true });
     }, 2500);
   },
-  onUnload() { if (this._swTimer) { clearTimeout(this._swTimer); this._swTimer = null; } }
+  onUnload() { voice.stop(this); if (this._swTimer) { clearTimeout(this._swTimer); this._swTimer = null; } }
 });

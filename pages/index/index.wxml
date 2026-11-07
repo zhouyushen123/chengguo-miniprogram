@@ -93,6 +93,16 @@
     </view>
   </view>
 
+  <!-- 家长反馈：家长打开成果会计入「已看」，留言在这里处理；有待处理时才亮红点 -->
+  <view wx:if="{{fbReady}}" class="card fbcall" hover-class="btn-hover" bindtap="goFeedback">
+    <view class="fbcall-txt">
+      <view class="fbcall-t">家长反馈</view>
+      <view class="mi">{{fbNote}}</view>
+    </view>
+    <view wx:if="{{fbUnread}}" class="fbnum">{{fbUnread}}</view>
+    <image class="chev fic" src="{{icoChev}}" mode="aspectFit" />
+  </view>
+
   <!-- 我的班级：标题集成在卡内，整块一张卡 -->
   <view class="card panel">
     <view class="sechead">

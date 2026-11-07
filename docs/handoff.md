@@ -1387,7 +1387,9 @@ stuImport 20 / syncv2 20`，末尾 `✔ 所有函数超时都 ≥ 20 秒`。
   真机按 `docs/user-test-cases.md` M-11～M-18 走一遍：一次选多张 → 点照片分给学生 /
   按学生选照片 → 全班共用 → 保存 → 到学生档案看照片是否各归各的。
 
-## 家长反馈闭环：已读回执 + 家长留言（11-07 23:03，**仅方案，未改代码**）
+## 家长反馈闭环：已读回执 + 家长留言（11-07 23:03 方案 → 11-08 已实施）
+
+> 阶段 1 已实施，见文末「家长反馈 · 阶段 1 实施」。下面是当初的方案要点，仍有效。
 
 - 用户新需求：①家长看没看过发布的内容要有反馈 ②家长要有回复通道（建议 / 感谢 / 意见）。
 - 方案写在 **`docs/family-feedback-plan.md`**，等用户拍板 4 项后开工。
@@ -1400,3 +1402,28 @@ stuImport 20 / syncv2 20`，末尾 `✔ 所有函数超时都 ≥ 20 秒`。
 - **实施必看**：`cloudfunctions/family/config.json` 缺 `timeout:20`（20 秒是控制台手工设的），
   重部署前先补上，部署后 `npm run cloud:info` 复核。
 - 顺带发现（另开一轮）：`syncv2` push 除 `members` 外缺服务端 ACL，别和本功能混改。
+
+## 家长反馈 · 阶段 1 实施（11-08）
+
+- **用户拍板**：「好的，可以，就按照你的方法来试」→ 4 项按推荐值写死（打开详情算已读、
+  文字/语音转文字 200 字、一期单向、独立反馈页 + 已读小标 + 首页红点）。
+- **云端 `family`**：新增 `record_views` / `parent_notes` 两张**不进同步集合**的表 +
+  `fbView / fbNote / fbList / fbStats / fbHandle`。按 OPENID 查 `members` 判身份：
+  家长只认 `studentIds`，老师按 `clsIds ∩ students.clsIds`，负责人/管理员全机构；
+  不是自家孩子、记录未发布、跨机构一律 fail-closed。留言 3 条/成果 + 60 秒 2 条，
+  `secCheck` 只有 87014 才拦（抖动 fail-open）。
+- **家长端**：打开已发布成果详情静默上报已读（同一页不重复）；详情底部「给老师留句话」
+  弹层（200 字 + 全站麦克风转文字），下方列出自己的留言与「老师已看 / 等老师看」。
+  `fbOn` 只有「家长 + 云通 + fbList 成功」才为 true，否则入口整块不出现。
+- **老师端**：新页 `pages/feedback`（未处理置顶 / 按班筛 / 标记已处理）；记录页
+  「家长已看 / 未看 + 留言 N」；班级页本次课「家长已看 x/y」；首页与「我的」都有入口，
+  首页待处理数字靠 `fbList` 的 `unhandled`。一期不推微信通知给老师。
+- **部署坑已堵**：`cloudfunctions/family/config.json` 补了 `"timeout": 20`，
+  所以重部署后 `cloud:info` 直接 20 秒（family 20 / admin 20 / aiEval 20 / backup 60 /
+  secCheck 20 / stuImport 20 / syncv2 20，全 Active）——**这次不用去控制台手改超时**。
+- **验证**：新增 `tests/verify_family_feedback.js` 28 项（内存假库真跑云函数 + 家长页行为），
+  已注册 `tests/run.js`；lint 0 提醒、数据字典一致、**39 套件全绿**。
+- 文档：`docs/user-manual.md` 13 / 14 章 + Q11·Q12；`docs/user-test-cases.md` 新增 S 组
+  S-01～S-09（合计 228）；`docs/family-feedback-plan.md` 第 10 节实施记录。
+- **真机验收**：家长 B 点开成果详情 → A 记录页应显示「家长已看」；B 留一句话 →
+  A 首页「家长反馈」出现数字 → 标记已处理 → B 看到「老师已看」。按 S 组走一遍。

@@ -191,6 +191,36 @@ function familyNotify(data) {
   return callFn('family', Object.assign({ action: 'send' }, data)).catch(() => ({ ok: false }));
 }
 
+/* ---------------- 家长已读回执与留言（family 云函数） ----------------
+ * 这两张表不进同步集合，走云函数按「这个微信绑的是哪个孩子」鉴权。
+ * 云未通时全部返回 ok:false/CLOUD_OFF：前端据此把入口藏起来，绝不弹「网络错误」吓家长。
+ */
+function fbView(rid, sid) {
+  if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF' });
+  return callFn('family', { action: 'fbView', rid: Number(rid) || 0, sid: Number(sid) || 0 })
+    .catch(() => ({ ok: false, code: 'NET' }));
+}
+function fbNote(rid, sid, text) {
+  if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪' });
+  return callFn('family', { action: 'fbNote', rid: Number(rid) || 0, sid: Number(sid) || 0, text: String(text || '') })
+    .catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
+}
+function fbList(scope) {
+  if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF' });
+  return callFn('family', { action: 'fbList', scope: scope || '' })
+    .catch(() => ({ ok: false, code: 'NET' }));
+}
+function fbStats(rids) {
+  if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', stats: {} });
+  return callFn('family', { action: 'fbStats', rids: (rids || []).slice(0, 50) })
+    .catch(() => ({ ok: false, code: 'NET', stats: {} }));
+}
+function fbHandle(id) {
+  if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF' });
+  return callFn('family', { action: 'fbHandle', id: String(id || '') })
+    .catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
+}
+
 // 照片上云：前端直传云存储（不经过云函数）。与记录同步（SYNC_ENABLED）解耦：
 // 云通就能传，照片存云端后不怕清缓存/换手机，家长端将来也能直接看。
 // 传失败返回 null（调用方保留本地路径，不阻塞保存）。
@@ -235,4 +265,4 @@ function cloudBackup(action, data) {
     .catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
 }
 
-module.exports = { initCloud, enabled, syncOn, syncCall, login, pushRecord, pull, uploadFile, uploadPhoto, aiEvalDraft, stuImport, secText, secImage, requestSubscribe, familyBind, familyNotify, inviteInfo, inviteJoin, inviteGet, adminAccount, cloudBackup, cardCreate, cardInfo, cardClaim, cardRevoke, CLOUD_ENV };
+module.exports = { initCloud, enabled, syncOn, syncCall, login, pushRecord, pull, uploadFile, uploadPhoto, aiEvalDraft, stuImport, secText, secImage, requestSubscribe, familyBind, familyNotify, fbView, fbNote, fbList, fbStats, fbHandle, inviteInfo, inviteJoin, inviteGet, adminAccount, cloudBackup, cardCreate, cardInfo, cardClaim, cardRevoke, CLOUD_ENV };

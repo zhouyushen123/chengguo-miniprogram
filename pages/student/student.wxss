@@ -132,3 +132,38 @@
 /* 底部主按钮：与卡片左右边距对齐（卡片是 margin 0 24rpx，按钮是裸 .btn 需自己补） */
 .cta { margin: 0 24rpx; }
 .st-h { color: var(--brand); background: var(--brand-soft); }
+
+/* ---------- 家长留言（已读回执配套） ---------- */
+.fbbox { margin-top: 18rpx; padding-top: 18rpx; border-top: 2rpx dashed var(--line); }
+.fbbtn {
+  display: inline-flex; align-items: center;
+  font-size: 26rpx; font-weight: 600; color: var(--brand);
+  background: var(--brand-tint); border: 2rpx solid var(--brand-border);
+  border-radius: 999rpx; padding: 12rpx 28rpx;
+}
+.fbn { margin-top: 14rpx; background: var(--bg); border-radius: 18rpx; padding: 16rpx 20rpx; }
+.fbnt { font-size: 27rpx; color: var(--text); line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
+
+.fbmask {
+  position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 90;
+  background: var(--mask); display: flex; align-items: flex-end;
+}
+.fbsheet {
+  width: 100%; box-sizing: border-box; background: var(--card);
+  border-radius: 32rpx 32rpx 0 0; padding: 30rpx 28rpx;
+  padding-bottom: calc(28rpx + env(safe-area-inset-bottom));
+}
+.fbhead { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 20rpx; }
+.fbh { font-size: 32rpx; font-weight: 700; }
+.fbin {
+  display: block; width: 100%; box-sizing: border-box;
+  background: var(--bg); border: 2rpx solid var(--line-2); border-radius: 20rpx;
+  padding: 22rpx 96rpx 22rpx 24rpx; font-size: 28rpx; min-height: 132rpx; line-height: 1.6;
+}
+.fbrow { display: flex; align-items: center; justify-content: space-between; margin: 12rpx 4rpx 20rpx; }
+.fberr { font-size: 24rpx; color: var(--danger); }
+.fbbtns { display: flex; gap: 20rpx; }
+.fbbtns .btn { flex: 1; }
+.btn.off { opacity: 0.6; }
+.fblist { margin-top: 26rpx; border-top: 2rpx solid var(--line); }
+.fblist .label { margin: 18rpx 0 4rpx; }

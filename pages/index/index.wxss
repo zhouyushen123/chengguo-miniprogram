@@ -253,3 +253,14 @@
   background: linear-gradient(135deg, var(--brand-a), var(--brand-b));
 }
 .obdemo { text-align: center; font-size: 25rpx; color: var(--muted); margin-top: 26rpx; }
+
+/* ---------- 家长反馈入口 ---------- */
+.fbcall { display: flex; align-items: center; gap: 16rpx; padding: 22rpx 28rpx; }
+.fbcall-txt { flex: 1; min-width: 0; }
+.fbcall-t { font-size: 29rpx; font-weight: 700; margin-bottom: 4rpx; }
+.fbnum {
+  flex: none; min-width: 36rpx; height: 36rpx; padding: 0 10rpx; box-sizing: border-box;
+  border-radius: 999rpx; background: var(--danger); color: #fff;
+  font-size: 22rpx; font-weight: 700; line-height: 36rpx; text-align: center;
+}
+.fic { width: 26rpx; height: 26rpx; }

@@ -15,6 +15,7 @@
     "pages/mine/mine",
     "pages/tpls/tpls",
     "pages/cls/cls",
+    "pages/feedback/feedback",
     "pages/apply/apply",
     "pages/storage/storage",
     "pages/trash/trash"

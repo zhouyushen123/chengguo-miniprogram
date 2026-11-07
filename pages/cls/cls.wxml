@@ -27,6 +27,12 @@
       {{pending ? '发布并结清本次课（' + pending + ' 条待发布）' : '结清本次课 · 进入第' + (sess + 1) + '次课'}}
     </view>
     <view wx:else class="hint settlehint">本次课还没有录入记录，录完成果后可结清进入下一课</view>
+    <!-- 家长回执：本次课已发布的记录里，家长真的打开看过的比例 -->
+    <view wx:if="{{fbReady && fbSent}}" class="fbline" hover-class="btn-hover" bindtap="goFeedback">
+      <text>家长已看 {{fbSeen}}/{{fbSent}}</text>
+      <text wx:if="{{fbNotes}}" class="fbdot">· {{fbNotes}} 条留言</text>
+      <text class="fblink">家长反馈 ›</text>
+    </view>
   </view>
 
   <!-- 本班记录：课次 + 日期 + 等级筛选 -->

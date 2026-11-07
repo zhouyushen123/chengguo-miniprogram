@@ -27,7 +27,9 @@ Page({
     // 空库：没有班级也没有学生 → 首页改摆开通卡（见 wxml 的 onboard 块）
     empty: false,
     // 同步冲突：本机数据与云端绑定的机构不一致（换手机前后各建了一份），横幅提示 + 说明
-    syncConflict: false
+    syncConflict: false,
+    // 家长反馈：云通且是老师时出现入口；unread 只做红点提醒，不阻塞首页任何操作
+    fbReady: false, fbUnread: 0, fbNote: ''
   },
   onLoad() {
     // 自定义导航要自己腾出状态栏的空间；取不到时用常见默认值兜底
@@ -109,7 +111,22 @@ Page({
       myClasses, recent, empty
     });
     if (empty && !st.sandbox) this.autoSetup();
+    this._loadFb();
   },
+  // 家长反馈（已读回执 / 留言）：云没通或接口失败就整块不显示，绝不在首页摆假数据
+  _loadFb() {
+    if (!api.enabled()) { if (this.data.fbReady) this.setData({ fbReady: false, fbUnread: 0 }); return; }
+    api.fbList('teacher').then(r => {
+      if (!r || !r.ok) { if (this.data.fbReady) this.setData({ fbReady: false, fbUnread: 0 }); return; }
+      const un = r.unhandled || 0;
+      this.setData({
+        fbReady: true,
+        fbUnread: un,
+        fbNote: un ? (un + ' 条新留言待处理') : ((r.total || 0) ? '留言都处理完了' : '家长留言与已读回执')
+      });
+    });
+  },
+  goFeedback() { wx.navigateTo({ url: '/pages/feedback/feedback' }); },
   // 首次进入：先问"老师还是家长"。家长走邀请码，老师走开通向导——
   // 以前直接甩向导，家长会被要求给机构起名字，第一步就走错路了。
   // 只有真的跳成功了才记账：跳失败（页面未注册/栈满）不该把机会用掉，下次进来还能再跳

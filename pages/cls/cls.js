@@ -23,6 +23,8 @@ Page({
     tagOpts: ['全部等级'].concat(TAGS), tagIdx: 0,
     recs: [], recTotal: 0, allCount: 0,
     canSettle: false, hasCurRecs: false,
+    // 家长回执：本次课已发布记录里，有多少家长真的打开看过；有留言时也在这里露一句
+    fbReady: false, fbSeen: 0, fbSent: 0, fbNotes: 0,
     icoChevD: icons.chevronDown, icoChev: icons.chevron
   },
   onLoad(q) {
@@ -88,7 +90,31 @@ Page({
       hasCurRecs: curCount > 0,
       allCount: this._all.length
     }, () => { this._applyTiles(); this._applyRecs(); });
+    this._loadFb();
   },
+  // 本次课「家长已看 x/y」：只统计已发布的记录（没发布的家长本来也看不到）
+  _loadFb() {
+    const cur = this.data.sess;
+    const sent = (this._all || []).filter(r => r.session === cur && r.sent);
+    if (!sent.length || !api.enabled()) {
+      if (this.data.fbReady) this.setData({ fbReady: false, fbSeen: 0, fbSent: 0, fbNotes: 0 });
+      return;
+    }
+    const rids = sent.map(r => r.id).slice(0, 50);
+    api.fbStats(rids).then(r => {
+      if (!r || !r.ok) return;
+      const st = r.stats || {};
+      let seen = 0, notes = 0;
+      rids.forEach(id => {
+        const s = st[id];
+        if (!s) return;
+        if (s.viewed) seen++;
+        notes += s.notes || 0;
+      });
+      this.setData({ fbReady: true, fbSeen: seen, fbSent: rids.length, fbNotes: notes });
+    });
+  },
+  goFeedback() { wx.navigateTo({ url: '/pages/feedback/feedback?id=' + this.clsId }); },
   // 学生状态筛选
   pickFilt(e) {
     this.setData({ filt: e.currentTarget.dataset.f }, () => this._applyTiles());

@@ -16,6 +16,8 @@ Page({
     dateOpts: ['不限日期'], dateIdx: 0,
     tagOpts: ['全部等级'].concat(TAGS), tagIdx: 0,
     list: [], total: 0, allCount: 0,
+    // 家长已读回执：fbAny = 这批记录里至少一条拿到了回执数据（云端可用），否则整排小标不显示
+    fbAny: false,
     icoChevD: icons.chevronDown, icoCamera: icons.camera, icoAudio: icons.audio
   },
   onLoad(q) {
@@ -120,8 +122,29 @@ Page({
         };
       });
     this.setData({ _terms: terms, termOpts, termIdx, dateOpts, dateIdx, tagOpts, tagIdx, list, total: list.length, allCount });
+    // 已发布记录补「家长已看 / 未看」小标（云端批量问，一次最多 50 条）
+    this._loadFb();
     // 录完回来 / 下拉刷新时，未录名单跟着重算（不然刚录完的人还挂在名单上）
     if (this.data.missMode) this.buildMiss();
+  },
+  _loadFb() {
+    const sent = (this.data.list || []).filter(x => x.sent);
+    if (!sent.length || !api.enabled()) {
+      if (this.data.fbAny) this.setData({ fbAny: false });
+      return;
+    }
+    const rids = sent.map(x => x.id).slice(0, 50);
+    api.fbStats(rids).then(r => {
+      if (!r || !r.ok) return;
+      const st = r.stats || {};
+      const list = (this.data.list || []).map(x => {
+        const s = st[x.id];
+        // 未发布的记录没有回执，保持 null 让模板不渲染
+        if (!x.sent || !s) return Object.assign({}, x, { fbKnown: false, fbSeen: 0, fbN: 0 });
+        return Object.assign({}, x, { fbKnown: true, fbSeen: s.viewed || 0, fbN: s.notes || 0 });
+      });
+      this.setData({ list, fbAny: true });
+    });
   },
   // 学期变化：下层筛选全部归位
   onTerm(e) {

@@ -41,3 +41,11 @@
 .btnrow .btn { flex: 1; padding: 14rpx 0; font-size: 27rpx; border-radius: 18rpx; box-shadow: none; }
 .btn.send.off { background: var(--line-2); color: var(--muted); box-shadow: none; }
 .empty { text-align: center; color: var(--muted); padding: 120rpx 0; }
+
+/* ---------- 家长已读 / 留言小标 ---------- */
+.fbtag {
+  margin-left: 10rpx; padding: 2rpx 12rpx; border-radius: 999rpx;
+  font-size: 21rpx; background: var(--chip); color: var(--muted);
+}
+.fbtag.on { background: var(--brand-tint); color: var(--brand); }
+.fbtag.nt { background: var(--brand); color: #fff; }

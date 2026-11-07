@@ -62,6 +62,16 @@
     <view wx:if="{{rec.canEdit}}" class="chips" style="margin:12rpx 0 0">
       <text class="pill" style="background:var(--brand);color:#fff" hover-class="btn-hover" bindtap="editRec" data-rid="{{rec.id}}">修改这条记录</text>
     </view>
+    <!-- 家长留言：只有家长 + 云通 + 已发布才出现；老师看自己的记录不需要这块 -->
+    <view wx:if="{{fbOn && rec.sent}}" class="fbbox">
+      <view class="fbbtn" hover-class="btn-hover" bindtap="openNote" data-rid="{{rec.id}}" data-course="{{rec.course}}" data-date="{{rec.date}}">
+        {{fbCard.length ? '给老师留句话 · 我已留 ' + fbCard.length + ' 条' : '给老师留句话'}}
+      </view>
+      <view wx:for="{{fbCard}}" wx:key="id" class="fbn">
+        <view class="fbnt">{{item.text}}</view>
+        <view class="mi">{{item.time}} · {{item.handled ? '老师已看' : '已送达，等老师看'}}</view>
+      </view>
+    </view>
   </view>
 
   <!-- 班级筛选 + 课程页签 + 最近一次详情 + 评价汇总 + 历史列表 -->
@@ -99,6 +109,16 @@
       <view wx:if="{{latest.canEdit}}" class="chips" style="margin:12rpx 0 0">
         <text class="pill" style="background:var(--brand);color:#fff" hover-class="btn-hover" bindtap="editRec" data-rid="{{latest.id}}">修改这条记录</text>
       </view>
+      <!-- 家长留言：对最近这次课给老师留句话（已发布才显示） -->
+      <view wx:if="{{fbOn && latest.sent}}" class="fbbox">
+        <view class="fbbtn" hover-class="btn-hover" bindtap="openNote" data-rid="{{latest.id}}" data-course="{{latest.course}}" data-date="{{latest.date}}">
+          {{fbCard.length ? '给老师留句话 · 我已留 ' + fbCard.length + ' 条' : '给老师留句话'}}
+        </view>
+        <view wx:for="{{fbCard}}" wx:key="id" class="fbn">
+          <view class="fbnt">{{item.text}}</view>
+          <view class="mi">{{item.time}} · {{item.handled ? '老师已看' : '已送达，等老师看'}}</view>
+        </view>
+      </view>
       <!-- 评价汇总：当前筛选范围内各档评价次数 -->
       <view wx:if="{{tagCounts.length}}" class="tagsum">
         <view class="mi ts-title">评价汇总</view>
@@ -131,6 +151,7 @@
           <view class="chips" style="margin:0 0 12rpx">
             <text class="pill" style="background:{{item.sent?'var(--sent)':'var(--warn)'}}">{{item.sent?'已发布':'待发布'}}</text>
             <text wx:if="{{item.canEdit}}" class="pill" style="background:var(--brand);color:#fff" hover-class="btn-hover" bindtap="editRec" data-rid="{{item.id}}">修改这条</text>
+            <text wx:if="{{fbOn && item.sent}}" class="pill" style="background:var(--brand-soft);color:var(--brand)" hover-class="btn-hover" bindtap="openNote" data-rid="{{item.id}}" data-course="{{item.course}}" data-date="{{item.date}}">给老师留句话</text>
           </view>
           <view class="photogrid {{item.pcls}}" wx:if="{{item.photos.length}}">
             <image wx:for="{{item.photos}}" wx:for-item="ph" wx:key="*this" src="{{ph}}" mode="{{item.pcls==='pg1'?'aspectFit':'aspectFill'}}" />
@@ -149,6 +170,38 @@
 
   <view class="btn cta" bindtap="goRecord"><image class="bico" src="{{icoPlus}}" mode="aspectFit" />记录本节成果</view>
   <view class="slogan">橙果 · 让每一次进步都被看见</view>
+</view>
+
+<!-- 家长留言弹层：写一句给老师（文字或麦克风转文字），下方列出自己在这条成果下说过的话 -->
+<view wx:if="{{fbSheet}}" class="fbmask" catchtap="closeNote">
+  <view class="fbsheet" catchtap="noop">
+    <view class="fbhead">
+      <view class="fbh">给老师留句话</view>
+      <view class="mi">{{fbCourse}}{{fbDate ? ' · ' + fbDate : ''}}</view>
+    </view>
+    <view class="vin">
+      <textarea class="fbin vin-in" maxlength="200" auto-height cursor-spacing="24"
+        placeholder="感谢、建议或疑问都可以，老师会看到" placeholder-class="ph"
+        value="{{fbText}}" bindinput="onFbInput"></textarea>
+      <image class="vmic {{micKey==='fbText'?'rec':''}}" src="{{micKey==='fbText'?icoWhite:icoMic}}"
+        mode="aspectFit" catchtap="onFbMic" />
+    </view>
+    <view class="fbrow">
+      <text class="mi">{{fbText.length}}/200</text>
+      <text wx:if="{{fbErr}}" class="fberr">{{fbErr}}</text>
+    </view>
+    <view class="fbbtns">
+      <view class="btn ghost" hover-class="btn-hover" catchtap="closeNote">先不写</view>
+      <view class="btn {{fbBusy?'off':''}}" hover-class="btn-hover" catchtap="sendNote">{{fbBusy ? '发送中…' : '发给老师'}}</view>
+    </view>
+    <view wx:if="{{fbNotes.length}}" class="fblist">
+      <view class="label">我在这条成果下说过</view>
+      <view wx:for="{{fbNotes}}" wx:key="id" class="fbn">
+        <view class="fbnt">{{item.text}}</view>
+        <view class="mi">{{item.time}} · {{item.handled ? '老师已看' : '已送达，等老师看'}}</view>
+      </view>
+    </view>
+  </view>
 </view>
 
 <!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->

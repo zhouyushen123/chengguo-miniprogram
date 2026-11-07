@@ -83,6 +83,10 @@ Page({
     if (!isManager && !db.students.list().length) {
       entries.push({ k: 'join', t: '输入邀请码加入', d: '老师发了机构码，从这儿加入' });
     }
+    // 家长反馈：家长留言与已读回执（老师/负责人可见；家长自己不需要这个入口）
+    if (!db.auth.isParent()) {
+      entries.push({ k: 'feedback', t: '家长反馈', d: '谁看过成果、家长说了什么' });
+    }
     // 存储空间：照片视频占的是这台手机的空间，满了会静默存不进去，所以给一个能看见的地方
     entries.push({ k: 'storage', t: '存储空间', d: '照片视频占用与清理' });
     entries.push({ k: 'about', t: '关于橙果', d: '这是什么、怎么用' });
@@ -108,6 +112,7 @@ Page({
     if (k === 'about') { this.showAbout(); return; }
     if (k === 'demo') { this.demoMenu(); return; }
     if (k === 'storage') { wx.navigateTo({ url: '/pages/storage/storage' }); return; }
+    if (k === 'feedback') { wx.navigateTo({ url: '/pages/feedback/feedback' }); return; }
     if (k === 'join') { wx.navigateTo({ url: '/pages/join/join' }); return; }
     if (k === 'invite') { this.inviteMenu(); return; }
     if (k === 'web') { this.webAdmin(); return; }

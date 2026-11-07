@@ -26,6 +26,7 @@ const SUITES = [
   ['verify_sync.js', '记录上云'],
   ['verify_pull.js', '云端拉取分页'],
   ['verify_invite.js', '邀请码加入'],
+  ['verify_invite_card.js', '家长免码邀请卡'],
   ['verify_admin.js', '电脑端后台'],
   ['verify_ava.js', '头像统一'],
   ['verify_import.js', '批量导入'],

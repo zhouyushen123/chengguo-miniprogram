@@ -173,6 +173,7 @@
       </view>
     </view>
     <view class="stuacts">
+      <view class="mi act" catchtap="openCard" data-id="{{item.id}}">发卡</view>
       <view class="mi act" catchtap="editStudent" data-id="{{item.id}}">编辑</view>
       <view class="mi del" catchtap="delStudent" data-id="{{item.id}}">删除</view>
     </view>
@@ -432,6 +433,26 @@
     <view class="row2">
       <view class="btn ghost" hover-class="btn-hover" bindtap="closeCrsDetail">取消</view>
       <view class="btn" hover-class="btn-hover" bindtap="saveCrsDetail">保存</view>
+    </view>
+  </view>
+</view>
+
+<!-- 一人一卡的家长邀请：卡面写明孩子，链接里只有一次性令牌 -->
+<view wx:if="{{cardSheet}}" class="mask" bindtap="closeCard">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-t">发给【{{cardSheet.stuName}}】家长</view>
+    <view class="mi" style="text-align:center;margin:6rpx 0 24rpx">{{cardSheet.orgName}}<text wx:if="{{cardSheet.clsName}}"> · {{cardSheet.clsName}}</text></view>
+    <view class="invcard">
+      <view class="invmeta">家长点开看到的是这张卡</view>
+      <view class="invname">{{cardSheet.stuName}}</view>
+      <view class="invmeta">点一下确认，看孩子的课堂成果</view>
+    </view>
+    <view class="mi" style="margin-top:20rpx">不用记机构码、不用记学号；{{cardSheet.exp}}前有效，只能确认一次。</view>
+    <view class="warnline">请单独发给这一位家长：这张卡还没接「老师审核」，暂时不要发到班级群，避免别人点错孩子。</view>
+    <button class="sharebtn" open-type="share">发给家长</button>
+    <view class="row2">
+      <view class="btn ghost" hover-class="btn-hover" bindtap="closeCard">关闭</view>
+      <view class="btn ghost" hover-class="btn-hover" bindtap="revokeCard">作废重发</view>
     </view>
   </view>
 </view>

@@ -1,6 +1,6 @@
 # 家长免码加入 · 一人一卡方案（定稿 2026-11-07）
 
-> 状态：**方案已定稿，尚未动代码**。
+> 状态：**方案已定稿；阶段 1（专属卡最小闭环）已实施，见第十二节**。
 > 讨论记录见 `docs/handoff.md` 19:42 / 19:48 两节；本文件是后续实施的唯一依据。
 
 ## 一、结论与方向
@@ -143,3 +143,29 @@
 ## 十一、回滚
 
 卡片是**新增旁路**，不替换现有机构码。出问题时把老师端「发卡片」入口隐藏 + `cardCreate` 关掉即可，已加入的家长不受影响；`invites` 老入口始终可用。
+
+## 十二、阶段 1 实施记录（2026-11-07）
+
+**做了什么**
+
+| 层 | 改动 |
+|---|---|
+| 云端 `syncv2` | 新增 `invite_cards` 集合（进 `ensureCollections()`，不用控制台手工建）；`cardCreate / cardInfo / cardClaim / cardRevoke` 四个 action |
+| 云端复用 | 抽出 `kidsFor()`（按学号或 sid 认孩子 + `wechat`/`parentPhone` 双键归并兄妹）与 `finishJoin()`（建绑定 + 建成员）；`inviteJoin` 老入口改用这两个函数，**行为不变**，顺带补齐第八节点名的 `parentPhone` 不一致 |
+| 客户端 `api.js` | `cardCreate / cardInfo / cardClaim / cardRevoke`，与邀请码一样走 `callFn`、不经 `syncOn` 闸门（家长还没绑机构） |
+| 客户端 `sync.js` | 抽出 `adopt()`（改挂机构 + 游标归零 + 全量拉回）；新增 `joinByCard()` 直接消费 `cardClaim` 的结果，**不再打一次 inviteJoin**，避免重复建成员；导出 `canJoin()` 供确认页提前检测空库 |
+| 老师端 | `pages/mgr` 学生列表加「发卡」→ 先同步一轮 → `cardCreate` → 弹层展示卡面 + `<button open-type="share">发给家长</button>` +「作废重发」；`onShareAppMessage()` 同步返回 `?card=<token>` |
+| 家长端 | `pages/join` 加 `stage=3` 卡片态：卡面三个名字、填自己姓名、显式「我是，确认加入」、本机非空提前提示；成功后回首页（tabBar，返回路径完整） |
+| 守卫 | 新增 `tests/verify_invite_card.js` **23 项**（内存假库真跑云函数：一次性并发、过期、作废、权限、只回姓名；前端行为断言：joinByCard 不打老接口、拉一次全量、LOCAL_DATA） |
+
+**安全口径**：阶段 1 只有**私聊专属卡**，弹层和手册都明确写了「暂时不要发到班级群」。
+「默认老师审核」属于阶段 2：它要同时改客户端权限层的 `status` 判定（当前 `MEMBER_STATUS`
+只有 `active/invited/disabled`，`invited` 并不会 fail-closed），单独在云端落 `pending` 会变成
+「看着在审核、其实数据全拉得到」的半吊子状态，所以**不提前做、也不假装做了**。
+整班卡 + `cardList/cardApprove/cardReject` + 权限层一起在阶段 2 落地，那时才开放群发。
+
+**验收口径调整**：阶段 1 真机验收从「确认 → 直接进孩子档案」改为「确认 → 回家长首页」，
+因为 `reLaunch` 到非 tabBar 的档案页会让家长没有返回路径；首页家长视角本身就是孩子成果入口。
+
+**部署**：云函数 `syncv2` 需 `npm run cloud -- syncv2`，部署后控制台把超时设回 20 秒并
+`npm run cloud:info` 复核；小程序端 `npm run ship`，最后「设为体验版」仍需后台点一次。

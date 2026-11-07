@@ -1,4 +1,6 @@
 const db = require('../../utils/db');
+const api = require('../../utils/api');
+const sync = require('../../utils/sync');
 const icons = require('../../utils/icons');
 const media = require('../../utils/media');
 const theme = require('../../utils/theme');
@@ -52,7 +54,9 @@ Page({
     userStuQ: '', userStuCands: [],
     memTab: 'all', memShown: [],   // 人员页签：全部/老师/家长三个分类，默认全部
     userClsChips: [], userStuChips: [], userCrsChips: [],
-    roleOpts: ROLE_OPTS
+    roleOpts: ROLE_OPTS,
+    // 家长邀请卡：一人一张，弹层里点「发给家长」直接调起微信分享
+    cardSheet: null, cardBusy: false
   },
   // 从个人中心带参进入：?tab=3 直达人员管理；?tabK=cls/stu 按页签名跳（首页统计卡用，
   // 负责人和老师的页签序号不同，传名字才能两边都落对）
@@ -820,5 +824,70 @@ Page({
   // 语音输入：点输入框右端的麦克风说话，再点一次结束（utils/voice.js）
   onMic(e) { voice.dictate(this, e.currentTarget.dataset.k); },
   onHide() { voice.stop(this); }, // 离开页面别让麦克风一直开着
-  onUnload() { voice.stop(this); }
+  onUnload() { voice.stop(this); },
+
+  /* ================= 家长邀请卡（一人一张，免记码） =================
+   * 先同步一轮再发卡：云端判权限靠「成员表里有我」，学生也必须先推上云。
+   * 这一步和「我的 → 邀请成员」取码是同一条坑，不先同步会白挨一个 NO_MEMBER。
+   */
+  openCard(e) {
+    if (this.data.cardBusy) return;
+    const sid = +e.currentTarget.dataset.id;
+    const s = db.students.get(sid);
+    if (!s) return;
+    if (!api.enabled()) { wx.showToast({ title: '网络未就绪，请稍后重试', icon: 'none' }); return; }
+    this.setData({ cardBusy: true });
+    wx.showLoading({ title: '生成卡片', mask: true });
+    const orgId = (db.auth.member() || {}).orgId;
+    sync.syncNow({ force: true }).catch(() => {}).then(() => api.cardCreate(sid, orgId)).then(out => {
+      wx.hideLoading();
+      this.setData({ cardBusy: false });
+      if (!out || !out.ok) {
+        const msg = out && out.code === 'NO_MEMBER'
+          ? '云端还没同步完，等半分钟再试一次'
+          : ((out && out.msg) || '生成失败，请检查网络');
+        wx.showToast({ title: msg, icon: 'none' });
+        return;
+      }
+      const d = new Date(out.expiresAt);
+      this.setData({ cardSheet: {
+        token: out.token, sid, stuName: out.stuName || s.name || '孩子',
+        orgName: out.orgName || '', clsName: out.clsName || '',
+        exp: (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日'
+      } });
+    }).catch(() => {
+      wx.hideLoading();
+      this.setData({ cardBusy: false });
+      wx.showToast({ title: '生成卡片失败，请重试', icon: 'none' });
+    });
+  },
+  closeCard() { this.setData({ cardSheet: null }); },
+  revokeCard() {
+    const c = this.data.cardSheet;
+    if (!c) return;
+    wx.showModal({
+      title: '作废这张卡？',
+      content: '作废后这条链接立即失效，家长点开会看到「已被老师作废」。关闭弹层再点一次「发卡」即可重发。',
+      success: r => {
+        if (!r.confirm) return;
+        const orgId = (db.auth.member() || {}).orgId;
+        api.cardRevoke(c.token, orgId).then(out => {
+          wx.showToast({ title: out && out.ok ? '已作废' : ((out && out.msg) || '作废失败'), icon: 'none' });
+          if (out && out.ok) this.setData({ cardSheet: null });
+        });
+      }
+    });
+  },
+  // 分享卡片必须同步返回，token 在 openCard 里已经生成好存在 data 上。
+  // 链接里只有 token：不带机构码、不带学号、不带成绩或照片。
+  onShareAppMessage() {
+    const c = this.data.cardSheet;
+    if (c && c.token) {
+      return {
+        title: c.stuName + ' · 课堂成果邀请',
+        path: '/pages/join/join?card=' + c.token
+      };
+    }
+    return { title: '橙果 · 让每一次进步都被看见', path: '/pages/index/index' };
+  }
 });

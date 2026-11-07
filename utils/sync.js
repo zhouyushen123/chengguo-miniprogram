@@ -181,25 +181,43 @@ function syncNow(opts) {
  * 【前置条件】本机必须是空的。有数据还强行加入，等于把一个机构的记录塞进另一个机构的 id 空间，
  * 冲突起来没法收场。所以宁可拒绝并提示先清空，也不做「合并」这种看起来聪明的事。
  */
+function adopt(r) {
+  const m = r.member || {};
+  db.patchMeta({ orgId: String(r.orgId), me: String(m.userId || ''), openid: String(m.openid || '') });
+  // 同上：骨架行跟着换机构号，否则内置学期/模板在本机构里永远看不见
+  db.adoptFactoryRows(String(r.orgId));
+  // 换机构：游标归零，从头拉一遍；本地那份空库不需要推
+  db.sync.setCursor(0);
+  db.sync.clearDirty(db.sync.COLLS);
+  ready = true;
+  return pullNow().then(p => ({
+    ok: true, orgId: String(r.orgId), member: m, sid: Number(r.sid) || 0,
+    pulled: p.added + p.updated
+  }));
+}
+
 function join(code, name, stuNo) {
   if (!api.syncOn()) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪，请稍后重试' });
   if (!isEmptyLocal()) {
     return Promise.resolve({ ok: false, code: 'LOCAL_DATA', msg: '本机已有数据，请先在「存储空间」里清空后再加入' });
   }
   return api.inviteJoin({ code, name, stuNo })
-    .then(r => {
-      if (!r || !r.ok) return r || { ok: false, msg: '加入失败' };
-      const m = r.member || {};
-      db.patchMeta({ orgId: String(r.orgId), me: String(m.userId || ''), openid: String(m.openid || '') });
-      // 同上：骨架行跟着换机构号，否则内置学期/模板在本机构里永远看不见
-      db.adoptFactoryRows(String(r.orgId));
-      // 换机构：游标归零，从头拉一遍；本地那份空库不需要推
-      db.sync.setCursor(0);
-      db.sync.clearDirty(db.sync.COLLS);
-      ready = true;
-      return pullNow().then(p => ({ ok: true, orgId: String(r.orgId), member: m, pulled: p.added + p.updated }));
-    })
+    .then(r => (!r || !r.ok) ? (r || { ok: false, msg: '加入失败' }) : adopt(r))
     .catch(e => ({ ok: false, msg: (e && e.message) || '加入失败' }));
+}
+
+/* ---------------- 家长点卡确认 ----------------
+ * 与 join 共用 adopt：云端 cardClaim 已经把绑定和成员关系建好了，
+ * 这里只负责把本机改挂过去并全量拉回，绝不再打一次 inviteJoin（那会重复建成员）。
+ */
+function joinByCard(token, name) {
+  if (!api.syncOn()) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪，请稍后重试' });
+  if (!isEmptyLocal()) {
+    return Promise.resolve({ ok: false, code: 'LOCAL_DATA', msg: '本机已有数据，请先在「存储空间」里清空后再加入' });
+  }
+  return api.cardClaim(token, name)
+    .then(r => (!r || !r.ok) ? (r || { ok: false, msg: '确认失败' }) : adopt(r))
+    .catch(e => ({ ok: false, msg: (e && e.message) || '确认失败' }));
 }
 
 // 写后自动上推：本地一次保存常常连续写几个集合，防抖合并成一轮
@@ -269,6 +287,8 @@ try {
 } catch (e) { /* 数据层不可用不影响本地使用 */ }
 
 module.exports = {
-  init, pullNow, pushNow, syncNow, kick, schedule, join, claim, history, revert,
+  init, pullNow, pushNow, syncNow, kick, schedule, join, joinByCard, claim, history, revert,
+  // 确认页提前检测本机是否为空库，别让人填完姓名才看到 LOCAL_DATA
+  canJoin: () => isEmptyLocal(),
   isReady: () => ready, isConflict: () => conflict
 };

@@ -1324,3 +1324,30 @@ stuImport 20 / syncv2 20`，末尾 `✔ 所有函数超时都 ≥ 20 秒`。
   客户端 `studentSiblings()` 已支持 `parentPhone`（F-04 新增字段没同步到云端）；
   `sync.join()` 要求本机空库，确认页要提前给清空指引。
 - 本轮**只新增文档，小程序代码与云函数一行未动**，不用重部署、不用重传体验版。
+
+## 20:xx 家长免码加入 · 阶段 1 落地（一人一卡最小闭环）
+
+- 用户「确定」后按 `docs/invite-card-plan.md` 第十节阶段 1 动手，**专属卡已完成，整班卡与老师审核仍属阶段 2**。
+- **云端 `syncv2`**：新增 `invite_cards` 集合（进 `ensureCollections()`，无需手工建表）与
+  `cardCreate / cardInfo / cardClaim / cardRevoke`。链接里只有 12 位一次性 token；
+  `cardInfo` 只回机构名 / 班级名 / 孩子姓名，不回学号、机构码、手机号、照片、任何业务数据。
+  一次性靠 `where({_id, status:'unused'}).update()` 原子条件写（两人同时点只有一个生效），
+  过期 7 天 / 作废 / 已用过都会被拒；加入失败会把卡回滚成 `unused`，不白废一张。
+- **复用而非重做**：抽出 `kidsFor()`（按学号或 sid 认孩子，`wechat` + `parentPhone` 双键归并兄妹）
+  和 `finishJoin()`（建绑定 + 建成员），老 `inviteJoin` 一起改用，**行为不回归**；
+  顺带补齐 19:52 查出的云端兄弟姐妹归并没跟上 F-04 `parentPhone` 的不一致。
+- **客户端**：`api.js` 四个卡片接口走 `callFn` 不经 `syncOn`；`sync.js` 抽 `adopt()`、
+  新增 `joinByCard()`（直接消费 `cardClaim` 结果，**不再打 inviteJoin**，避免重复建成员）、
+  导出 `canJoin()` 让确认页提前检测本机非空库。
+- **两端界面**：老师端 `mgr` 学生列表「发卡」→ 先同步一轮 → 弹层卡面 + `open-type="share"`
+  分享 `?card=<token>` +「作废重发」；家长端 `join` 加 `stage=3` 卡片态，填姓名 +
+  「我是，确认加入」显式二次确认，成功后回首页。卡面不放照片/学号/成绩。
+- **阶段 1 只私聊发**：弹层、手册、用例三处都写了「暂时不要发到班级群」。
+  「默认老师审核」放阶段 2，因为客户端 `MEMBER_STATUS` 里 `invited` 并不会 fail-closed，
+  单在云端落 `pending` 会变成"看着在审核、其实数据全拉得到"的假安全；那时才开放整班群发卡。
+- 新增 `tests/verify_invite_card.js` **23 项**（内存假库真跑云函数 + 前端行为断言），
+  已注册 `tests/run.js`；lint 0 提醒、数据字典一致、**37 套件全绿**。
+  `docs/user-manual.md` 3.4 / 13 章、`docs/user-test-cases.md` Q-12～Q-17（合计 211 条）、
+  `docs/invite-card-plan.md` 第十二节已同步；`.gitignore` 加 `.fake-wx-sdk-card.js`。
+- **云函数改了**：必须 `npm run cloud -- syncv2` 重部署，控制台把 `syncv2` 超时设回 20 秒
+  并 `npm run cloud:info` 复核；小程序端 `npm run ship` 后后台「设为体验版」仍要人工点一次。

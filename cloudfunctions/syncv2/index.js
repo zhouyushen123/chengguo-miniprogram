@@ -28,11 +28,18 @@ const INVITE_DAYS = 30;
 const ROLES = ['parent', 'teacher', 'admin'];
 // 去掉容易看错的 0/O/1/I/2/Z，家长照着屏幕或纸质卡片输入不该猜字母
 const ALPHABET = 'ACDEFGHJKLMNPQRSTUVWXY3456789';
+// 家长邀请卡：一人一张，把「机构码 + 孩子」预封成一次性令牌。
+// 家长不用记 6 位码、不用记 4 位学号，点开卡片确认即可。
+// token 只用无歧义小写字母数字，12 位；分享链接里只有它，不带任何业务数据。
+const CARDS = 'invite_cards';
+const CARD_DAYS = 7;
+const CARD_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';
+const CARD_RE = /^[a-z0-9]{12,20}$/;
 
 // 首次调用时集合还不存在（云数据库不会自动建表）→ 一个一个建，已存在就忽略。
 // 这样用户不用在控制台手工点十次，部署完直接用。
 async function ensureCollections() {
-  for (const c of COLLS.concat(['users', INVITES, HISTORY])) {
+  for (const c of COLLS.concat(['users', INVITES, HISTORY, CARDS])) {
     try { await db.createCollection(c); } catch (e) { /* 已存在即可 */ }
   }
 }
@@ -152,6 +159,113 @@ async function checkCore(c, d, orgId) {
 }
 const CODE_RE = /^[A-Z0-9]{4,10}$/;
 
+/* ---------------- 家长邀请卡 · 服务端工具 ----------------
+ * 卡片不是一套新身份体系：服务端把它换回「机构码 + 孩子」，再走和老入口一样的落库。
+ * 所以 inviteJoin 的建绑定/建成员/权限口径完全复用，老码不受影响。
+ */
+function newCardToken() {
+  let s = '';
+  for (let i = 0; i < 12; i++) s += CARD_CHARS[Math.floor(Math.random() * CARD_CHARS.length)];
+  return s;
+}
+
+// 取（或新建）本机构的家长邀请码。卡片从不把这个码下发到家长端，
+// 只在服务端用它反查机构身份 —— 家长手里只有 token。
+async function parentCode(orgId, openid) {
+  const found = await db.collection(INVITES).where({ orgId, role: 'parent', closed: false })
+    .limit(5).get().catch(() => ({ data: [] }));
+  const live = found.data.filter(x => (Number(x.expiresAt) || 0) > Date.now())[0];
+  if (live) return live._id;
+  for (let i = 0; i < 5; i++) {
+    const code = newCode();
+    const dup = await db.collection(INVITES).doc(code).get().catch(() => null);
+    if (dup && dup.data) continue;
+    await db.collection(INVITES).doc(code).set({
+      data: { orgId, role: 'parent', closed: false, uses: 0, by: openid,
+        createdAt: Date.now(), expiresAt: Date.now() + INVITE_DAYS * 86400000 }
+    });
+    return code;
+  }
+  return '';
+}
+
+// 卡片状态统一在这里判：不存在 / 作废 / 过期 / 已用过，家长端只会收到一句人话。
+async function readCard(token) {
+  if (!CARD_RE.test(token)) return { err: { ok: false, code: 'BAD_CARD', msg: '卡片链接不对，请让老师重发' } };
+  const r = await db.collection(CARDS).doc(token).get().catch(() => null);
+  const d = r && r.data;
+  if (!d) return { err: { ok: false, code: 'NO_CARD', msg: '这张卡片不存在，请让老师重发' } };
+  if (d.status === 'revoked') return { err: { ok: false, code: 'REVOKED', msg: '这张卡片已被老师作废，请让老师重发' } };
+  if ((Number(d.expiresAt) || 0) < Date.now()) return { err: { ok: false, code: 'EXPIRED', msg: '这张卡片已过 7 天有效期，请让老师重发' } };
+  return { d };
+}
+
+// 认领哪些孩子。老入口按学号；卡片按 sid（服务端自己存的，家长看不到），
+// 这样学生没填学号也能发卡 —— 「不让家长记学号」要真的做到。
+// 兄弟姐妹按微信号 + 家长手机号双键归并（客户端 F-04 已是双键，云端在此对齐）。
+async function kidsFor(orgId, opts) {
+  let kid = null;
+  if (opts && opts.studentId) {
+    const sr = await db.collection('students').where({ orgId, id: Number(opts.studentId) || 0 })
+      .limit(5).get().catch(() => ({ data: [] }));
+    kid = sr.data.filter(s => !s.removed)[0];
+    if (!kid) return { err: { ok: false, code: 'NO_STUDENT', msg: '孩子档案已不在，请让老师重发卡片' } };
+  } else {
+    const no = String((opts && opts.stuNo) || '').trim();
+    if (!no) return { err: { ok: false, code: 'NO_STU', msg: '请填写孩子的学号' } };
+    const sr = await db.collection('students').where({ orgId, no }).limit(5).get().catch(() => ({ data: [] }));
+    kid = sr.data.filter(s => !s.removed)[0];
+    if (!kid) return { err: { ok: false, code: 'NO_STUDENT', msg: '没有找到这个学号，请跟老师核对' } };
+  }
+  const kids = [kid.id];
+  const keys = [];
+  if (kid.wechat) keys.push({ k: 'wechat', v: String(kid.wechat) });
+  if (kid.parentPhone) keys.push({ k: 'parentPhone', v: String(kid.parentPhone) });
+  for (const it of keys) {
+    const q = {}; q[it.k] = it.v;
+    const sib = await db.collection('students').where(Object.assign({ orgId }, q))
+      .limit(20).get().catch(() => ({ data: [] }));
+    sib.data.forEach(s => { if (!s.removed && kids.indexOf(s.id) < 0) kids.push(s.id); });
+  }
+  return { kids, kid };
+}
+
+// 建立/更新绑定与成员关系：inviteJoin 与 cardClaim 共用，避免两份实现漂移。
+// status 是给「老师审核」留的口子：阶段 1 一律 active，老入口也永远是 active。
+async function finishJoin(orgId, role, openid, name, kids, status) {
+  const had = await userOf(openid);
+  if (had && String(had.orgId) !== String(orgId)) {
+    return { ok: false, code: 'ORG_BOUND', msg: '该微信已加入其他机构' };
+  }
+  const now = Date.now();
+  if (!had) {
+    await db.collection('users').add({ data: { _openid: openid, orgId, createdAt: db.serverDate() } });
+  }
+  // 同一个人在同一个机构只留一条成员关系：重复加入（换手机、换微信重进）就地更新
+  const exist = await memberOf(openid, orgId);
+  let doc;
+  if (exist) {
+    doc = Object.assign({}, exist, {
+      name, role: exist.role === 'owner' ? 'owner' : role,
+      studentIds: kids.length ? kids : (exist.studentIds || []),
+      status: status || 'active', updatedAt: now, srvAt: now
+    });
+    delete doc._id;
+    await db.collection('members').doc(exist._id).update({ data: doc });
+  } else {
+    const id = newMemberId();
+    doc = {
+      id, orgId, userId: 'x' + id, openid,
+      role, name,
+      clsIds: [], courseIds: [], studentIds: kids,
+      status: status || 'active', phone: '', wechat: '', photo: '',
+      createdAt: now, updatedAt: now, srvAt: now
+    };
+    await db.collection('members').add({ data: doc });
+  }
+  return { ok: true, orgId, member: doc };
+}
+
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext();
   if (!OPENID) return { ok: false, msg: '未登录，拒绝调用' };
@@ -208,59 +322,67 @@ exports.main = async (event) => {
     if (d.closed) return { ok: false, code: 'CLOSED', msg: '该邀请码已停用' };
     if ((Number(d.expiresAt) || 0) < Date.now()) return { ok: false, code: 'EXPIRED', msg: '该邀请码已过期' };
 
-    // 已经有绑定：只能是同一个机构，否则拒绝（绝不把人从一个机构挪到另一个）
-    const had = await userOf(OPENID);
-    if (had && String(had.orgId) !== String(d.orgId)) {
-      return { ok: false, code: 'ORG_BOUND', msg: '该微信已加入其他机构' };
-    }
-
     // 家长必须提供学号：孩子是谁，由机构自己发的号来定，不让家长自由勾选别人的孩子
     let kids = [];
     if (d.role === 'parent') {
-      const no = String(event.stuNo || '').trim();
-      if (!no) return { ok: false, code: 'NO_STU', msg: '请填写孩子的学号' };
-      const sr = await db.collection('students').where({ orgId: d.orgId, no }).limit(5).get().catch(() => ({ data: [] }));
-      const kid = sr.data.filter(s => !s.removed)[0];
-      if (!kid) return { ok: false, code: 'NO_STUDENT', msg: '没有找到这个学号，请跟老师核对' };
-      kids = [kid.id];
-      // 同一家长号码的兄弟姐妹一起带上，家长不必为孩子逐个加入
-      if (kid.wechat) {
-        const sib = await db.collection('students').where({ orgId: d.orgId, wechat: kid.wechat }).limit(20).get().catch(() => ({ data: [] }));
-        sib.data.forEach(s => { if (!s.removed && kids.indexOf(s.id) < 0) kids.push(s.id); });
-      }
+      const got = await kidsFor(d.orgId, { stuNo: event.stuNo });
+      if (got.err) return got.err;
+      kids = got.kids;
     }
-
-    const now = Date.now();
-    if (!had) {
-      await db.collection('users').add({ data: { _openid: OPENID, orgId: d.orgId, createdAt: db.serverDate() } });
-    }
-    // 同一个人在同一个机构只留一条成员关系：重复加入（换手机、换微信重进）就地更新
-    const exist = await memberOf(OPENID, d.orgId);
-    let doc;
-    if (exist) {
-      doc = Object.assign({}, exist, {
-        name, role: exist.role === 'owner' ? 'owner' : d.role,
-        studentIds: kids.length ? kids : (exist.studentIds || []),
-        status: 'active', updatedAt: now, srvAt: now
-      });
-      delete doc._id;
-      await db.collection('members').doc(exist._id).update({ data: doc });
-    } else {
-      const id = newMemberId();
-      doc = {
-        id, orgId: d.orgId, userId: 'x' + id, openid: OPENID,
-        role: d.role, name,
-        clsIds: [], courseIds: [], studentIds: kids,
-        status: 'active', phone: '', wechat: '', photo: '',
-        createdAt: now, updatedAt: now, srvAt: now
-      };
-      await db.collection('members').add({ data: doc });
-    }
+    const out = await finishJoin(d.orgId, d.role, OPENID, name, kids, 'active');
+    if (!out.ok) return out;
     // 用量只做记录，不限制次数（一个机构码本来就该给全班家长用）
     await db.collection(INVITES).doc(code).update({
-      data: { uses: (Number(d.uses) || 0) + 1, lastAt: now }
+      data: { uses: (Number(d.uses) || 0) + 1, lastAt: Date.now() }
     }).catch(() => {});
-    return { ok: true, orgId: d.orgId, member: doc };
+    return out;
+  }
+
+  // ---- 家长邀请卡：这两个动作也必须在"已绑定机构"之前（家长还没加入） ----
+  if (action === 'cardInfo') {
+    const token = String(event.token || '').trim().toLowerCase();
+    const got = await readCard(token);
+    if (got.err) return got.err;
+    const d = got.d;
+    if (d.status !== 'unused') return { ok: false, code: 'USED', msg: '这张卡片已被确认过，请让老师重发' };
+    // 只回卡面需要的三个名字：不回学号、不回手机号、不回邀请码，也不回任何业务数据。
+    // 群里谁都能点开卡片，这里多返回一个字段就是多泄露一份全班信息。
+    return {
+      ok: true, orgName: String(d.orgName || '该机构'), clsName: String(d.clsName || ''),
+      stuName: String(d.stuName || '孩子'), expiresAt: Number(d.expiresAt) || 0
+    };
+  }
+
+  if (action === 'cardClaim') {
+    const token = String(event.token || '').trim().toLowerCase();
+    const name = String(event.name || '').trim().slice(0, 20);
+    if (!name) return { ok: false, code: 'NO_NAME', msg: '请填写你的姓名' };
+    const got = await readCard(token);
+    if (got.err) return got.err;
+    const d = got.d;
+    if (d.status !== 'unused') return { ok: false, code: 'USED', msg: '这张卡片已被确认过，请让老师重发' };
+
+    // 一次性：条件更新，谁先改成功谁拿到。两个人同时点同一张卡也只会有一个生效，
+    // 先读后写在这种并发下会双双通过 —— 那正是群发场景最怕的冒领。
+    const upd = await db.collection(CARDS).where({ _id: token, status: 'unused' })
+      .update({ data: { status: 'claimed', usedAt: Date.now(), usedBy: OPENID, claimName: name } })
+      .catch(() => ({ stats: { updated: 0 } }));
+    if (!upd || !upd.stats || upd.stats.updated !== 1) {
+      return { ok: false, code: 'USED', msg: '这张卡片已被确认过，请让老师重发' };
+    }
+    const rollback = () => db.collection(CARDS).doc(token).update({
+      data: { status: 'unused', usedAt: 0, usedBy: '', claimName: '' }
+    }).catch(() => {});
+
+    // 令牌在服务端换回具体孩子，家长端从头到尾没见过码和学号
+    const kidGot = await kidsFor(d.orgId, { studentId: d.sid });
+    if (kidGot.err) { await rollback(); return kidGot.err; }
+    const out = await finishJoin(d.orgId, 'parent', OPENID, name, kidGot.kids, 'active');
+    if (!out.ok) { await rollback(); return out; }
+    await db.collection(CARDS).doc(token).update({
+      data: { status: 'approved', approvedAt: Date.now() }
+    }).catch(() => {});
+    return Object.assign({}, out, { sid: d.sid });
   }
 
   const u = await userOf(OPENID);
@@ -294,6 +416,82 @@ exports.main = async (event) => {
       return { ok: true, code, role, expiresAt, reused: false };
     }
     return { ok: false, msg: '邀请码生成失败，请重试' };
+  }
+
+  // ---- 老师端发卡 / 作废（已绑定机构才可调，权限按成员表判） ----
+  if (action === 'cardCreate') {
+    const sid = Number(event.sid) || 0;
+    if (!sid) return { ok: false, code: 'NO_STU', msg: '请先选择学生' };
+    const me = await memberOf(OPENID, orgId);
+    if (!me) return { ok: false, code: 'NO_MEMBER', msg: '本账号不在该机构成员表里' };
+    const isManager = me.role === 'owner' || me.role === 'admin';
+    if (!isManager && me.role !== 'teacher') {
+      return { ok: false, code: 'FORBIDDEN', msg: '没有发卡权限' };
+    }
+    // 学生必须已同步上云；刚建好还没推上去时给一句能照做的提示，而不是"不存在"
+    const sr = await db.collection('students').where({ orgId, id: sid }).limit(5).get().catch(() => ({ data: [] }));
+    const s = sr.data.filter(x => !x.removed)[0];
+    if (!s) return { ok: false, code: 'NO_STUDENT', msg: '云端还没有这个学生，请先同步一轮再发卡' };
+    // 老师只能给自己带的班发家长卡（负责人/管理员不限）
+    if (!isManager) {
+      const clsIds = (s.clsIds || []).map(Number);
+      const mine = (me.clsIds || []).map(Number);
+      if (!clsIds.some(c => mine.indexOf(c) > -1)) {
+        return { ok: false, code: 'FORBIDDEN', msg: '只能给自己班上的学生发卡' };
+      }
+    }
+    const code = await parentCode(orgId, OPENID);
+    if (!code) return { ok: false, msg: '邀请码生成失败，请重试' };
+    // 卡面三个名字在创建时固化：家长点开时不必再查业务表，也不会因改名而查不到
+    let orgName = '', clsName = '';
+    const o = await db.collection('orgs').where({ id: orgId }).limit(1).get().catch(() => ({ data: [] }));
+    orgName = (o.data[0] && o.data[0].name) || '';
+    const cid = Number((s.clsIds || [])[0]) || 0;
+    if (cid) {
+      const cr = await db.collection('classes').where({ orgId, id: cid }).limit(1).get().catch(() => ({ data: [] }));
+      clsName = (cr.data[0] && cr.data[0].name) || '';
+    }
+    const stuName = String(s.name || '孩子');
+    await ensureCollections();
+    let token = '', expiresAt = 0;
+    for (let i = 0; i < 5; i++) {
+      const t = newCardToken();
+      const dup = await db.collection(CARDS).doc(t).get().catch(() => null);
+      if (dup && dup.data) continue;
+      const now = Date.now();
+      expiresAt = now + CARD_DAYS * 86400000;
+      // token 就是文档 _id；data 里绝不能带 _id（云端会报 -501007 不能更新 _id）
+      await db.collection(CARDS).doc(t).set({ data: {
+        orgId, clsId: cid, sid, code, role: 'parent',
+        stuNo: String(s.no || ''), orgName, clsName, stuName,
+        expiresAt, usedAt: 0, usedBy: '', claimName: '', claimPhone: '',
+        status: 'unused', by: OPENID, createdAt: now
+      } });
+      token = t;
+      break;
+    }
+    if (!token) return { ok: false, msg: '卡片生成失败，请重试' };
+    return { ok: true, token, orgName, clsName, stuName, expiresAt };
+  }
+
+  if (action === 'cardRevoke') {
+    const token = String(event.token || '').trim().toLowerCase();
+    if (!CARD_RE.test(token)) return { ok: false, code: 'BAD_CARD', msg: '卡片链接不对' };
+    const r = await db.collection(CARDS).doc(token).get().catch(() => null);
+    const d = r && r.data;
+    if (!d) return { ok: false, code: 'NO_CARD', msg: '这张卡片不存在' };
+    const me = await memberOf(OPENID, orgId);
+    const isManager = !!me && (me.role === 'owner' || me.role === 'admin');
+    if (d.by !== OPENID && !isManager) {
+      return { ok: false, code: 'FORBIDDEN', msg: '只能作废自己发的卡片' };
+    }
+    if (d.status !== 'unused') {
+      return { ok: false, code: 'USED', msg: '这张卡片已被确认，作废不会移除已加入的家长' };
+    }
+    await db.collection(CARDS).doc(token).update({
+      data: { status: 'revoked', revokedAt: Date.now(), revokedBy: OPENID }
+    });
+    return { ok: true };
   }
 
   // ---- 版本历史：某条核心资产改过什么 / 退回某一版 ----

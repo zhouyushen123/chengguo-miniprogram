@@ -3,8 +3,34 @@
     <view class="slogan">橙果 · 让每一次进步都被看见</view>
   </view>
 
+  <!-- 家长点开老师发的专属卡：卡面只写孩子姓名 + 班级 + 机构名，确认前不查任何业务数据 -->
+  <block wx:if="{{stage===3}}">
+    <view wx:if="{{cardLoading}}" class="q">正在打开邀请…</view>
+    <block wx:else>
+      <view class="q">这是发给【{{cardStu}}】家长的邀请</view>
+      <view class="note">老师把入口直接送到你手边，不用记机构码，也不用记学号。</view>
+      <view class="card invcard">
+        <view class="invmeta">{{cardOrg}}<text wx:if="{{cardCls}}"> · {{cardCls}}</text></view>
+        <view class="invname">{{cardStu}}</view>
+        <view class="invmeta">点一下确认，看孩子的课堂成果</view>
+      </view>
+      <view class="card">
+        <view class="label">请确认：你是 {{cardStu}} 的家长吗？</view>
+        <view class="vin">
+          <input class="input vin-in" value="{{name}}" bindinput="onName" maxlength="12" placeholder="填你的姓名，如：张珊珊" placeholder-class="ph" />
+          <image class="vmic {{micKey==='name'?'rec':''}}" src="{{micKey==='name'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="name" />
+        </view>
+        <view class="mi">7 天内有效，只能确认一次；同一家长的兄弟姐妹会一起带上。</view>
+      </view>
+      <view wx:if="{{localBad}}" class="err">这台手机已有其他机构的数据，请先到「我的 → 存储空间」清空，再回来点卡片。</view>
+      <view wx:if="{{err}}" class="err">{{err}}</view>
+      <view class="btn {{busy||localBad?'off':''}}" hover-class="btn-hover" bindtap="doCardClaim">{{busy ? '确认中…' : '我是，确认加入'}}</view>
+      <view class="later" bindtap="goCode">我有老师给的邀请码，走老入口 ›</view>
+    </block>
+  </block>
+
   <!-- 第 0 步：先分清"老师"和"家长"，别让家长去建机构 -->
-  <block wx:if="{{stage===0}}">
+  <block wx:elif="{{stage===0}}">
     <view class="q">你是老师，还是家长？</view>
     <view class="note">老师建机构、录成果；家长用老师给的邀请码加入，看孩子的成果。</view>
     <view class="card chooser">

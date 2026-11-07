@@ -57,6 +57,31 @@ function inviteGet(role, orgId) {
   return callFn('syncv2', { action: 'inviteGet', role, orgId: String(orgId || '') }).catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
 }
 
+/* ---------------- 家长邀请卡（一人一卡，免记码） ----------------
+ * 和邀请码同一条云函数、同样不走 syncOn 闸门：家长点卡片进来时还没绑机构。
+ * 卡片链接里只有一个一次性 token，机构码和学号从头到尾只在服务端出现。
+ */
+function cardCreate(sid, orgId) {
+  if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪' });
+  return callFn('syncv2', { action: 'cardCreate', sid, orgId: String(orgId || '') })
+    .catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
+}
+function cardInfo(token) {
+  if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪' });
+  return callFn('syncv2', { action: 'cardInfo', token: String(token || '') })
+    .catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
+}
+function cardClaim(token, name) {
+  if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪' });
+  return callFn('syncv2', { action: 'cardClaim', token: String(token || ''), name })
+    .catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
+}
+function cardRevoke(token, orgId) {
+  if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪' });
+  return callFn('syncv2', { action: 'cardRevoke', token: String(token || ''), orgId: String(orgId || '') })
+    .catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
+}
+
 // 上推一条记录：已由 utils/sync.js 的脏集合机制接管，保留空实现兼容旧调用点
 function pushRecord() { return Promise.resolve(); }
 // 拉取云端数据：由 sync 引擎统一处理，保留接口给旧调用点
@@ -210,4 +235,4 @@ function cloudBackup(action, data) {
     .catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
 }
 
-module.exports = { initCloud, enabled, syncOn, syncCall, login, pushRecord, pull, uploadFile, uploadPhoto, aiEvalDraft, stuImport, secText, secImage, requestSubscribe, familyBind, familyNotify, inviteInfo, inviteJoin, inviteGet, adminAccount, cloudBackup, CLOUD_ENV };
+module.exports = { initCloud, enabled, syncOn, syncCall, login, pushRecord, pull, uploadFile, uploadPhoto, aiEvalDraft, stuImport, secText, secImage, requestSubscribe, familyBind, familyNotify, inviteInfo, inviteJoin, inviteGet, adminAccount, cloudBackup, cardCreate, cardInfo, cardClaim, cardRevoke, CLOUD_ENV };

@@ -1020,3 +1020,17 @@ npm run cloud -- syncv2 admin    # 只部署指定的
   写进 `docs/http-access-setup.md`，已同步资料库团队空间。
 - 触发器结论复核：官方与社区一致确认「上传并部署」**不会**同步 `config.json` 的触发器，
   必须单独「上传触发器」；自查方法是云函数 `backup` 的「触发器」页签看 `dailyBackup`。
+
+### 11-07 11:22 「电脑端后台」报网络不通：3 秒超时 + 误导性错误提示（体验版 1126）
+
+- 云端 `admin` Active、HTTP GET 200/0.3s，7 个函数全在线，`/admin` 路由正常 → **不是部署问题**。
+- `cloud functions info` 实测：`admin` / `syncv2` / `aiEval` 的 timeout 都是 **3 秒**，
+  只有 `backup` 是 60 秒（11-05 手动改过）。`mkAccount` 首次调用要冷启动 + `ensure` 建
+  `admin_accounts` 集合，3 秒很容易被掐断 → `callFunction` fail。
+- 更糟的是 `api.adminAccount()` 把 fail 一律兜底成 `{msg:'网络不通，请重试'}`，
+  真实 errMsg 被吞，超时 / 函数不存在 / 环境错三种原因分不清（又是「静默降级掩盖问题」）。
+- 修法：① 自动重试 2 次（0.8s / 1.5s）；② 失败弹窗显示真实 errMsg + 自检引导 + 再试一次；
+  ③ G8 静态断言钉死；29 项地基断言 / 29 套件全绿，主包 1204.6 KB。
+- **试过但无效**：给 `cloudfunctions/admin/config.json` 加 `"timeout": 20` 再 `npm run cloud -- admin`，
+  `info` 仍是 3 —— **微信 CLI 的 deploy 不应用 config.json 的 timeout**，跟 triggers 一样只能控制台点。
+  config.json 保留作配置文档化（CloudBase CLI 会读）。

@@ -171,9 +171,20 @@ function uploadPhoto(filePath) {
 
 // 电脑端后台：取后台账号与口令（服务端按 members 表判角色，只有负责人/管理员能拿）。
 // 走 callFn 而不是 syncOn：后台和同步是两条链路，同步没通也不该挡着"看口令"。
+// admin 云函数默认超时只有 3 秒，首次调用要冷启动 + 建 admin_accounts 集合，常被掐断；
+// 第二次函数已热、集合已建，基本都能过。自动重试 2 次只覆盖这种一次性失败，网络真断
+// 最多多等 2 秒。真实 errMsg 必须带回去——超时 / 函数不存在 / 环境错处理方式完全不同。
 function adminAccount() {
   if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪' });
-  return callFn('admin', { action: 'mkAccount' }).catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
+  const once = () => callFn('admin', { action: 'mkAccount' });
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  return once()
+    .catch(() => wait(800).then(once))
+    .catch(() => wait(1500).then(once))
+    .catch(e => ({
+      ok: false, code: 'NET', msg: '云函数没响应，请重试',
+      err: String((e && e.message) || e || '').slice(0, 140)
+    }));
 }
 
 // 云端每日备份（backup 云函数）：

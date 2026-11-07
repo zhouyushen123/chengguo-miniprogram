@@ -123,7 +123,16 @@ Page({
     sync.syncNow({ force: true }).catch(() => {}).then(() => api.adminAccount()).then(out => {
       wx.hideLoading();
       if (!out || !out.ok) {
-        wx.showToast({ title: (out && out.msg) || '取账号失败，请检查网络', icon: 'none' });
+        const msg = (out && out.msg) || '取账号失败，请检查网络';
+        // 别再用一句「网络不通」糊过去：把真实错误码给出来（截图发来即可定位），
+        // 并让用户自己分清楚是「这个接口超时」还是「整台手机没连上云」。
+        wx.showModal({
+          title: '暂时取不到后台账号',
+          content: msg + (out && out.err ? '\n\n错误信息：' + out.err : '') +
+            '\n\n先到「存储空间」点一次「立即同步」：同步正常说明只是这个接口偶尔超时，再试一次即可；同步也失败则是这台手机没连上云。',
+          confirmText: '再试一次', cancelText: '知道了',
+          success: r => { if (r.confirm) this.webAdmin(); }
+        });
         return;
       }
       const url = out.url || '';
@@ -142,9 +151,9 @@ Page({
           }
         }
       });
-    }).catch(() => {
+    }).catch(e => {
       wx.hideLoading();
-      wx.showToast({ title: '网络不通，请重试', icon: 'none' });
+      wx.showToast({ title: '取账号失败：' + String((e && e.message) || e).slice(0, 12), icon: 'none' });
     });
   },
   /* ---------------- 邀请成员 ----------------

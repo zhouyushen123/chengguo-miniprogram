@@ -509,4 +509,15 @@ ok('G7 owner 残骸收口：无名且未认领的多余负责人进回收站，�
   assert.strictEqual(r3.rows, 0, '两条 owner 都没绑微信：分不清哪条是残骸，不能自动删');
 });
 
+ok('G8 取后台账号失败不能只说「网络不通」（冷启动超时要重试、真实错误要带出来）', () => {
+  const api = fs.readFileSync(path.join(ROOT, 'utils/api.js'), 'utf8');
+  const page = fs.readFileSync(path.join(ROOT, 'pages/mine/mine.js'), 'utf8');
+  const i = api.indexOf('function adminAccount');
+  const fn = api.slice(i, i + 900);
+  assert.ok(/\.catch\(\(\) => wait/.test(fn), 'admin 首次调用常被 3 秒超时掐断，必须自动重试');
+  assert.ok(/err:/.test(fn), '真实 errMsg 必须回传，不能吞成一句「网络不通」');
+  assert.ok(/out\.err|错误信息/.test(page), '失败弹窗要显示具体错误，便于定位');
+  assert.ok(!/网络不通，请重试/.test(page), '别再出现笼统的「网络不通」提示');
+});
+
 console.log('\n全部 ' + pass + ' 项地基断言通过');

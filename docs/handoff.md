@@ -1036,3 +1036,9 @@ npm run cloud -- syncv2 admin    # 只部署指定的
 - **试过但无效**：给 `cloudfunctions/admin/config.json` 加 `"timeout": 20` 再 `npm run cloud -- admin`，
   `info` 仍是 3 —— **微信 CLI 的 deploy 不应用 config.json 的 timeout**，跟 triggers 一样只能控制台点。
   config.json 保留作配置文档化（CloudBase CLI 会读）。
+
+### 11-07 11:35 `admin` 超时已改 20 秒（用户手动完成，已验证）
+
+- CLI `info`：`timeout=20`、短暂 `status=Updating`（下发中）；`GET /admin` 仍 200，
+  耗时 0.3s → 2.3s 是函数重新部署，属正常，**不需重新部署或重传体验版**。
+- 仍建议顺手把 `syncv2` / `aiEval` 也改成 20 秒（都是 3 秒，同步数据多时同样会被掐断）。

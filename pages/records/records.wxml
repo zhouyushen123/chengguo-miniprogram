@@ -17,7 +17,7 @@
     <picker mode="selector" range="{{tagOpts}}" value="{{tagIdx}}" bindchange="onTag">
       <view class="pkbox">{{tagOpts[tagIdx]}}<image class="pico" src="{{icoChevD}}" mode="aspectFit" /></view>
     </picker>
-    <view class="cnt mi">共 {{total}}/{{allCount}} 条</view>
+    <view class="cnt mi">{{total}}/{{allCount}} 条</view>
   </view>
 </view>
 <!-- 今天未录视图：学生行（复用记录卡视觉），每行一个「去录入」直达带预选的录入页 -->

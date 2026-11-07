@@ -39,7 +39,25 @@ Page({
     icoChevD: icons.chevronDown
   },
   onLoad(q) {
-    const pick = getApp().globalData.pick || {};
+    const app = getApp();
+    let pick = app.globalData.pick || {};
+    // 【I-09 / J-07】编辑态一律以「记录 id」为准，回库里取原内容，不再信调用方塞满的 pick：
+    // 学生档案页只把 rid 放在 URL 上（?rid=），以前 onLoad 完全不读 q，就变成空白新建态，
+    // 还残留上一次录入的班级/学生，看起来像「改到别的同学头上」、底部还是「发布到家长端」。
+    // 现在两个入口（URL rid / pick.rid）都走同一条路，重建后的 pick 也写回 globalData，
+    // 预览页、模板页读到的就是同一条记录的内容。
+    const urlRid = q && q.rid ? Number(q.rid) : 0;
+    const rid = urlRid || Number(pick.rid) || 0;
+    const rec = rid ? db.records.get(rid) : null;
+    if (rec) {
+      pick = {
+        cls: rec.cid, sid: rec.sid, rid: rec.id, score: rec.score,
+        tag: rec.tag || '', note: rec.note || '', course: rec.course || '',
+        photos: rec.photos || [], videos: rec.videos || [], audio: rec.audio || null,
+        sent: !!rec.sent, date: rec.date, session: rec.session
+      };
+      app.globalData.pick = pick;
+    }
     // 录入入口只开「进行中」学期的班级；编辑已有记录时其班级始终保留（哪怕已归档）
     const activeIds = db.terms.activeList().map(t => t.id);
     let classes = db.classes.list().filter(c => activeIds.indexOf(c.termId) > -1);
@@ -49,8 +67,17 @@ Page({
     }
     if (!classes.length) classes = db.classes.list();   // 兜底：一个进行中学期都没有时不至于无班可选
     const clsId = pick.cls || (classes[0] && classes[0].id);
-    const courses = db.courses.of(clsId);
-    const students = db.students.of(clsId); // 已按姓氏拼音排序
+    // 编辑老记录时若课程已从班上解绑，仍把它留在下拉里，别悄悄换成第一门课
+    let courses = db.courses.of(clsId);
+    if (pick.course && !courses.some(c => c.name === pick.course)) {
+      courses = [{ id: 0, name: pick.course }].concat(courses);
+    }
+    let students = db.students.of(clsId); // 已按姓氏拼音排序
+    // 学生转班后仍要能看见/选中记录原本属于谁
+    if (pick.sid && !students.some(s => s.id === pick.sid)) {
+      const oldStu = db.students.get(pick.sid);
+      if (oldStu) students = [oldStu].concat(students);
+    }
     // 编辑已有记录时按记录里的课程名定位到下拉项，避免默认落到第一门课
     const ci = Math.max(0, courses.findIndex(c => c.name === pick.course));
     // 课次：默认归入班级当前课次；编辑老记录时默认落在它本来的课次上
@@ -58,13 +85,10 @@ Page({
     const sessMax = Math.max(1, (clsRaw && clsRaw.session) || 1);
     let sess = sessMax;
     let wasSent = false;
-    if (pick.rid) {
-      const r0 = db.records.get(pick.rid);
-      if (r0) {
-        if (r0.session >= 1 && r0.session <= sessMax) sess = r0.session;
-        // 已发布过的记录再进来是「修改」，不是首发布：按钮文案与提示都要跟着变
-        wasSent = !!r0.sent;
-      }
+    if (rec) {
+      if (rec.session >= 1 && rec.session <= sessMax) sess = rec.session;
+      // 已发布过的记录再进来是「修改」，不是首发布：按钮文案与提示都要跟着变
+      wasSent = !!rec.sent;
     }
     // H-23 双保险：记录列表跳转时直接带上 sent，即使本地按 rid 没查到（权限/同步中）
     // 也必须是「保存修改」，绝不能把已发布的记录显示成「发布到家长端」。
@@ -75,10 +99,15 @@ Page({
       clsId, students, courses, courseIdx: ci,
       sessMax, sessOpts, sessIdx: sess - 1,
       over45: students.length > 45,
-      course: courses[ci] ? courses[ci].name : '',
-      sid: pick.sid || null, score: pick.score || 85, tag: pick.tag || '',
+      course: courses[ci] ? courses[ci].name : pick.course || '',
+      // 0 分也是合法分数，不能用 || 兜底成 85
+      sid: pick.sid || null, score: (pick.score === undefined || pick.score === null) ? 85 : pick.score,
+      tag: pick.tag || '',
       note: pick.note || '', photos: pick.photos || [], videos: pick.videos || [], audio: pick.audio || null,
-      rid: pick.rid || null, editing: !!pick.rid, wasSent,
+      rid: rid || null, editing: !!rid, wasSent,
+      // 编辑态顶部明写改的是谁：老师一眼能看出没串到别的同学
+      editStuName: pick.sid ? (db.students.name(pick.sid) || '') : '',
+      editCourse: pick.course || '', editDate: pick.date || '',
       // 模板统一由机构维护：老师可选用，改模板需负责人/管理员权限
       canTplEdit: db.auth.can('template.write')
     });

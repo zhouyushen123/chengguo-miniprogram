@@ -188,9 +188,21 @@ Page({
     const id = +e.currentTarget.dataset.rid;
     this.setData({ expandId: this.data.expandId === id ? 0 : id });
   },
-  // 修改已有记录：record 页认 rid 就是编辑模式（wasSent 时底部按钮是「保存修改」）
+  // 修改已有记录：J-07 以前只把 rid 挂在 URL 上，录入页却完全不读参数，
+  // 于是变成空白新建态、还残留上一次的班级/学生（看起来像改到别的同学）。
+  // 现在和记录列表页一样先塞完整的 pick，URL 的 rid 由录入页再回库校验一次。
   editRec(e) {
-    wx.navigateTo({ url: '/pages/record/record?rid=' + e.currentTarget.dataset.rid });
+    const r = db.records.get(Number(e.currentTarget.dataset.rid) || 0);
+    if (!r) { wx.showToast({ title: '记录不存在', icon: 'none' }); return; }
+    if (!db.auth.can('record.update', { record: r })) {
+      wx.showToast({ title: db.auth.denyReason('record.update'), icon: 'none' });
+      return;
+    }
+    getApp().globalData.pick = {
+      cls: r.cid, sid: r.sid, score: r.score, photos: r.photos || [], videos: r.videos || [], audio: r.audio,
+      tag: r.tag || '', note: r.note || '', rid: r.id, course: r.course, sent: !!r.sent
+    };
+    wx.navigateTo({ url: '/pages/record/record?rid=' + r.id });
   },
   goRecord() {
     const s = db.students.get(this.sid);

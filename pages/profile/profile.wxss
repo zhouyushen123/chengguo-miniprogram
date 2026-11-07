@@ -1,1 +1,4 @@
 .tip { margin: 24rpx; color: var(--muted); font-size: 25rpx; }
+/* J-09：滚到底时按钮不再贴着屏幕底/手势条，留出安全区间距 */
+.wrap { padding-bottom: calc(48rpx + env(safe-area-inset-bottom)); }
+.savebtn { margin: 8rpx 24rpx calc(48rpx + env(safe-area-inset-bottom)); }

@@ -1,4 +1,13 @@
 .wrap { padding-bottom: 40rpx; }
+/* ---------- 编辑态提示条：改的是谁，一眼看清，不再是空白新建态 ---------- */
+.editbar {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 10rpx;
+  margin: 24rpx 24rpx 0; padding: 20rpx 24rpx;
+  background: var(--brand-a); border: 2rpx solid var(--brand-border); border-radius: 20rpx;
+}
+.eb-t, .eb-meta, .eb-tip { font-size: 25rpx; color: var(--sub); }
+.eb-name { font-size: 30rpx; font-weight: 700; color: var(--brand); }
+.eb-tip { flex-basis: 100%; line-height: 1.6; }
 /* ---------- 评分 ---------- */
 .scorerow { display: flex; align-items: center; gap: 30rpx; margin-bottom: 24rpx; }
 .scorenum {

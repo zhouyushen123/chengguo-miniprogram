@@ -1,5 +1,12 @@
 <view class="theme-root {{themeCls}}">
 <view class="wrap">
+  <!-- I-09 / J-07：编辑态明确写出「改的是谁、哪天、哪门课」，避免看成空白新建或串到别的同学 -->
+  <view wx:if="{{editing}}" class="editbar">
+    <text class="eb-t">正在修改</text>
+    <text class="eb-name">{{editStuName || '这条记录'}}</text>
+    <text class="eb-meta">{{editDate}}{{editCourse ? ' · ' + editCourse : ''}}</text>
+    <text class="eb-tip">原来的分数、等级、评语、照片语音都已带回，改完点底部「{{wasSent ? '保存修改' : '发布到家长端'}}」即可。</text>
+  </view>
   <view wx:if="{{!editing}}" class="card">
     <view class="sec stuhead">
       <view class="label">选择学生<text wx:if="{{over45 && !stuQuery}}" class="stucount">（{{stuExpanded ? '全部 ' + students.length + ' 人' : '前 45 人'}}）</text></view>

@@ -36,6 +36,7 @@ const SUITES = [
   ['verify_ai.js', 'AI 评超时重试'],
   ['verify_student_form.js', '学生表单 F-04 / F-08'],
   ['verify_feedback_round.js', '真机反馈 G/H 五项'],
+  ['verify_edit_round.js', '真机反馈 I/J 四项'],
   ['verify_demo.js', '演示隔离'],
   ['verify_hardening.js', '加固'],
   ['verify_backup.js', '备份与恢复'],

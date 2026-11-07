@@ -17,7 +17,8 @@
   white-space: nowrap; display: inline-flex; align-items: center; gap: 8rpx;
 }
 .pico { width: 22rpx; height: 22rpx; }
-.cnt { margin-left: auto; padding-right: 8rpx; }
+/* I-06：去掉「共」字后仍要整块不折行，筛选行三个下拉不被挤换行 */
+.cnt { margin-left: auto; padding-right: 8rpx; flex: none; white-space: nowrap; }
 
 /* 头行（姓名+课程+分数）通栏；照片下移与评价同行、位于评价左边 */
 .recrow { display: flex; gap: 20rpx; margin-top: 12rpx; }

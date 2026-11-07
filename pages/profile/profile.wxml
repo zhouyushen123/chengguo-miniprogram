@@ -36,7 +36,7 @@
       <image class="vmic {{micKey==='f.note'?'rec':''}}" src="{{micKey==='f.note'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="f.note" />
     </view>
   </view>
-  <view class="btn" style="margin:0 24rpx" bindtap="submit">保存并提交</view>
+  <view class="btn savebtn" bindtap="submit">保存并提交</view>
 </view>
 
 <!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->

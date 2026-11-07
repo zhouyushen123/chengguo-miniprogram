@@ -1280,3 +1280,26 @@ stuImport 20 / syncv2 20`，末尾 `✔ 所有函数超时都 ≥ 20 秒`。
 - `docs/user-manual.md` 3.5 / 4.x / Q8、`docs/user-test-cases.md` G·H 组已同步；
   新增 `tests/verify_feedback_round.js` 11 项（含 mgr / tpls / record 三个页面级联调），
   **35 套件全绿**。小程序端改了代码，需重传体验版；云函数未动。
+
+## 16:46 真机反馈四项（I-06 / I-09 / J-07 / J-09）
+
+- **I-06 计数**：`records.wxml` 去掉「共」字，改成 `{{total}}/{{allCount}} 条`；
+  `.cnt` 加 `flex:none; white-space:nowrap`，不再占地方把三个下拉挤折行。
+  手册 5.1、用例 I-06、`verify_manual.js` 的旧文案守卫同步改口径。
+- **I-09 / J-07 是同一个根因**：`record.onLoad` 只认 `globalData.pick`，
+  而档案页 `student.editRec` 只把 rid 挂在 URL（`?rid=`），这份全局 pick 又容易被
+  别的入口覆盖 → 进页面变空白新建态、残留上一次的班级/学生（看起来像改到别的同学头上）、
+  底部仍是「发布到家长端」。修法：
+  ① 记录列表与档案页两个入口的 URL 都带 `?rid=`，并各自塞完整 pick；
+  ② `record.onLoad` 取 `q.rid || pick.rid`，**按 id 回库重建全部字段**
+  （cls/sid/score/tag/note/photos/videos/audio/course/date/session/sent），
+  再写回 `globalData.pick`，预览页/模板页读到的也是同一条记录；
+  ③ 课程已从班上解绑、学生已转班、0 分记录，三种边界都不再被默认值顶掉；
+  ④ 编辑态顶部加「正在修改 XX · 日期 · 课程」提示条（学生选择区在编辑态本就隐藏，
+  以前老师根本看不出改的是谁）。
+- **J-09 资料页底部**：`profile.wxss` 补 `.wrap` 底部内边距与 `.savebtn` 下边距，
+  都带 `env(safe-area-inset-bottom)`；去掉按钮内联 `margin:0 24rpx`，免得盖掉新样式。
+- 新增 `tests/verify_edit_round.js` **12 项**（含「全局 pick 残留别的学生也不串人」的
+  复现用例、课程解绑 / 0 分 / 转班边界），已注册进 `tests/run.js`；
+  lint 0 提醒、数据字典一致、**36 套件全绿**。云函数未动，不用重部署；
+  小程序端改了代码，需重传体验版。

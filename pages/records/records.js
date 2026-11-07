@@ -144,7 +144,7 @@ Page({
   },
   openRec(e) { wx.navigateTo({ url: '/pages/student/student?rid=' + e.currentTarget.dataset.rid + '&id=' + e.currentTarget.dataset.sid }); },
   editRec(e) {
-    const r = db.records.get(e.currentTarget.dataset.rid);
+    const r = db.records.get(Number(e.currentTarget.dataset.rid) || 0);
     if (!r) return;
     // 权限统一判定：家长只读；老师只能改自己录的（负责人/管理员不受限）
     if (!db.auth.can('record.update', { record: r })) {
@@ -155,7 +155,9 @@ Page({
       cls: r.cid, sid: r.sid, score: r.score, photos: r.photos || [], videos: r.videos || [], audio: r.audio,
       tag: r.tag || '', note: r.note || '', rid: r.id, course: r.course, sent: !!r.sent
     };
-    wx.navigateTo({ url: '/pages/record/record' });
+    // I-09：URL 也带 rid 作双保险，录入页会按 id 回库重建原内容，
+    // 不再依赖 globalData.pick 这一份容易被别的入口覆盖的全局状态。
+    wx.navigateTo({ url: '/pages/record/record?rid=' + r.id });
   },
   // 单条发布：已发布的记录按钮置灰不可再点
   sendRec(e) {

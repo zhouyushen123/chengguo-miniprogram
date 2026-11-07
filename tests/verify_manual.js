@@ -115,7 +115,8 @@ const ENTRIES = [
 
   // ---- 记录列表 ----
   ['records', 'pickTab', ['全部'], '班级 chip'],
-  ['records', 'onTerm', ['共 '], '学期筛选与计数'],
+  // I-06：计数文案去掉「共」字，改成 x/x 条（守卫跟着改，别再要求旧文案）
+  ['records', 'onTerm', ['{{total}}/{{allCount}} 条'], '学期筛选与计数'],
   ['records', 'onDate', [], '日期筛选'],
   ['records', 'onTag', [], '等级筛选'],
   ['records', 'openRec', [], '打开记录'],

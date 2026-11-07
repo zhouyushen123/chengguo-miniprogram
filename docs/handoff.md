@@ -1237,3 +1237,21 @@ stuImport 20 / syncv2 20`，末尾 `✔ 所有函数超时都 ≥ 20 秒`。
 微信 CLI 没有改函数配置的命令，`deploy` 也不应用 config.json 的 timeout；
 **以后新建云函数默认仍是 3 秒，必须在控制台改一次并跑 `cloud:info` 复核**，
 约定与点击路径留在 `docs/console-todo.md` 第 0 节。
+
+## 14:58 F-04 / F-08：昨天真机测试留下的两条失败项
+
+- **F-08「学生列表页没有改成照片」不是上传坏了**：`pages/mgr/mgr.js` 的 `refresh()`
+  构造 `stuAll` 时只挑了 id/name/cls/parent/wechat/gender/year，**漏了 `photo` 和 `no`**；
+  班级展开 `_applyClsMembers()` 也漏了 `photo`。WXML 早已用 `<ava src="{{item.photo}}">`，
+  拿到 undefined 就退化成首字色块 —— 库里的照片一直好好的，编辑弹层也能看到。
+  两处映射补齐，列表同时显示学号；`studentCreate` 还漏传 `gender/enrollYear`
+  （F-05/F-06 同类断链），一并对齐。
+- **F-04「没有手机号输入框」**：新增学生字段 `parentPhone`（schema → entities →
+  `npm run docs:schema` → students.create/update 透传）。表单加手机号输入框，
+  口径同向导/机构页：输入绑裸数字、失焦 fmt 成 3-4-4、保存再 digits 一次、
+  非法拦下；**格式化字段不配麦克风**。`studentSiblings` 改成手机号 + 微信号双键，
+  任一个相等即同家长，历史只填微信的数据不回归（G-07 已测）。
+- `docs/user-manual.md` 3.4、`docs/user-test-cases.md` F 组已写明；
+  新增 `tests/verify_student_form.js` 12 项，lint 0 提醒、字典一致、**34 套件全绿**。
+- 云函数没动、不用重部署；**小程序端改了代码，需重传体验版**。批量导入暂只带家长姓名，
+  不带手机号列（改它要动 `stuImport` 云函数，本轮没碰）。

@@ -169,7 +169,7 @@
       <view class="itrow">
         <ava src="{{item.photo}}" name="{{item.name}}" size="{{64}}" radius="{{18}}" />
         <view style="min-width:0"><b>{{item.name}}</b><text wx:if="{{item.gender}}" class="gtag">{{item.gender}}</text>
-        <view class="mi"><text wx:if="{{item.no}}" class="sno">学号 {{item.no}}</text>{{item.cls}}{{item.year?' · '+item.year+' 年入学':''}}{{item.parent?' · 家长 '+item.parent:''}}{{item.wechat?' · 微信 '+item.wechat:''}}</view></view>
+        <view class="mi"><text wx:if="{{item.no}}" class="sno">学号 {{item.no}}</text>{{item.cls}}{{item.year?' · '+item.year+' 年入学':''}}{{item.parent?' · 家长 '+item.parent:''}}{{item.parentPhone?' · 手机 '+item.parentPhone:''}}{{item.wechat?' · 微信 '+item.wechat:''}}</view></view>
       </view>
     </view>
     <view class="stuacts">
@@ -261,6 +261,10 @@
       <view wx:for="{{stuClsChips}}" wx:key="id" class="chip {{item.on?'on':''}}" bindtap="stuClsTgl" data-id="{{item.id}}">{{item.name}}</view>
     </view>
     <view class="label">家长联系方式</view>
+    <!-- F-04：手机号是格式化字段，不配麦克风（念中文得不到合法号码）。
+         输入中绑裸数字、失焦才分段成 3-4-4，口径同向导/机构页，见 utils/phone.js -->
+    <input class="input" type="number" placeholder="家长手机号（选填，11 位）" placeholder-class="ph"
+      value="{{stuForm.parentPhone}}" bindinput="onStuPhone" bindblur="onStuPhoneBlur" />
     <view class="vin">
       <input class="input vin-in" placeholder="家长称呼（如：张珊珊/妈妈）" value="{{stuForm.parent}}" bindinput="onStuParent" />
       <image class="vmic {{micKey==='stuForm.parent'?'rec':''}}" src="{{micKey==='stuForm.parent'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="stuForm.parent" />

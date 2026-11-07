@@ -104,11 +104,16 @@ Page({
     let clsTermIdx = this.data.clsTermIdx || 0;
     if (clsTermIdx >= actTerms.length) clsTermIdx = 0;
 
-    // 学生列表：附加性别与入学年份（筛选用），真正的过滤在 _applyStuFilter
+    // 学生列表：附加性别与入学年份（筛选用），真正的过滤在 _applyStuFilter。
+    // F-08 / F-03 回归：photo 与 no 必须一起带出来——WXML 用 <ava src="{{item.photo}}">
+    // 和「学号 {{item.no}}」，少了字段就会静默显示成首字色块、学号空白，
+    // 而库里其实存得好好的（用户会以为「照片没改成」）。
     const stuAll = db.students.list().map(st => ({
-      id: st.id, name: st.name,
+      id: st.id, name: st.name, no: st.no || '', photo: st.photo || '',
       cls: (st.clsIds || []).map(db.classes.name).join('、') || '未加入班级',
-      parent: st.parent || '', wechat: st.wechat || '',
+      parent: st.parent || '',
+      parentPhone: st.parentPhone ? tel.fmt(st.parentPhone) : '',
+      wechat: st.wechat || '',
       gender: st.gender || '',
       year: st.enrollYear || 0
     }));
@@ -198,7 +203,8 @@ Page({
     const q = (this.data.clsStuQ || '').trim().toLowerCase();
     const all = db.students.list()
       .filter(st => (st.clsIds || []).indexOf(cid) >= 0)
-      .map(st => ({ id: st.id, name: st.name, parent: st.parent || '' }));
+      // 班级展开里的头像同样走 <ava>，photo 不能漏（F-08 同一类断链）
+      .map(st => ({ id: st.id, name: st.name, parent: st.parent || '', photo: st.photo || '' }));
     const shown = q
       ? all.filter(s => (s.name + ' ' + s.parent).toLowerCase().indexOf(q) >= 0)
       : all;
@@ -518,7 +524,7 @@ Page({
     const nowY = new Date().getFullYear();
     const year = s ? (s.enrollYear || 0) : nowY;
     this.setData({
-      stuForm: { id: id || null, name: s ? s.name : '', no: s ? (s.no || '') : '', gender: s ? (s.gender || '') : '', enrollYear: year, parent: s ? (s.parent || '') : '', wechat: s ? (s.wechat || '') : '', photo: s ? (s.photo || '') : '', char: (s && s.name ? s.name : '')[0] || '' },
+      stuForm: { id: id || null, name: s ? s.name : '', no: s ? (s.no || '') : '', gender: s ? (s.gender || '') : '', enrollYear: year, parent: s ? (s.parent || '') : '', parentPhone: s ? tel.fmt(s.parentPhone || '') : '', wechat: s ? (s.wechat || '') : '', photo: s ? (s.photo || '') : '', char: (s && s.name ? s.name : '')[0] || '' },
       stuClsSel: clsSel,
       stuClsChips: this._chips(db.classes.list(), clsSel),
       stuEnrollYearIdx: Math.max(0, this.data.enrollYearOpts.findIndex(o => o.y === year))
@@ -560,6 +566,11 @@ Page({
     });
   },
   onStuParent(e) { this.setData({ 'stuForm.parent': e.detail.value }); },
+  // F-04：家长手机号。口径与向导/机构页一致——输入中只留裸数字，失焦才分段显示，
+  // 保存时再 digits() 一次；type=number 且不加 maxlength，否则格式化串会被截断。
+  // 格式化字段不配麦克风（语音念中文得不到合法号码）。
+  onStuPhone(e) { this.setData({ 'stuForm.parentPhone': tel.digits(e.detail.value) }); },
+  onStuPhoneBlur() { this.setData({ 'stuForm.parentPhone': tel.fmt(this.data.stuForm.parentPhone) }); },
   onStuWechat(e) { this.setData({ 'stuForm.wechat': e.detail.value }); },
   stuClsTgl(e) {
     const id = +e.currentTarget.dataset.id, sel = this.data.stuClsSel.slice();
@@ -570,9 +581,12 @@ Page({
   stuSave() {
     const f = this.data.stuForm, sel = this.data.stuClsSel;
     const n = (f.name || '').trim();
+    const ph = tel.digits(f.parentPhone || '');
+    if (ph && !tel.valid(ph)) { wx.showToast({ title: '手机号需 11 位、1 开头', icon: 'none' }); return; }
     const payload = {
       name: n, clsIds: sel.slice(), gender: f.gender || '', enrollYear: f.enrollYear || 0,
-      parent: (f.parent || '').trim(), wechat: (f.wechat || '').trim(), photo: f.photo || ''
+      parent: (f.parent || '').trim(), parentPhone: ph,
+      wechat: (f.wechat || '').trim(), photo: f.photo || ''
     };
     const r = f.id ? db.students.update(f.id, payload) : db.students.create(payload);
     if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }

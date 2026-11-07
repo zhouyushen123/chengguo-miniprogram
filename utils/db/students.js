@@ -44,8 +44,13 @@ function studentCreate(data) {
   if (a && !a.all && clsIds.some(c => !perms.canSeeClass(a, c))) {
     return { ok: false, msg: '只能在自己负责的班级下新增学生' };
   }
+  // F-04/F-05/F-06：表单传进来的字段一个都不能漏——以前漏了 gender / enrollYear，
+  // 新建时选的性别和入学年份会被静默丢掉，只有 update 才保得住。
   const e = schema.normalizeStudent({
-    name: d.name, no: d.no, clsIds, parent: d.parent, wechat: d.wechat, photo: d.photo, profile: d.profile
+    name: d.name, no: d.no, clsIds,
+    gender: d.gender, enrollYear: d.enrollYear,
+    parent: d.parent, parentPhone: d.parentPhone, wechat: d.wechat,
+    photo: d.photo, profile: d.profile
   }, org(), now());
   const ev = schema.validate('student', e);
   if (ev) return { ok: false, msg: ev };
@@ -193,11 +198,18 @@ function studentByNo(no) {
 function parentKey(v) {
   return String(v || '').trim().toLowerCase().replace(/[\s-]/g, '');
 }
-// 同家长的其他孩子（家长号码相同）
+// F-04：手机号和微信号都是家长标识。历史数据只填过微信号，新表单可能只填手机号，
+// 所以两个键都取、任一个相等就算同一位家长，老孩子和新孩子仍能自动归并（G-07）。
+function parentKeys(s) {
+  if (!s) return [];
+  return [parentKey(s.parentPhone), parentKey(s.wechat)].filter(Boolean);
+}
+// 同家长的其他孩子（手机号或微信号任一相同）
 function studentSiblings(s) {
-  const k = s ? parentKey(s.wechat) : '';
-  if (!k) return [];
-  return oc('students').filter(x => x.id !== s.id && !x.removed && parentKey(x.wechat) === k);
+  const ks = parentKeys(s);
+  if (!ks.length) return [];
+  return oc('students').filter(x => x.id !== s.id && !x.removed &&
+    parentKeys(x).some(k => ks.indexOf(k) > -1));
 }
 // 自动归并：学生建档/改档后，凡与某位家长已绑定的孩子同属一个家长号码，
 // 就把这个学生补进那位家长的绑定列表。场景：家里两个孩子先后报名，
@@ -223,5 +235,5 @@ function studentLinkParents(s) {
 module.exports = {
   studentList, studentOf, studentRaw, studentGet, studentName, studentSearch,
   studentCreate, studentUpdate, studentUpdateProfile, studentRemove, studentRestore,
-  studentNextNo, studentByNo, studentSiblings, studentLinkParents, parentKey
+  studentNextNo, studentByNo, studentSiblings, studentLinkParents, parentKey, parentKeys
 };

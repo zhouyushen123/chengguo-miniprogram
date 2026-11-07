@@ -227,6 +227,7 @@
 | `enrollYear` | int | 入学年份，0 = 未填 |
 | `clsIds` | array | 所在班级 |
 | `parent` | string | 家长姓名 |
+| `parentPhone` | string | 家长手机号，11 位裸数字（展示时 3-4-4）；与微信号同为家长归并键 |
 | `wechat` | string | 家长微信号 |
 | `photo` | string | 照片 |
 | `profile` | object | 扩展档案（年级、学校等自由字段） |

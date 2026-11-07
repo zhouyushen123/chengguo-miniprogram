@@ -219,6 +219,10 @@ function normalizeStudent(raw, orgId, stamp) {
     enrollYear: num(r.enrollYear, 0),
     clsIds: numList(r.clsIds),
     parent: str(r.parent).trim(),
+    // 家长手机号：落库只存 11 位裸数字，展示时才 fmt() 成 3-4-4（口径见 utils/phone.js）。
+    // 这里直接清洗一遍，任何入口（表单 / 导入 / 同步回来的老数据）都不会把带横线的
+    // 展示串或粘贴来的空格写进库；家长归并比较也用同一份干净值。
+    parentPhone: str(r.parentPhone).replace(/\D/g, '').slice(0, 11),
     wechat: str(r.wechat).trim(),
     photo: str(r.photo),
     profile: (r.profile && typeof r.profile === 'object') ? Object.assign({}, r.profile) : {},

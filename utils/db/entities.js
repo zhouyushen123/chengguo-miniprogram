@@ -166,6 +166,7 @@ const ENTITIES = [
       { k: 'enrollYear', t: INT, d: '入学年份，0 = 未填' },
       { k: 'clsIds', t: ARR, d: '所在班级' },
       { k: 'parent', t: STR, d: '家长姓名' },
+      { k: 'parentPhone', t: STR, d: '家长手机号，11 位裸数字（展示时 3-4-4）；与微信号同为家长归并键' },
       { k: 'wechat', t: STR, d: '家长微信号' },
       { k: 'photo', t: STR, d: '照片' },
       { k: 'profile', t: OBJ, d: '扩展档案（年级、学校等自由字段）' },

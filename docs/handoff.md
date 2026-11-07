@@ -1229,7 +1229,11 @@ npm run cloud -- syncv2 admin    # 只部署指定的
 - 新增 `tests/verify_ai.js` 8 项（首次成功不重试 / 超时自动补 2 次 / 业务错误不重试 /
   失败不吞错 / 前端指引 / 云函数超时 < 控制台超时 / 批量链路），**33 套件全绿**。
 
-**仍需人工一次**：控制台 → 云函数 → `aiEval` → 配置 → 超时改 **20 秒**，
-等回 `Active`；`docs/console-todo.md` 第 0 节有逐步路径与复核命令。
-微信 CLI 没有改函数配置的命令，`deploy` 也不应用 config.json 的 timeout，只能点这一次。
-改完不用重部署、不用重传体验版，AI 评一次就能出结果。
+**✅ 14:33 人工那一步已完成**：用户把 `aiEval` 连同 `syncv2` / `stuImport` /
+`secCheck` / `family` 全部在控制台改成 20 秒。`npm run cloud:info` 复核 7 个函数
+全 `Active` 且 `admin 20 / aiEval 20 / backup 60 / family 20 / secCheck 20 /
+stuImport 20 / syncv2 20`，末尾 `✔ 所有函数超时都 ≥ 20 秒`。
+不用重部署、不用重传体验版（1133 已含前端重试），真机点一次「AI 评」应当直接出结果。
+微信 CLI 没有改函数配置的命令，`deploy` 也不应用 config.json 的 timeout；
+**以后新建云函数默认仍是 3 秒，必须在控制台改一次并跑 `cloud:info` 复核**，
+约定与点击路径留在 `docs/console-todo.md` 第 0 节。

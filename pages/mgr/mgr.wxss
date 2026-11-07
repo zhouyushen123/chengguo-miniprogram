@@ -21,6 +21,17 @@
 .del { color: var(--danger); font-size: 25rpx; padding: 10rpx 0 10rpx 24rpx; flex: none; }
 .act { color: var(--brand); font-size: 25rpx; font-weight: 600; padding: 10rpx 0 10rpx 24rpx; }
 .itrow { display: flex; align-items: center; gap: 20rpx; }
+/* G01 真机：成员说明文字（角色·范围·绑定状态）太长会把「切换/修改/移除」挤到下一行。
+   左侧可压缩到 0 并单行省略，右侧操作区固定不缩不换行，两者始终同一条水平线。
+   只作用于人员卡 .memitem，学生卡 / 班级卡保持原样 */
+.memitem { gap: 12rpx; }
+.memmain { flex: 1; min-width: 0; }
+.memitem .itrow { min-width: 0; gap: 16rpx; }
+.memitem .itrow .ava { flex: none; }
+.memtxt { flex: 1; min-width: 0; }
+.memmeta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.memacts { display: flex; align-items: center; flex: none; white-space: nowrap; gap: 4rpx; }
+.memacts .act, .memacts .del { padding-left: 16rpx; }
 /* 课程项：一门课可能同时开在多个班（V10 解耦），所以是两行——
    上面名称与操作，下面可点击的班级 chip（点掉=取消这个班的开设，课程本身不删） */
 .crsitem { display: block; }
@@ -85,6 +96,14 @@
 .bindrow { display: flex; gap: 16rpx; align-items: center; margin-bottom: 12rpx; }
 .bindrow .bindin { flex: 1; min-width: 0; }
 .bindrow .bindbtn { flex: none; width: 168rpx; height: 84rpx; font-size: 28rpx; }
+/* G05：候选学生名单——点名字就绑定，不必背 1001 这类学号 */
+.stucands { max-height: 340rpx; overflow-y: auto; margin: 0 0 20rpx; border: 2rpx solid var(--line-2); border-radius: 18rpx; }
+.cand { padding: 16rpx 20rpx; border-bottom: 2rpx solid var(--line); }
+.cand:last-child { border-bottom: 0; }
+.cand.on { background: var(--brand-soft); }
+.candnm { display: flex; align-items: center; justify-content: space-between; font-size: 27rpx; font-weight: 600; color: var(--text-2); }
+.candok { font-size: 22rpx; color: var(--brand); }
+.cand .mi { font-size: 22rpx; margin-top: 4rpx; }
 /* 学生条目里的学号小标签 */
 .sno { margin-right: 8rpx; font-size: 21rpx; color: var(--brand); background: var(--brand-soft); border-radius: 8rpx; padding: 2rpx 10rpx; }
 /* 卡片内的按钮行：上方只留卡片自身的 28rpx 内边距（此前 28+28 双倍叠间距） */

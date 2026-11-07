@@ -1,25 +1,44 @@
 <view class="theme-root {{themeCls}}">
-<view wx:if="{{mode==='preview'}}" class="wrap">
-  <view class="card">
-    <view class="label">家长收到的通知文本</view>
+<!-- H-20：预览的是「家长打开小程序看到的那张成果卡」，不是一段通知文本。
+     通知文本降级为卡片下方的可复制文案，照片/语音仍是卡片里的可交互内容 -->
+<view wx:if="{{mode==='preview'}}" class="wrap pvwrap">
+  <view class="mi pvtip">家长打开小程序时看到的样子</view>
+  <view class="card pvcard">
+    <view class="pvhead">
+      <ava src="{{pvAva}}" name="{{pvName}}" size="{{88}}" radius="{{24}}" />
+      <view class="pvheadtxt">
+        <view class="pvname">{{pvName}} 同学</view>
+        <view class="mi">{{pvCls}} · {{pvCourse}} · {{pvDate}}</view>
+      </view>
+      <view class="pvscore"><text class="pvnum">{{pvScore}}</text><text class="pvunit">分</text></view>
+    </view>
+    <view wx:if="{{pvTag}}" class="pvtag">{{pvTag}}</view>
+    <view wx:if="{{pvNoteLines.length}}" class="pvsect">
+      <view class="label">老师评语</view>
+      <view class="pvnote" wx:for="{{pvNoteLines}}" wx:key="*this">{{item}}</view>
+    </view>
+    <view wx:if="{{hasMedia}}" class="pvsect">
+      <view class="label">课堂成果</view>
+      <view wx:if="{{pvPhotos.length}}" class="pvgrid">
+        <image wx:for="{{pvPhotos}}" wx:key="*this" class="pvph" src="{{item}}" mode="aspectFill" bindtap="pvPhoto" data-i="{{index}}" />
+      </view>
+      <view wx:if="{{pvVideos.length}}" class="pvvideos">
+        <video wx:for="{{pvVideos}}" wx:key="*this" class="pvvideo" src="{{item}}" object-fit="cover" controls show-center-play-btn></video>
+      </view>
+      <view wx:if="{{pvAudio}}" class="pvaudio">
+        <image class="pvaico" src="{{icoAudio}}" mode="aspectFit" />
+        <text class="pvatxt">课堂语音点评</text>
+        <text class="pvaplay" bindtap="pvPlayAudio">播放</text>
+      </view>
+    </view>
+    <view wx:else class="pvhint">本条记录还没添加照片、视频或语音，只有文字内容</view>
+    <view class="pvfoot">橙果课堂 · 课后成果</view>
+  </view>
+  <view class="card pvplain">
+    <view class="label">微信通知文本（可复制发给家长）</view>
     <view class="prebox">{{previewText}}</view>
+    <view class="btn ghost copybtn2" bindtap="copyPreview">一键复制，发给家长</view>
   </view>
-  <view class="card" style="margin-top:20rpx">
-    <view class="label">随记录一起发送的{{pvPhotos.length ? '照片' : ''}}{{pvPhotos.length && pvVideos.length ? '、' : ''}}{{pvVideos.length ? '视频' : ''}}{{(pvPhotos.length || pvVideos.length) && pvAudio ? '、' : ''}}{{pvAudio ? '语音' : ''}}</view>
-    <view wx:if="{{pvPhotos.length}}" class="pvgrid">
-      <image wx:for="{{pvPhotos}}" wx:key="*this" class="pvph" src="{{item}}" mode="aspectFill" bindtap="pvPhoto" data-i="{{index}}" />
-    </view>
-    <view wx:if="{{pvVideos.length}}" class="pvvideos">
-      <video wx:for="{{pvVideos}}" wx:key="*this" class="pvvideo" src="{{item}}" object-fit="cover" controls show-center-play-btn></video>
-    </view>
-    <view wx:if="{{pvAudio}}" class="pvaudio">
-      <image class="pvaico" src="{{icoAudio}}" mode="aspectFit" />
-      <text class="pvatxt">课堂语音点评</text>
-      <text class="pvaplay" bindtap="pvPlayAudio">播放</text>
-    </view>
-    <view wx:if="{{!hasMedia}}" class="pvhint">本条记录还没添加照片、视频或语音，只有文字内容</view>
-  </view>
-  <view class="btn copybtn" bindtap="copyPreview">一键复制，发给家长</view>
 </view>
 
 <view wx:else class="wrap">

@@ -31,3 +31,19 @@
 .pvatxt { flex: 1; font-size: 27rpx; color: var(--text-2); }
 .pvaplay { font-size: 27rpx; color: var(--brand); font-weight: 600; }
 .pvhint { margin-top: 20rpx; font-size: 24rpx; color: var(--faint); }
+/* H-20 家长视角成果卡：头像 / 姓名 / 课程 / 分数档位 / 评语全文 / 媒体 */
+.pvwrap { padding-bottom: 60rpx; }
+.pvtip { margin: 24rpx 24rpx 12rpx; }
+.pvcard { margin: 0 24rpx; }
+.pvhead { display: flex; align-items: center; gap: 20rpx; }
+.pvheadtxt { flex: 1; min-width: 0; }
+.pvname { font-size: 32rpx; font-weight: 700; color: var(--text-2); }
+.pvscore { flex: none; text-align: center; background: var(--brand-soft); border-radius: 20rpx; padding: 12rpx 20rpx; }
+.pvnum { font-size: 44rpx; font-weight: 800; color: var(--brand); }
+.pvunit { font-size: 22rpx; color: var(--brand); margin-left: 4rpx; }
+.pvtag { display: inline-block; margin-top: 20rpx; padding: 8rpx 24rpx; border-radius: 999rpx; background: var(--brand); color: #fff; font-size: 24rpx; font-weight: 600; }
+.pvsect { margin-top: 28rpx; }
+.pvnote { font-size: 28rpx; line-height: 1.8; color: var(--text-2); margin-bottom: 8rpx; white-space: pre-wrap; }
+.pvfoot { margin-top: 28rpx; padding-top: 20rpx; border-top: 2rpx solid var(--line); text-align: center; font-size: 22rpx; color: var(--faint); }
+.pvplain { margin: 24rpx; }
+.copybtn2 { margin-top: 20rpx; }

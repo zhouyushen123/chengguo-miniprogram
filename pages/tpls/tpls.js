@@ -7,6 +7,9 @@ const theme = require('../../utils/theme');
 Page({
   data: { mode: 'manage', groups: [], sel: [], previewText: '', addingIdx: -1,
     pvPhotos: [], pvVideos: [], pvAudio: null, hasMedia: false,
+    // H-20：预览要像家长端卡片，不再只是「一段通知文本 + 附件列表」
+    pvName: '—', pvAva: '', pvCls: '', pvCourse: '', pvScore: 0, pvTag: '',
+    pvDate: '', pvNoteLines: [],
     // 模板是机构统一话术：只有负责人/管理员能改，老师与家长只读
     canEdit: false,
     icoMic: icons.mic(icons.brand()), icoEdit: icons.edit, icoClose: icons.close, icoPlus: icons.plus(icons.brand()), icoAudio: icons.audio },
@@ -113,15 +116,23 @@ Page({
     });
     this.recog.start();
   },
-  // —— 通知文本预览 ——
+  // —— 家长视角预览（H-20）——
+  // 通知文本仍保留，但降级成卡片下方的「可复制文案」；主体是家长打开小程序时
+  // 真正会看到的那张成果卡：孩子、课程、分数档位、评语全文、照片/语音。
   buildPreview() {
     const pick = getApp().globalData.pick || {};
     const s = db.students.get(pick.sid);
-    const lines = (pick.note || '').split('\n').filter(Boolean).map(l => '· ' + l);
-    const txt = `【橙果·课后成果】${s ? s.name : '—'} 同学今天的${db.classes.name(pick.cls)}·${pick.course || ''}课成果：${pick.score}分${pick.tag ? '（' + pick.tag + '）' : ''}\n${lines.join('\n')}`;
-    // 媒体随记录一起发送：照片/视频/语音在文本下方单独预览
+    const lines = (pick.note || '').split('\n').filter(Boolean);
+    const txt = `【橙果·课后成果】${s ? s.name : '—'} 同学今天的${db.classes.name(pick.cls)}·${pick.course || ''}课成果：${pick.score}分${pick.tag ? '（' + pick.tag + '）' : ''}\n${lines.map(l => '· ' + l).join('\n')}`;
+    const d = new Date();
+    const pad = n => (n < 10 ? '0' : '') + n;
     this.setData({
       previewText: txt,
+      pvName: s ? s.name : '—', pvAva: s ? (s.photo || '') : '',
+      pvCls: db.classes.name(pick.cls) || '', pvCourse: pick.course || '',
+      pvScore: pick.score || 0, pvTag: pick.tag || '',
+      pvDate: d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()),
+      pvNoteLines: lines,
       pvPhotos: pick.photos || [], pvVideos: pick.videos || [], pvAudio: pick.audio || null,
       hasMedia: (pick.photos || []).length > 0 || (pick.videos || []).length > 0 || !!pick.audio
     });

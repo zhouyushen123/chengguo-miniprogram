@@ -66,6 +66,9 @@ Page({
         wasSent = !!r0.sent;
       }
     }
+    // H-23 双保险：记录列表跳转时直接带上 sent，即使本地按 rid 没查到（权限/同步中）
+    // 也必须是「保存修改」，绝不能把已发布的记录显示成「发布到家长端」。
+    if (pick.sent) wasSent = true;
     const sessOpts = [];
     for (let i = 1; i <= sessMax; i++) sessOpts.push('第' + i + '次课' + (i === sessMax ? '（本次）' : ''));
     this.setData({

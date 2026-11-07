@@ -36,6 +36,8 @@
 .row2 { display: flex; gap: 20rpx; margin-bottom: 20rpx; }
 .row2 .btn { flex: 1; }
 .hint { text-align: center; font-size: 25rpx; color: var(--muted); background: var(--line); border-radius: 18rpx; padding: 20rpx; }
+/* H-23：编辑已发布记录时，把「这是修改、不是再发布一次」说清楚 */
+.sentnote { color: var(--brand); background: var(--brand-soft); border-radius: 16rpx; padding: 16rpx 20rpx; }
 /* ---------- 卡内课堂评价：多行文本域 + 模板/语音工具行 ---------- */
 /* 输入从单行 input 换成 textarea：评价内容较长，需要大面积书写与换行阅读 */
 .notearea {

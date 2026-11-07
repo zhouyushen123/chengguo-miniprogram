@@ -153,7 +153,7 @@ Page({
     }
     getApp().globalData.pick = {
       cls: r.cid, sid: r.sid, score: r.score, photos: r.photos || [], videos: r.videos || [], audio: r.audio,
-      tag: r.tag || '', note: r.note || '', rid: r.id, course: r.course
+      tag: r.tag || '', note: r.note || '', rid: r.id, course: r.course, sent: !!r.sent
     };
     wx.navigateTo({ url: '/pages/record/record' });
   },

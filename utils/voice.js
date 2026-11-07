@@ -22,6 +22,14 @@ function setMic(page, key) {
   try { page.setData({ micKey: key || '' }); } catch (e) { /* 页面已卸载 */ }
 }
 
+// 语音写完值之后通知页面：搜索框一类输入框还要刷新派生数据（候选列表等）。
+// 页面实现可选的 onVoiceDone(key) 即可；没实现的页面完全不受影响。
+function notify(page, key) {
+  if (page && typeof page.onVoiceDone === 'function') {
+    try { page.onVoiceDone(key); } catch (e) { /* 页面已卸载 */ }
+  }
+}
+
 function dictate(page, key) {
   if (!stt.available()) {
     wx.showToast({ title: '语音输入不可用：请先在小程序后台添加「同声传译」插件', icon: 'none', duration: 2500 });
@@ -42,6 +50,7 @@ function dictate(page, key) {
       if (done) return;
       done = true; page._rec = null; setMic(page, '');
       page.setData({ [key]: (base + glue + (t || '')).trim() });
+      notify(page, key);
       wx.hideToast();
       if (!(t || '').trim()) wx.showToast({ title: '没听清，再试一次？', icon: 'none' });
     },
@@ -49,6 +58,7 @@ function dictate(page, key) {
       if (done) return;
       done = true; page._rec = null; setMic(page, '');
       page.setData({ [key]: base }); // 回滚到进入时的内容，不留半截中间结果
+      notify(page, key);
       wx.hideToast();
       wx.showToast({ title: '语音识别失败了，请重试或手动输入', icon: 'none' });
     }

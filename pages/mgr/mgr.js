@@ -48,6 +48,8 @@ Page({
     enrollYearOpts: [{ y: 0, name: '未填' }], stuEnrollYearIdx: 0,
     // 成员表单弹层（chips = 预计算好 on 标记的渲染数组，WXML 不做任何方法调用）
     userForm: null, userClsSel: [], userStuSel: [], userCrsSel: [], userBindNo: '',
+    // G05：绑定孩子不必背学号——可按姓名/家长搜索，或直接点候选名单
+    userStuQ: '', userStuCands: [],
     memTab: 'all', memShown: [],   // 人员页签：全部/老师/家长三个分类，默认全部
     userClsChips: [], userStuChips: [], userCrsChips: [],
     roleOpts: ROLE_OPTS
@@ -162,6 +164,9 @@ Page({
           id: v.id, userId: v.userId, name: v.name,
           role: v.role, roleLabel: v.roleLabel,
           photo: v.photo,
+          // G02：编辑表单要回填联系方式。memberView 里有 phone/wechat，
+          // 但以前映射漏了这两项，点「修改」进去是空的，一保存反而把原值清空。
+          phone: v.phone || '', wechat: v.wechat || '',
           // 头像色块：老师=品牌色，负责人/管理员=蓝，家长=绿（全站统一口径，见 components/ava）
           avaTone: v.role === 'parent' ? 'parent' : (v.role === 'teacher' ? 'brand' : 'owner'),
           status: v.status, invited: v.status === 'invited',
@@ -605,6 +610,12 @@ Page({
     if (!no) return;
     wx.setClipboardData({ data: String(no), success: () => wx.showToast({ title: '学号已复制', icon: 'success' }) });
   },
+  // G05 / F-03：列表上学号也能点一下复制，发给家长绑定，不用手抄数字
+  copyStuNoList(e) {
+    const no = e.currentTarget.dataset.no;
+    if (!no) return;
+    wx.setClipboardData({ data: String(no), success: () => wx.showToast({ title: '学号已复制', icon: 'success' }) });
+  },
   goStudentPage(e) {
     wx.navigateTo({ url: '/pages/student/student?id=' + e.currentTarget.dataset.id });
   },
@@ -637,14 +648,20 @@ Page({
   },
   openUserForm(u) {
     const clsSel = (u.clsIds || []).slice(), crsSel = (u.courseIds || []).slice(), stuSel = (u.studentIds || []).slice();
+    // G02：标题说清「这是改资料」，别让人以为只能改分配范围
+    const title = u.id
+      ? '编辑' + (u.role === 'teacher' ? '老师' : u.role === 'parent' ? '家长' : '成员') + '资料'
+      : '新增成员';
     this.setData({
+      userFormTitle: title,
       userForm: { id: u.id || null, role: u.role, name: u.name || '', phone: u.phone || '', wechat: u.wechat || '', photo: u.photo || '', char: ((u.name || '').trim())[0] || '' },
-      userBindNo: '',
+      userBindNo: '', userStuQ: '',
       userClsSel: clsSel, userCrsSel: crsSel, userStuSel: stuSel,
       userClsChips: this._chips(db.classes.list(), clsSel),
       userCrsChips: this._chips(db.courses.list(), crsSel),
       userStuChips: this._stuChips(stuSel)
     });
+    this._refreshStuCands();
   },
   onUserName(e) {
     this.setData({ 'userForm.name': e.detail.value, 'userForm.char': (e.detail.value || '').trim()[0] || '' });
@@ -675,23 +692,62 @@ Page({
   pickRole(e) { this.setData({ 'userForm.role': e.currentTarget.dataset.k }); },
   userClsTgl(e) { this._tgl('userClsSel', 'classes', e); },
   userCrsTgl(e) { this._tgl('userCrsSel', 'courses', e); },
-  userStuTgl(e) { this._tgl('userStuSel', 'students', e); },
+  userStuTgl(e) { this._tgl('userStuSel', 'students', e); this._refreshStuCands(); },
   onBindNo(e) { this.setData({ userBindNo: e.detail.value }); },
-  /* 按学号绑定孩子：输入学号 → 找到学生 → 连同同家长号码的兄弟姐妹一起加入。
-   * 这是「家长号码自动归并」的手动补口：号码没填对/孩子先建后填号码的情况，用学号兜底。 */
-  bindByNo() {
-    const k = (this.data.userBindNo || '').trim();
-    if (!k) { wx.showToast({ title: '请输入学号', icon: 'none' }); return; }
-    const s = db.students.byNo(k);
-    if (!s) { wx.showToast({ title: '没有学号 ' + k + ' 的学生', icon: 'none' }); return; }
+  /* G05：学号是 1001 这种编号，靠背不现实。除了按学号快捷绑定，
+    还提供「按姓名/家长搜索 + 点名字」的候选名单，两条路都自动带上同家长的孩子。 */
+  onVoiceDone(key) { if (key === 'userStuQ') this._refreshStuCands(); },
+  onUserStuQ(e) { this.setData({ userStuQ: e.detail.value }); this._refreshStuCands(); },
+  _refreshStuCands() {
+    const q = String(this.data.userStuQ || '').trim().toLowerCase();
+    const sel = this.data.userStuSel || [];
+    const all = db.students.list();
+    const hit = all.filter(s => !q || [s.name, s.no, s.parent, s.parentPhone, s.wechat]
+      .some(v => String(v || '').toLowerCase().indexOf(q) > -1));
+    // 没输关键词时优先列「还没绑定」的，最常用的就是打开弹层直接点名字
+    const pool = (q ? hit : hit.filter(s => sel.indexOf(s.id) < 0)).slice(0, 8);
+    this.setData({
+      userStuCands: pool.map(s => ({
+        id: s.id, name: s.name,
+        sub: [s.no ? '学号 ' + s.no : '', s.parent ? '家长 ' + s.parent : '',
+          (s.clsIds || []).map(db.classes.name).filter(Boolean).join('、')]
+          .filter(Boolean).join(' · ') || '未填班级',
+        on: sel.indexOf(s.id) > -1
+      }))
+    });
+  },
+  pickStuCand(e) {
+    const r = this._addStudentById(+e.currentTarget.dataset.id);
+    if (!r) return;
+    this._refreshStuCands();
+    wx.showToast({
+      title: r.added ? (r.sibs ? '已加 ' + r.name + ' 等 ' + (r.sibs + 1) + ' 个孩子' : '已加 ' + r.name)
+        : r.name + ' 已在列表中',
+      icon: 'none'
+    });
+  },
+  _addStudentById(id) {
+    const s = db.students.list().find(x => x.id === id) || null;
+    if (!s) return null;
     const ids = this.data.userStuSel.slice();
     const sibs = db.students.siblings(s);
-    const add = [s.id].concat(sibs.map(x => x.id)).filter(id => ids.indexOf(id) < 0);
-    add.forEach(id => ids.push(id));
-    this.setData({ userStuSel: ids, userStuChips: this._stuChips(ids), userBindNo: '' });
-    if (!add.length) { wx.showToast({ title: s.name + ' 已在列表中', icon: 'none' }); return; }
+    const add = [s.id].concat(sibs.map(x => x.id)).filter(x => ids.indexOf(x) < 0);
+    add.forEach(x => ids.push(x));
+    this.setData({ userStuSel: ids, userStuChips: this._stuChips(ids) });
+    return { name: s.name, added: add.length, sibs: sibs.length };
+  },
+  /* 按学号绑定（快捷方式，可留空）：输入学号 → 找到学生 → 连同同家长孩子一起加入 */
+  bindByNo() {
+    const k = (this.data.userBindNo || '').trim();
+    if (!k) { wx.showToast({ title: '请输入学号，或直接在上面点名字', icon: 'none' }); return; }
+    const s = db.students.byNo(k);
+    if (!s) { wx.showToast({ title: '没有学号 ' + k + ' 的学生', icon: 'none' }); return; }
+    const r = this._addStudentById(s.id);
+    this.setData({ userBindNo: '' });
+    this._refreshStuCands();
+    if (!r || !r.added) { wx.showToast({ title: s.name + ' 已在列表中', icon: 'none' }); return; }
     wx.showToast({
-      title: sibs.length ? ('已加 ' + s.name + ' + ' + sibs.length + ' 个同家长孩子') : ('已加 ' + s.name),
+      title: r.sibs ? ('已加 ' + s.name + ' + ' + r.sibs + ' 个同家长孩子') : ('已加 ' + s.name),
       icon: 'none', duration: 1800
     });
   },

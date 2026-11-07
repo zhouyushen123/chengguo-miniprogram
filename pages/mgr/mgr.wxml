@@ -169,7 +169,7 @@
       <view class="itrow">
         <ava src="{{item.photo}}" name="{{item.name}}" size="{{64}}" radius="{{18}}" />
         <view style="min-width:0"><b>{{item.name}}</b><text wx:if="{{item.gender}}" class="gtag">{{item.gender}}</text>
-        <view class="mi"><text wx:if="{{item.no}}" class="sno">学号 {{item.no}}</text>{{item.cls}}{{item.year?' · '+item.year+' 年入学':''}}{{item.parent?' · 家长 '+item.parent:''}}{{item.parentPhone?' · 手机 '+item.parentPhone:''}}{{item.wechat?' · 微信 '+item.wechat:''}}</view></view>
+        <view class="mi"><text wx:if="{{item.no}}" class="sno" catchtap="copyStuNoList" data-no="{{item.no}}">学号 {{item.no}} · 点按复制</text>{{item.cls}}{{item.year?' · '+item.year+' 年入学':''}}{{item.parent?' · 家长 '+item.parent:''}}{{item.parentPhone?' · 手机 '+item.parentPhone:''}}{{item.wechat?' · 微信 '+item.wechat:''}}</view></view>
       </view>
     </view>
     <view class="stuacts">
@@ -197,21 +197,22 @@
     <view class="gopt {{memTab==='teacher'?'on':''}}" bindtap="pickMemTab" data-k="teacher">老师</view>
     <view class="gopt {{memTab==='parent'?'on':''}}" bindtap="pickMemTab" data-k="parent">家长</view>
   </view>
-  <view class="mi pagepad" style="margin-top:16rpx">老师只能看到并录入自己负责班级的成果；家长只能看自己孩子「已发布」的成果。点成员卡片可切身份预览，「分配」设定范围。</view>
+  <view class="mi pagepad" style="margin-top:16rpx">老师只能看到并录入自己负责班级的成果；家长只能看自己孩子「已发布」的成果。点成员卡片可切身份预览，点「修改」可改资料与负责范围。</view>
 
-  <view class="card item" wx:for="{{memShown}}" wx:key="id">
-    <view bindtap="goTeacher" data-id="{{item.id}}">
+  <!-- G01：左侧说明文字再长也不能把右侧操作区挤换行——文字单行省略，操作区 flex:none -->
+  <view class="card item memitem" wx:for="{{memShown}}" wx:key="id">
+    <view class="memmain" bindtap="goTeacher" data-id="{{item.id}}">
       <view class="itrow">
         <ava src="{{item.photo}}" name="{{item.name}}" size="{{76}}" radius="{{24}}" tone="{{item.avaTone}}" />
-        <view><b>{{item.name}}</b>
-          <view class="mi">{{item.roleLabel}} · {{item.meta}}<text wx:if="{{item.invited}}" class="mi"> · 待绑定</text><text wx:else class="mi">{{item.bound ? ' · 已绑定微信' : ' · 未绑定微信'}}</text></view>
+        <view class="memtxt"><b>{{item.name}}</b>
+          <view class="mi memmeta">{{item.roleLabel}} · {{item.meta}}<text wx:if="{{item.invited}}" class="mi"> · 待绑定</text><text wx:else class="mi">{{item.bound ? ' · 已绑定微信' : ' · 未绑定微信'}}</text></view>
         </view>
       </view>
     </view>
-    <view style="display:flex;align-items:center">
+    <view class="memacts">
       <text wx:if="{{item.cur}}" class="pill" style="background:var(--sent)">当前</text>
       <view class="mi act" catchtap="switchMe" data-id="{{item.id}}">切换</view>
-      <view class="mi act" catchtap="editUser" data-id="{{item.id}}">分配</view>
+      <view class="mi act" catchtap="editUser" data-id="{{item.id}}">修改</view>
       <view wx:if="{{item.role!=='owner'}}" class="mi del" catchtap="delUser" data-id="{{item.id}}">移除</view>
     </view>
   </view>
@@ -283,7 +284,7 @@
 <!-- ============ 成员表单弹层 ============ -->
 <view wx:if="{{userForm}}" class="mask" bindtap="userCancel">
   <view class="sheet" catchtap="noop">
-    <view class="sheet-t">{{userForm.id ? '编辑成员' : '新增成员'}}</view>
+    <view class="sheet-t">{{userFormTitle}}</view>
     <!-- 头像：点块上传照片；或一键同步微信头像（头像填写能力） -->
     <view class="avrow">
       <view class="ava big" bindtap="onUserPhoto">
@@ -327,13 +328,27 @@
       </view>
     </block>
     <block wx:elif="{{userForm.role==='parent'}}">
-      <view class="label">按学号绑定</view>
+      <!-- G05：学号是 1001 这种编号，记不住很正常。默认直接列出学生名单点名字，
+           也可搜姓名 / 学号 / 家长；按学号输入只留作快捷方式 -->
+      <view class="label">关联孩子（不用记学号，点名字即可）</view>
+      <view class="vin">
+        <input class="input vin-in" placeholder="搜姓名 / 学号 / 家长" value="{{userStuQ}}" bindinput="onUserStuQ" />
+        <image class="vmic {{micKey==='userStuQ'?'rec':''}}" src="{{micKey==='userStuQ'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="userStuQ" />
+      </view>
+      <view class="stucands">
+        <view wx:for="{{userStuCands}}" wx:key="id" class="cand {{item.on?'on':''}}" catchtap="pickStuCand" data-id="{{item.id}}">
+          <view class="candnm">{{item.name}}<text wx:if="{{item.on}}" class="candok">已选</text></view>
+          <view class="mi">{{item.sub}}</view>
+        </view>
+        <view wx:if="{{!userStuCands.length}}" class="mi">没找到，换个名字或学号试试</view>
+      </view>
+      <view class="label">按学号快捷绑定（可留空）</view>
       <view class="bindrow">
         <input class="input bindin" type="number" placeholder="输入学生学号，如 1001" value="{{userBindNo}}" bindinput="onBindNo" confirm-type="done" bindconfirm="bindByNo" />
         <view class="btn ghost bindbtn" hover-class="btn-hover" bindtap="bindByNo">添加</view>
       </view>
       <view class="mi" style="margin:-8rpx 0 16rpx">同一个家长号码下的孩子会自动带出，不用一个个选。</view>
-      <view class="label">关联孩子（可多选，至少一个）</view>
+      <view class="label">已选孩子（点一下可取消）</view>
       <view class="chips" style="margin-bottom:20rpx">
         <view wx:for="{{userStuChips}}" wx:key="id" class="chip {{item.on?'on':''}}" bindtap="userStuTgl" data-id="{{item.id}}">{{item.name}}</view>
       </view>

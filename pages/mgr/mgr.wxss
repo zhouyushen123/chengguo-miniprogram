@@ -182,6 +182,26 @@
   padding: 12rpx 64rpx 12rpx 24rpx; font-size: 24rpx;
 }
 .sfrow2 { display: flex; flex-wrap: wrap; gap: 12rpx; align-items: center; }
+/* 真机 14:09：搜索框比左边「入学」「男/女」两个胶囊矮一截，文字基线也不在同一条线，
+   右边 68rpx 的麦克风圆钮还顶出框外。三个控件统一 68rpx、上下 padding 归零、内容垂直居中，
+   输入框长到与麦克风圆钮等高即可，不缩小麦克风（68rpx 热区是用户认可的全站规格）。
+   只作用在 .sfrow2 内，别处（人员页分类、弹层性别开关）保持原样 */
+.sfrow2 .pkbox {
+  height: 68rpx; box-sizing: border-box; padding-top: 0; padding-bottom: 0;
+  align-items: center;
+}
+.sfrow2 .gswitch {
+  height: 68rpx; box-sizing: border-box; padding-top: 0; padding-bottom: 0;
+  align-items: stretch; /* 让「男 / 女」两段撑满整颗胶囊，选中态底色才不变矮 */
+}
+.sfrow2 .gswitch .gopt {
+  display: flex; align-items: center; justify-content: center;
+  padding-top: 0; padding-bottom: 0;
+}
+.sfrow2 .sfin {
+  /* box-sizing:border-box，68 - 上下 2rpx 边框 = 64rpx 内容高，line-height 同值才真正居中 */
+  height: 68rpx; line-height: 64rpx; padding-top: 0; padding-bottom: 0;
+}
 /* 性别筛选：男/女 二段开关。再点已选中的那段 = 取消筛选（回到全部，含未填性别的） */
 .gswitch {
   display: inline-flex; gap: 4rpx; padding: 4rpx; flex: none;

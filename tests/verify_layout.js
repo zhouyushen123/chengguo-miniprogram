@@ -86,4 +86,53 @@ ok('选择班级的多选 chips 都在卡片 / 弹层里，与上方标题共用
   }
 });
 
+console.log('\n【学生筛选行：入学 / 男·女 / 搜索框同一条水平线】');
+// 真机 14:09：搜索框比左边两个胶囊矮，文字基线也不齐；麦克风圆钮还顶出输入框上下边。
+const block = (label, re) => {
+  const m = WXSS.match(re);
+  assert.ok(m, '要有 ' + label + ' 的样式规则');
+  return m[1];
+};
+const heightOf = b => {
+  const m = b.match(/height:\s*(\d+)rpx/);
+  assert.ok(m, '规则里要显式写 height（不能靠默认行高碰运气）');
+  return +m[1];
+};
+const box = block('.sfrow2 .pkbox', /\.sfrow2 \.pkbox\s*\{([^}]*)\}/);
+const seg = block('.sfrow2 .gswitch', /\.sfrow2 \.gswitch\s*\{([^}]*)\}/);
+const inp = block('.sfrow2 .sfin', /\.sfrow2 \.sfin\s*\{([^}]*)\}/);
+// 麦克风沿用 app.wxss 的全站 .vin .vmic 规格（68rpx 热区），筛选行不许另写一套缩小它
+const mic = (() => {
+  const m = APP.match(/\.vin \.vmic\s*\{([^}]*)\}/);
+  assert.ok(m, '要能找到全站麦克风尺寸规则');
+  return m[1];
+})();
+ok('三个控件显式等高，且不低于 64rpx', () => {
+  const hs = [heightOf(box), heightOf(seg), heightOf(inp)];
+  assert.strictEqual(hs[0], hs[1]);
+  assert.strictEqual(hs[1], hs[2]);
+  assert.ok(hs[0] >= 64, '太矮会跟左边胶囊错开：' + hs[0] + 'rpx');
+});
+ok('内容垂直居中：上下 padding 归零，input 的 line-height 扣掉边框', () => {
+  for (const b of [box, seg, inp]) {
+    assert.ok(/padding-top:\s*0/.test(b) && /padding-bottom:\s*0/.test(b));
+  }
+  const lh = inp.match(/line-height:\s*(\d+)rpx/);
+  assert.ok(lh && +lh[1] === heightOf(inp) - 4, 'line-height 要等于内容区高度');
+  assert.ok(/align-items:\s*center/.test(box));
+  assert.ok(/align-items:\s*stretch/.test(seg), '男 / 女 两段要撑满胶囊，选中底色才不变矮');
+  const opt = block('.sfrow2 .gswitch .gopt', /\.sfrow2 \.gswitch \.gopt\s*\{([^}]*)\}/);
+  assert.ok(/display:\s*flex/.test(opt) && /align-items:\s*center/.test(opt));
+});
+ok('麦克风保持全站 68rpx 热区，输入框长到与它等高、不再顶出上下边', () => {
+  const pad = mic.match(/padding:\s*(\d+)rpx/);
+  assert.ok(pad, '要有 padding 撑触摸区');
+  const total = heightOf(mic) + 2 * (+pad[1]);
+  assert.strictEqual(total, 68, '全站麦克风触摸区是 68rpx，别在筛选行偷偷缩小');
+  assert.strictEqual(total, heightOf(inp), '圆钮与输入框等高才在同一条水平线上');
+  const mt = mic.match(/margin-top:\s*-(\d+)rpx/);
+  assert.ok(mt && +mt[1] === total / 2, 'top:50% 时 margin-top 要是圆钮半高才居中');
+  assert.ok(!/\.sfsearch \.vmic\s*\{/.test(WXSS), '筛选行不许另写一套尺寸覆盖麦克风');
+});
+
 console.log('\n全部 ' + pass + ' 项布局对齐断言通过');

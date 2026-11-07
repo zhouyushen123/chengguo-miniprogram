@@ -1008,3 +1008,15 @@ npm run cloud -- syncv2 admin    # 只部署指定的
   https://www.workbuddy.cn/space/d/qGahrPqYvrQxt29ypjmDiM
 - 当前成员只有用户自己（owner）。加成员需在空间里操作，Agent 侧没有代加成员的接口。
 - 分工不变：**资料库放文档 + 静态源码快照，代码协作走 GitHub**，两边不自动同步。
+
+### 11-07 11:12 电脑端后台 HTTP 路径已配通（用户手动完成，已验证）
+
+- `GET https://cloud1-d9gca4e7q307c4564.service.tcloudbase.com/admin` → **200**，
+  43.9 KB 完整登录页（含账号/口令表单）；`POST` → `{"ok":false,"code":"AUTH","msg":"请先登录"}`
+  → 接口通道与鉴权都正常。之前探到的 `INVALID_PATH` 已消失。
+- **域名正好是 `lib.adminUrl()` 写死的那个**，所以之前担心的「新旧域名不一致」不存在：
+  不用改 `lib.js`、不用加 `ADMIN_BASE_URL`、不用重部署 admin、不用重传体验版。
+- 逐屏点击步骤（全局开关、小程序管理员扫码授权、路由管理 / 云函数 HTTP 触发路径两种界面）
+  写进 `docs/http-access-setup.md`，已同步资料库团队空间。
+- 触发器结论复核：官方与社区一致确认「上传并部署」**不会**同步 `config.json` 的触发器，
+  必须单独「上传触发器」；自查方法是云函数 `backup` 的「触发器」页签看 `dailyBackup`。

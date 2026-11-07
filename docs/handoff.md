@@ -999,3 +999,12 @@ npm run cloud -- syncv2 admin    # 只部署指定的
 - 协作者最容易踩的**生产环境风险**：云环境 `cloud1-...4564` 是共享生产库，
   调试时别在真机点「立即同步」——已写进 CONTRIBUTING 第 5 节第 1 条。
 - `tools/wxcli.js` 已支持 `WX_CLI` 环境变量，别人机器路径不同也能跑（文档已写）。
+
+### 11-07 10:15 资料库升级为团队空间（长期多人协作）
+
+- 团队空间「**橙果小程序·协作**」：https://www.workbuddy.cn/space/s/opImurKQmm2fzxSaxqPx7K
+- 个人资料库里的「橙果小程序·项目协作」文件夹（8 个条目：总览/协作上手/交接/待办/
+  手册/用例/README/源码快照）已**整体移入**团队空间根目录，节点链接不变：
+  https://www.workbuddy.cn/space/d/qGahrPqYvrQxt29ypjmDiM
+- 当前成员只有用户自己（owner）。加成员需在空间里操作，Agent 侧没有代加成员的接口。
+- 分工不变：**资料库放文档 + 静态源码快照，代码协作走 GitHub**，两边不自动同步。

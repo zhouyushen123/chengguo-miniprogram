@@ -33,6 +33,7 @@ const SUITES = [
   ['verify_voice.js', '语音输入'],
   ['verify_course.js', '课程与多班开设'],
   ['verify_layout.js', '页面左右对齐'],
+  ['verify_ai.js', 'AI 评超时重试'],
   ['verify_demo.js', '演示隔离'],
   ['verify_hardening.js', '加固'],
   ['verify_backup.js', '备份与恢复'],

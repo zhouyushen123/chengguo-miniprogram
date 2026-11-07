@@ -12,6 +12,7 @@
     "docs:schema": "node tools/schema-doc.js",
     "cloud": "node tools/cf-deploy.js",
     "cloud:ls": "node tools/cf-deploy.js --list",
+  "cloud:info": "node tools/cf-deploy.js --info",
     "preview": "node tools/mp-release.js preview",
     "ship": "node tools/mp-release.js ship",
     "upload": "node tools/mp-release.js ship"

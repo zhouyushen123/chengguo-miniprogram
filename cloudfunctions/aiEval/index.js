@@ -15,7 +15,10 @@ const MODEL = 'glm-4v-flash';
 const TEXT_MODEL = 'glm-4-flash';
 const HOST = 'open.bigmodel.cn';
 const PATH = '/api/paas/v4/chat/completions';
-const TIMEOUT_MS = 25000;
+// 云函数本身超时按 20 秒配置（控制台，微信 CLI 的 deploy 不应用 config.json 的 timeout）。
+// 这里留 2 秒余量：18 秒还没回就主动放弃并返回明确错误，而不是等微信在 20 秒把函数掐断
+// ——被掐断时前端只能拿到 -504003，什么信息都没有。
+const TIMEOUT_MS = 18000;
 const MAX_B64 = 4 * 1024 * 1024;   // base64 超过 4MB 直接拒绝（约 3MB 原图）
 const BATCH_SIZE = 10;             // 批量评语每批人数：一次太多容易超时/截断
 

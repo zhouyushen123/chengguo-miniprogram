@@ -1,1 +1,4 @@
-{ "permissions": { "openapi": ["security.msgSecCheck"] } }
+{
+  "permissions": { "openapi": ["security.msgSecCheck"] },
+  "timeout": 20
+}

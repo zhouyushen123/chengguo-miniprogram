@@ -12,6 +12,7 @@
 //   npm run cloud -- syncv2 admin   只部署指定函数
 //   npm run cloud -- --all          连未被引用的目录也一起部署（慎用）
 //   npm run cloud:ls                只看云端现状与差异（不部署）
+//   npm run cloud:info              看每个云函数的超时（默认 3 秒会掐断 AI 评 / 同步）
 //
 // 退出码：0 全部成功 / 1 有函数失败（打印是哪一个，可单独重试）
 const fs = require('fs');
@@ -56,6 +57,33 @@ function cloudFns() {
 }
 
 const argv = process.argv.slice(2);
+
+// 超时复核：CLI 的 deploy 不会应用 config.json 的 timeout，只能控制台改，
+// 改完用这条命令看一眼（尤其是 aiEval：3 秒会把 AI 识图掐断）
+if (argv.indexOf('--info') >= 0) {
+  // 只查云端真实存在的函数：本地可能留着已下线的旧目录（如 sync），查它会刷一条
+  // ResourceNotFound.Function 红字，把表格弄脏
+  const cloud = cloudFns().names;
+  const names = cloud.length ? cloud : localFns();
+  const r = run(['cloud', 'functions', 'info', '-e', ENV, '-n'].concat(names, ['--project', ROOT]));
+  const head = r.out.split('- initialize')[0]
+    .split('\n').filter(l => l.indexOf('[error]') < 0 && l.indexOf('"code"') < 0)
+    .join('\n').trim();
+  console.log('云环境：' + ENV + '\n' + head);
+  const re = /│\s*([a-zA-Z0-9_]+)\s*│\s*'[^']*'\s*│\s*(\d+)\s*│/g;
+  const low = [];
+  let m;
+  while ((m = re.exec(head))) { if (+m[2] < 20) low.push(m[1] + '(' + m[2] + 's)'); }
+  if (low.length) {
+    console.log('\n⚠ 超时不足 20 秒：' + low.join('、'));
+    if (low.some(x => x.indexOf('aiEval') === 0)) {
+      console.log('  aiEval 若是 3 秒，AI 识图必被掐断 → 控制台 → 云函数 → aiEval → 配置 → 超时 20 秒');
+    }
+  } else {
+    console.log('\n✔ 所有函数超时都 ≥ 20 秒');
+  }
+  process.exit(0);
+}
 
 if (argv.indexOf('--list') >= 0) {
   const local = localFns();

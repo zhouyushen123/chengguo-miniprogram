@@ -162,7 +162,8 @@ Page({
       if (!go) return;
     }
     this.setData({ aiBusy: true });
-    wx.showLoading({ title: 'AI 正在识图…', mask: true });
+    // 识图本来就要几秒，先说清楚要等，免得老师以为没反应就反复点
+    wx.showLoading({ title: 'AI 识图中，约需几秒…', mask: true });
     try {
       const src = this.data.photos[0];
       const payload = { hint: this.data.course || '' };
@@ -176,7 +177,10 @@ Page({
         payload.imageBase64 = await new Promise((res, rej) =>
           wx.getFileSystemManager().readFile({ filePath: p, encoding: 'base64', success: r => res(r.data), fail: rej }));
       }
-      const r = await api.aiEvalDraft(payload);
+      // 网络 / 云函数超时由 api 层自动补两次，这里只负责把重试进度显示出来
+      const r = await api.aiEvalDraft(payload, {
+        onRetry: n => wx.showLoading({ title: '第 ' + (n + 1) + ' 次尝试…', mask: true })
+      });
       if (!r || !r.ok) {
         const err = new Error((r && r.msg) || '生成失败');
         err.code = r && r.code;   // 业务错误码（如 NO_KEY）比 msg 文本更可靠
@@ -189,10 +193,22 @@ Page({
       wx.showToast({ title: '已生成，可自由修改', icon: 'success' });
     } catch (e) {
       const m = String((e && e.message) || '');
+      // 微信侧掐断云函数是 -504003 / time out，别只说「请重试」：多半是 aiEval 超时还停在 3 秒。
+      // 云函数自己回的「GLM 请求超时」是 AI 服务慢，走普通 toast，不误报配置问题
+      const timeout = /-504003|time\s*out|timeout|云函数超时/i.test(m);
+      if (timeout) {
+        wx.hideLoading && wx.hideLoading();
+        wx.showModal({
+          title: 'AI 生成超时',
+          content: '已自动重试 2 次仍没拿到结果。云函数 aiEval 的超时多半还是 3 秒，而识图要 5~10 秒。请到云开发控制台 → 云函数 → aiEval → 配置，把超时改成 20 秒（只需设一次，之后一次就能出结果）。\n\n错误：' + m.slice(0, 120),
+          showCancel: false, confirmText: '知道了'
+        });
+        return;
+      }
       const tip = (e && e.code) === 'NO_KEY' ? 'AI 未配置：云函数缺 ZHIPU_API_KEY 环境变量'
         : m.indexOf('CLOUD_OFF') > -1 ? '云开发未开通：需开通环境并部署 aiEval 云函数'
         : m.indexOf('NO_KEY') > -1 ? 'AI 未配置：云函数缺 ZHIPU_API_KEY 环境变量'
-        : m.indexOf('超时') > -1 || m.indexOf('timeout') > -1 ? 'AI 响应超时，请重试'
+        : m.indexOf('GLM 请求超时') > -1 ? 'AI 服务响应慢，请稍后再试'
         : (m || '生成失败，请重试');
       wx.showToast({ title: tip, icon: 'none' });
     } finally {

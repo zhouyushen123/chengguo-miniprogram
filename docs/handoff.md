@@ -1207,3 +1207,29 @@ npm run cloud -- syncv2 admin    # 只部署指定的
 - `tests/verify_layout.js` 追加 3 项（7→10）：三控件等高且 ≥64rpx、垂直居中参数、
   麦克风热区不许在筛选行被另写一套尺寸覆盖。lint 0 提醒、**32 套件全绿**。
 - 纯样式，云函数没动。体验版 **1132**（主包 1223.0 KB）已上传，二维码已生成。
+
+## 2026-11-07 14:10 · AI 评第一次出不来，要连点两三次
+
+`npm run cloud:info` 复核：`aiEval` 云端 `timeout = 3` 秒（admin 20 / backup 60），
+而 GLM-4V-Flash 识图要 5~10 秒 → 微信 3 秒掐断，前端拿 `-504003 time out`。
+热启动偶发赶在 3 秒内返回，所以「点两三次才出得来」，不是 AI 不稳。
+
+**代码侧（已自动做完，体验版 1133）**：
+- `utils/api.js` `aiEvalDraft(data, opts)`：只对 `callFunction` 的网络/超时失败
+  自动补 2 次（0.8s / 1.5s 退避），业务 `result`（NO_KEY / 缺照片 / GLM 报错）不重试；
+  三次都失败把**真实 errMsg** 抛出，不吞成「网络不通」。批量评语走同一函数，同样受益。
+- `pages/record/record.js`：loading 先说「约需几秒」，重试时显示「第 2/3 次尝试」；
+  仍超时则 `showModal` 给出「控制台把 aiEval 超时改 20 秒」的一次性指引 + 错误原文。
+  云函数自己回的「GLM 请求超时」走普通 toast，不误报配置问题。
+- `cloudfunctions/aiEval/index.js`：`TIMEOUT_MS` 25s → **18s**（20 秒函数超时前主动返回
+  明确错误，而不是等微信掐断）；`config.json` 记 `"timeout": 20` 作文档化。
+  `npm run cloud -- aiEval` 已重部署，部署不会打回控制台设置。
+- 新增 `npm run cloud:info`：一条命令列出所有函数的 timeout，并标出 <20 秒的
+  （顺带发现 `syncv2/stuImport/secCheck/family` 也是 3 秒，不急）。
+- 新增 `tests/verify_ai.js` 8 项（首次成功不重试 / 超时自动补 2 次 / 业务错误不重试 /
+  失败不吞错 / 前端指引 / 云函数超时 < 控制台超时 / 批量链路），**33 套件全绿**。
+
+**仍需人工一次**：控制台 → 云函数 → `aiEval` → 配置 → 超时改 **20 秒**，
+等回 `Active`；`docs/console-todo.md` 第 0 节有逐步路径与复核命令。
+微信 CLI 没有改函数配置的命令，`deploy` 也不应用 config.json 的 timeout，只能点这一次。
+改完不用重部署、不用重传体验版，AI 评一次就能出结果。

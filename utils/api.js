@@ -74,12 +74,18 @@ function uploadFile(filePath, kind) {
     });
   });
 }
-// AI 识图生成评价草稿：调 aiEval 云函数（智谱 GLM-4V-Flash）。
-// 入参二选一：{ fileID } 云存储图片；{ imageBase64, hint } 压缩图兜底。
+// AI 识图 / 全班评语：调 aiEval 云函数（智谱 GLM-4V-Flash / glm-4-flash）。
+// 入参三选一：{ fileID } 云存储图片；{ imageBase64, hint } 压缩图兜底；{ action:'batch' } 批量评语。
 // 不走 callSync（它把 ok:false 当 reject，这里的业务错误码要用 result 原样带回）
-function aiEvalDraft(data) {
+//
+// 真机 2026-11-07 14:10：云端 aiEval 超时只有 3 秒，识图通常 5~10 秒，第一次几乎必被掐断，
+// 老师得连点两三次才出结果。这里只对「网络 / 超时」类失败自动补 2 次（0.8s / 1.5s 退避），
+// 业务错误（NO_KEY / 缺照片 / GLM 报错）原样返回不重试；三次都失败时把真实 errMsg 抛出去，
+// 绝不吞成「网络不通」——上午修 admin 账号时已经吃过这个亏。
+function aiEvalDraft(data, opts) {
   if (!cloudReady) return Promise.reject(new Error('CLOUD_OFF'));
-  return new Promise((resolve, reject) => {
+  const onRetry = opts && typeof opts.onRetry === 'function' ? opts.onRetry : null;
+  const once = () => new Promise((resolve, reject) => {
     wx.cloud.callFunction({
       name: 'aiEval',
       data: data || {},
@@ -87,6 +93,13 @@ function aiEvalDraft(data) {
       fail: e => reject(new Error((e && e.errMsg) || '云函数调用失败'))
     });
   });
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const attempt = n => once().catch(e => {
+    if (n >= 2) throw e;                  // 一次点击最多补两次，别无限转圈
+    if (onRetry) onRetry(n + 1);
+    return wait(n === 0 ? 800 : 1500).then(() => attempt(n + 1));
+  });
+  return attempt(0);
 }
 
 // 学生批量导入云函数（表格解析 / 纸质名单拍照识别），返回 { ok, students|msg }

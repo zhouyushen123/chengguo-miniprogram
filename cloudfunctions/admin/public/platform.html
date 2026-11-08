@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>橙果 · 平台控制台</title>
+<style>
+  :root{
+    --brand:#E8590C; --brand-2:#FF8A3D; --ink:#1F2329; --ink-2:#545B66; --ink-3:#8A9099;
+    --line:#E9ECF0; --bg:#F6F7F9; --card:#FFFFFF; --ok:#12A150; --warn:#E8A33D; --bad:#D93026;
+    --blue:#3A6FD8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;font-size:14px;
+    -webkit-font-smoothing:antialiased}
+  a{color:var(--brand);text-decoration:none}
+  .btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;
+    padding:7px 13px;font-size:13px;cursor:pointer;line-height:1.2}
+  .btn:hover{border-color:#d6dbe2;background:#fafbfc}
+  .btn.primary{background:linear-gradient(135deg,var(--brand-2),var(--brand));border:0;color:#fff}
+  .btn.ghost{background:transparent;border-color:transparent;color:var(--ink-2)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .hide{display:none!important}
+
+  header{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;
+    padding:0 20px;height:56px;background:#fff;border-bottom:1px solid var(--line)}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:700;font-size:16px}
+  .dot{width:10px;height:10px;border-radius:3px;background:linear-gradient(135deg,var(--brand-2),var(--brand))}
+  .badge{font-size:11px;color:#8a4a12;background:#fff1e5;border:1px solid #ffd9bd;
+    border-radius:999px;padding:2px 9px;font-weight:600}
+  .grow{flex:1}
+  .acc{color:var(--ink-3);font-size:12px}
+  main{max-width:1240px;margin:0 auto;padding:18px 20px 70px}
+
+  .demo-banner{display:flex;align-items:center;gap:10px;background:#fff8ef;border:1px solid #ffe2c4;
+    color:#8a4a12;border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:16px}
+
+  /* 登录 */
+  .login{position:fixed;inset:0;background:
+    radial-gradient(1200px 420px at 50% -100px,#ffe6d5,transparent),var(--bg);
+    display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .login .box{width:380px;background:#fff;border:1px solid var(--line);border-radius:18px;
+    padding:30px 28px;box-shadow:0 18px 50px rgba(31,35,41,.08)}
+  .login h1{font-size:19px;margin:0 0 6px}
+  .login p{margin:0 0 20px;color:var(--ink-3);font-size:13px;line-height:1.6}
+  .login label{display:block;font-size:12px;color:var(--ink-2);margin:12px 0 6px}
+  .login input{width:100%;padding:11px 12px;font-size:15px;border:1px solid var(--line);
+    border-radius:9px;outline:none;font-family:inherit}
+  .login input:focus{border-color:var(--brand)}
+  .login .btn{width:100%;justify-content:center;padding:11px;margin-top:18px;font-size:15px}
+  .err{color:var(--bad);font-size:12px;margin-top:10px;min-height:16px;line-height:1.5}
+  .hint{font-size:12px;color:var(--ink-3);margin-top:16px;line-height:1.7}
+
+  .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .tab{padding:8px 16px;border-radius:999px;font-size:13px;color:var(--ink-2);cursor:pointer;
+    background:#fff;border:1px solid var(--line)}
+  .tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .card + .card{margin-top:14px}
+  .card-h{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .card-h .t{font-weight:600;font-size:14px}
+  .card-h .s{font-size:12px;color:var(--ink-3)}
+  .cols{display:grid;grid-template-columns:1.45fr 1fr;gap:14px}
+  .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:14px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+  .kpi .k{font-size:12px;color:var(--ink-3)}
+  .kpi .v{font-size:25px;font-weight:700;margin-top:6px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  .kpi .s{font-size:11px;color:var(--ink-3);margin-top:5px}
+  .kpi.hero{background:linear-gradient(140deg,#fff4ec,#fff 65%);border-color:#ffe0c9}
+
+  .strip{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);
+    border-radius:999px;padding:6px 12px;font-size:12px;color:var(--ink-2)}
+  .chip b{color:var(--ink);font-variant-numeric:tabular-nums}
+
+  .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  input,select{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;
+    background:#fff;color:var(--ink);outline:none;font-family:inherit}
+  input:focus,select:focus{border-color:var(--brand)}
+  input[type=search]{width:240px}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{font-weight:600;color:var(--ink-3);font-size:12px;white-space:nowrap}
+  tbody tr.click{cursor:pointer}
+  tbody tr:hover{background:#fbfcfd}
+  td.num{font-variant-numeric:tabular-nums}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;background:#f2f4f7;color:var(--ink-2)}
+  .pill.ok{background:#e8f7ee;color:var(--ok)}
+  .pill.draft{background:#fdf1e2;color:#a9700f}
+  .pill.blue{background:#eaf0fc;color:var(--blue)}
+  .pill.bad{background:#fdeceb;color:var(--bad)}
+  .empty{padding:44px;text-align:center;color:var(--ink-3)}
+  .pager{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:12px;font-size:12px;color:var(--ink-3)}
+
+  /* 图表 */
+  .chart{width:100%;height:170px;display:block}
+  .legend{display:flex;gap:16px;font-size:11px;color:var(--ink-3);margin-top:6px}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px}
+
+  /* 排行条 */
+  .rank{display:flex;flex-direction:column;gap:10px}
+  .rank .row{display:grid;grid-template-columns:1fr 92px;gap:10px;align-items:center;cursor:pointer}
+  .rank .nm{font-size:13px;margin-bottom:5px;display:flex;justify-content:space-between;gap:8px}
+  .rank .nm span{color:var(--ink-3);font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .rank .track{height:7px;background:#f1f3f6;border-radius:999px;overflow:hidden}
+  .rank .fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--brand-2),var(--brand))}
+  .rank .rt{font-size:12px;color:var(--ink-2);text-align:right;font-variant-numeric:tabular-nums}
+
+  /* 分布 */
+  .dist{display:flex;flex-direction:column;gap:9px;margin-top:4px}
+  .dist .row{display:grid;grid-template-columns:52px 1fr 48px;gap:10px;align-items:center;font-size:12px}
+  .dist .bar{height:8px;background:#f1f3f6;border-radius:999px;overflow:hidden}
+  .dist .bar i{display:block;height:100%;border-radius:999px}
+  .dist .n{text-align:right;color:var(--ink-2);font-variant-numeric:tabular-nums}
+
+  /* 提醒 */
+  .warnlist{display:flex;flex-direction:column;gap:9px}
+  .warnitem{display:flex;gap:9px;font-size:13px;line-height:1.5}
+  .warnitem .i{width:18px;height:18px;border-radius:6px;flex:none;display:flex;align-items:center;
+    justify-content:center;font-size:11px;font-weight:700;color:#fff;margin-top:1px}
+  .warnitem .i.w{background:var(--warn)} .warnitem .i.n{background:var(--blue)}
+  .warnitem .d{color:var(--ink-3);font-size:12px;margin-top:2px}
+
+  /* 抽屉 */
+  .mask{position:fixed;inset:0;background:rgba(24,28,33,.4);z-index:60;display:flex;justify-content:flex-end}
+  .drawer{width:min(880px,94vw);height:100%;background:var(--bg);overflow:auto;padding:20px 22px 50px;
+    box-shadow:-12px 0 40px rgba(20,24,30,.14)}
+  .drawer .dh{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+  .drawer h2{margin:0;font-size:19px}
+  .drawer .sub{color:var(--ink-3);font-size:12px;margin-top:5px}
+  .close{background:#fff;border:1px solid var(--line);border-radius:8px;width:30px;height:30px;
+    cursor:pointer;font-size:16px;line-height:1;color:var(--ink-2)}
+  .minigrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  .mini{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .mini .k{font-size:11px;color:var(--ink-3)}
+  .mini .v{font-size:20px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
+  .mini .s{font-size:11px;color:var(--ink-3);margin-top:3px}
+
+  .toast{position:fixed;left:50%;bottom:36px;transform:translateX(-50%);background:#1F2329;color:#fff;
+    padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;transition:.2s;pointer-events:none;z-index:80}
+  .toast.on{opacity:1}
+
+  @media (max-width:1080px){
+    .grid{grid-template-columns:repeat(3,1fr)}
+    .cols{grid-template-columns:1fr}
+    .minigrid{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (max-width:680px){
+    .grid{grid-template-columns:repeat(2,1fr)}
+    main{padding:14px}
+    header{padding:0 12px}
+    .acc{display:none}
+    input[type=search]{width:150px}
+  }
+</style>
+</head>
+<body>
+
+<!-- 登录 -->
+<div class="login" id="login">
+  <div class="box">
+    <h1>橙果 · 平台控制台</h1>
+    <p>看全平台所有机构、老师和学生的情况<br>（只读，改数据请进对应机构的机构后台）</p>
+    <label>平台账号</label>
+    <input id="acc" placeholder="默认 CGPLAT" autocomplete="off" autocapitalize="characters">
+    <label>平台口令</label>
+    <input id="pin" type="password" placeholder="部署时配置的 PLATFORM_PIN" autocomplete="off">
+    <div class="err" id="lerr"></div>
+    <button class="btn primary" id="doLogin">进入控制台</button>
+    <div class="hint">第一次用：在云开发控制台 → 云函数 <b>admin</b> → 配置 → 环境变量，添加
+      <b>PLATFORM_PIN</b>（6 位以上），保存后等 1 分钟生效。<br>
+      网址：<span id="entryUrl">本站 ?view=platform</span></div>
+  </div>
+</div>
+
+<header class="hide" id="head">
+  <div class="logo"><span class="dot"></span>橙果 · 平台控制台<span class="badge">只读</span></div>
+  <div class="grow"></div>
+  <span class="acc" id="accLabel"></span>
+  <button class="btn ghost" id="doRefresh">刷新</button>
+  <button class="btn ghost" id="doLogout">退出</button>
+</header>
+
+<main id="app" class="hide">
+  <div class="demo-banner hide" id="demoBanner">
+    <b>演示数据</b><span>这里用内置的 5 家机构 / 200 名学生演示界面，未连接云端。部署后同一页面读真实数据。</span>
+  </div>
+
+  <div class="tabs">
+    <div class="tab on" data-tab="overview">全局总览</div>
+    <div class="tab" data-tab="orgs">机构清单</div>
+    <div class="tab" data-tab="students">学生总览</div>
+  </div>
+
+  <!-- 全局总览 -->
+  <section id="tab-overview">
+    <div class="grid" id="kpis"></div>
+    <div class="strip" id="strip"></div>
+    <div class="cols">
+      <div class="card">
+        <div class="card-h"><div class="t">近 30 天全平台录入</div><div class="grow"></div><div class="s" id="trendSub"></div></div>
+        <svg class="chart" id="chart" viewBox="0 0 720 170" preserveAspectRatio="none"></svg>
+        <div class="legend"><span><i style="background:#E8590C"></i>录入条数</span><span><i style="background:#9EC5FF"></i>其中已发布给家长</span></div>
+        <div id="trendEmpty"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><div class="t">机构规模排行</div><div class="grow"></div><div class="s">按学生数</div></div>
+        <div class="rank" id="rank"></div>
+      </div>
+    </div>
+    <div class="cols">
+      <div class="card">
+        <div class="card-h"><div class="t">成绩分布</div><div class="grow"></div><div class="s" id="distSub"></div></div>
+        <div class="dist" id="dist"></div>
+        <div class="card-h" style="margin:16px 0 8px"><div class="t" style="font-size:13px">老师习惯用的等级</div></div>
+        <div class="strip" id="tags" style="margin:0"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><div class="t">运营提醒</div></div>
+        <div class="warnlist" id="warns"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 机构清单 -->
+  <section id="tab-orgs" class="hide">
+    <div class="toolbar">
+      <input type="search" id="orgQ" placeholder="搜机构名 / 机构号 / 负责人">
+      <button class="btn" id="orgSearch">查询</button>
+      <div class="grow"></div>
+      <button class="btn" id="orgExport">导出机构清单 CSV</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr>
+          <th>机构</th><th>负责人</th><th class="num">学生</th><th class="num">班级</th><th class="num">记录</th>
+          <th class="num">发布率</th><th class="num">每生记录</th><th>最近上课</th><th class="num">老师</th><th class="num">家长</th>
+        </tr></thead>
+        <tbody id="orgBody"></tbody>
+      </table>
+      <div class="pager" id="orgPager"></div>
+    </div>
+  </section>
+
+  <!-- 学生总览 -->
+  <section id="tab-students" class="hide">
+    <div class="toolbar">
+      <input type="search" id="stuQ" placeholder="搜学生姓名">
+      <select id="stuOrg"><option value="">全部机构</option></select>
+      <button class="btn" id="stuSearch">查询</button>
+      <div class="grow"></div>
+      <button class="btn" id="stuExport">导出学生总表 CSV</button>
+    </div>
+    <div class="strip" id="stuStrip"></div>
+    <div class="card">
+      <table>
+        <thead><tr>
+          <th>姓名</th><th>学号</th><th>机构</th><th>班级</th><th class="num">记录数</th>
+          <th>最近记录</th><th>家长</th><th>微信/手机</th><th class="num">入学年份</th>
+        </tr></thead>
+        <tbody id="stuBody"></tbody>
+      </table>
+      <div class="pager" id="stuPager"></div>
+    </div>
+  </section>
+</main>
+
+<div id="drawerRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+  var TOKEN_KEY = 'cg_platform_token';
+  var S = { token: localStorage.getItem(TOKEN_KEY) || '', tab: 'overview', account: '',
+    orgPage: 1, stuPage: 1, stuOrg: '', stuQ: '', orgQ: '', orgsAll: [], demo: false };
+
+  // file:// 直接双击打开时没有后端，自动进演示模式；线上通过 ?demo=1 也能看演示
+  var DEMO = location.protocol === 'file:' || location.search.indexOf('demo') >= 0;
+
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) {
+    return String(s === undefined || s === null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function num(n) {
+    n = Number(n) || 0;
+    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+  function dt(ms) {
+    if (!ms) return '—';
+    var d = new Date(Number(ms));
+    return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
+  }
+  function p2(n) { return String(n).length < 2 ? '0' + n : String(n); }
+  function daysAgo(s) {
+    if (!s) return '';
+    var t = new Date(s + 'T00:00:00').getTime();
+    var n = Math.round((Date.now() - t) / 86400000);
+    if (n <= 0) return '今天';
+    if (n === 1) return '昨天';
+    return n + ' 天前';
+  }
+
+  var toastTimer = null;
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg; t.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('on'); }, 1900);
+  }
+
+  /* ---------------- 接口 ---------------- */
+  function post(action, payload) {
+    if (DEMO) return Promise.resolve(demoApi(action, payload || {}));
+    var body = Object.assign({ action: action }, payload || {});
+    return fetch(location.pathname + '?api=' + encodeURIComponent(action), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + S.token },
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json(); }).catch(function () {
+      return { ok: false, msg: '网络不通，请检查网络后重试' };
+    });
+  }
+  function guard(r) {
+    if (r && r.code === 'AUTH') {
+      S.token = ''; localStorage.removeItem(TOKEN_KEY); showLogin();
+      throw new Error('AUTH');
+    }
+    if (!r || !r.ok) { toast((r && r.msg) || '操作失败'); throw new Error((r && r.msg) || 'FAIL'); }
+    return r;
+  }
+
+  /* ---------------- 登录 ---------------- */
+  function showLogin() { $('login').classList.remove('hide'); $('app').classList.add('hide'); $('head').classList.add('hide'); }
+  function showApp() { $('login').classList.add('hide'); $('app').classList.remove('hide'); $('head').classList.remove('hide'); }
+
+  $('entryUrl').textContent = DEMO ? '（当前为本地演示）' : (location.origin + location.pathname + '?view=platform');
+
+  $('doLogin').addEventListener('click', function () {
+    var acc = $('acc').value.trim() || 'CGPLAT';
+    var pin = $('pin').value.trim();
+    if (!pin) { $('lerr').textContent = '请填平台口令'; return; }
+    $('doLogin').disabled = true; $('lerr').textContent = '';
+    post('platLogin', { account: acc, pin: pin }).then(function (r) {
+      $('doLogin').disabled = false;
+      if (!r.ok) { $('lerr').textContent = r.msg || '登录失败'; return; }
+      S.token = r.token; S.account = r.account;
+      localStorage.setItem(TOKEN_KEY, r.token);
+      start();
+    });
+  });
+  $('pin').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('doLogin').click(); });
+  $('acc').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('pin').focus(); });
+  $('doLogout').addEventListener('click', function () {
+    post('logout', {}).then(function () {});
+    S.token = ''; localStorage.removeItem(TOKEN_KEY); $('pin').value = ''; showLogin();
+  });
+  $('doRefresh').addEventListener('click', function () { goTab(S.tab); toast('已刷新'); });
+
+  /* ---------------- 启动 ---------------- */
+  function start() {
+    $('accLabel').textContent = S.account ? ('平台账号 ' + S.account) : '';
+    if (DEMO) $('demoBanner').classList.remove('hide');
+    showApp();
+    goTab('overview');
+  }
+
+  /* ---------------- Tab ---------------- */
+  var tabs = document.querySelectorAll('.tab');
+  Array.prototype.forEach.call(tabs, function (t) {
+    t.addEventListener('click', function () { goTab(t.getAttribute('data-tab')); });
+  });
+  function goTab(k) {
+    S.tab = k;
+    Array.prototype.forEach.call(tabs, function (t) { t.classList.toggle('on', t.getAttribute('data-tab') === k); });
+    ['overview', 'orgs', 'students'].forEach(function (n) {
+      $('tab-' + n).classList.toggle('hide', n !== k);
+    });
+    if (k === 'overview') loadOverview();
+    if (k === 'orgs') loadOrgs();
+    if (k === 'students') loadStudents(true);
+  }
+
+  /* ---------------- 总览 ---------------- */
+  function loadOverview() {
+    post('platOverview', {}).then(guard).then(function (r) {
+      var s = r.stat;
+      var cards = [
+        { k: '机构', v: num(s.orgs), s: '在跑 ' + num(r.activeOrgs || 0) + ' 家近 7 天有课', hero: 1 },
+        { k: '学生', v: num(s.students), s: '全部机构在册学员' },
+        { k: '老师', v: num(s.teachers), s: '家长 ' + num(s.parents) + ' · 管理 ' + num(s.admins) },
+        { k: '课堂记录', v: num(s.records), s: '今日 ' + num(s.todayRecords || 0) + ' · 近 7 天 ' + num(s.weekRecords || 0) },
+        { k: '发布率', v: s.rate + '%', s: '草稿 ' + num(s.draft) + ' 条未发家长' },
+        { k: '平均分', v: s.avgScore || '—', s: '照片 ' + num(s.photos) + ' · 视频 ' + num(s.videos) + ' · 语音 ' + num(s.audios) }
+      ];
+      $('kpis').innerHTML = cards.map(function (c) {
+        return '<div class="kpi' + (c.hero ? ' hero' : '') + '"><div class="k">' + esc(c.k) + '</div>' +
+          '<div class="v">' + esc(c.v) + '</div><div class="s">' + esc(c.s) + '</div></div>';
+      }).join('');
+
+      $('strip').innerHTML = [
+        ['班级', num(s.classes)],
+        ['成员', num(s.members)],
+        ['每生平均记录', s.students ? (Math.round((s.records / s.students) * 10) / 10) : 0],
+        ['近 30 天记录', num((r.trend || []).reduce(function (n, x) { return n + x.n; }, 0))]
+      ].map(function (x) {
+        return '<span class="chip">' + esc(x[0]) + ' <b>' + esc(x[1]) + '</b></span>';
+      }).join('');
+
+      drawChart(r.trend || []);
+      $('trendSub').textContent = r.trendSampled ? '抽样' : '按上课日期';
+
+      var rs = (r.orgs || []).slice(0, 8);
+      var max = Math.max.apply(null, rs.map(function (o) { return o.students; }).concat([1]));
+      $('rank').innerHTML = rs.length ? rs.map(function (o) {
+        return '<div class="row" data-org="' + esc(o.orgId) + '">' +
+          '<div><div class="nm"><span style="color:var(--ink);font-size:13px">' + esc(o.name) + '</span>' +
+          '<span>' + num(o.students) + ' 人</span></div>' +
+          '<div class="track"><div class="fill" style="width:' + Math.max(3, Math.round(o.students / max * 100)) + '%"></div></div></div>' +
+          '<div class="rt">' + num(o.records) + ' 条</div></div>';
+      }).join('') : '<div class="empty">还没有机构</div>';
+      bindRank();
+
+      var dist = r.dist || [];
+      var dmax = Math.max.apply(null, dist.map(function (d) { return d.n; }).concat([1]));
+      var colors = ['#D9534F', '#E8A33D', '#3A6FD8', '#12A150', '#0F7A3D'];
+      $('dist').innerHTML = dist.map(function (d, i) {
+        return '<div class="row"><span>' + esc(d.t) + '</span>' +
+          '<span class="bar"><i style="width:' + Math.round(d.n / dmax * 100) + '%;background:' + colors[i] + '"></i></span>' +
+          '<span class="n">' + num(d.n) + '</span></div>';
+      }).join('');
+      $('distSub').textContent = '最近 ' + num(r.sampleSize) + ' 条记录' + (r.sampleSampled ? '（抽样）' : '');
+      var tags = r.tags || [];
+      $('tags').innerHTML = tags.length ? tags.map(function (t) {
+        return '<span class="chip">' + esc(t.t) + ' <b>' + num(t.n) + '</b></span>';
+      }).join('') : '<span class="chip">还没有等级数据</span>';
+
+      var w = r.warnings || [];
+      $('warns').innerHTML = w.length ? w.map(function (x) {
+        return '<div class="warnitem"><div class="i ' + (x.level === 'warn' ? 'w' : 'n') + '">' + (x.level === 'warn' ? '!' : 'i') + '</div>' +
+          '<div><div>' + esc(x.t) + '</div><div class="d">' + esc(x.d || '') + '</div></div></div>';
+      }).join('') : '<div class="empty" style="padding:20px">一切正常</div>';
+    }).catch(function () {});
+  }
+
+  // 30 天折线（面积 + 已发布子线）。用 SVG 手绘，避免为一张图引入图表库
+  function drawChart(rows, svg) {
+    svg = svg || $('chart');
+    if (!svg) return;
+    var W = 720, H = 170, padL = 6, padR = 6, padT = 10, padB = 22;
+    if (!rows.length) { svg.innerHTML = ''; return; }
+    var max = Math.max.apply(null, rows.map(function (d) { return d.n; }).concat([1]));
+    var iw = W - padL - padR, ih = H - padT - padB;
+    var X = function (i) { return padL + (rows.length <= 1 ? 0 : (i / (rows.length - 1)) * iw); };
+    var Y = function (v) { return padT + ih - (v / max) * ih; };
+    var line = function (key) {
+      return rows.map(function (d, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(d[key]).toFixed(1); }).join(' ');
+    };
+    var area = line('n') + ' L' + X(rows.length - 1).toFixed(1) + ' ' + (padT + ih) + ' L' + X(0).toFixed(1) + ' ' + (padT + ih) + ' Z';
+    var ticks = rows.map(function (d, i) {
+      if (i % 5 !== 0 && i !== rows.length - 1) return '';
+      return '<text x="' + X(i).toFixed(1) + '" y="' + (H - 6) + '" font-size="10" fill="#8A9099" text-anchor="middle">' + d.d.slice(5) + '</text>';
+    }).join('');
+    var dots = rows.map(function (d, i) {
+      return '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(d.n).toFixed(1) + '" r="2.6" fill="#fff" stroke="#E8590C" stroke-width="1.6">' +
+        '<title>' + d.d + '：' + d.n + ' 条（已发布 ' + d.sent + '）</title></circle>';
+    }).join('');
+    svg.innerHTML =
+      '<defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0%" stop-color="#FF8A3D" stop-opacity=".28"/><stop offset="100%" stop-color="#FF8A3D" stop-opacity="0"/>' +
+      '</linearGradient></defs>' +
+      '<path d="' + area + '" fill="url(#g1)"/>' +
+      '<path d="' + line('n') + '" fill="none" stroke="#E8590C" stroke-width="2.2" stroke-linejoin="round"/>' +
+      '<path d="' + line('sent') + '" fill="none" stroke="#9EC5FF" stroke-width="1.6" stroke-dasharray="4 4"/>' +
+      dots + ticks;
+  }
+
+  function bindRank() {
+    Array.prototype.forEach.call(document.querySelectorAll('#rank .row'), function (row) {
+      row.onclick = function () { openOrg(row.getAttribute('data-org')); };
+    });
+  }
+
+  /* ---------------- 机构清单 ---------------- */
+  function loadOrgs() {
+    post('platOrgs', { q: S.orgQ, page: S.orgPage, size: 20 }).then(guard).then(function (r) {
+      S.orgsAll = r.all || r.rows || [];
+      var tb = $('orgBody');
+      if (!r.rows.length) { tb.innerHTML = '<tr><td colspan="10"><div class="empty">没有匹配的机构</div></td></tr>'; }
+      else {
+        tb.innerHTML = r.rows.map(function (o) {
+          return '<tr class="click" data-org="' + esc(o.orgId) + '">' +
+            '<td><div style="font-weight:600">' + esc(o.name) + '</div>' +
+            '<div style="color:var(--ink-3);font-size:11px;margin-top:2px">' + esc(o.orgId) +
+            (o.status === 'suspended' ? ' · <span class="pill bad">已停用</span>' : '') + '</div></td>' +
+            '<td>' + esc(o.owner || '—') + '</td>' +
+            '<td class="num">' + num(o.students) + '</td>' +
+            '<td class="num">' + num(o.classes) + '</td>' +
+            '<td class="num">' + num(o.records) + '</td>' +
+            '<td class="num">' + o.rate + '%</td>' +
+            '<td class="num">' + o.perStudent + '</td>' +
+            '<td>' + (o.lastDate ? esc(o.lastDate) + ' <span style="color:var(--ink-3);font-size:11px">' + daysAgo(o.lastDate) + '</span>' : '<span class="pill draft">还没录过</span>') + '</td>' +
+            '<td class="num">' + num(o.teachers) + '</td>' +
+            '<td class="num">' + num(o.parents) + '</td></tr>';
+        }).join('');
+        Array.prototype.forEach.call(tb.querySelectorAll('tr[data-org]'), function (tr) {
+          tr.onclick = function () { openOrg(tr.getAttribute('data-org')); };
+        });
+      }
+      var pages = Math.max(1, Math.ceil(r.total / (r.size || 20)));
+      $('orgPager').innerHTML = '';
+      var info = document.createElement('span');
+      info.textContent = '共 ' + r.total + ' 家 · 第 ' + r.page + '/' + pages + ' 页';
+      var prev = document.createElement('button'); prev.className = 'btn'; prev.textContent = '上一页';
+      var next = document.createElement('button'); next.className = 'btn'; next.textContent = '下一页';
+      prev.disabled = r.page <= 1; next.disabled = r.page >= pages;
+      prev.onclick = function () { if (r.page > 1) { S.orgPage = r.page - 1; loadOrgs(); } };
+      next.onclick = function () { if (r.page < pages) { S.orgPage = r.page + 1; loadOrgs(); } };
+      $('orgPager').appendChild(info); $('orgPager').appendChild(prev); $('orgPager').appendChild(next);
+    }).catch(function () {});
+  }
+  $('orgSearch').addEventListener('click', function () { S.orgQ = $('orgQ').value.trim(); S.orgPage = 1; loadOrgs(); });
+  $('orgQ').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('orgSearch').click(); });
+  $('orgExport').addEventListener('click', function () { exportCsv('orgs'); });
+
+  /* ---------------- 机构详情（抽屉） ---------------- */
+  function openOrg(orgId) {
+    if (!orgId) return;
+    post('platOrg', { orgId: orgId }).then(guard).then(function (r) { renderOrg(r); }).catch(function () {});
+  }
+  function closeDrawer() { $('drawerRoot').innerHTML = ''; }
+
+  function renderOrg(r) {
+    var o = r.org, k = r.kpi;
+    var dist = r.dist || [];
+    var dmax = Math.max.apply(null, dist.map(function (d) { return d.n; }).concat([1]));
+    var colors = ['#D9534F', '#E8A33D', '#3A6FD8', '#12A150', '#0F7A3D'];
+    var html = '<div class="mask" id="mask"><div class="drawer">' +
+      '<div class="dh"><div class="grow"><h2>' + esc(o.name) + '</h2>' +
+      '<div class="sub">' + esc(o.orgId) + ' · 负责人 ' + esc(o.ownerName) +
+      (o.createdAt ? (' · 建档 ' + dt(o.createdAt)) : '') +
+      (o.status === 'suspended' ? ' · <span class="pill bad">已停用</span>' : '') + '</div></div>' +
+      '<button class="close" id="drawerClose">×</button></div>' +
+
+      '<div class="minigrid">' +
+      mini('学生', num(k.students), '无记录 ' + num(k.silentStudents) + ' 人') +
+      mini('班级', num(k.classes), '课程 ' + num(k.courses)) +
+      mini('课堂记录', num(k.records), '已发布 ' + num(k.sent) + ' · 草稿 ' + num(k.draft)) +
+      mini('发布率', k.rate + '%', '平均分 ' + (k.avgScore || '—')) +
+      mini('老师', num(k.teachers), '家长 ' + num(k.parents)) +
+      mini('照片', num(k.photos), '视频 ' + num(k.videos) + ' · 语音 ' + num(k.audios || 0)) +
+      mini('每生记录', k.students ? (Math.round((k.records / k.students) * 10) / 10) : 0, '全周期') +
+      mini('最近上课', lastOf(r.trend), '近 30 天 ' + sumOf(r.trend) + ' 条') +
+      '</div>' +
+
+      '<div class="card"><div class="card-h"><div class="t">近 30 天录入</div><div class="grow"></div>' +
+      '<div class="s">橙 = 录入，蓝虚 = 已发布</div></div>' +
+      '<svg class="chart" id="dchart" viewBox="0 0 720 170" preserveAspectRatio="none"></svg></div>' +
+
+      '<div class="cols"><div class="card"><div class="card-h"><div class="t">成绩分布</div></div><div class="dist">' +
+      dist.map(function (d, i) {
+        return '<div class="row"><span>' + esc(d.t) + '</span><span class="bar"><i style="width:' +
+          Math.round(d.n / dmax * 100) + '%;background:' + colors[i] + '"></i></span><span class="n">' + num(d.n) + '</span></div>';
+      }).join('') + '</div></div>' +
+      '<div class="card"><div class="card-h"><div class="t">等级用法</div></div><div class="strip" style="margin:0">' +
+      ((r.tags || []).length ? r.tags.map(function (t) { return '<span class="chip">' + esc(t.t) + ' <b>' + num(t.n) + '</b></span>'; }).join('') : '<span class="chip">还没有等级</span>') +
+      '</div></div></div>' +
+
+      '<div class="card"><div class="card-h"><div class="t">班级（' + (r.classes || []).length + '）</div><div class="grow"></div><div class="s">按学生数排序</div></div>' +
+      tableOrEmpty(r.classes, ['班级', '学期', '学生', '记录', '最近上课', '课次'], function (c) {
+        return [esc(c.name), esc(c.term || '—'), num(c.students), num(c.records), esc(c.lastDate || '—'), c.session ? ('第' + c.session + '课') : '—'];
+      }) + '</div>' +
+
+      '<div class="card"><div class="card-h"><div class="t">成员（' + (r.members || []).length + '）</div></div>' +
+      tableOrEmpty(r.members, ['姓名', '角色', '范围', '绑定'], function (m) {
+        return [esc(m.name), '<span class="pill">' + esc(m.roleLabel) + '</span>', esc(m.scope),
+          m.openid === '已绑定' ? '<span class="pill ok">已绑定</span>' : '<span class="pill draft">未绑定</span>'];
+      }) + '</div>' +
+
+      '<div class="card"><div class="card-h"><div class="t">学生（' + (r.students || []).length + '）</div><div class="grow"></div><div class="s">按记录数排序</div></div>' +
+      tableOrEmpty(r.students, ['姓名', '学号', '班级', '记录', '最近记录', '家长'], function (s) {
+        return [esc(s.name), esc(s.no || '—'), esc((s.clsNames || []).join('、') || '未分班'), num(s.records),
+          s.lastDate ? esc(s.lastDate) : '<span class="pill draft">无记录</span>', esc(s.parent || '—')];
+      }) + '</div>' +
+      '</div></div>';
+    $('drawerRoot').innerHTML = html;
+    drawChart(r.trend || [], $('dchart'));
+    $('drawerClose').onclick = closeDrawer;
+    $('mask').addEventListener('click', function (e) { if (e.target.id === 'mask') closeDrawer(); });
+  }
+  function mini(k, v, s) {
+    return '<div class="mini"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div>' +
+      '<div class="s">' + esc(s) + '</div></div>';
+  }
+  function tableOrEmpty(rows, head, cells) {
+    if (!rows || !rows.length) return '<div class="empty">暂无数据</div>';
+    var top = '<table><thead><tr>' + head.map(function (h) { return '<th>' + h + '</th>'; }).join('') + '</tr></thead><tbody>';
+    var body = rows.map(function (r) {
+      return '<tr>' + cells(r).map(function (c, i) {
+        return '<td' + (i >= 2 && i <= 4 ? ' class="num"' : '') + '>' + c + '</td>';
+      }).join('') + '</tr>';
+    }).join('');
+    return top + body + '</tbody></table>';
+  }
+  function sumOf(rows) { return (rows || []).reduce(function (n, x) { return n + x.n; }, 0); }
+  function lastOf(rows) {
+    var last = '';
+    (rows || []).forEach(function (x) { if (x.n && x.d > last) last = x.d; });
+    return last || '—';
+  }
+
+  /* ---------------- 学生总览 ---------------- */
+  function loadStudents(reset) {
+    if (reset) S.stuPage = 1;
+    post('platStudents', { q: S.stuQ, orgId: S.stuOrg, page: S.stuPage, size: 30 }).then(guard).then(function (r) {
+      var sel = $('stuOrg');
+      if (sel.options.length <= 1 && r.orgs) {
+        sel.innerHTML = '<option value="">全部机构</option>' + r.orgs.map(function (o) {
+          return '<option value="' + esc(o.orgId) + '">' + esc(o.name) + '</option>';
+        }).join('');
+      }
+      var tb = $('stuBody');
+      if (!r.rows.length) { tb.innerHTML = '<tr><td colspan="9"><div class="empty">没有匹配的学生</div></td></tr>'; }
+      else {
+        tb.innerHTML = r.rows.map(function (s) {
+          return '<tr><td><div style="font-weight:600">' + esc(s.name) + '</div></td>' +
+            '<td>' + esc(s.no || '—') + '</td>' +
+            '<td>' + esc(s.orgName) + '</td>' +
+            '<td>' + esc((s.clsNames || []).join('、') || '未分班') + '</td>' +
+            '<td class="num">' + num(s.records) + '</td>' +
+            '<td>' + (s.lastDate ? esc(s.lastDate) + ' <span style="color:var(--ink-3);font-size:11px">' + daysAgo(s.lastDate) + '</span>' : '<span class="pill draft">无记录</span>') + '</td>' +
+            '<td>' + esc(s.parent || '—') + '</td>' +
+            '<td>' + esc(s.wechat || '—') + '</td>' +
+            '<td class="num">' + esc(s.enrollYear || '—') + '</td></tr>';
+        }).join('');
+      }
+      var zero = r.rows.filter(function (s) { return !s.records; }).length;
+      $('stuStrip').innerHTML =
+        '<span class="chip">命中 <b>' + num(r.total) + '</b> 人</span>' +
+        '<span class="chip">本页无记录 <b>' + num(zero) + '</b> 人</span>' +
+        '<span class="chip">范围 <b>' + esc(S.stuOrg ? (sel.options[sel.selectedIndex] || {}).text || '' : '全部机构') + '</b></span>';
+
+      var pages = Math.max(1, Math.ceil(r.total / (r.size || 30)));
+      var box = $('stuPager'); box.innerHTML = '';
+      var info = document.createElement('span');
+      info.textContent = '共 ' + r.total + ' 人 · 第 ' + r.page + '/' + pages + ' 页';
+      var prev = document.createElement('button'); prev.className = 'btn'; prev.textContent = '上一页';
+      var next = document.createElement('button'); next.className = 'btn'; next.textContent = '下一页';
+      prev.disabled = r.page <= 1; next.disabled = r.page >= pages;
+      prev.onclick = function () { if (r.page > 1) { S.stuPage = r.page - 1; loadStudents(false); } };
+      next.onclick = function () { if (r.page < pages) { S.stuPage = r.page + 1; loadStudents(false); } };
+      box.appendChild(info); box.appendChild(prev); box.appendChild(next);
+    }).catch(function () {});
+  }
+  $('stuSearch').addEventListener('click', function () {
+    S.stuQ = $('stuQ').value.trim(); S.stuOrg = $('stuOrg').value; loadStudents(true);
+  });
+  $('stuQ').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('stuSearch').click(); });
+  $('stuOrg').addEventListener('change', function () {
+    S.stuOrg = $('stuOrg').value; loadStudents(true);
+  });
+  $('stuExport').addEventListener('click', function () { exportCsv('students'); });
+
+  function exportCsv(kind) {
+    post('platExport', { kind: kind }).then(guard).then(function (r) {
+      var blob = new Blob(['\ufeff' + r.csv], { type: 'text/csv;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = r.name || (kind === 'students' ? '全平台学生.csv' : '机构清单.csv');
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+      toast('已导出 ' + (kind === 'students' ? '学生总表' : '机构清单'));
+    }).catch(function () {});
+  }
+
+  /* ---------------- 演示数据入口见脚本最末尾的「自动进入」 ---------------- */
+
+  /* ============================ 演示数据 ============================
+   * 只为了"不部署也能看界面"：5 家机构 / 200 名学生 / 45 天记录，
+   * 用固定种子生成，每次刷新数字一致，不会出现"这张截图和那张对不上"。
+   */
+  function rnd(seed) {
+    var s = seed >>> 0;
+    return function () { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  }
+  var SURNAME = '周吴郑王冯陈褚卫蒋沈韩杨朱秦尤许何吕施张孔曹严华金魏陶姜戚谢邹喻柏水窦章云苏潘葛奚范彭郎鲁韦昌马苗凤花方俞任袁柳';
+  var GIVEN = '雨桐子轩思远小满一诺星辰可欣墨白梓萱一鸣若瑶知微清和亦然初一景行书宁南乔语汐';
+
+  function demoData() {
+    if (demoData._c) return demoData._c;
+    var r = rnd(20261108);
+    var defs = [
+      { id: 'org_7k2m9p', name: '橙果书法·滨江校区', owner: '陈立群', stu: 58, teacher: 5, cls: ['楷书基础A班', '楷书基础B班', '行书提高班', '硬笔入门班', '成人书法班'] },
+      { id: 'org_9d4x2v', name: '星光美术工作室', owner: '林薇', stu: 43, teacher: 4, cls: ['创意涂鸦班', '素描初级班', '水彩写生班', '中考美术冲刺'] },
+      { id: 'org_3p8w6t', name: '博思数学思维', owner: '黄振宇', stu: 36, teacher: 3, cls: ['三年级思维班', '四年级思维班', '五年级竞赛班'] },
+      { id: 'org_6t1q4h', name: '小雅舞蹈艺术中心', owner: '吴小雅', stu: 27, teacher: 4, cls: ['中国舞启蒙班', '中国舞二级班', '拉丁基础班'] },
+      { id: 'org_5h7v1z', name: '童声合唱团', owner: '沈书宁', stu: 18, teacher: 2, cls: ['少儿合唱A团', '少儿合唱B团'] }
+    ];
+    var today = new Date();
+    var ymd = function (d) { return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); };
+    var orgs = [];
+    var allRecords = [];
+    defs.forEach(function (d, oi) {
+      var classes = d.cls.map(function (nm, i) {
+        return { id: 100000 + oi * 100 + i, name: nm, session: 1 + Math.floor(r() * 18), term: oi % 2 ? '2026秋季班' : '长期班' };
+      });
+      var students = [];
+      for (var i = 0; i < d.stu; i++) {
+        var nm = SURNAME[Math.floor(r() * SURNAME.length)] + GIVEN.substr(Math.floor(r() * (GIVEN.length - 2)) * 1, 2);
+        students.push({
+          id: 500000 + oi * 1000 + i,
+          no: String(2026000 + oi * 100 + i + 1),
+          name: nm,
+          parent: SURNAME[Math.floor(r() * SURNAME.length)] + (r() > .5 ? '女士' : '先生'),
+          wechat: '13' + String(Math.floor(100000000 + r() * 899999999)),
+          enrollYear: 2024 + Math.floor(r() * 3),
+          clsIds: [classes[Math.floor(r() * classes.length)].id],
+          records: 0, lastDate: ''
+        });
+      }
+      var teachers = [];
+      for (var j = 0; j < d.teacher; j++) {
+        teachers.push({ name: SURNAME[Math.floor(r() * SURNAME.length)] + GIVEN.substr(Math.floor(r() * 8), 2), role: 'teacher' });
+      }
+      var parents = students.filter(function () { return r() > .12; }).length;
+      var members = [{ name: d.owner, role: 'owner' }].concat(teachers)
+        .concat([{ name: '（家长）' + parents + ' 人', role: 'parent', _count: parents }]);
+
+      var recs = [];
+      students.forEach(function (s) {
+        var n = r() < .08 ? 0 : 1 + Math.floor(r() * 6);
+        for (var k = 0; k < n; k++) {
+          var back = Math.floor(r() * 45);
+          var day = new Date(today.getTime() - back * 86400000);
+          var score = 55 + Math.floor(r() * 44);
+          var tag = score >= 92 ? '最佳' : score >= 85 ? '优秀' : score >= 75 ? '良好' : score >= 60 ? '加油' : '待提高';
+          recs.push({
+            orgId: d.id, sid: s.id, cid: s.clsIds[0], date: ymd(day), score: score, tag: tag,
+            sent: r() > .18, photos: Math.floor(r() * 4), videos: 0, audio: r() > .7
+          });
+        }
+      });
+      recs.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+      var bySid = {};
+      recs.forEach(function (x) {
+        var o = bySid[x.sid] || (bySid[x.sid] = { n: 0, last: '' });
+        o.n++; if (x.date > o.last) o.last = x.date;
+      });
+      students.forEach(function (s) { var o = bySid[s.id]; if (o) { s.records = o.n; s.lastDate = o.last; } });
+      allRecords = allRecords.concat(recs);
+      orgs.push({
+        orgId: d.id, name: d.name, owner: d.owner, status: 'active',
+        students: students, classes: classes, members: members, records: recs,
+        kpi: null, createdAt: Date.now() - Math.floor(r() * 300) * 86400000
+      });
+    });
+    demoData._c = { orgs: orgs, records: allRecords };
+    return demoData._c;
+  }
+
+  function demoRows() {
+    var D = demoData();
+    return D.orgs.map(function (o) {
+      var sent = o.records.filter(function (x) { return x.sent; }).length;
+      var last = o.records.length ? o.records[0].date : '';
+      var perClass = {};
+      o.students.forEach(function (s) { (s.clsIds || []).forEach(function (c) { perClass[c] = (perClass[c] || 0) + 1; }); });
+      var recByCls = {}, lastByCls = {};
+      o.records.forEach(function (x) {
+        recByCls[x.cid] = (recByCls[x.cid] || 0) + 1;
+        if (!lastByCls[x.cid] || x.date > lastByCls[x.cid]) lastByCls[x.cid] = x.date;
+      });
+      return {
+        orgId: o.orgId, name: o.name, status: 'active', owner: o.owner, createdAt: o.createdAt,
+        students: o.students.length, classes: o.classes.length, records: o.records.length,
+        members: o.members.length,
+        teachers: o.members.filter(function (m) { return m.role === 'teacher'; }).length,
+        parents: o.members.filter(function (m) { return m.role === 'parent'; })
+          .reduce(function (n, m) { return n + (m._count || 1); }, 0),
+        sent: sent, rate: o.records.length ? Math.round(sent / o.records.length * 100) : 0,
+        lastDate: last,
+        perStudent: o.students.length ? Math.round(o.records.length / o.students.length * 10) / 10 : 0,
+        _perClass: perClass, _recByCls: recByCls, _lastByCls: lastByCls
+      };
+    }).sort(function (a, b) { return b.students - a.students; });
+  }
+
+  function demoTrend(records, n) {
+    var out = [];
+    for (var i = n - 1; i >= 0; i--) {
+      var d = new Date(Date.now() - i * 86400000);
+      var key = d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
+      var rs = records.filter(function (x) { return x.date === key; });
+      out.push({ d: key, n: rs.length, sent: rs.filter(function (x) { return x.sent; }).length });
+    }
+    return out;
+  }
+  function demoDist(records) {
+    var bands = [['待提高', 0, 60], ['加油', 60, 75], ['良好', 75, 85], ['优秀', 85, 92], ['最佳', 92, 101]];
+    return bands.map(function (b, i) {
+      return { k: 'b' + (i + 1), t: b[0], n: records.filter(function (x) { return x.score >= b[1] && x.score < b[2]; }).length };
+    });
+  }
+  function demoTags(records) {
+    var map = {};
+    records.forEach(function (x) { map[x.tag] = (map[x.tag] || 0) + 1; });
+    return Object.keys(map).map(function (t) { return { t: t, n: map[t] }; }).sort(function (a, b) { return b.n - a.n; });
+  }
+  function demoStudentRow(o, s) {
+    return {
+      id: s.id, no: s.no, name: s.name, orgId: o.orgId, orgName: o.name,
+      clsNames: (s.clsIds || []).map(function (id) {
+        var c = o.classes.filter(function (x) { return x.id === id; })[0];
+        return c ? c.name : '';
+      }).filter(Boolean),
+      enrollYear: s.enrollYear, parent: s.parent, wechat: s.wechat,
+      records: s.records, lastDate: s.lastDate
+    };
+  }
+
+  function demoApi(action, d) {
+    var D = demoData();
+    var rows = demoRows();
+    if (action === 'platLogin') return { ok: true, token: 'demo', account: 'CGPLAT', scope: 'platform' };
+    if (action === 'me') return { ok: true, account: 'CGPLAT', scope: 'platform' };
+    if (action === 'logout') return { ok: true };
+
+    if (action === 'platOverview') {
+      var recs = D.records;
+      var sent = recs.filter(function (x) { return x.sent; }).length;
+      var scores = recs.map(function (x) { return x.score; });
+      var trend = demoTrend(recs, 30);
+      var week = trend.slice(-7).reduce(function (n, x) { return n + x.n; }, 0);
+      var active = rows.filter(function (o) { return o.lastDate >= trend[trend.length - 7].d; }).length;
+      return {
+        ok: true,
+        stat: {
+          orgs: rows.length,
+          students: rows.reduce(function (n, o) { return n + o.students; }, 0),
+          classes: rows.reduce(function (n, o) { return n + o.classes; }, 0),
+          records: recs.length, members: rows.reduce(function (n, o) { return n + o.members; }, 0),
+          teachers: rows.reduce(function (n, o) { return n + o.teachers; }, 0),
+          parents: rows.reduce(function (n, o) { return n + o.parents; }, 0),
+          admins: rows.length,
+          sent: sent, draft: recs.length - sent, rate: Math.round(sent / recs.length * 100),
+          avgScore: Math.round(scores.reduce(function (a, b) { return a + b; }, 0) / scores.length),
+          photos: recs.reduce(function (n, x) { return n + x.photos; }, 0),
+          videos: 0, audios: recs.filter(function (x) { return x.audio; }).length,
+          todayRecords: trend[trend.length - 1].n, weekRecords: week
+        },
+        activeOrgs: active,
+        trend: trend, trendSampled: false,
+        dist: demoDist(recs), tags: demoTags(recs),
+        sampleSize: recs.length, sampleSampled: false,
+        orgs: rows,
+        warnings: [
+          { level: 'info', t: '童声合唱团两周只有 6 条记录', d: '可能是排课少，也可能是老师忘了录' },
+          { level: 'info', t: '全平台有 ' + (recs.length - sent) + ' 条记录还是草稿（家长看不到）', d: '在机构后台的「课堂记录」里按草稿筛' }
+        ]
+      };
+    }
+
+    if (action === 'platOrgs') {
+      var q = String(d.q || '').toLowerCase();
+      var list = q ? rows.filter(function (o) { return (o.name + o.orgId + o.owner).toLowerCase().indexOf(q) >= 0; }) : rows;
+      var size = Number(d.size) || 20, page = Number(d.page) || 1;
+      return { ok: true, total: list.length, page: page, size: size, rows: list.slice((page - 1) * size, page * size), all: rows };
+    }
+
+    if (action === 'platOrg') {
+      var o = rows.filter(function (x) { return x.orgId === d.orgId; })[0];
+      if (!o) return { ok: false, msg: '找不到这个机构' };
+      var org = D.orgs.filter(function (x) { return x.orgId === d.orgId; })[0];
+      var snt = org.records.filter(function (x) { return x.sent; }).length;
+      var trend2 = demoTrend(org.records, 30);
+      return {
+        ok: true,
+        org: { orgId: o.orgId, name: o.name, status: o.status, ownerName: o.owner, createdAt: o.createdAt },
+        kpi: {
+          students: o.students, classes: o.classes, courses: o.classes, members: o.members,
+          teachers: o.teachers, parents: o.parents, records: o.records, sent: snt,
+          draft: o.records - snt, rate: o.rate,
+          avgScore: org.records.length ? Math.round(org.records.reduce(function (n, x) { return n + x.score; }, 0) / org.records.length) : 0,
+          photos: org.records.reduce(function (n, x) { return n + x.photos; }, 0), videos: 0,
+          audios: org.records.filter(function (x) { return x.audio; }).length,
+          silentStudents: org.students.filter(function (s) { return !s.records; }).length
+        },
+        trend: trend2,
+        dist: demoDist(org.records), tags: demoTags(org.records),
+        classes: org.classes.map(function (c) {
+          return {
+            id: c.id, name: c.name, term: c.term, session: c.session,
+            students: o._perClass[c.id] || 0, records: o._recByCls[c.id] || 0,
+            lastDate: o._lastByCls[c.id] || ''
+          };
+        }).sort(function (a, b) { return b.students - a.students; }),
+        members: org.members.map(function (m) {
+          var label = { owner: '负责人', admin: '管理员', teacher: '老师', parent: '家长' }[m.role] || m.role;
+          return { name: m.name, role: m.role, roleLabel: label, status: 'active',
+            openid: m.role === 'parent' ? '未绑定' : '已绑定',
+            scope: m.role === 'parent' ? '孩子' : m.role === 'teacher' ? (org.classes.length + ' 个班') : '全机构' };
+        }),
+        topStudents: org.students.slice().sort(function (a, b) { return b.records - a.records; }).slice(0, 8)
+          .map(function (s) { return { id: s.id, name: s.name, n: s.records, last: s.lastDate }; }),
+        students: org.students.map(function (s) { return demoStudentRow(org, s); })
+          .sort(function (a, b) { return b.records - a.records; })
+      };
+    }
+
+    if (action === 'platStudents') {
+      var out = [];
+      D.orgs.forEach(function (org) {
+        org.students.forEach(function (s) { out.push(demoStudentRow(org, s)); });
+      });
+      var kw = String(d.q || '').trim();
+      if (kw) out = out.filter(function (s) { return s.name.indexOf(kw) >= 0 || String(s.no).indexOf(kw) >= 0; });
+      if (d.orgId) out = out.filter(function (s) { return s.orgId === d.orgId; });
+      out.sort(function (a, b) { return b.records - a.records || (a.name < b.name ? -1 : 1); });
+      var sz = Number(d.size) || 30, pg = Number(d.page) || 1;
+      return {
+        ok: true, total: out.length, page: pg, size: sz,
+        rows: out.slice((pg - 1) * sz, pg * sz),
+        orgs: rows.map(function (o) { return { orgId: o.orgId, name: o.name }; })
+      };
+    }
+
+    if (action === 'platExport') {
+      var kind = d.kind === 'students' ? 'students' : 'orgs';
+      if (kind === 'orgs') {
+        var head = '机构名称,机构号,负责人,学生数,班级数,记录数,发布率%,每生记录数,老师数,家长数,最近上课\r\n';
+        return { ok: true, name: '机构清单-演示.csv', csv: head + rows.map(function (o) {
+          return [o.name, o.orgId, o.owner, o.students, o.classes, o.records, o.rate, o.perStudent, o.teachers, o.parents, o.lastDate].join(',');
+        }).join('\r\n') };
+      }
+      var all = [];
+      D.orgs.forEach(function (org) { org.students.forEach(function (s) { all.push(demoStudentRow(org, s)); }); });
+      var h2 = '机构,学号,姓名,班级,记录数,最近记录,家长,微信,入学年份\r\n';
+      return { ok: true, name: '全平台学生-演示.csv', csv: h2 + all.map(function (s) {
+        return [s.orgName, s.no, s.name, (s.clsNames || []).join('、'), s.records, s.lastDate, s.parent, s.wechat, s.enrollYear].join(',');
+      }).join('\r\n') };
+    }
+    return { ok: false, msg: '未知操作' };
+  }
+  /* ---------------- 自动进入 ----------------
+   * 放在脚本最末尾：DEMO 的 start() 同步执行，必须等 tabs、演示数据都初始化完。
+   */
+  if (DEMO) {
+    S.demo = true; S.account = 'CGPLAT'; start();
+    // 演示模式可直接看某个机构详情：file://...platform.html?org=org_7k2m9p
+    var mOrg = /org=([\w-]+)/.exec(location.search);
+    if (mOrg) setTimeout(function () { openOrg(mOrg[1]); }, 50);
+  }
+  else if (S.token) {
+    // 有 token 直接进（过期会由 guard 打回登录页）
+    post('me', {}).then(function (r) {
+      if (r && r.ok) { S.account = r.account || ''; start(); } else showLogin();
+    }).catch(showLogin);
+  }
+})();
+</script>
+</body>
+</html>

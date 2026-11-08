@@ -149,11 +149,14 @@ t('后台写数据都盖 srvAt（否则小程序 pull 捞不到改动）', () =>
 t('所有业务查询都带 orgId（跨机构串数据是这类后台最容易出的事故）', () => {
   // findAll/countOf 内部是 .where(where)，范围由调用方用 alive(orgId) 拼好，单独放行；
   // members 按 openid 查、会话按 account 查，也是各自天然的范围，不是漏网。
+  // 例外：平台控制台的统计查询（{ removed: _.neq(true) }）天生跨机构——那是它的职责，
+  // 且平台会话是只读的（apiPlatform 的 default 拒绝一切写，verify_platform 钉死）。
   const wheres = (SRC.match(/\.where\(\{[^}]*\}/g) || []).map(s => s.replace(/\s+/g, ' '));
   assert.ok(wheres.length >= 6, '查询太少：' + wheres.length);
   wheres.forEach(w => {
     const okRange = /orgId/.test(w) || /openid/.test(w) || /account/.test(w) ||
-      /\{ id: /.test(w) || /\.where\(\{ where \}/.test(w);
+      /\{ id: /.test(w) || /\.where\(\{ where \}/.test(w) ||
+      /\{ removed: _\.neq\(true\) \}/.test(w);
     assert.ok(okRange, '有查询没带机构范围：' + w);
   });
 });
@@ -210,7 +213,13 @@ t('doc(id).set / add 的 data 里不能出现 _id（真机 -501007 踩过）', (
   // 11-07 真机：cloud.callFunction:fail -504002 | document.set:fail -501007
   // "invalid parameters. 不能更新 _id" —— 首次生成后台账号必失败，界面只显示「网络不通」。
   // backup.saveManifest 早就 delete data._id 避开了，admin 两处曾漏掉。
-  assert.ok(!/_id\s*:/.test(SRC), 'admin/index.js 不该再出现 _id: 字面量（写库 data 含它会报 -501007）');
+  // 例外：聚合 group({ _id: '$orgId', ... }) 是在"定义分组键"，不是往库里写 _id，
+  // 按行放行（行内必须同时出现 .group( 和 $ 引用，写库行不会长这样）。
+  const idLines = SRC.split('\n').filter(l => /_id\s*:/.test(l))
+    .filter(l => !(/group\(/.test(l) && /\$/.test(l)));
+  assert.strictEqual(idLines.length, 0,
+    'admin/index.js 不该再出现 _id: 字面量（聚合 group 除外）：' +
+      (idLines[0] || '').trim().slice(0, 90));
   assert.ok(SRC.indexOf('.doc(account).set({ data: doc })') > -1, '账号写入要走 doc(account).set');
   assert.ok(SRC.indexOf('.doc(token).set(') > -1, '会话写入要走 doc(token).set');
   const mk = SRC.indexOf("ev.action === 'mkAccount'");

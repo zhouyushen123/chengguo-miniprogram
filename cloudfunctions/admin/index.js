@@ -15,6 +15,7 @@ const cloud = require('wx-server-sdk');
 const fs = require('fs');
 const path = require('path');
 const lib = require('./lib');
+const plat = require('./platform');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -493,11 +494,362 @@ function cbCall(orgId, action, extra) {
     });
 }
 
+/* ============================ 平台控制台（跨机构，只读） ============================
+ * 【和机构后台的区别】机构后台一个会话绑定一个 orgId，接口层没有"跨机构"入口；
+ * 平台控制台是给运营/我们自己看的，必须跨机构，所以单独一个 scope，且**只能读**：
+ * 写接口一个都不开（下面 api() 里的 default 直接拒），避免"看数据的地方顺手改了数据"。
+ *
+ * 【登录】平台账号来自函数环境变量 PLATFORM_PIN（不配就关闭登录），不走数据库生成，
+ * 因为机构负责人无权给自己发一个"能看全部机构"的账号。
+ */
+const PLAT_DOC = '__platform__';
+
+async function doPlatformLogin(data) {
+  let rec = null;
+  try {
+    const r = await db.collection(ACCOUNTS).doc(PLAT_DOC).get();
+    rec = r && r.data;
+  } catch (e) { await ensure(ACCOUNTS); }
+  const out = plat.platAuth(data || {}, process.env, rec, now());
+  // 失败也要落锁计数，否则环境变量口令可以被无限次试
+  if (out.next) {
+    await db.collection(ACCOUNTS).doc(PLAT_DOC)
+      .set({ data: Object.assign({ account: PLAT_DOC, scope: 'platform' }, out.next) })
+      .catch(() => {});
+  }
+  if (!out.ok) return { ok: false, code: out.code, until: out.until, msg: out.msg };
+  const t = now();
+  const token = lib.newToken();
+  await ensure(SESSIONS).catch(() => {});
+  await db.collection(SESSIONS).doc(token).set({
+    data: { token, scope: 'platform', account: out.account, exp: t + lib.SESSION_MS, at: t }
+  });
+  return { ok: true, token, account: out.account, scope: 'platform', exp: t + lib.SESSION_MS };
+}
+
+/* ---------- 跨机构聚合 ----------
+ * 优先用云数据库 aggregate（一次请求算完，不受单次 100 条限制）；
+ * 老环境/权限不支持时退化为扫描并打 sampled 标记 —— 宁可让人看到"这份是抽样"，
+ * 也不要静默少算。
+ */
+async function aggTry(build) {
+  try { return await build(); } catch (e) { return null; }
+}
+async function countByOrg(coll, extra) {
+  const $ = db.command.aggregate;
+  const where = Object.assign({ removed: _.neq(true) }, extra || {});
+  const r = await aggTry(() => db.collection(coll).aggregate()
+    .match(where).group({ _id: '$orgId', n: $.sum(1) }).limit(2000).end());
+  if (r) {
+    const map = {};
+    (r.list || []).forEach(x => { if (x._id !== undefined && x._id !== null) map[String(x._id)] = Number(x.n) || 0; });
+    return { map, sampled: false };
+  }
+  const rows = await findAll(coll, where, 5000);
+  const map = {};
+  rows.forEach(x => { const k = String(x.orgId); map[k] = (map[k] || 0) + 1; });
+  return { map, sampled: rows.length >= 5000 };
+}
+async function maxDateByOrg(coll) {
+  const $ = db.command.aggregate;
+  const r = await aggTry(() => db.collection(coll).aggregate()
+    .match({ removed: _.neq(true) }).group({ _id: '$orgId', v: $.max('$date') }).limit(2000).end());
+  if (r) {
+    const map = {};
+    (r.list || []).forEach(x => { if (x._id !== undefined && x._id !== null) map[String(x._id)] = str(x.v); });
+    return { map, sampled: false };
+  }
+  const rows = await findAll(coll, { removed: _.neq(true) }, 5000);
+  const map = {};
+  rows.forEach(x => {
+    const k = String(x.orgId); const d = str(x.date);
+    if (!map[k] || d > map[k]) map[k] = d;
+  });
+  return { map, sampled: rows.length >= 5000 };
+}
+// 近 30 天按上课日期统计条数与已发布数
+async function trend30() {
+  const from = plat.addDays(plat.todayStr(), -29);
+  const $ = db.command.aggregate;
+  const r = await aggTry(() => db.collection('records').aggregate()
+    .match({ removed: _.neq(true), date: _.gte(from) })
+    .group({ _id: '$date', n: $.sum(1), s: $.sum($.cond({ if: '$sent', then: 1, else: 0 })) })
+    .limit(500).end());
+  const days = plat.lastDays(30);
+  if (r) {
+    const map = {};
+    (r.list || []).forEach(x => { map[str(x._id)] = { n: Number(x.n) || 0, s: Number(x.s) || 0 }; });
+    return { rows: days.map(d => ({ d, n: (map[d] || {}).n || 0, sent: (map[d] || {}).s || 0 })), sampled: false };
+  }
+  const rows = await findAll('records', { removed: _.neq(true), date: _.gte(from) }, 5000);
+  return { rows: plat.trendOf(rows, 30), sampled: rows.length >= 5000 };
+}
+// 最近 N 条记录（评分/等级分布用）。按上课日期倒序取，不是全库扫描
+async function recentRecords(limit) {
+  const cap = Math.min(Number(limit) || 1000, 3000);
+  const out = [];
+  for (let skip = 0; skip < cap; skip += PAGE) {
+    let r;
+    try {
+      r = await db.collection('records').where({ removed: _.neq(true) })
+        .orderBy('date', 'desc').skip(skip).limit(PAGE).get();
+    } catch (e) { await ensure('records'); r = { data: [] }; }
+    out.push.apply(out, r.data || []);
+    if ((r.data || []).length < PAGE) break;
+  }
+  return { rows: out, sampled: out.length >= cap };
+}
+// 某批学生的记录数 / 最近记录日期（学生总览列表要显示"这个孩子被记录过几次"）
+async function recordStatsBySid(pairs) {
+  const out = {};
+  const key = (orgId, sid) => String(orgId) + ':' + sid;
+  if (!pairs.length) return out;
+  const sids = [];
+  pairs.forEach(p => { if (sids.indexOf(p.sid) < 0) sids.push(p.sid); });
+  const $ = db.command.aggregate;
+  const r = await aggTry(() => db.collection('records').aggregate()
+    .match({ removed: _.neq(true), sid: _.in(sids) })
+    .group({ _id: { sid: '$sid', orgId: '$orgId' }, n: $.sum(1), last: $.max('$date') })
+    .limit(2000).end());
+  if (r) {
+    (r.list || []).forEach(x => {
+      const id = x._id || {};
+      out[key(id.orgId, id.sid)] = { n: Number(x.n) || 0, last: str(x.last) };
+    });
+    return out;
+  }
+  const rows = await findAll('records', { removed: _.neq(true), sid: _.in(sids) }, 3000);
+  rows.forEach(x => {
+    const k = key(x.orgId, x.sid);
+    const o = out[k] || (out[k] = { n: 0, last: '' });
+    o.n += 1;
+    if (str(x.date) > o.last) o.last = str(x.date);
+  });
+  return out;
+}
+
+async function orgRows() {
+  const [orgs, stu, cls, rec, sent, last, members] = await Promise.all([
+    findAll('orgs', { removed: _.neq(true) }, 500),
+    countByOrg('students'), countByOrg('classes'), countByOrg('records'),
+    countByOrg('records', { sent: true }), maxDateByOrg('records'),
+    findAll('members', { removed: _.neq(true) }, 3000)
+  ]);
+  const mem = {}, tea = {}, par = {}, owner = {}, roleMap = {};
+  members.forEach(m => {
+    const id = String(m.orgId);
+    mem[id] = (mem[id] || 0) + 1;
+    roleMap[str(m.role)] = (roleMap[str(m.role)] || 0) + 1;
+    if (m.role === 'teacher') tea[id] = (tea[id] || 0) + 1;
+    if (m.role === 'parent') par[id] = (par[id] || 0) + 1;
+    if (m.role === 'owner') owner[id] = str(m.name);
+  });
+  const rows = plat.mergeOrgs(
+    orgs.map(o => Object.assign({}, o, { ownerName: owner[String(o.id)] || '' })),
+    { students: stu.map, classes: cls.map, records: rec.map, members: mem,
+      sent: sent.map, teachers: tea, parents: par, lastDate: last.map }
+  );
+  return { rows, roleMap, sampled: stu.sampled || rec.sampled || members.length >= 3000 };
+}
+
+async function platOverview() {
+  const [base, tr, sample] = await Promise.all([orgRows(), trend30(), recentRecords(1000)]);
+  const rows = base.rows;
+  const g = plat.globalStat(rows, sample.rows, base.roleMap);
+  // 总数以机构汇总为准（聚合结果），分布用最近 1000 条样本
+  g.records = rows.reduce((n, r) => n + r.records, 0);
+  g.sent = rows.reduce((n, r) => n + r.sent, 0);
+  g.rate = lib.pct(g.sent, g.records);
+  g.draft = Math.max(0, g.records - g.sent);
+  const today = plat.todayStr();
+  const weekFrom = plat.addDays(today, -6);
+  g.todayRecords = tr.rows.filter(x => x.d === today).reduce((n, x) => n + x.n, 0);
+  g.weekRecords = tr.rows.filter(x => x.d >= weekFrom).reduce((n, x) => n + x.n, 0);
+  const activeOrgs = rows.filter(r => r.lastDate && r.lastDate >= weekFrom).length;
+  return {
+    ok: true, scope: 'platform', at: now(),
+    stat: g,
+    activeOrgs,
+    trend: tr.rows, trendSampled: tr.sampled,
+    dist: plat.scoreDist(sample.rows), tags: plat.tagDist(sample.rows),
+    sampleSize: sample.rows.length, sampleSampled: sample.sampled,
+    orgs: rows,
+    warnings: warningsOf(rows, base.sampled)
+  };
+}
+// 运营要看的"不对劲"：空机构、只建档不上课、草稿积压、长期没动静
+function warningsOf(rows, sampled) {
+  const out = [];
+  const empty = rows.filter(r => !r.students);
+  if (empty.length) out.push({ level: 'warn', t: empty.length + ' 个机构还没有学生', d: empty.slice(0, 3).map(r => r.name).join('、') + (empty.length > 3 ? ' 等' : '') });
+  const noClass = rows.filter(r => r.students && !r.classes);
+  if (noClass.length) out.push({ level: 'warn', t: noClass.length + ' 个机构有学生但没建班级', d: noClass.slice(0, 3).map(r => r.name).join('、') });
+  const idle = rows.filter(r => r.students && (!r.lastDate || r.lastDate < plat.addDays(plat.todayStr(), -14)));
+  if (idle.length) out.push({ level: 'info', t: idle.length + ' 个机构两周没有新记录', d: idle.slice(0, 3).map(r => r.name).join('、') });
+  const draft = rows.reduce((n, r) => n + Math.max(0, r.records - r.sent), 0);
+  if (draft > 0) out.push({ level: 'info', t: '全平台有 ' + draft + ' 条记录还是草稿（家长看不到）', d: '在机构后台的「课堂记录」里按草稿筛' });
+  if (sampled) out.push({ level: 'warn', t: '数据量超过单次统计上限', d: '部分机构的数字是抽样结果' });
+  return out;
+}
+
+async function platOrgs(data) {
+  const base = await orgRows();
+  const q = str((data || {}).q).trim().toLowerCase();
+  const rows = q ? base.rows.filter(r => (r.name + ' ' + r.orgId + ' ' + r.owner).toLowerCase().indexOf(q) >= 0) : base.rows;
+  const { page, size, skip } = lib.normPage(data || {});
+  return { ok: true, total: rows.length, page, size, rows: rows.slice(skip, skip + size), all: rows, sampled: base.sampled };
+}
+
+async function platOrg(data) {
+  const orgId = str((data || {}).orgId);
+  if (!orgId) return { ok: false, msg: '缺少机构号' };
+  const org = (await findAll('orgs', { id: orgId, removed: _.neq(true) }, 5))[0];
+  if (!org) return { ok: false, msg: '找不到这个机构（可能已删除或从未同步到云）' };
+  const [students, classes, members, records, terms, courses] = await Promise.all([
+    findAll('students', alive(orgId), 3000),
+    findAll('classes', alive(orgId), 1000),
+    findAll('members', alive(orgId), 1000),
+    findAll('records', alive(orgId), 5000),
+    findAll('terms', alive(orgId), 200),
+    findAll('courses', alive(orgId), 500)
+  ]);
+  const clsById = {};
+  classes.forEach(c => { clsById[c.id] = c.name; });
+  const termById = {};
+  terms.forEach(t => { termById[t.id] = t.name; });
+  const perClass = {};
+  students.forEach(s => (s.clsIds || []).forEach(id => { perClass[id] = (perClass[id] || 0) + 1; }));
+  const recByClass = {}, lastByClass = {}, topByStu = {};
+  records.forEach(r => {
+    recByClass[r.cid] = (recByClass[r.cid] || 0) + 1;
+    if (!lastByClass[r.cid] || str(r.date) > lastByClass[r.cid]) lastByClass[r.cid] = str(r.date);
+    const o = topByStu[r.sid] || (topByStu[r.sid] = { n: 0, last: '' });
+    o.n += 1;
+    if (str(r.date) > o.last) o.last = str(r.date);
+  });
+  const sent = records.filter(r => r.sent).length;
+  const owner = members.filter(m => m.role === 'owner')[0] || {};
+  const roleLabel = { owner: '负责人', admin: '管理员', teacher: '老师', parent: '家长' };
+  return {
+    ok: true,
+    org: {
+      orgId, name: str(org.name) || '未命名机构', status: str(org.status) || 'active',
+      ownerName: str(owner.name) || '—', createdAt: Number(org.createdAt) || 0
+    },
+    kpi: {
+      students: students.length, classes: classes.length, courses: courses.length,
+      members: members.length,
+      teachers: members.filter(m => m.role === 'teacher').length,
+      parents: members.filter(m => m.role === 'parent').length,
+      records: records.length, sent, draft: records.length - sent,
+      rate: lib.pct(sent, records.length), avgScore: plat.avgScore(records),
+      photos: records.reduce((n, r) => n + (r.photos || []).length, 0),
+      videos: records.reduce((n, r) => n + (r.videos || []).length, 0),
+      silentStudents: students.filter(s => !topByStu[s.id]).length
+    },
+    trend: plat.trendOf(records, 30),
+    dist: plat.scoreDist(records), tags: plat.tagDist(records),
+    classes: classes.map(c => ({
+      id: c.id, name: str(c.name), term: str(termById[c.termId] || ''),
+      students: perClass[c.id] || 0, records: recByClass[c.id] || 0,
+      lastDate: lastByClass[c.id] || '', session: Number(c.session) || 0
+    })).sort((a, b) => b.students - a.students),
+    members: members.map(m => ({
+      id: m.id, name: str(m.name) || '（未填姓名）', role: str(m.role), roleLabel: roleLabel[str(m.role)] || str(m.role),
+      status: str(m.status) || 'active', openid: m.openid ? '已绑定' : '未绑定',
+      scope: m.role === 'parent' ? ((m.studentIds || []).length + ' 个孩子') : m.role === 'teacher' ? ((m.clsIds || []).length + ' 个班') : '全机构'
+    })),
+    topStudents: students.map(s => ({ id: s.id, name: str(s.name), n: (topByStu[s.id] || {}).n || 0, last: (topByStu[s.id] || {}).last || '' }))
+      .sort((a, b) => b.n - a.n).slice(0, 8),
+    students: students.map(s => ({
+      id: s.id, no: str(s.no), name: str(s.name), parent: str(s.parent), wechat: str(s.wechat),
+      clsNames: (s.clsIds || []).map(i => clsById[i]).filter(Boolean),
+      records: (topByStu[s.id] || {}).n || 0, lastDate: (topByStu[s.id] || {}).last || ''
+    })).sort((a, b) => b.records - a.records)
+  };
+}
+
+async function platStudents(data) {
+  const d = data || {};
+  const { page, size, skip } = lib.normPage(d);
+  const where = { removed: _.neq(true) };
+  const orgId = str(d.orgId);
+  if (orgId) where.orgId = orgId;
+  const kw = str(d.q).trim();
+  if (kw) where.name = db.RegExp({ regexp: kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), options: 'i' });
+  let total = await countOf('students', where);
+  let rows = [];
+  try {
+    const r = await db.collection('students').where(where).orderBy('createdAt', 'desc').skip(skip).limit(size).get();
+    rows = r.data || [];
+  } catch (e) { await ensure('students'); }
+  const orgs = await findAll('orgs', { removed: _.neq(true) }, 500);
+  const orgName = {};
+  orgs.forEach(o => { orgName[String(o.id)] = str(o.name); });
+  const clsWhere = { removed: _.neq(true) };
+  if (orgId) clsWhere.orgId = orgId;
+  const classes = await findAll('classes', clsWhere, 2000);
+  const clsById = {};
+  classes.forEach(c => { clsById[String(c.orgId) + ':' + c.id] = str(c.name); });
+  const stats = await recordStatsBySid(rows.map(s => ({ orgId: s.orgId, sid: s.id })));
+  const out = rows.map(s => ({
+    id: s.id, no: str(s.no), name: str(s.name), orgId: String(s.orgId),
+    orgName: orgName[String(s.orgId)] || String(s.orgId),
+    clsNames: (s.clsIds || []).map(i => clsById[String(s.orgId) + ':' + i]).filter(Boolean),
+    enrollYear: Number(s.enrollYear) || 0, parent: str(s.parent), wechat: str(s.wechat),
+    records: (stats[String(s.orgId) + ':' + s.id] || {}).n || 0,
+    lastDate: (stats[String(s.orgId) + ':' + s.id] || {}).last || ''
+  }));
+  return { ok: true, total, page, size, rows: out, orgs: orgs.map(o => ({ orgId: String(o.id), name: str(o.name) })) };
+}
+
+async function platExport(data) {
+  const kind = str((data || {}).kind) === 'students' ? 'students' : 'orgs';
+  const orgsMap = {};
+  (await findAll('orgs', { removed: _.neq(true) }, 500)).forEach(o => { orgsMap[String(o.id)] = str(o.name); });
+  if (kind === 'orgs') {
+    const base = await orgRows();
+    return { ok: true, name: '机构清单-' + stamp() + '.csv', csv: plat.orgsCsv(base.rows) };
+  }
+  const students = await findAll('students', { removed: _.neq(true) }, lib.MAX_ROWS);
+  const classes = await findAll('classes', { removed: _.neq(true) }, 2000);
+  const clsById = {};
+  classes.forEach(c => { clsById[String(c.orgId) + ':' + c.id] = str(c.name); });
+  const stats = await recordStatsBySid(students.map(s => ({ orgId: s.orgId, sid: s.id })));
+  const rows = students.map(s => ({
+    orgName: orgsMap[String(s.orgId)] || String(s.orgId), no: str(s.no), name: str(s.name),
+    clsNames: (s.clsIds || []).map(i => clsById[String(s.orgId) + ':' + i]).filter(Boolean),
+    records: (stats[String(s.orgId) + ':' + s.id] || {}).n || 0,
+    lastDate: (stats[String(s.orgId) + ':' + s.id] || {}).last || '',
+    parent: str(s.parent), wechat: str(s.wechat), enrollYear: Number(s.enrollYear) || ''
+  })).sort((a, b) => (a.orgName === b.orgName ? 0 : a.orgName < b.orgName ? -1 : 1) || (b.records - a.records));
+  return { ok: true, name: '全平台学生-' + stamp() + '.csv', csv: plat.studentsCsv(rows) };
+}
+
+async function apiPlatform(action, data, s) {
+  switch (action) {
+    case 'me': return { ok: true, account: s.account, scope: 'platform' };
+    case 'logout':
+      await db.collection(SESSIONS).doc(s._id).remove().catch(() => {});
+      return { ok: true };
+    case 'platOverview': return platOverview();
+    case 'platOrgs': return platOrgs(data || {});
+    case 'platOrg': return platOrg(data || {});
+    case 'platStudents': return platStudents(data || {});
+    case 'platExport': return platExport(data || {});
+    // 只读：平台会话调任何写接口都到这里，明确拒绝，而不是"没权限"让人以为是 bug
+    default: return { ok: false, code: 'READONLY', msg: '平台控制台是只读的，修改数据请进对应机构的机构后台' };
+  }
+}
+
 /* ============================ 路由 ============================ */
 async function api(action, data, headers) {
   if (action === 'login') return doLogin(data || {});
+  if (action === 'platLogin') return doPlatformLogin(data || {});
   const s = await auth(headers);
   if (!s) return { ok: false, code: 'AUTH', msg: '请先登录' };
+  // 平台会话与机构会话共用同一个 auth，但走到这里就分叉：平台只能读跨机构数据
+  if (str(s.scope) === 'platform') return apiPlatform(action, data || {}, s);
   const orgId = str(s.orgId);
   switch (action) {
     case 'me': return { ok: true, account: s.account, orgId };
@@ -537,6 +889,19 @@ function page() {
   return pageCache;
 }
 
+// 平台控制台单独一页：机构后台和平台后台的入口、身份、能做的事都不一样，
+// 混在一个页面里迟早会有人拿机构口令点进跨机构界面（然后看到"没有权限"）。
+let platCache = '';
+function platformPage() {
+  if (platCache) return platCache;
+  try {
+    platCache = fs.readFileSync(path.join(__dirname, 'public', 'platform.html'), 'utf8');
+  } catch (e) {
+    platCache = '<meta charset="utf-8"><h3>平台页面缺失，请重新部署 admin 云函数</h3>';
+  }
+  return platCache;
+}
+
 exports.main = async (event) => {
   const ev = event || {};
   const { OPENID } = cloud.getWXContext() || {};
@@ -551,6 +916,7 @@ exports.main = async (event) => {
     if (method === 'GET' || method === 'HEAD') {
       const q = ev.queryStringParameters || {};
       if (q && q.api) return json(200, await api(str(q.api), q, headers));
+      if (q && str(q.view) === 'platform') return htmlResp(platformPage());
       return htmlResp(page());
     }
     let body = ev.body;

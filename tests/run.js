@@ -34,6 +34,7 @@ const SUITES = [
   ['verify_mine_simple.js', '我的页简化（首屏 5 块）'],
   ['verify_family_feedback.js', '家长已读回执与留言'],
   ['verify_admin.js', '电脑端后台'],
+  ['verify_platform.js', '平台控制台'],
   ['verify_ava.js', '头像统一'],
   ['verify_import.js', '批量导入'],
   ['verify_onboard.js', '新手引导'],

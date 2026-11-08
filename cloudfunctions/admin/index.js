@@ -809,7 +809,8 @@ async function platExport(data) {
   (await findAll('orgs', { removed: _.neq(true) }, 500)).forEach(o => { orgsMap[String(o.id)] = str(o.name); });
   if (kind === 'orgs') {
     const base = await orgRows();
-    return { ok: true, name: '机构清单-' + stamp() + '.csv', csv: plat.orgsCsv(base.rows) };
+    // rows/truncated/cap 给前端提示用：导出被截断时不能装作"数据是全的"
+    return { ok: true, name: '机构清单-' + stamp() + '.csv', csv: plat.orgsCsv(base.rows), rows: base.rows.length, truncated: false, cap: lib.MAX_ROWS };
   }
   const students = await findAll('students', { removed: _.neq(true) }, lib.MAX_ROWS);
   const classes = await findAll('classes', { removed: _.neq(true) }, 2000);
@@ -823,7 +824,7 @@ async function platExport(data) {
     lastDate: (stats[String(s.orgId) + ':' + s.id] || {}).last || '',
     parent: str(s.parent), wechat: str(s.wechat), enrollYear: Number(s.enrollYear) || ''
   })).sort((a, b) => (a.orgName === b.orgName ? 0 : a.orgName < b.orgName ? -1 : 1) || (b.records - a.records));
-  return { ok: true, name: '全平台学生-' + stamp() + '.csv', csv: plat.studentsCsv(rows) };
+  return { ok: true, name: '全平台学生-' + stamp() + '.csv', csv: plat.studentsCsv(rows), rows: rows.length, truncated: students.length >= lib.MAX_ROWS, cap: lib.MAX_ROWS };
 }
 
 async function apiPlatform(action, data, s) {

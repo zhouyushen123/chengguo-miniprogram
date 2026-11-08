@@ -52,3 +52,25 @@ https://cloud1-d9gca4e7q307c4564.service.tcloudbase.com/admin?view=platform
 
 不部署也能看界面：直接双击打开 `cloudfunctions/admin/public/platform.html`
 （本地打开自动用演示数据），或在网页地址后加 `?demo=1`。
+
+## 2026-11-08 界面整改（22 项全量修复）
+
+按 UI 走查报告全部修完，要点：
+
+- **对比度全部达到 WCAG AA**：次要文字 `--ink-3` 加深为 `#5F6874`（5.65:1）；
+  主按钮渐变改为 `#D0510A→#B04203`（白字最低 4.6:1）；「已发布」曲线换成 `#4C7FE0`（3.87:1）；
+  pill 三色同步加深。图表配色统一走语义令牌（不再有一红两色的毛病）。
+- **移动端**：登录卡 `min(380px,100%)`；所有表格包 `.table-wrap`（横向滚动 + 各表 min-width）；
+  数字列 `th/td.num` 右对齐；1 页时不再渲染翻页按钮。
+- **图表重画**：按容器实际像素宽绘制（不再 720 逻辑宽硬拉伸），加 Y 轴网格与刻度、
+  每天透明热区（原生 tooltip 含录入/已发布），X 轴末刻度右对齐不再裁切，resize 防抖重画。
+- **可达性**：页签改 `button + role=tab + aria-selected + 左右键切换`；抽屉补
+  `role=dialog/aria-modal`、Esc 关闭、焦点圈定与归还、打开后锁 body 滚动；
+  表头 `scope=col`；全局 `:focus-visible` 焦点环；toast `aria-live`。
+- **状态与容错**：总览/清单/学生/抽屉均有加载占位（骨架或 spinner），查询与导出按钮
+  忙碌态，失败 toast；「刷新」完成才提示已刷新。
+- **数据口径/隐私**：家长手机号界面脱敏 `138****5641`（CSV 导出仍为完整号，
+  界面上有明示）；「平均分」卡副标题改为口径说明，照片/视频/语音挪进指标 chips；
+  学生筛选 chip 文案改为「其中无记录 N 人（本页）」。
+- **导出**：后端 `platExport` 返回 `rows/truncated/cap`（学生总表上限 `lib.MAX_ROWS`=2000），
+  截断时前端明确提示，不装作数据是全的。

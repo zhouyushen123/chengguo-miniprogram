@@ -381,8 +381,9 @@ ok('T9 邀请家长链路：inviteGet 请求必须带机构 id（2026-11-06 真�
   // 邀请码功能从上线起就没通过（服务端不缺校验，缺的是客户端那个参数）
   const api = fs.readFileSync(path.join(ROOT, 'utils/api.js'), 'utf8');
   assert.ok(/inviteGet',\s*role,\s*orgId/.test(api), 'api.inviteGet 请求体必须带 orgId');
-  const mine = fs.readFileSync(path.join(ROOT, 'pages/mine/mine.js'), 'utf8');
-  assert.ok(/inviteGet\(role[^;]*orgId/.test(mine), '我的页必须把机构 id 传给 inviteGet');
+  // 取码实现从「我的」页抽到了 utils/invitesheet.js（首屏与「机构与身份」共用一份）
+  const sheet = fs.readFileSync(path.join(ROOT, 'utils/invitesheet.js'), 'utf8');
+  assert.ok(/inviteGet\(role[^;]*orgId/.test(sheet), '取邀请码时必须把机构 id 传给 inviteGet');
 });
 
 console.log('\n全部 ' + pass + ' 项老师角色断言通过');

@@ -514,7 +514,7 @@ ok('G7 owner 残骸收口：无名且未认领的多余负责人进回收站，�
 
 ok('G8 取后台账号失败不能只说「网络不通」（冷启动超时要重试、真实错误要带出来）', () => {
   const api = fs.readFileSync(path.join(ROOT, 'utils/api.js'), 'utf8');
-  const page = fs.readFileSync(path.join(ROOT, 'pages/mine/mine.js'), 'utf8');
+  const page = fs.readFileSync(path.join(ROOT, 'pages/orgid/orgid.js'), 'utf8');
   const i = api.indexOf('function adminAccount');
   const fn = api.slice(i, i + 900);
   assert.ok(/\.catch\(\(\) => wait/.test(fn), 'admin 首次调用常被 3 秒超时掐断，必须自动重试');

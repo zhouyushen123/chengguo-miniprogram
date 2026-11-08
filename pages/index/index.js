@@ -7,6 +7,7 @@ const firstrun = require('../../utils/firstrun');
 const sec = require('../../utils/sec');
 const photocloud = require('../../utils/photocloud');
 const sync = require('../../utils/sync');
+const fbu = require('../../utils/fbunread');
 
 Page({
   data: {
@@ -228,15 +229,11 @@ Page({
       });
     });
   },
-  _loadFb() {    if (!api.enabled()) { if (this.data.fbReady) this.setData({ fbReady: false, fbUnread: 0 }); return; }
-    api.fbList('teacher').then(r => {
-      if (!r || !r.ok) { if (this.data.fbReady) this.setData({ fbReady: false, fbUnread: 0 }); return; }
-      const un = r.unhandled || 0;
-      this.setData({
-        fbReady: true,
-        fbUnread: un,
-        fbNote: un ? (un + ' 条新留言待处理') : ((r.total || 0) ? '留言都处理完了' : '家长留言与已读回执')
-      });
+  _loadFb() {
+    // 未读数的口径与「我的」页共用一份（utils/fbunread.js），两处数字永远一致
+    fbu.load().then(r => {
+      if (!r.ready) { if (this.data.fbReady) this.setData({ fbReady: false, fbUnread: 0 }); return; }
+      this.setData({ fbReady: true, fbUnread: r.unread, fbNote: r.note });
     });
   },
   goFeedback() { wx.navigateTo({ url: '/pages/feedback/feedback' }); },

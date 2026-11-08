@@ -1,0 +1,30 @@
+<view class="theme-root {{themeCls}}">
+<view class="hero"></view>
+
+<view class="card menucard">
+  <view wx:for="{{entries}}" wx:key="k" class="mrow" hover-class="mrow-hover" bindtap="tapEntry" data-k="{{item.k}}">
+    <view class="mr-txt">
+      <view class="mr-t">{{item.t}}</view>
+      <view class="mr-d">{{item.d}}</view>
+    </view>
+    <view class="chev"></view>
+  </view>
+</view>
+
+<!-- 外观：换一次就定了，不需要天天看 -->
+<view class="card skincard">
+  <view class="skin-t">外观</view>
+  <view class="skins">
+    <view wx:for="{{themes}}" wx:key="k" class="skin {{item.k===theme?'on':''}}" hover-class="mrow-hover" bindtap="pickTheme" data-k="{{item.k}}">
+      <view class="skin-dot" style="background:linear-gradient(135deg,{{item.dot2}},{{item.dot}})"></view>
+      <view class="skin-n">{{item.name}}</view>
+      <view class="skin-d">{{item.desc}}</view>
+      <view wx:if="{{item.k===theme}}" class="skin-cur">✓ 使用中</view>
+    </view>
+  </view>
+</view>
+
+<view class="tip">这里的设置一年碰几次，所以收在二层；「我的」首屏只留每天要用的东西。</view>
+
+<privacy-popup />
+</view>

@@ -1,0 +1,35 @@
+/* 顶部暖色渐变（与「我的」一致）：只做背景装饰，压在卡片下面 */
+.hero {
+  position: absolute; left: 0; top: 0; width: 100%; height: 220rpx;
+  background: linear-gradient(180deg, var(--brand-tint), var(--brand-tint-0));
+  pointer-events: none; z-index: 0;
+}
+
+/* ---------- 当前机构 ---------- */
+.orgcard { padding: 34rpx 30rpx; position: relative; z-index: 1; }
+.oc-name { font-size: 36rpx; font-weight: 700; color: var(--text); }
+.oc-meta { margin-top: 10rpx; font-size: 25rpx; color: var(--muted); }
+.oc-stat { margin-top: 20rpx; display: flex; align-items: center; font-size: 24rpx; color: var(--sub); }
+.oc-n { font-size: 28rpx; font-weight: 800; color: var(--brand); margin-left: 6rpx; }
+.oc-sep { margin: 0 14rpx; color: var(--faint); }
+
+/* ---------- 入口列表（与「我的」同一套观感） ---------- */
+.menucard { padding: 8rpx 28rpx; }
+.mrow {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 30rpx 0; border-bottom: 2rpx solid var(--line);
+}
+.mrow:last-child { border-bottom: none; }
+.mrow-hover { opacity: 0.75; }
+.mr-t { font-size: 30rpx; font-weight: 600; color: var(--text); }
+.mr-d { font-size: 24rpx; color: var(--muted); margin-top: 6rpx; line-height: 1.45; }
+.chev {
+  width: 18rpx; height: 18rpx; flex: none; margin-left: 18rpx;
+  border-top: 4rpx solid var(--faint); border-right: 4rpx solid var(--faint);
+  transform: rotate(45deg);
+}
+
+.tip {
+  margin: 8rpx 40rpx 60rpx; font-size: 23rpx; line-height: 1.6; color: var(--muted);
+  padding-bottom: env(safe-area-inset-bottom);
+}

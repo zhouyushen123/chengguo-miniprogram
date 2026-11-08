@@ -440,10 +440,12 @@ console.log('\n【保存防重 + 存储空间页】');
     assert.strictEqual(page.data.orphanCount, 0);
   });
 
-  ok('我的页有「存储空间」入口', () => {
-    const mine = loadPage('pages/mine/mine.js');
-    mine.onShow();
-    assert.ok(mine.data.entries.some(e => e.k === 'storage'), '应能看到入口');
+  // 存储空间的入口从「我的」首屏搬进了「设置」二级页（首屏只留每天要用的东西），
+  // 所以断言改成盯着设置页：入口还在，只是少一层点击的成本换一屏清爽。
+  ok('「设置」页有「存储空间」入口', () => {
+    const page = loadPage('pages/setting/setting.js');
+    page.onShow();
+    assert.ok(page.data.entries.some(e => e.k === 'storage'), '应能看到入口');
   });
 }
 

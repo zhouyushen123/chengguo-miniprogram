@@ -531,29 +531,28 @@ ok('重新加载后数据不变', () => {
 });
 
 console.log('\n【图标资产：引用即存在，且函数式图标可调用】');
-console.log('\n【我的页：管理统计层】');
+console.log('\n【我的页：三个数字】');
 const mine = loadPage('pages/mine/mine.js');
 mine.onShow();
-ok('统计层两行三列、六维数据齐备（上行学生/家长/老师，下行班级/课程/学期）', () => {
-  assert.strictEqual(mine.data.statRows.length, 2);
-  assert.deepStrictEqual(mine.data.statRows[0].map(x => x.k), ['stu', 'parent', 'teacher']);
-  assert.deepStrictEqual(mine.data.statRows[1].map(x => x.k), ['cls', 'crs', 'term']);
-  const flat = mine.data.statRows.flat();
-  assert.strictEqual(flat.find(x => x.k === 'stu').n, db.students.list().length);
-  assert.strictEqual(flat.find(x => x.k === 'cls').n, db.classes.list().length);
-  assert.strictEqual(flat.find(x => x.k === 'term').n, db.terms.list().length);
-  assert.ok(flat.every(x => x.k !== 'term' || x.tab === null), '学期不走管理页页签');
+ok('统计层只留三格（学生 / 班级 / 课程），家长/老师数搬去「机构与身份」', () => {
+  assert.deepStrictEqual(mine.data.stats.map(x => x.k), ['stu', 'cls', 'crs']);
+  assert.strictEqual(mine.data.stats.find(x => x.k === 'stu').n, db.students.list().length);
+  assert.strictEqual(mine.data.stats.find(x => x.k === 'cls').n, db.classes.list().length);
+  assert.strictEqual(mine.data.stats.find(x => x.k === 'crs').n, db.courses.list().length);
   assert.ok(!mine.data.entries.some(e => e.k === 'mgr' || e.k === 'member'));
 });
-ok('统计点按跳转到管理页对应页签（负责人管理页多「机构」页签在最前，tab 统一 +1），学期进独立学期管理页', () => {
+ok('统计点按跳转到管理页对应页签（负责人管理页多「机构」页签在最前，tab 统一 +1）', () => {
+  const plus = db.auth.isAdmin() ? 1 : 0;
   const navs = [];
   const old = global.wx.navigateTo;
   global.wx.navigateTo = o => { navs.push(o.url); };
-  mine.tapStat({ currentTarget: { dataset: { tab: 2 } } });   // 学生：负责人页签 0机构1班级2课程3学生4人员 → 3
-  mine.tapStat({ currentTarget: { dataset: { tab: 3 } } });   // 家长/老师 → 人员页签 4
-  mine.tapStat({ currentTarget: { dataset: { tab: null, k: 'term' } } });
+  mine.tapStat({ currentTarget: { dataset: { tab: 2 } } });   // 学生
+  mine.tapStat({ currentTarget: { dataset: { tab: 0 } } });   // 班级
   global.wx.navigateTo = old;
-  assert.deepStrictEqual(navs, ['/pages/mgr/mgr?tab=3', '/pages/mgr/mgr?tab=4', '/pages/terms/terms']);
+  assert.deepStrictEqual(navs, [
+    '/pages/mgr/mgr?tab=' + (2 + plus),
+    '/pages/mgr/mgr?tab=' + (0 + plus)
+  ]);
 });
 
 ok('全站图标引用与 assets/icons 一一对应', () => {
@@ -596,9 +595,11 @@ const applyUtil = require('../utils/apply');
 // 上面「重启持久化」用例清过 db 模块缓存，页面持有的是新实例，这里必须拿同一份
 const dbNow = require('../utils/db');
 const applyPage = loadPage('pages/apply/apply.js');
-ok('我的页：未入驻时入口是「机构入驻申请」', () => {
-  mine.onShow();
-  const e = mine.data.entries.find(x => x.k === 'apply');
+// 入驻入口从「我的」首屏搬到了「机构与身份」：身份/机构类的事归那一页
+const orgPage = loadPage('pages/orgid/orgid.js');
+ok('机构与身份页：未入驻时入口是「机构入驻申请」', () => {
+  orgPage.onShow();
+  const e = orgPage.data.entries.find(x => x.k === 'apply');
   assert.ok(e, '应有入驻入口');
   assert.strictEqual(e.t, '机构入驻申请');
 });
@@ -647,10 +648,10 @@ ok('入驻提交成功：生成申请单 + 机构名落库 + 课程方向多选'
   assert.strictEqual(dbNow.settings().orgName, '橙果书法学堂', '机构名应同步落库');
   assert.ok(applyPage.data.done, '应切到成功态');
 });
-ok('我的页：已有申请单后入口变「机构信息」并带上类型与地区', () => {
-  mine.onShow();
-  const e = mine.data.entries.find(x => x.k === 'apply');
-  assert.strictEqual(e.t, '机构信息');
+ok('机构与身份页：已有申请单后入口变「机构资料」并带上类型与地区', () => {
+  orgPage.onShow();
+  const e = orgPage.data.entries.find(x => x.k === 'apply');
+  assert.strictEqual(e.t, '机构资料');
   assert.strictEqual(e.d, '培训机构 · 湖南省 长沙市 岳麓区');
 });
 ok('入驻页二次进入：表单回填已提交资料', () => {
@@ -679,10 +680,14 @@ ok('演示模式：首页出现横幅，录入入口被拦下', () => {
   assert.strictEqual(appInst.globalData.pick, null, '演示模式下不该进录入页');
   assert.strictEqual(toasts.pop(), '演示数据只看不改，点上方「开始使用」');
 });
-ok('演示模式：我的页入口变「退出演示数据」，并带演示徽标', () => {
+ok('演示模式：设置页入口变「退出演示数据」', () => {
+  // 演示数据的开关从「我的」首屏搬进了「设置」（样板间是低频功能，不该占首屏）
+  const settingPage = loadPage('pages/setting/setting.js');
+  settingPage.onShow();
+  assert.strictEqual(settingPage.data.sandbox, true);
   mine.onShow();
-  assert.strictEqual(mine.data.sandbox, true);
-  const e = mine.data.entries.find(x => x.k === 'demo');
+  assert.strictEqual(mine.data.sandbox, true, '首屏的身份卡仍要标出「演示」');
+  const e = settingPage.data.entries.find(x => x.k === 'demo');
   assert.ok(e, '应有演示数据入口');
   assert.strictEqual(e.t, '退出演示数据');
 });
@@ -691,9 +696,10 @@ ok('退出演示：横幅消失，回到自己的机构数据', () => {
   index.onShow();
   assert.strictEqual(index.data.sandbox, false);
   assert.strictEqual(index.data.stuCount, db.students.list().length, '回到真实库后看到的是自己的学生');
-  mine.onShow();
-  assert.strictEqual(mine.data.sandbox, false);
-  assert.strictEqual(mine.data.entries.find(x => x.k === 'demo').t, '看演示数据');
+  const settingPage = loadPage('pages/setting/setting.js');
+  settingPage.onShow();
+  assert.strictEqual(settingPage.data.sandbox, false);
+  assert.strictEqual(settingPage.data.entries.find(x => x.k === 'demo').t, '看演示数据');
 });
 
 console.log('\n全部 ' + pass + ' 项页面级断言通过');

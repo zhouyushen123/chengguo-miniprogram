@@ -6,10 +6,12 @@
   background: linear-gradient(180deg, var(--brand-tint), var(--brand-tint-0));
   pointer-events: none; z-index: 0;
 }
-.page-title { font-size: 40rpx; font-weight: 700; margin: 20rpx 32rpx 28rpx; }
 
-/* ---------- 个人卡片 ---------- */
-.usercard { display: flex; align-items: center; gap: 26rpx; padding: 32rpx 28rpx; position: relative; z-index: 1; }
+/* ---------- 身份卡（整张可点，进「机构与身份」） ---------- */
+.usercard {
+  display: flex; align-items: center; gap: 26rpx; padding: 32rpx 28rpx;
+  position: relative; z-index: 1;
+}
 .usercard .ava {
   width: 108rpx; height: 108rpx; border-radius: 34rpx; flex: none;
   background: linear-gradient(135deg, var(--brand-a), var(--brand));
@@ -17,6 +19,7 @@
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 8rpx 18rpx var(--brand-shadow-soft);
 }
+.uc-txt { flex: 1; min-width: 0; }
 .uc-name { font-size: 34rpx; font-weight: 700; margin-bottom: 8rpx; }
 .uc-meta { font-size: 24rpx; color: var(--muted); line-height: 1.5; }
 /* 演示模式徽标：跟在身份后面的一颗小胶囊，提醒现在看的是样板间 */
@@ -26,37 +29,42 @@
   background: var(--brand-soft); border-radius: 999rpx;
 }
 
-/* ---------- 管理统计层：两行三列（上行人 / 下行教学组织） ---------- */
-.statcard { padding: 26rpx 12rpx 22rpx; position: relative; z-index: 1; }
+/* ---------- 三个数字：一行三列 ---------- */
+.statcard { padding: 30rpx 12rpx 26rpx; position: relative; z-index: 1; }
 .statrow { display: flex; }
-.statrow + .statrow { margin-top: 22rpx; }
 .stat5 { flex: 1; text-align: center; padding: 4rpx 0; }
 /* 数字底下的浅色小方块：给"可点"一个视觉抓手，比纯数字更像按钮 */
 .s5box {
   display: inline-flex; align-items: center; justify-content: center;
-  min-width: 76rpx; height: 58rpx; padding: 0 14rpx; box-sizing: border-box;
+  min-width: 84rpx; height: 62rpx; padding: 0 16rpx; box-sizing: border-box;
   background: var(--brand-soft); border-radius: 16rpx;
 }
-.s5n { font-size: 32rpx; font-weight: 800; color: var(--brand); line-height: 1; }
-.s5t { margin-top: 10rpx; font-size: 22rpx; color: var(--muted); }
+.s5n { font-size: 34rpx; font-weight: 800; color: var(--brand); line-height: 1; }
+.s5t { margin-top: 10rpx; font-size: 23rpx; color: var(--muted); }
 
 /* ---------- 入口列表 ---------- */
-.menucard { padding: 8rpx 28rpx; }
+.menucard { padding: 8rpx 28rpx; position: relative; z-index: 1; }
 .mrow {
   display: flex; align-items: center; justify-content: space-between;
   padding: 30rpx 0; border-bottom: 2rpx solid var(--line);
 }
 .mrow:last-child { border-bottom: none; }
 .mrow-hover { opacity: 0.75; }
+.mr-txt { flex: 1; min-width: 0; }
 .mr-t { font-size: 30rpx; font-weight: 600; }
 .mr-d { font-size: 24rpx; color: var(--muted); margin-top: 6rpx; }
+/* 未读数：只给"真的有人等你处理"的项挂角标 */
+.cnt {
+  flex: none; margin-left: 16rpx; padding: 2rpx 14rpx;
+  font-size: 21rpx; font-weight: 700; color: #fff;
+  background: var(--brand); border-radius: 999rpx;
+}
 /* 纯 CSS 右箭头，与全局线性图标粗细一致 */
 .chev {
-  width: 18rpx; height: 18rpx; flex: none;
+  width: 18rpx; height: 18rpx; flex: none; margin-left: 16rpx;
   border-top: 4rpx solid var(--faint); border-right: 4rpx solid var(--faint);
   transform: rotate(45deg);
 }
-
 
 /* ---------- 身份预览条（与管理页一致） ---------- */
 .idbar {
@@ -70,20 +78,5 @@
   background: var(--brand); color: #fff; border-radius: 999rpx; font-size: 22rpx;
 }
 
-/* ---------- 换肤卡片（三主题并排，尺寸按 3 列收敛） ---------- */
-.skin-t { font-size: 28rpx; font-weight: 700; color: var(--text); margin-bottom: 20rpx; }
-.skins { display: flex; gap: 14rpx; }
-.skin {
-  flex: 1; min-width: 0; border-radius: 20rpx; padding: 20rpx 18rpx;
-  background: var(--chip); border: 3rpx solid transparent;
-  transition: all 0.15s; position: relative;
-}
-.skin.on { background: var(--brand-soft); border-color: var(--brand); }
-.skin-dot {
-  width: 44rpx; height: 44rpx; border-radius: 50%;
-  box-shadow: inset 0 0 0 4rpx rgba(255, 255, 255, 0.65);
-  margin-bottom: 12rpx;
-}
-.skin-n { font-size: 26rpx; font-weight: 700; color: var(--text); }
-.skin-d { font-size: 21rpx; color: var(--muted); margin-top: 4rpx; }
-.skin-cur { margin-top: 8rpx; font-size: 19rpx; font-weight: 700; color: var(--brand); }
+/* 底部留白：贴底的"设置"卡在 iPhone 上不能被小黑条盖住 */
+.slogan { padding-bottom: env(safe-area-inset-bottom); }

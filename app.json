@@ -13,6 +13,8 @@
     "pages/batch/batch",
     "pages/terms/terms",
     "pages/mine/mine",
+    "pages/orgid/orgid",
+    "pages/setting/setting",
     "pages/tpls/tpls",
     "pages/cls/cls",
     "pages/feedback/feedback",

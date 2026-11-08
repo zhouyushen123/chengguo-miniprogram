@@ -1,0 +1,39 @@
+<view class="theme-root {{themeCls}}">
+<view class="hero"></view>
+
+<!-- 当前机构：一眼看清"我在哪一家、是什么身份、这家有多少人" -->
+<view class="card orgcard">
+  <view class="oc-name">{{orgName || '还没有机构'}}</view>
+  <view class="oc-meta">{{roleLabel}}<text wx:if="{{meta}}"> · {{meta}}</text></view>
+  <view wx:if="{{isManager}}" class="oc-stat">
+    <text class="oc-s">家长 <text class="oc-n">{{parentN}}</text></text>
+    <text class="oc-sep">·</text>
+    <text class="oc-s">老师 <text class="oc-n">{{teacherN}}</text></text>
+  </view>
+</view>
+
+<!-- 切换机构：只有真的有多家才出现 -->
+<view wx:if="{{orgs.length > 1}}" class="card menucard">
+  <view class="mrow" hover-class="mrow-hover" bindtap="pickOrg">
+    <view class="mr-txt">
+      <view class="mr-t">切换机构</view>
+      <view class="mr-d">当前「{{orgName}}」，你在 {{orgs.length}} 家机构有身份</view>
+    </view>
+    <view class="chev"></view>
+  </view>
+</view>
+
+<view class="card menucard">
+  <view wx:for="{{entries}}" wx:key="k" class="mrow" hover-class="mrow-hover" bindtap="tapEntry" data-k="{{item.k}}">
+    <view class="mr-txt">
+      <view class="mr-t">{{item.t}}</view>
+      <view class="mr-d">{{item.d}}</view>
+    </view>
+    <view class="chev"></view>
+  </view>
+</view>
+
+<view class="tip">切换机构只换「当前在用哪一家」，两家的数据各自独立存在，不会混在一起；切回来还是原来的样子。</view>
+
+<privacy-popup />
+</view>

@@ -7,47 +7,58 @@
   <text class="idback" bindtap="backHome">切回我自己</text>
 </view>
 
-<!-- 个人卡片 -->
-<view class="card usercard">
+<!-- ① 身份卡：整张可点 → 机构与身份（当前机构 / 切换 / 再加一家 / 后台 / 邀请） -->
+<view class="card usercard" hover-class="mrow-hover" bindtap="goOrgId">
   <ava src="{{uPhoto}}" name="{{name}}" size="{{92}}" radius="{{30}}" />
   <view class="uc-txt">
     <view class="uc-name">{{name}}</view>
     <view class="uc-meta">{{roleLabel}}<text wx:if="{{orgName}}"> · {{orgName}}</text><text wx:if="{{sandbox}}" class="uc-demo">演示</text></view>
     <view wx:if="{{meta}}" class="uc-meta">{{meta}}</view>
   </view>
+  <view class="chev"></view>
 </view>
 
-<!-- 管理统计层：两行三列——上行「学生·家长·老师」（机构的人），下行「班级·课程·学期」（教学组织），点按进入对应管理页 -->
-<view wx:if="{{statRows.length}}" class="card statcard">
-  <view class="statrow" wx:for="{{statRows}}" wx:for-item="row" wx:for-index="ri" wx:key="*this">
-    <view wx:for="{{row}}" wx:key="k" class="stat5" hover-class="mrow-hover" bindtap="tapStat" data-tab="{{item.tab}}" data-k="{{item.k}}">
+<!-- ② 三个数字：只留最常看的（家长/老师数在「机构与身份」，学期数在「设置」） -->
+<view wx:if="{{stats.length}}" class="card statcard">
+  <view class="statrow">
+    <view wx:for="{{stats}}" wx:key="k" class="stat5" hover-class="mrow-hover" bindtap="tapStat" data-tab="{{item.tab}}" data-k="{{item.k}}">
       <view class="s5box"><text class="s5n">{{item.n}}</text></view>
       <view class="s5t">{{item.t}}</view>
     </view>
   </view>
 </view>
 
-<!-- 功能入口 -->
-<view class="card menucard">
-  <view wx:for="{{entries}}" wx:key="k" class="mrow" hover-class="mrow-hover" bindtap="tapEntry" data-k="{{item.k}}">
+<!-- ③ 家长端：我的孩子 -->
+<view wx:if="{{isParent && kids.length}}" class="card menucard">
+  <view wx:for="{{kids}}" wx:key="id" class="mrow" hover-class="mrow-hover" bindtap="goKid" data-id="{{item.id}}">
     <view class="mr-txt">
-      <view class="mr-t">{{item.t}}</view>
-      <view class="mr-d">{{item.d}}</view>
+      <view class="mr-t">{{item.name}}</view>
+      <view class="mr-d">看他的成果记录</view>
     </view>
     <view class="chev"></view>
   </view>
 </view>
 
-<!-- 换肤：点击即全局切换（卡片/按钮/图标/tabBar 同色系联动） -->
-<view class="card skincard">
-  <view class="skin-t">换肤</view>
-  <view class="skins">
-    <view wx:for="{{themes}}" wx:key="k" class="skin {{item.k===theme?'on':''}}" hover-class="mrow-hover" bindtap="pickTheme" data-k="{{item.k}}">
-      <view class="skin-dot" style="background:linear-gradient(135deg,{{item.dot2}},{{item.dot}})"></view>
-      <view class="skin-n">{{item.name}}</view>
-      <view class="skin-d">{{item.desc}}</view>
-      <view wx:if="{{item.k===theme}}" class="skin-cur">✓ 使用中</view>
+<!-- ④ 每天要点的：家长反馈（带未读数）、邀请成员；空库时给两条明路 -->
+<view wx:if="{{entries.length}}" class="card menucard">
+  <view wx:for="{{entries}}" wx:key="k" class="mrow" hover-class="mrow-hover" bindtap="tapEntry" data-k="{{item.k}}">
+    <view class="mr-txt">
+      <view class="mr-t">{{item.t}}</view>
+      <view class="mr-d">{{item.d}}</view>
     </view>
+    <text wx:if="{{item.k==='feedback' && fbUnread}}" class="cnt">{{fbUnread}}</text>
+    <view class="chev"></view>
+  </view>
+</view>
+
+<!-- ⑤ 设置：其余全部在二层 -->
+<view class="card menucard">
+  <view class="mrow" hover-class="mrow-hover" bindtap="goSetting">
+    <view class="mr-txt">
+      <view class="mr-t">设置</view>
+      <view class="mr-d">学期、存储空间、外观与关于</view>
+    </view>
+    <view class="chev"></view>
   </view>
 </view>
 

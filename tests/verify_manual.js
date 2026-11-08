@@ -189,15 +189,21 @@ const ENTRIES = [
   ['trash', 'onRestore', ['恢复'], '回收站恢复'],
 
   // ---- 我的 ----
+  // 首屏只留 5 块：身份卡 / 三个数字 / 家长反馈 / 邀请成员 / 设置。
+  // 其余低频项在「机构与身份」「设置」两个二级页里（同一屏能看完）。
   ['mine', 'tapEntry', [], '我的入口跳转'],
-  ['mine', 'pickTheme', ['换肤'], '换肤'],
+  ['mine', 'goOrgId', ['机构'], '身份卡 → 机构与身份'],
+  ['mine', 'goSetting', [], '我的页 → 设置'],
   ['mine', 'tapStat', [], '统计格跳转'],
   ['mine', 'tapEntry', ['邀请成员'], '我的页入口：邀请成员（k=invite）'],
-  ['mine', 'tapEntry', ['电脑端后台'], '我的页入口：电脑端后台（k=web）'],
-  ['mine', 'tapEntry', ['切换身份'], '我的页入口：切换身份（k=switch）'],
   ['mine', 'backHome', ['切回我自己'], '切回自己'],
-  ['mine', 'tapEntry', ['关于橙果'], '我的页入口：关于（k=about）'],
-  ['mine', 'tapEntry', ['看演示数据'], '我的页入口：演示数据（k=demo）'],
+  ['orgid', 'tapEntry', ['电脑端后台'], '机构与身份：电脑端后台（k=web）'],
+  ['orgid', 'tapEntry', ['再加一家机构'], '机构与身份：再加一家（k=addorg）'],
+  ['orgid', 'pickOrg', ['切换机构'], '机构与身份：切换机构'],
+  ['setting', 'pickTheme', ['外观'], '换肤'],
+  ['setting', 'tapEntry', ['切换身份'], '设置页：切换身份（k=switch）'],
+  ['setting', 'tapEntry', ['关于橙果'], '设置页：关于（k=about）'],
+  ['setting', 'tapEntry', ['看演示数据'], '设置页：演示数据（k=demo）'],
 
   // ---- 机构资料 / 加入申请 ----
   ['apply', 'submit', ['开通机构空间'], '机构入驻提交'],

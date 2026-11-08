@@ -219,10 +219,12 @@ ok('「稍后再说」：直接进完成页，不建任何东西也不报错', (
 });
 
 console.log('\n【入口兜底】');
-ok('「我的」里有开通引导入口：数据不空也能重走一遍', () => {
-  const mine = loadPage('pages/mine/mine.js');
-  mine.onShow();
-  const keys = mine.data.entries.map(e => e.k);
+// 开通引导从「我的」首屏搬进了「设置」：它一年最多点两次（开张那阵子），
+// 数据建完还摆在首屏只会挤掉"家长反馈"。承诺不变——数据不空也能重走一遍。
+ok('「设置」里有开通引导入口：数据不空也能重走一遍', () => {
+  const page = loadPage('pages/setting/setting.js');
+  page.onShow();
+  const keys = page.data.entries.map(e => e.k);
   assert.ok(keys.indexOf('setup') > -1, '管理员应看到开通引导入口');
 });
 ok('首次跳转的标记：跳成功才记，避免一次失败就永久不再引导', () => {

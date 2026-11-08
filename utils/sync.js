@@ -141,6 +141,51 @@ function pullNow(only) {
   return step();
 }
 
+/* ---------------- 自动上推：四条路，一条都不能少 ----------------
+ * 用户的期望只有一句：录完就该在云端，不要我手动点。
+ *   ① 落盘成功 → 1.5 秒后自动推          （schedule）
+ *   ② 推失败   → 30s / 60s / 120s 退避重试（retryLater；以前这个函数写了却没人调用，
+ *                 等于失败后只能等下一次打开小程序 —— 老师录完就锁屏的话，云端能空一整天）
+ *   ③ 回前台 / 切后台 → 立刻补推          （app.js 的 onShow / onHide → kick / flush）
+ *   ④ 断网恢复 → 立刻补推                 （app.js 的 wx.onNetworkStatusChange → flush）
+ * ①② 在这里，③④ 依赖 app.js 的钩子；缺 ② 就是"看起来会同步，其实要人点"。
+ */
+
+// 只推不拉：联网恢复 / 切后台这类"顺手补一刀"的场景，拉一轮没意义还可能很慢。
+// 不节流、不看 MIN_GAP：脏数据在那儿堆着，越快推上去越好。
+function flush() {
+  if (!api.syncOn() || conflict) return Promise.resolve({ ok: false, code: 'SYNC_OFF' });
+  if (busy) return Promise.resolve({ ok: false, busy: true });
+  if (!db.sync.dirtyCols().length) return Promise.resolve({ ok: true, pushed: 0, nothing: true });
+  busy = true;
+  lastRun = Date.now();
+  return init()
+    .then(r => {
+      if (!r || !r.ok) { busy = false; return { ok: false, code: (r && r.code) || 'INIT_FAIL' }; }
+      return pushNow()
+        .then(u => { busy = false; retryCount = 0; return { ok: true, pushed: u.pushed, cols: u.cols }; })
+        .catch(e => { busy = false; retryLater(); return { ok: false, code: 'PUSH_FAIL', msg: (e && e.message) || '' }; });
+    })
+    .catch(e => { busy = false; retryLater(); return { ok: false, code: 'SYNC_FAIL', msg: (e && e.message) || '' }; });
+}
+
+// 还有多少条没上云。首页用它给一句实话（"还有 3 条没传上去，联网后自动补传"），
+// 而不是等用户自己发现"云端怎么是空的"——那种沉默的丢失最难查。
+function pending() {
+  try {
+    const cols = db.sync.dirtyCols();
+    if (!cols.length) return 0;
+    return db.sync.snapshot(cols).length;
+  } catch (e) { return 0; }
+}
+
+// 被云端退回、重试也不会自己好（学号重复、成员越权这类）的条数。
+// 它和"待上传"不是一回事：待上传会自己传上去，退回得人去改 —— 所以首页分开说，
+// 别让用户以为"等一下就好了"，等一年也上不去。
+function rejectedCount() {
+  try { return (db.sync.rejects() || []).length; } catch (e) { return 0; }
+}
+
 // 推脏集合：分批 50 条/包；全部成功才清脏（中途失败下次重来，不会漏推）
 function pushNow() {
   const names = db.sync.dirtyCols();
@@ -154,6 +199,11 @@ function pushNow() {
       pushed += Number(r.accepted) || 0;
       // 云端拒了哪几条要原样记下来（服务端的硬约束在这里回传）
       if (r.rejected && r.rejected.length) db.sync.addRejects(r.rejected);
+      // denied 是服务端直接丢掉的条数（权限不足/成员不是自己）。它连 rejected 都不进，
+      // 客户端要是当成功，那几条就永远只活在手机里 —— 记下来，别让沉默替人做决定。
+      if (Number(r.denied) > 0) {
+        db.sync.addRejects([{ c: '', id: '', code: 'DENIED', msg: '有 ' + r.denied + ' 条被云端丢弃（权限不足）' }]);
+      }
     })), Promise.resolve())
     .then(() => { db.sync.clearDirty(names); return { pushed, cols: names.length, rejected: db.sync.rejects().length }; });
 }
@@ -185,7 +235,14 @@ function syncNow(opts) {
           return pushNow().then(u => ({ ok: true, pulled: p.added + p.updated, pushed: u.pushed }));
         })
         .catch(e => ({ ok: false, code: 'SYNC_FAIL', msg: (e && e.message) || '' }))
-        .then(out => { busy = false; return out; });
+        .then(out => {
+          busy = false;
+          // 【失败必须有人接着试】以前这里只是返回失败，重试要等下一次前台。
+          // 老师录完就锁屏、一整天不打开小程序时，云端会一直是空的，而且两端都不报错。
+          if (out && out.ok) retryCount = 0;
+          else if (db.sync.dirtyCols().length) retryLater();
+          return out;
+        });
     })
     .catch(e => { busy = false; return { ok: false, code: 'SYNC_FAIL', msg: (e && e.message) || '' }; });
 }
@@ -379,12 +436,9 @@ function retryLater() {
   retryCount++;
   retryTimer = setTimeout(() => {
     retryTimer = null;
-    syncNow({ force: true })
-      .then(r => {
-        if (r && r.ok) { retryCount = 0; return; }
-        if (db.sync.dirtyCols().length) retryLater();
-      })
-      .catch(() => { retryLater(); });
+    // 下一次是否还要重试，由 syncNow 自己判断（成功 retryCount 归零、失败继续排），
+    // 这里不要重复排，否则退避阶梯一次失败走两级。
+    syncNow({ force: true }).catch(() => {});
   }, wait);
 }
 
@@ -399,7 +453,8 @@ try {
 } catch (e) { /* 数据层不可用不影响本地使用 */ }
 
 module.exports = {
-  init, pullNow, pushNow, syncNow, kick, schedule, join, joinByCard, claim, history, revert,
+  init, pullNow, pushNow, syncNow, kick, schedule, flush, pending, rejectedCount,
+  join, joinByCard, claim, history, revert,
   orgList, switchOrg, joinMore,
   // 确认页提前检测本机是否为空库，别让人填完姓名才看到 LOCAL_DATA
   canJoin: () => isEmptyLocal(),

@@ -14,6 +14,16 @@
   <text class="demobar-t">这台手机的数据没和云端同步</text>
   <text class="demobar-btn" hover-class="btn-hover" bindtap="explainConflict">怎么办</text>
 </view>
+<!-- 待上传：数据是自动推的，这条只是说实话——传完自己就消失，不用谁去点 -->
+<view wx:if="{{!isParent && pendingN > 0}}" class="demobar">
+  <text class="demobar-t">{{pendingN}} 条还没传上云 · 联网后自动补传</text>
+  <text class="demobar-btn" hover-class="btn-hover" bindtap="doFlush">{{flushBusy ? '上传中…' : '现在重试'}}</text>
+</view>
+<!-- 被云端退回：和"待上传"不同，等下去不会好，得人去改（学号重复、权限不足这类） -->
+<view wx:if="{{!isParent && rejectN > 0}}" class="demobar">
+  <text class="demobar-t">{{rejectN}} 条被云端退回</text>
+  <text class="demobar-btn" hover-class="btn-hover" bindtap="goStorage">看原因</text>
+</view>
 <view wx:if="{{!isParent}}">
   <!-- 全新机构：库里没有班级也没有学生。这时候摆"开始录入"和三块 0 只会让人以为东西是坏的，
        所以换成一张开通卡，把"先建机构 → 学期 → 班级 → 学生"这条路直接铺在首页上 -->

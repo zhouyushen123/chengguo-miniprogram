@@ -35,7 +35,10 @@ Page({
     fbReady: false, fbUnread: 0, fbNote: '',
     // 多机构：我这个微信能进的机构（>=2 才显示切换器）。
     // 只有一家时整块不出现 —— 大多数老师一辈子只用一家，不该多一个按钮。
-    orgs: [], curOrg: '', orgPickShow: false, orgSwitching: false
+    orgs: [], curOrg: '', orgPickShow: false, orgSwitching: false,
+    // 待上传：条数 > 0 才出提示条。自动重试在跑，这条只是"给个实话"，
+    // 不是让用户来点（点了也只是催一下，不点它也会自己传）。
+    pendingN: 0, flushBusy: false, rejectN: 0
   },
   onLoad() {
     // 自定义导航要自己腾出状态栏的空间；取不到时用常见默认值兜底
@@ -54,6 +57,8 @@ Page({
       // 冲突是同步层判的（见 utils/sync.js init）：这里只负责让人看见
       syncConflict: sync.isConflict()
     });
+    // 有积压就直说（自动重试在跑，这条只是别让人误以为已经上云）
+    this._loadPending();
     const u = db.users.current() || { role: 'teacher', name: '' };
     const d = new Date();
     const dateStr = (d.getMonth() + 1) + '月' + d.getDate() + '日 周' + '日一二三四五六'[d.getDay()];
@@ -191,8 +196,39 @@ Page({
     wx.navigateTo({ url: '/pages/join/join?add=1' });
   },
   // 家长反馈（已读回执 / 留言）：云没通或接口失败就整块不显示，绝不在首页摆假数据
-  _loadFb() {
-    if (!api.enabled()) { if (this.data.fbReady) this.setData({ fbReady: false, fbUnread: 0 }); return; }
+  /* ---------------- 待上传提示 ----------------
+   * 数据是自动推的（写后 1.5s / 失败退避重试 / 回前台 / 断网恢复），用户不需要点。
+   * 这里只解决另一件事：**别让人以为已经传上去了**。有积压就说一条，传完自动消失。
+   */
+  _loadPending() {
+    try {
+      if (db.auth.isParent()) {
+        if (this.data.pendingN || this.data.rejectN) this.setData({ pendingN: 0, rejectN: 0 });
+        return;
+      }
+      const n = sync.pending();
+      const bad = sync.rejectedCount();
+      if (n !== this.data.pendingN || bad !== this.data.rejectN) {
+        this.setData({ pendingN: n, rejectN: bad });
+      }
+    } catch (e) { /* 数据层不可用就不显示 */ }
+  },
+  // 退回原因在存储页（那儿有明细和"清空/重推"），首页只负责把人送过去
+  goStorage() { wx.navigateTo({ url: '/pages/storage/storage' }); },
+  // 催促一下（不是必须的）：点了就立刻推一轮，失败也只会更早进入下一次自动重试
+  doFlush() {
+    if (this.data.flushBusy) return;
+    this.setData({ flushBusy: true });
+    sync.flush().then(r => {
+      this.setData({ flushBusy: false });
+      this._loadPending();
+      wx.showToast({
+        title: (r && r.ok) ? '已传上云' : '还没连上，稍后自动补传',
+        icon: 'none'
+      });
+    });
+  },
+  _loadFb() {    if (!api.enabled()) { if (this.data.fbReady) this.setData({ fbReady: false, fbUnread: 0 }); return; }
     api.fbList('teacher').then(r => {
       if (!r || !r.ok) { if (this.data.fbReady) this.setData({ fbReady: false, fbUnread: 0 }); return; }
       const un = r.unhandled || 0;

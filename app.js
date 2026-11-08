@@ -36,6 +36,29 @@ App({
           console.warn('[app] 同步启动异常', e);
         });
     } catch (e) { console.warn('[app] 同步启动异常', e); }
+
+    // 断网恢复后立刻补推：离线时录的东西会一直躺在"待上传"里，
+    // 以前只能等下次打开小程序、或者用户自己去存储页点「立即同步」。
+    this.watchNetwork();
+  },
+
+  // 网络恢复 → 马上把积压的推上去（只推不拉，快）。低版本没有这个 API 就跳过，
+  // 其余三条兜底（写后 1.5s、失败退避重试、前后台切换）仍然在。
+  watchNetwork() {
+    try {
+      wx.onNetworkStatusChange(res => {
+        if (!res || !res.isConnected) return;
+        try { api.initCloud(); } catch (e) { /* 云初始化失败就走本地 */ }
+        Promise.resolve(sync.flush()).then(x => { this.globalData.syncLast = x || null; })
+          .catch(() => { /* 推不上去由退避重试接着试 */ });
+      });
+    } catch (e) { /* 无此 API 不影响其他路径 */ }
+  },
+
+  // 切后台是"人要走"的时刻，最后补一刀。手机切后台后进程可能很快被回收，
+  // 没推上去的要等下次打开——能在能推的时候推，就别留给"下次"。
+  onHide() {
+    try { Promise.resolve(sync.flush()).catch(() => {}); } catch (e) { /* 同步不可用不影响使用 */ }
   },
 
   // 回到前台时补一轮同步（节流 20s，失败静默）

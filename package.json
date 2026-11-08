@@ -5,6 +5,8 @@
   "scripts": {
     "deploy": "node deploy.js",
     "test": "node tests/run.js",
+    "test:roles": "node tests/verify_journey.js && node tests/verify_owner.js && node tests/verify_teacher.js && node tests/verify_parent.js",
+    "test:e2e": "node tests/e2e_smoke.js",
     "lint": "node tools/lint.js",
     "size": "node tools/size.js",
     "review": "node tools/review.js",

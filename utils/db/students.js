@@ -6,6 +6,7 @@ const core = require('./core');
 const schema = require('./schema');
 const perms = require('./permissions');
 const pinyin = require('../pinyin');
+const phoneUtil = require('../phone');   // profile.phone 与录入口径统一：86 前缀归一化
 
 function studentList() {
   const a = actor();
@@ -98,6 +99,12 @@ function sanitizeProfile(raw) {
     const max = PROFILE_MAX[k] || PROFILE_OTHER_MAX;
     let v = schema.str(raw[k]).trim();
     if (!v) return;
+    if (k === 'phone') {
+      // 家长自己填的手机号也走统一口径：86 前缀归一化、去分隔符；
+      // 归一化后不足 11 位（写了一半/座机）原样保留，不强改成空。
+      const d = phoneUtil.norm(v);
+      if (d.length === 11) v = d;
+    }
     v = v.slice(0, Math.min(max, Math.max(0, budget)));
     if (!v) return;
     budget -= v.length;

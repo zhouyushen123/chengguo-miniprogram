@@ -13,8 +13,18 @@
 //   长度上限统一由 digits() 兜（slice 0,11），展示与输入互不干扰。
 const RE = /^1[3-9]\d{9}$/;
 
-// 只留数字，最多 11 位（防粘贴超长、防误输字母）
-function digits(v) { return String(v == null ? '' : v).replace(/\D/g, '').slice(0, 11); }
+// 86 国家码归一化：8613812345678 → 13812345678。
+// 用户从通讯录/Excel 粘贴常带 +86 前缀（+ 会被下面的 \D 吃掉剩 86…），
+// 以前 digits() 直接 slice(0,11) 会截成 86138123456 这种非法 11 位——
+// 既通不过 valid()，落库后平台页还按陌生号码整号显示（2026-11-09 深测 #5）。
+function norm(v) {
+  let d = String(v == null ? '' : v).replace(/\D/g, '');
+  if (d.length === 13 && d.slice(0, 2) === '86' && RE.test(d.slice(2))) d = d.slice(2);
+  return d;
+}
+
+// 只留数字，最多 11 位（防粘贴超长、防误输字母；86 前缀先归一化再截）
+function digits(v) { return norm(v).slice(0, 11); }
 
 // 3-4-4 分段：186 / 7488 / 2783。不够长就不补横线，删着删着横线自然消失。
 function fmt(v) {
@@ -27,4 +37,4 @@ function fmt(v) {
 // 合法手机号：11 位、1 开头、第二位 3-9
 function valid(v) { return RE.test(digits(v)); }
 
-module.exports = { digits, fmt, valid };
+module.exports = { digits, fmt, valid, norm };

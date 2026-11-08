@@ -40,6 +40,28 @@ ok('用户删掉一个横线也不会卡死：digits 还原裸数字', () => {
   assert.strictEqual(tel.digits('186-748'), '186748');
 });
 
+console.log('\n【86 国家码归一化（2026-11-09 深测 #5）】');
+ok('粘贴 +86 / 86 前缀 13 位：归一化成 11 位裸号，不再截成非法 86 开头', () => {
+  assert.strictEqual(tel.norm('8613812345678'), '13812345678');
+  assert.strictEqual(tel.norm('+86 138 1234 5678'), '13812345678', '+ 会被剥掉再归一化');
+  assert.strictEqual(tel.norm('8613812345678'), tel.digits('8613812345678'), 'digits 走同一归一化');
+  assert.strictEqual(tel.digits('8613812345678'), '13812345678');
+  assert.strictEqual(tel.fmt('8613812345678'), '138-1234-5678', '粘贴带国家码直接格式化成合法展示串');
+});
+ok('非 86 的 13 位/12 位境外号：不动、不误伤', () => {
+  assert.strictEqual(tel.norm('9715012345678'), '9715012345678', '13 位但非 86 开头原样保留');
+  assert.strictEqual(tel.norm('861381234567'), '861381234567', '86 开头但剩余 11 位不合法时不归一');
+});
+ok('平台页 maskPhone 对 86 前缀存量数据兜底（入口修好后仍有旧数据在库里）', () => {
+  const html = fs.readFileSync(path.join(ROOT, 'cloudfunctions/admin/public/platform.html'), 'utf8');
+  assert.ok(/86\\d\{11\}/.test(html), 'maskPhone 应有 86 前缀兜底分支');
+});
+ok('家长档案 profile.phone 也走归一化（学生表单唯一自由写入口）', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'utils/db/students.js'), 'utf8');
+  assert.ok(src.indexOf("k === 'phone'") > -1 && src.indexOf('phoneUtil.norm') > -1,
+    'sanitizeProfile 应对 phone 字段归一化');
+});
+
 console.log('\n【校验】');
 ok('合法号：11 位、1 开头、第二位 3-9', () => {
   assert.strictEqual(tel.valid('18674882783'), true);

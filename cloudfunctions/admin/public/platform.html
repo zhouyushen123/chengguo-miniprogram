@@ -347,6 +347,7 @@
   // 平台运营方不该看到完整手机号：138****5641（完整号只在导出的 CSV 里）
   function maskPhone(v) {
     var s = String(v === undefined || v === null ? '' : v).replace(/[\s-]/g, '');
+    if (s.length === 13 && /^86\d{11}$/.test(s)) s = s.slice(2); // 86 国家码存量数据（入口归一化前落库的）
     if (/^\d{11}$/.test(s)) return s.slice(0, 3) + '****' + s.slice(7);
     return v ? String(v) : '—';
   }

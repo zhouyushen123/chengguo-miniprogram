@@ -26,6 +26,7 @@ const SUITES = [
   ['verify_photocloud.js', '照片上云'],
   ['verify_sync.js', '记录上云'],
   ['verify_autopush.js', '自动上云（不用手动推）'],
+  ['verify_schema_doc.js', '数据字典完整性'],
   ['verify_pull.js', '云端拉取分页'],
   ['verify_invite.js', '邀请码加入'],
   ['verify_invite_card.js', '家长免码邀请卡'],

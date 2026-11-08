@@ -1,0 +1,270 @@
+﻿集合,中文名,位置,字段,类型,说明,参与同步
+orgs,机构,本机 + 云端,id,string,机构号 org_xxx（服务端发放，非自增）,是
+orgs,机构,本机 + 云端,name,string,机构名称,是
+orgs,机构,本机 + 云端,ownerId,string,负责人 user.id,是
+orgs,机构,本机 + 云端,status,string,active / suspended,是
+orgs,机构,本机 + 云端,orgId,string,归属机构。orgs 集合里等于 id,是
+orgs,机构,本机 + 云端,createdAt,int(ms),创建时间,是
+orgs,机构,本机 + 云端,updatedAt,int(ms),更新时间，同步 LWW 的依据,是
+orgs,机构,本机 + 云端,removed,bool,软删除标记（删除必须能被同步，不能硬删）,是
+orgs,机构,本机 + 云端,removedAt,int(ms),哪一次删除：同一批次共用，回收站按它整批还原,是
+orgs,机构,本机 + 云端,removedBy,int,操作人 member.id，0 = 系统,是
+members,成员关系,本机 + 云端,id,int,成员 id,是
+members,成员关系,本机 + 云端,userId,string,人员 user.id,是
+members,成员关系,本机 + 云端,role,string,owner / admin / teacher / parent,是
+members,成员关系,本机 + 云端,name,string,冗余姓名，列表不必再查 users,是
+members,成员关系,本机 + 云端,clsIds,array,可管理的班级,是
+members,成员关系,本机 + 云端,courseIds,array,可管理的课程,是
+members,成员关系,本机 + 云端,studentIds,array,家长绑定的孩子,是
+members,成员关系,本机 + 云端,status,string,active / invited / disabled,是
+members,成员关系,本机 + 云端,phone,string,手机号（选填）,是
+members,成员关系,本机 + 云端,wechat,string,微信号（选填）,是
+members,成员关系,本机 + 云端,photo,string,头像,是
+members,成员关系,本机 + 云端,openid,string,云端账号标识（认领后写入）,是
+members,成员关系,本机 + 云端,orgId,string,归属机构。orgs 集合里等于 id,是
+members,成员关系,本机 + 云端,createdAt,int(ms),创建时间,是
+members,成员关系,本机 + 云端,updatedAt,int(ms),更新时间，同步 LWW 的依据,是
+members,成员关系,本机 + 云端,removed,bool,软删除标记（删除必须能被同步，不能硬删）,是
+members,成员关系,本机 + 云端,removedAt,int(ms),哪一次删除：同一批次共用，回收站按它整批还原,是
+members,成员关系,本机 + 云端,removedBy,int,操作人 member.id，0 = 系统,是
+terms,学期,本机 + 云端,id,int,学期 id,是
+terms,学期,本机 + 云端,name,string,2026春季班 / 暑假班 / 长期班,是
+terms,学期,本机 + 云端,startDate,string,开始日期 YYYY-MM-DD,是
+terms,学期,本机 + 云端,endDate,string,结束日期 YYYY-MM-DD,是
+terms,学期,本机 + 云端,status,string,upcoming / active / archived,是
+terms,学期,本机 + 云端,builtIn,bool,内置长期班，老数据升级时收编历史班级,是
+terms,学期,本机 + 云端,orgId,string,归属机构。orgs 集合里等于 id,是
+terms,学期,本机 + 云端,createdAt,int(ms),创建时间,是
+terms,学期,本机 + 云端,updatedAt,int(ms),更新时间，同步 LWW 的依据,是
+terms,学期,本机 + 云端,removed,bool,软删除标记（删除必须能被同步，不能硬删）,是
+terms,学期,本机 + 云端,removedAt,int(ms),哪一次删除：同一批次共用，回收站按它整批还原,是
+terms,学期,本机 + 云端,removedBy,int,操作人 member.id，0 = 系统,是
+classes,班级,本机 + 云端,id,int,班级 id,是
+classes,班级,本机 + 云端,name,string,班级名称,是
+classes,班级,本机 + 云端,sort,int,排序,是
+classes,班级,本机 + 云端,termId,int,归属学期,是
+classes,班级,本机 + 云端,mode,string,term 学期制 / carry 课时包结转,是
+classes,班级,本机 + 云端,teacherId,int,主讲老师 member.id，0 = 未指派,是
+classes,班级,本机 + 云端,session,int,当前课次号，从 1 起，结清时 +1,是
+classes,班级,本机 + 云端,detached,object,"删除班级时摘掉的关联 {students[], members[]}，还原用",是
+classes,班级,本机 + 云端,orgId,string,归属机构。orgs 集合里等于 id,是
+classes,班级,本机 + 云端,createdAt,int(ms),创建时间,是
+classes,班级,本机 + 云端,updatedAt,int(ms),更新时间，同步 LWW 的依据,是
+classes,班级,本机 + 云端,removed,bool,软删除标记（删除必须能被同步，不能硬删）,是
+classes,班级,本机 + 云端,removedAt,int(ms),哪一次删除：同一批次共用，回收站按它整批还原,是
+classes,班级,本机 + 云端,removedBy,int,操作人 member.id，0 = 系统,是
+courses,课程,本机 + 云端,id,int,课程 id,是
+courses,课程,本机 + 云端,subjectId,int,学科 subjects.id，0 = 未指定（V9 新增）,是
+courses,课程,本机 + 云端,name,string,课程名，如 楷书 / 素描 / 数学思维。V10 起不再绑定班级,是
+courses,课程,本机 + 云端,intro,string,课程详细介绍（面向家长/新老师的课程说明，多行文本，可空，≤500 字）,是
+courses,课程,本机 + 云端,meta,object,课程扩展槽：以后加适合年龄/课时/教材/教学目标/封面等字段直接写这里，不改表结构、不迁移、不动云函数,是
+courses,课程,本机 + 云端,mergedInto,int,同名课程合并到哪门课（0 = 未合并；非 0 的行是墓碑，不进回收站）,是
+courses,课程,本机 + 云端,orgId,string,归属机构。orgs 集合里等于 id,是
+courses,课程,本机 + 云端,createdAt,int(ms),创建时间,是
+courses,课程,本机 + 云端,updatedAt,int(ms),更新时间，同步 LWW 的依据,是
+courses,课程,本机 + 云端,removed,bool,软删除标记（删除必须能被同步，不能硬删）,是
+courses,课程,本机 + 云端,removedAt,int(ms),哪一次删除：同一批次共用，回收站按它整批还原,是
+courses,课程,本机 + 云端,removedBy,int,操作人 member.id，0 = 系统,是
+class_courses,班级课程绑定,本机 + 云端,id,int,绑定 id,是
+class_courses,班级课程绑定,本机 + 云端,clsId,int,班级 classes.id,是
+class_courses,班级课程绑定,本机 + 云端,courseId,int,课程 courses.id，同一门课可绑多个班,是
+class_courses,班级课程绑定,本机 + 云端,teacherId,int,该班这门课的任课老师 member.id，0 = 跟随班级主讲（预留）,是
+class_courses,班级课程绑定,本机 + 云端,sort,int,同班内的教学顺序，上课选课按它排,是
+class_courses,班级课程绑定,本机 + 云端,orgId,string,归属机构。orgs 集合里等于 id,是
+class_courses,班级课程绑定,本机 + 云端,createdAt,int(ms),创建时间,是
+class_courses,班级课程绑定,本机 + 云端,updatedAt,int(ms),更新时间，同步 LWW 的依据,是
+class_courses,班级课程绑定,本机 + 云端,removed,bool,软删除标记（删除必须能被同步，不能硬删）,是
+class_courses,班级课程绑定,本机 + 云端,removedAt,int(ms),哪一次删除：同一批次共用，回收站按它整批还原,是
+class_courses,班级课程绑定,本机 + 云端,removedBy,int,操作人 member.id，0 = 系统,是
+subjects,学科,本机 + 云端,id,int,机构内自增 id,是
+subjects,学科,本机 + 云端,gid,string,全局 ID（sub_math…），内置学科跨机构一致，永不复用,是
+subjects,学科,本机 + 云端,name,string,语文 / 数学 / 书法 / 美术…,是
+subjects,学科,本机 + 云端,kind,string,academic 学科类 / art 艺术类 / skill 技能类,是
+subjects,学科,本机 + 云端,sort,int,排序,是
+subjects,学科,本机 + 云端,orgId,string,归属机构。orgs 集合里等于 id,是
+subjects,学科,本机 + 云端,createdAt,int(ms),创建时间,是
+subjects,学科,本机 + 云端,updatedAt,int(ms),更新时间，同步 LWW 的依据,是
+subjects,学科,本机 + 云端,removed,bool,软删除标记（删除必须能被同步，不能硬删）,是
+subjects,学科,本机 + 云端,removedAt,int(ms),哪一次删除：同一批次共用，回收站按它整批还原,是
+subjects,学科,本机 + 云端,removedBy,int,操作人 member.id，0 = 系统,是
+knowledge_points,知识点,本机 + 云端,id,int,机构内自增 id,是
+knowledge_points,知识点,本机 + 云端,gid,string,全局 ID（kp_xxx），题目永久引用，永不复用,是
+knowledge_points,知识点,本机 + 云端,subjectId,int,所属学科,是
+knowledge_points,知识点,本机 + 云端,parentId,int,父节点，0 = 根,是
+knowledge_points,知识点,本机 + 云端,path,string,物化路径 数学/小学/数与代数/分数（云开发无递归查询，靠它查子树）,是
+knowledge_points,知识点,本机 + 云端,depth,int,层级深度，根为 0,是
+knowledge_points,知识点,本机 + 云端,name,string,知识点名,是
+knowledge_points,知识点,本机 + 云端,grade,string,适用年级，空 = 全年级,是
+knowledge_points,知识点,本机 + 云端,code,string,外部映射码（对齐课标/教材），做数据交换用,是
+knowledge_points,知识点,本机 + 云端,sort,int,同层排序,是
+knowledge_points,知识点,本机 + 云端,source,string,platform 平台公共 / org 机构私有,是
+knowledge_points,知识点,本机 + 云端,orgId,string,归属机构。orgs 集合里等于 id,是
+knowledge_points,知识点,本机 + 云端,createdAt,int(ms),创建时间,是
+knowledge_points,知识点,本机 + 云端,updatedAt,int(ms),更新时间，同步 LWW 的依据,是
+knowledge_points,知识点,本机 + 云端,removed,bool,软删除标记（删除必须能被同步，不能硬删）,是
+knowledge_points,知识点,本机 + 云端,removedAt,int(ms),哪一次删除：同一批次共用，回收站按它整批还原,是
+knowledge_points,知识点,本机 + 云端,removedBy,int,操作人 member.id，0 = 系统,是
+students,学生,本机 + 云端,id,int,学生 id,是
+students,学生,本机 + 云端,pid,string,平台身份（p_xxx）：同一个孩子在多家机构的档案共用它，家长端据此把两家的成果摆在一页；空=尚未归并,是
+students,学生,本机 + 云端,name,string,姓名,是
+students,学生,本机 + 云端,no,string,学号，机构内唯一，从 1001 起，一经生成不变,是
+students,学生,本机 + 云端,gender,string,男 / 女 / 空,是
+students,学生,本机 + 云端,enrollYear,int,入学年份，0 = 未填,是
+students,学生,本机 + 云端,clsIds,array,所在班级,是
+students,学生,本机 + 云端,parent,string,家长姓名,是
+students,学生,本机 + 云端,parentPhone,string,家长手机号，11 位裸数字（展示时 3-4-4）；与微信号同为家长归并键,是
+students,学生,本机 + 云端,wechat,string,家长微信号,是
+students,学生,本机 + 云端,photo,string,照片,是
+students,学生,本机 + 云端,profile,object,扩展档案（年级、学校等自由字段）,是
+students,学生,本机 + 云端,demo,bool,演示数据标记,是
+students,学生,本机 + 云端,orgId,string,归属机构。orgs 集合里等于 id,是
+students,学生,本机 + 云端,createdAt,int(ms),创建时间,是
+students,学生,本机 + 云端,updatedAt,int(ms),更新时间，同步 LWW 的依据,是
+students,学生,本机 + 云端,removed,bool,软删除标记（删除必须能被同步，不能硬删）,是
+students,学生,本机 + 云端,removedAt,int(ms),哪一次删除：同一批次共用，回收站按它整批还原,是
+students,学生,本机 + 云端,removedBy,int,操作人 member.id，0 = 系统,是
+enrollments,报名（课时账本）,本机 + 云端,id,int,报名 id,是
+enrollments,报名（课时账本）,本机 + 云端,studentId,int,学生,是
+enrollments,报名（课时账本）,本机 + 云端,clsId,int,班级,是
+enrollments,报名（课时账本）,本机 + 云端,termId,int,学期,是
+enrollments,报名（课时账本）,本机 + 云端,totalHours,int,购买课时,是
+enrollments,报名（课时账本）,本机 + 云端,usedHours,int,已用课时,是
+enrollments,报名（课时账本）,本机 + 云端,status,string,active / carried / churned / refunded,是
+enrollments,报名（课时账本）,本机 + 云端,carriedFrom,int,上一期报名 id，续报溯源,是
+enrollments,报名（课时账本）,本机 + 云端,orgId,string,归属机构。orgs 集合里等于 id,是
+enrollments,报名（课时账本）,本机 + 云端,createdAt,int(ms),创建时间,是
+enrollments,报名（课时账本）,本机 + 云端,updatedAt,int(ms),更新时间，同步 LWW 的依据,是
+enrollments,报名（课时账本）,本机 + 云端,removed,bool,软删除标记（删除必须能被同步，不能硬删）,是
+enrollments,报名（课时账本）,本机 + 云端,removedAt,int(ms),哪一次删除：同一批次共用，回收站按它整批还原,是
+enrollments,报名（课时账本）,本机 + 云端,removedBy,int,操作人 member.id，0 = 系统,是
+records,课堂记录,本机 + 云端,id,int,记录 id,是
+records,课堂记录,本机 + 云端,type,string,业务活动类型，现在只有 achievement（留字段不留逻辑）,是
+records,课堂记录,本机 + 云端,sid,int,学生,是
+records,课堂记录,本机 + 云端,cid,int,班级,是
+records,课堂记录,本机 + 云端,courseId,int,课程,是
+records,课堂记录,本机 + 云端,course,string,课程名冗余（改名不改历史）,是
+records,课堂记录,本机 + 云端,date,string,日期 YYYY-MM-DD（本地日，避免 UTC 偏一天）,是
+records,课堂记录,本机 + 云端,score,int,分数，口径见 scoreScale,是
+records,课堂记录,本机 + 云端,scoreScale,int,满分口径，默认 100（V9 新增）,是
+records,课堂记录,本机 + 云端,tag,string,五档：待提高/加油/良好/优秀/最佳,是
+records,课堂记录,本机 + 云端,note,string,评语,是
+records,课堂记录,本机 + 云端,photos,array,照片（最多 9 张，可含云存储 fileID）,是
+records,课堂记录,本机 + 云端,videos,array,视频（最多 3 个）,是
+records,课堂记录,本机 + 云端,audio,string,语音 fileID 或本地路径,是
+records,课堂记录,本机 + 云端,sent,bool,是否已发布到家长端,是
+records,课堂记录,本机 + 云端,session,int,课次号,是
+records,课堂记录,本机 + 云端,kpIds,array,关联知识点（阶段二填，V9 新增）,是
+records,课堂记录,本机 + 云端,tid,string,录入老师 user.id,是
+records,课堂记录,本机 + 云端,demo,bool,演示数据标记,是
+records,课堂记录,本机 + 云端,orgId,string,归属机构。orgs 集合里等于 id,是
+records,课堂记录,本机 + 云端,createdAt,int(ms),创建时间,是
+records,课堂记录,本机 + 云端,updatedAt,int(ms),更新时间，同步 LWW 的依据,是
+records,课堂记录,本机 + 云端,removed,bool,软删除标记（删除必须能被同步，不能硬删）,是
+records,课堂记录,本机 + 云端,removedAt,int(ms),哪一次删除：同一批次共用，回收站按它整批还原,是
+records,课堂记录,本机 + 云端,removedBy,int,操作人 member.id，0 = 系统,是
+users,人员（账号）,本机 + 云端,id,string,本机人员 id,否
+users,人员（账号）,本机 + 云端,name,string,姓名,否
+users,人员（账号）,本机 + 云端,photo,string,头像,否
+users,人员（账号）,本机 + 云端,role,string,默认角色参考，不参与权限判定,否
+users,人员（账号）,本机 + 云端,orgId,string,归属机构。orgs 集合里等于 id,否
+users,人员（账号）,本机 + 云端,createdAt,int(ms),创建时间,否
+users,人员（账号）,本机 + 云端,updatedAt,int(ms),更新时间，同步 LWW 的依据,否
+users,人员（账号）,本机 + 云端,removed,bool,软删除标记（删除必须能被同步，不能硬删）,否
+users,人员（账号）,本机 + 云端,removedAt,int(ms),哪一次删除：同一批次共用，回收站按它整批还原,否
+users,人员（账号）,本机 + 云端,removedBy,int,操作人 member.id，0 = 系统,否
+templates,评价模板,本机 + 云端,id,int,模板 id,是
+templates,评价模板,本机 + 云端,name,string,维度名，如 上课态度,是
+templates,评价模板,本机 + 云端,options,array,常用评语选项,是
+templates,评价模板,本机 + 云端,sort,int,排序,是
+templates,评价模板,本机 + 云端,orgId,string,归属机构。orgs 集合里等于 id,是
+templates,评价模板,本机 + 云端,createdAt,int(ms),创建时间,是
+templates,评价模板,本机 + 云端,updatedAt,int(ms),更新时间，同步 LWW 的依据,是
+templates,评价模板,本机 + 云端,removed,bool,软删除标记（删除必须能被同步，不能硬删）,是
+templates,评价模板,本机 + 云端,removedAt,int(ms),哪一次删除：同一批次共用，回收站按它整批还原,是
+templates,评价模板,本机 + 云端,removedBy,int,操作人 member.id，0 = 系统,是
+users,微信绑定（云端）,仅云端,_openid,string,微信 openid（系统字段）,否
+users,微信绑定（云端）,仅云端,orgId,string,主机构（第一家加入的）,否
+users,微信绑定（云端）,仅云端,orgIds,array,我能进的机构清单（一张工牌一个）；老数据没有这个字段时按 `orgId` 算,否
+users,微信绑定（云端）,仅云端,createdAt,serverDate,首次绑定时间,否
+invites,机构码（邀请码）,仅云端,_id,string,邀请码本身（字母表去掉 0/O/1/I/2/Z，避免看错）,否
+invites,机构码（邀请码）,仅云端,orgId,string,码属于哪个机构,否
+invites,机构码（邀请码）,仅云端,role,string,`parent` / `teacher` / `admin`，一种身份一个码,否
+invites,机构码（邀请码）,仅云端,closed,bool,是否停用,否
+invites,机构码（邀请码）,仅云端,uses,number,已使用次数,否
+invites,机构码（邀请码）,仅云端,by,string,生成者 openid,否
+invites,机构码（邀请码）,仅云端,createdAt,number,生成时间（毫秒）,否
+invites,机构码（邀请码）,仅云端,expiresAt,number,过期时间（默认 30 天）,否
+invite_cards,家长邀请卡（一人一张）,仅云端,_id,string,一次性令牌（小写无歧义字符，12 位）,否
+invite_cards,家长邀请卡（一人一张）,仅云端,orgId,string,机构,否
+invite_cards,家长邀请卡（一人一张）,仅云端,clsId,number,学生所在班（发卡时取第一个班）,否
+invite_cards,家长邀请卡（一人一张）,仅云端,sid,number,学生 id,否
+invite_cards,家长邀请卡（一人一张）,仅云端,code,string,机构码（**只在服务端用**，从不下发给家长）,否
+invite_cards,家长邀请卡（一人一张）,仅云端,role,string,固定 `parent`,否
+invite_cards,家长邀请卡（一人一张）,仅云端,stuNo,string,学号（卡面不回显，仅服务端匹配用）,否
+invite_cards,家长邀请卡（一人一张）,仅云端,orgName,string,卡面：机构名,否
+invite_cards,家长邀请卡（一人一张）,仅云端,clsName,string,卡面：班级名,否
+invite_cards,家长邀请卡（一人一张）,仅云端,stuName,string,卡面：孩子姓名,否
+invite_cards,家长邀请卡（一人一张）,仅云端,status,string,`unused` / `claimed` / `approved` / `revoked`,否
+invite_cards,家长邀请卡（一人一张）,仅云端,expiresAt,number,过期时间（7 天）,否
+invite_cards,家长邀请卡（一人一张）,仅云端,usedAt,number,被点开的时间,否
+invite_cards,家长邀请卡（一人一张）,仅云端,usedBy,string,认领者 openid,否
+invite_cards,家长邀请卡（一人一张）,仅云端,claimName,string,认领时填的姓名,否
+invite_cards,家长邀请卡（一人一张）,仅云端,claimPhone,string,预留：认领手机号（阶段 2）,否
+invite_cards,家长邀请卡（一人一张）,仅云端,pid,string,归并后的平台身份（同一个孩子跨机构共用）,否
+invite_cards,家长邀请卡（一人一张）,仅云端,approvedAt,number,确认加入完成时间,否
+invite_cards,家长邀请卡（一人一张）,仅云端,by,string,发卡老师 openid,否
+invite_cards,家长邀请卡（一人一张）,仅云端,createdAt,number,创建时间,否
+history,版本历史,仅云端,orgId,string,机构,否
+history,版本历史,仅云端,c,string,集合名,否
+history,版本历史,仅云端,id,number|string,资产 id,否
+history,版本历史,仅云端,at,number,留档时间（毫秒）,否
+history,版本历史,仅云端,by,string,操作者 openid,否
+history,版本历史,仅云端,doc,object,旧值快照（去掉 `_id` / `_openid` / `srvAt`）,否
+openid_map,订阅授权额度,仅云端,_openid,string,家长 openid（系统字段）,否
+openid_map,订阅授权额度,仅云端,sids,array,这个家长订阅了哪些孩子（学生 id）,否
+openid_map,订阅授权额度,仅云端,name,string,家长备注名,否
+openid_map,订阅授权额度,仅云端,grants,number,剩余可推送条数（一次性订阅按条计，收到一条减一）,否
+openid_map,订阅授权额度,仅云端,updatedAt,serverDate,最后更新时间,否
+record_views,家长已读回执,仅云端,_id,string,`orgId:rid:openid`,否
+record_views,家长已读回执,仅云端,orgId,string,机构,否
+record_views,家长已读回执,仅云端,rid,number,成果（记录）id,否
+record_views,家长已读回执,仅云端,sid,number,学生 id,否
+record_views,家长已读回执,仅云端,openid,string,看的那个家长,否
+record_views,家长已读回执,仅云端,viewedAt,number,"看到的时间（首次与再次都会刷新，只用于""看过没有""）",否
+parent_notes,家长留言,仅云端,orgId,string,机构,否
+parent_notes,家长留言,仅云端,rid,number,针对哪条成果,否
+parent_notes,家长留言,仅云端,sid,number,学生 id,否
+parent_notes,家长留言,仅云端,openid,string,留言的家长,否
+parent_notes,家长留言,仅云端,text,string,正文（≤200 字）,否
+parent_notes,家长留言,仅云端,createdAt,number,留言时间,否
+parent_notes,家长留言,仅云端,handled,number,0 未处理 / 1 已处理,否
+parent_notes,家长留言,仅云端,handledBy,string,处理人 openid,否
+parent_notes,家长留言,仅云端,handledAt,number,处理时间,否
+admin_accounts,电脑端后台账号,仅云端,_id,string,后台账号（6 位）,否
+admin_accounts,电脑端后台账号,仅云端,account,string,同 `_id`，便于直接读,否
+admin_accounts,电脑端后台账号,仅云端,orgId,string,属于哪个机构,否
+admin_accounts,电脑端后台账号,仅云端,pin,string,6 位口令（重置即换）,否
+admin_accounts,电脑端后台账号,仅云端,fail,number,连续试错次数,否
+admin_accounts,电脑端后台账号,仅云端,lockUntil,number,锁定到期时间（试错太多后锁定 10 分钟）,否
+admin_accounts,电脑端后台账号,仅云端,createdAt,number,创建时间,否
+admin_accounts,电脑端后台账号,仅云端,by,string,创建者 openid,否
+admin_sessions,后台登录会话,仅云端,_id,string,会话 token,否
+admin_sessions,后台登录会话,仅云端,account,string,哪个后台账号,否
+admin_sessions,后台登录会话,仅云端,orgId,string,机构,否
+admin_sessions,后台登录会话,仅云端,exp,number,过期时间,否
+admin_sessions,后台登录会话,仅云端,at,number,签发时间,否
+backups,备份清单,仅云端,_id,string,清单 id（机构+日期+tag）,否
+backups,备份清单,仅云端,orgId,string,机构,否
+backups,备份清单,仅云端,date,string,备份日期 `YYYYMMDD`,否
+backups,备份清单,仅云端,tag,string,日常备份为空；恢复前快照用唯一 tag,否
+backups,备份清单,仅云端,at,number,生成时间,否
+backups,备份清单,仅云端,counts,object,`{集合: 条数}`,否
+backups,备份清单,仅云端,total,number,总条数,否
+backups,备份清单,仅云端,bytes,number,总字节数,否
+backups,备份清单,仅云端,files,array,"`[{c, part, count, bytes, fileID}]` 分片清单",否
+backups,备份清单,仅云端,status,string,`ok` / `partial` / `failed`,否
+backups,备份清单,仅云端,stoppedAt,string,因超时停在哪个集合（空=跑完）,否
+backups,备份清单,仅云端,failed,array,读失败的集合（**不是空集合**）,否
+backups,备份清单,仅云端,missing,array,本次没跑的集合,否
+backups,备份清单,仅云端,truncated,bool,有集合撞到单次上限，可能不全,否
+backups,备份清单,仅云端,safety,bool,是否为恢复前的安全快照（不参与清理）,否

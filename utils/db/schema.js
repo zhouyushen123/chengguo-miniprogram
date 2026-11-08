@@ -208,6 +208,10 @@ function normalizeStudent(raw, orgId, stamp) {
   const r = raw || {};
   return Object.assign({
     id: num(r.id, 0),
+    // 平台身份（p_xxx）：同一个孩子在 A、B 两家机构各有一条档案，靠它认成同一个人，
+    // 家长端才能把两家的成果摆在一页。机构自己建档时为空，家长认领时由服务端发号。
+    // 这里只做清洗不做格式硬校验：云端已经写过的值不该因为客户端规则变严而凭空消失。
+    pid: str(r.pid).trim().replace(/[^A-Za-z0-9_]/g, '').slice(0, 32),
     name: str(r.name).trim(),
     // 学号：系统自动生成的机构内唯一编号（纯数字，从 1001 起）。
     // 用途有两个——家长凭学号绑定孩子；同一个家长号码下的多个孩子自动归并到同一位家长。

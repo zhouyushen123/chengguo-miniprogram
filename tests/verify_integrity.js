@@ -387,13 +387,16 @@ ok('G3 骨架收编：切换机构号后，出厂号建的学期/模板/学科�
   assert.strictEqual(again.rows, 0, '收编必须幂等（重复调用不改任何行）');
 });
 
-ok('G4 同步的两处机构切换点都调用了骨架收编（漏一处就复发）', () => {
+ok('G4 机构切换点：首次绑定必收编骨架，切换机构绝收编（否则会把 A 家的模板搬到 B 家）', () => {
   const src = fs.readFileSync(path.join(ROOT, 'utils/sync.js'), 'utf8');
-  // 切换 meta.orgId 的地方一共两处：hello 采纳（pull 成功后）与邀请码 join
+  // 三处改 meta.orgId：hello 采纳云端号、邀请码 join（改挂）、doSwitch（换一家干活）
   const switches = src.split('db.patchMeta({ orgId').length - 1;
   const calls = src.split('db.adoptFactoryRows(').length - 1;
-  assert.strictEqual(switches, 2, '机构切换点变了（现在 ' + switches + ' 处），这条断言要同步改');
-  assert.strictEqual(calls, 2, '每处切换后都必须紧跟收编，现在只有 ' + calls + ' 处');
+  assert.strictEqual(switches, 3, '机构切换点变了（现在 ' + switches + ' 处），这条断言要同步改');
+  // 【为什么切换点少一次收编】adoptFactoryRows 是把"出厂号建的那套骨架"认领到真实机构号上，
+  // 只适用于"本机数据整体改挂"（首次上云、邀请码加入）。切到另一家已有机构的账上时收编，
+  // 等于把 A 家的学期/模板搬到 B 家，是实打实的数据污染。
+  assert.strictEqual(calls, 2, '收编只该出现在两处改挂，现在有 ' + calls + ' 处');
 });
 
 ok('G5 重复绑定收口：同一微信两条成员关系只留一条，me 改指保留行', () => {

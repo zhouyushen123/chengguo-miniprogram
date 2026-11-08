@@ -1,7 +1,8 @@
 // syncv2 —— 记录/学生/班级上云（替换旧的 openid 单模型 sync，CR-005）
 //
-// 【模型】每份数据都挂 orgId，服务器按 users 集合里的 openid→orgId 绑定做隔离：
-// 一个微信账号只能读写自己绑定机构的数据，别的机构一律拒绝（越权即 fail-closed）。
+// 【模型】每份数据都挂 orgId，服务器按 users 集合里的 openid→机构工牌做隔离：
+// 一个微信可以有**多张工牌**（users.orgIds），但每一次请求只能读写「点名的这一家」的数据，
+// 没有那家工牌就一律拒绝（越权即 fail-closed）。多机构 = 多一个可进入的空间，不是把数据合到一起。
 //
 // 【协议】全部 LWW（last-write-wins，按文档 updatedAt 比较）：
 //   hello  → 首次登录建绑定；返回该账号的 orgId
@@ -53,6 +54,17 @@ async function userOf(openid) {
     const r = await db.collection('users').where({ _openid: openid }).limit(1).get().catch(() => ({ data: [] }));
     return r.data[0] || null;
   }
+}
+
+// 这个微信能进入的机构列表。
+// 老数据只有单个 orgId（一个微信只能属于一家），新数据多一个 orgIds 数组：
+// 同一个人在两家机构上课 = 两张工牌，各自一条 members，谁也不覆盖谁。
+// 主机构（orgId）保留不动，客户端第一次进来没有偏好时用它。
+function orgsOf(u) {
+  const list = Array.isArray(u && u.orgIds) ? u.orgIds.map(String).filter(Boolean) : [];
+  const main = String((u && u.orgId) || '');
+  if (main && list.indexOf(main) < 0) list.unshift(main);
+  return list;
 }
 
 // 我在这个机构里的成员身份（服务端判权限，不信客户端自报的角色）
@@ -230,16 +242,87 @@ async function kidsFor(orgId, opts) {
   return { kids, kid };
 }
 
+/* ---------------- 平台身份 pid：同一个孩子在多家机构 ----------------
+ * 一个孩子可能在 A 家学美术、B 家学钢琴，两家各自给他建了一条档案。
+ * pid 是这两条档案之间的桥：家长端把 pid 相同的档案认成一个孩子，按机构分组展示。
+ * 【为什么建档时不发号】机构自己建档时并不知道这孩子别家也在教；
+ * 只有家长认领的那一刻，才有"这两个张小明是同一个人"这句判断。
+ */
+function newPid() {
+  let s = '';
+  for (let i = 0; i < 10; i++) s += CARD_CHARS[Math.floor(Math.random() * CARD_CHARS.length)];
+  return 'p_' + s;
+}
+
+// 这个微信已经认下来的孩子（跨所有有工牌的机构）。
+// 只回识别要用的字段，不回成绩、不回照片：这是"认人"，不是"看数据"。
+async function findMyKids(openid, orgIds) {
+  const out = [];
+  for (const oid of orgIds) {
+    const m = await memberOf(openid, oid);
+    if (!m) continue;
+    const ids = (m.studentIds || []).map(Number).filter(Boolean);
+    // 逐个按 id 取（一个家长名下通常 1~3 个孩子）：不用 _.in，也不受单页上限影响
+    for (const sid of ids) {
+      const r = await db.collection('students').where({ orgId: oid, id: sid })
+        .limit(5).get().catch(() => ({ data: [] }));
+      const s = r.data.filter(x => !x.removed)[0];
+      if (!s) continue;
+      out.push({
+        orgId: oid, sid: s.id, name: String(s.name || ''), pid: String(s.pid || ''),
+        phone: String(s.parentPhone || '').replace(/\D/g, ''), wechat: String(s.wechat || '')
+      });
+    }
+  }
+  return out;
+}
+
+// 两条档案是同一个孩子吗：同名 / 同家长手机 / 同微信号，任一命中就"提出来问一句"。
+// 只提示、不自动合并 —— 误合并会把两个孩子的成长记录混在一起，还牵涉两家机构，
+// 让家长多点一次「不是同一个」远比事后拆分便宜。
+function sameKid(a, b) {
+  if (!a || !b) return false;
+  if (a.pid && b.pid && String(a.pid) === String(b.pid)) return true;
+  if (a.name && b.name && String(a.name).trim() === String(b.name).trim()) return true;
+  if (a.phone && b.phone && String(a.phone) === String(b.phone)) return true;
+  if (a.wechat && b.wechat && String(a.wechat) === String(b.wechat)) return true;
+  return false;
+}
+
+// 把 pid 写到学生档案上。srvAt / updatedAt 必须一起推进：
+// pull 是按 srvAt > since 拉增量的，不推进的话手机永远拉不到这条改动，
+// 孩子在没有 pid 的状态下一直用下去，家长端也就永远合不起来。
+async function setStudentsPid(orgId, ids, pid) {
+  const list = (ids || []).map(Number).filter(Boolean);
+  if (!orgId || !list.length || !pid) return false;
+  const at = nextSrvAt();
+  try {
+    // 逐条更新而不是 _.in：这条链路一行只有一两个学生（卡片锁定的那个孩子），
+    // 少依赖一个查询操作符，换环境/换测试假库都少一处坑。
+    for (const sid of list) {
+      await db.collection('students').where({ orgId, id: sid })
+        .update({ data: { pid: String(pid), updatedAt: at, srvAt: at } });
+    }
+    return true;
+  } catch (e) {
+    console.warn('[syncv2] 写 pid 失败', orgId, pid, e && e.message);
+    return false;
+  }
+}
+
 // 建立/更新绑定与成员关系：inviteJoin 与 cardClaim 共用，避免两份实现漂移。
 // status 是给「老师审核」留的口子：阶段 1 一律 active，老入口也永远是 active。
 async function finishJoin(orgId, role, openid, name, kids, status) {
   const had = await userOf(openid);
-  if (had && String(had.orgId) !== String(orgId)) {
-    return { ok: false, code: 'ORG_BOUND', msg: '该微信已加入其他机构' };
-  }
   const now = Date.now();
   if (!had) {
-    await db.collection('users').add({ data: { _openid: openid, orgId, createdAt: db.serverDate() } });
+    await db.collection('users').add({ data: { _openid: openid, orgId, orgIds: [orgId], createdAt: db.serverDate() } });
+  } else if (orgsOf(had).indexOf(String(orgId)) < 0) {
+    // 第二家机构：追加一张工牌，不动主机构。
+    // 【为什么不再拒绝】以前这里直接回 ORG_BOUND，等于"一个老师只能在第一家机构任教"。
+    // 现在改成追加：数据仍然按 orgId 物理隔离，多出来的只是"这个人还能进另一家"。
+    const mine = orgsOf(had).concat([String(orgId)]);
+    await db.collection('users').doc(had._id).update({ data: { orgIds: mine } });
   }
   // 同一个人在同一个机构只留一条成员关系：重复加入（换手机、换微信重进）就地更新
   const exist = await memberOf(openid, orgId);
@@ -274,14 +357,20 @@ exports.main = async (event) => {
   if (action === 'hello') {
     const want = String(event.orgId || '').slice(0, 64);
     const u = await userOf(OPENID);
-    if (u) return { ok: true, orgId: u.orgId, firstTime: false, openid: OPENID };
+    if (u) {
+      const mine = orgsOf(u);
+      // 客户端点名了某一家且我确实有那张工牌 → 就用它（切换机构后重新对齐）。
+      // 点名的不是我家的（改参数/手工构造）→ 落回主机构，绝不因为客户端说了算就换空间。
+      const pick = want && mine.indexOf(want) > -1 ? want : mine[0];
+      return { ok: true, orgId: pick, orgIds: mine, firstTime: false, openid: OPENID };
+    }
     if (!want) return { ok: false, msg: '缺少机构标识' };
     // 出厂号不是真实机构号：发一个新的，客户端会把本机数据整体改挂过来（minted=true）。
     // 这条分支只会在"这台设备第一次上云"时走到，云端这个号下一条数据都没有，改挂是安全的。
     const minted = want === FACTORY_ORG;
     const orgId = minted ? newOrgId() : want;
-    await db.collection('users').add({ data: { _openid: OPENID, orgId, createdAt: db.serverDate() } });
-    return { ok: true, orgId, firstTime: true, minted, openid: OPENID };
+    await db.collection('users').add({ data: { _openid: OPENID, orgId, orgIds: [orgId], createdAt: db.serverDate() } });
+    return { ok: true, orgId, orgIds: [orgId], firstTime: true, minted, openid: OPENID };
   }
 
   // 只读探测：这个微信绑过机构吗？换手机/重装时客户端用它判断"该恢复还是该从零开始"，
@@ -290,7 +379,28 @@ exports.main = async (event) => {
     const u = await userOf(OPENID);
     // openid 一起带回去：恢复数据后要靠它认出"我是成员表里的谁"，
     // 否则数据拉下来了却因为查不到身份而一条都看不见（actor 为空 → 权限过滤全挡）。
-    return { ok: true, bound: !!u, orgId: u ? String(u.orgId) : '', openid: OPENID };
+    return { ok: true, bound: !!u, orgId: u ? String(u.orgId) : '', orgIds: u ? orgsOf(u) : [], openid: OPENID };
+  }
+
+  // 我能进入的机构清单：顶部切换器与"加入新机构"判断都靠它。
+  // 不需要已绑定（没有工牌时返回空数组，客户端据此显示"还没有加入任何机构"）。
+  if (action === 'myOrgs') {
+    const u = await userOf(OPENID);
+    if (!u) return { ok: true, orgs: [], openid: OPENID };
+    const out = [];
+    for (const oid of orgsOf(u)) {
+      const m = await memberOf(OPENID, oid);
+      // 机构名从 orgs 集合取；机构还没同步上来时留空，客户端显示机构号后 6 位
+      const o = await db.collection('orgs').where({ id: oid }).limit(1).get().catch(() => ({ data: [] }));
+      out.push({
+        orgId: oid,
+        orgName: (o.data[0] && o.data[0].name) || '',
+        role: (m && m.role) || '',
+        status: (m && m.status) || '',
+        memberId: (m && m.id) || 0
+      });
+    }
+    return { ok: true, orgs: out, openid: OPENID };
   }
 
   // ---- 邀请码：这两个动作必须在"已绑定机构"之前，因为用它们的人本来就还没绑定 ----
@@ -362,6 +472,48 @@ exports.main = async (event) => {
     const d = got.d;
     if (d.status !== 'unused') return { ok: false, code: 'USED', msg: '这张卡片已被确认过，请让老师重发' };
 
+    // ---- 同一个孩子识别：必须放在消耗卡片之前 ----
+    // 家长可能还要想一想；先把卡标成已用，他就再也确认不了了。
+    const kidGot = await kidsFor(d.orgId, { studentId: d.sid });
+    if (kidGot.err) return kidGot.err;
+    const target = kidGot.kid || {};
+    const u0 = await userOf(OPENID);
+    const mine = u0 ? await findMyKids(OPENID, orgsOf(u0)) : [];
+    // 排除这张卡上的孩子本身（重复点同一张卡、或他本来就绑在这一家）
+    const others = mine.filter(k => !(String(k.orgId) === String(d.orgId) && Number(k.sid) === Number(target.id)));
+    const cand = others.find(k => sameKid(k, {
+      name: target.name, pid: target.pid, phone: target.parentPhone, wechat: target.wechat
+    })) || null;
+
+    // merge 三种取值：
+    //   ''      第一次调用 —— 有候选就停下来问家长
+    //   'new'   家长说不是同一个（比如老二恰巧同名）
+    //   <pid>   家长确认是同一个孩子 —— 归并到这条平台身份
+    const merge = String(event.merge || '');
+    if (cand && !merge) {
+      // 老数据没有 pid：先给那条补一个，否则家长确认时没有东西可传回，会原地打转
+      if (!cand.pid) {
+        const fresh = newPid();
+        if (await setStudentsPid(cand.orgId, [cand.sid], fresh)) cand.pid = fresh;
+      }
+      if (cand.pid) {
+        // 机构名一起回去：家长要看到"你已经在【XX 机构】绑过张小明"才判断得了
+        const so = await db.collection('orgs').where({ id: String(cand.orgId) }).limit(1)
+          .get().catch(() => ({ data: [] }));
+        return {
+          ok: false, code: 'SAME_KID', needConfirm: true,
+          pid: String(cand.pid), sameName: String(cand.name || ''),
+          sameOrgId: String(cand.orgId || ''), sameOrgName: (so.data[0] && so.data[0].name) || '',
+          stuName: String(target.name || '')
+        };
+      }
+    }
+    // 回传的 pid 必须是我自己孩子身上的那个（过期/伪造一律重来），
+    // 否则等于给了别人一条"把自家孩子并到别人孩子名下"的路
+    if (cand && merge && merge !== 'new' && merge !== String(cand.pid)) {
+      return { ok: false, code: 'STALE_MERGE', msg: '确认信息已失效，请重新打开卡片再试一次' };
+    }
+
     // 一次性：条件更新，谁先改成功谁拿到。两个人同时点同一张卡也只会有一个生效，
     // 先读后写在这种并发下会双双通过 —— 那正是群发场景最怕的冒领。
     const upd = await db.collection(CARDS).where({ _id: token, status: 'unused' })
@@ -374,21 +526,27 @@ exports.main = async (event) => {
       data: { status: 'unused', usedAt: 0, usedBy: '', claimName: '' }
     }).catch(() => {});
 
+    // 最终落到这个孩子身上的平台身份
+    const pid = (cand && merge !== 'new' && merge) ? String(cand.pid) : newPid();
+
     // 令牌在服务端换回具体孩子，家长端从头到尾没见过码和学号
-    const kidGot = await kidsFor(d.orgId, { studentId: d.sid });
-    if (kidGot.err) { await rollback(); return kidGot.err; }
     const out = await finishJoin(d.orgId, 'parent', OPENID, name, kidGot.kids, 'active');
     if (!out.ok) { await rollback(); return out; }
+    // pid 只落到这张卡上的那个孩子：kidsFor 里多出来的是兄弟姐妹，
+    // 他们是同一家长的不同孩子，各自该有各自的平台身份。
+    const pidOk = await setStudentsPid(d.orgId, [target.id], pid);
     await db.collection(CARDS).doc(token).update({
-      data: { status: 'approved', approvedAt: Date.now() }
+      data: { status: 'approved', approvedAt: Date.now(), pid: pidOk ? pid : '' }
     }).catch(() => {});
-    return Object.assign({}, out, { sid: d.sid });
+    return Object.assign({}, out, { sid: d.sid, pid: pidOk ? pid : '', merged: !!(cand && merge && merge !== 'new') });
   }
 
   const u = await userOf(OPENID);
   if (!u) return { ok: false, code: 'NO_BIND', msg: '账号未绑定机构，请先 hello' };
   const orgId = String(event.orgId || '');
-  if (orgId !== u.orgId) return { ok: false, code: 'FORBIDDEN', msg: '无权访问该机构数据' };
+  // 【多机构】校验的是"我有没有这一家的工牌"，不是"这是不是我唯一那家"。
+  // 一个老师可以在两家任教，但能进 A 不代表能进 B —— 没工牌照样 fail-closed。
+  if (orgsOf(u).indexOf(orgId) < 0) return { ok: false, code: 'FORBIDDEN', msg: '无权访问该机构数据' };
 
   // 取（或新建）某个身份的机构邀请码：负责人/管理员才能拿，服务端按成员表判角色
   if (action === 'inviteGet') {

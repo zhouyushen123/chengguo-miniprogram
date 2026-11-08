@@ -160,6 +160,7 @@ const ENTITIES = [
     indexes: [['orgId + no', '唯一（学号）'], ['orgId + name', '复合（搜索）']],
     fields: [
       { k: 'id', t: INT, d: '学生 id' },
+      { k: 'pid', t: STR, d: '平台身份（p_xxx）：同一个孩子在多家机构的档案共用它，家长端据此把两家的成果摆在一页；空=尚未归并' },
       { k: 'name', t: STR, d: '姓名' },
       { k: 'no', t: STR, d: '学号，机构内唯一，从 1001 起，一经生成不变' },
       { k: 'gender', t: STR, d: '男 / 女 / 空' },

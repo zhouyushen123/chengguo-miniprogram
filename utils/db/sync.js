@@ -16,7 +16,24 @@ let applying = false;
 
 const syncMeta = () => (core.realMeta().sync || {});
 const dirtyCols = () => (syncMeta().dirty || []).filter(c => COLLS.indexOf(c) > -1);
-const cursor = () => Number(syncMeta().cursor) || 0;
+
+/* ---------------- 游标：一家一个 ----------------
+ * pull 是「srvAt > since」的增量拉取，since 的含义是"我在**这一家**拉到哪儿了"。
+ * 多家机构共用一个游标时，切到 B 家会拿着 A 家的进度去拉：比它早的 B 家数据
+ * 永远不会被拉下来 —— 表现是"老师切过来只看到最近几条，之前录的全不见了"，
+ * 而且两端都不报错，只有靠人回想才发现。所以必须按 orgId 分开记。
+ */
+const cursors = () => (syncMeta().cursors || {});
+const curOrg = () => String(core.realMeta().orgId || '');
+const cursor = forOrg => {
+  const o = String(forOrg || curOrg());
+  const map = cursors();
+  if (o && map[o] !== undefined) return Number(map[o]) || 0;
+  // 还没写过 cursors 的老数据：那个全局 cursor 属于"当时那家"，认它
+  if (!Object.keys(map).length && o === curOrg()) return Number(syncMeta().cursor) || 0;
+  // 其余一律从头拉：宁可多拉一遍（合并是幂等的），也不能拿别家的进度跳过自己的历史
+  return 0;
+};
 
 // 脏标记订阅：同步引擎用它做"写后自动上推"的防抖调度
 const dirtyListeners = [];
@@ -38,7 +55,15 @@ function clearDirty(names) {
   const left = dirtyCols().filter(c => (names || []).indexOf(c) < 0);
   patchSync({ dirty: left });
 }
-function setCursor(v) { patchSync({ cursor: Number(v) || 0 }); }
+function setCursor(v, forOrg) {
+  const o = String(forOrg || curOrg());
+  const n = Number(v) || 0;
+  if (!o) { patchSync({ cursor: n }); return; }
+  // cursor 仍同步写一份：老版本读它、人工排查也看它，且 orgId 为空时是唯一来源
+  const patch = { cursors: Object.assign({}, cursors(), { [o]: n }) };
+  if (o === curOrg()) patch.cursor = n;
+  patchSync(patch);
+}
 
 // 被云端拒绝的改动（学号重号、微信已绑给别人、机构不可删…）。
 // 必须留在本机并且给人看见：拒绝意味着"服务端不同意"，本地看起来改成功了、

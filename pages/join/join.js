@@ -24,6 +24,9 @@ Page({
     orgName: '', role: '', roleLabel: '',
     // 卡片态：链接里只有 token，卡面三个名字由服务端反查后给
     card: '', cardLoading: false, cardOrg: '', cardCls: '', cardStu: '',
+    // 同一个孩子确认：这个微信以前绑过的孩子和这张卡上的孩子对得上，停下来问一句
+    sameShow: false, samePid: '', sameName: '', sameOrg: '', sameTarget: '',
+    add: false,         // 从首页「再加一家机构」进来：加完不切走，问一句要不要切过去
     localBad: false,    // 本机已有别的机构数据：提前拦，别让人填完姓名才报错
     busy: false,
     err: ''
@@ -48,6 +51,8 @@ Page({
       return;
     }
     if (c.length === 6) { this.setData({ code: c, pick: false, stage: 1 }, () => this.check()); return; }
+    // 已经在某家机构里的人要点「再加一家」：直接问机构码，不摆"创建机构"那条路
+    if (q && q.add) { this.setData({ add: true, pick: false, stage: 1 }); return; }
     if (pick) this.setData({ pick: true, stage: 0 });
   },
   // 卡片只回三个名字；顺便提前检查本机是否为空库，避免确认时才报 LOCAL_DATA
@@ -59,18 +64,31 @@ Page({
       }
       this.setData({
         cardLoading: false, cardOrg: r.orgName || '该机构', cardCls: r.clsName || '',
-        cardStu: r.stuName || '孩子', localBad: !sync.canJoin()
+        cardStu: r.stuName || '孩子',
+        // 已经有机构的人不该被"本机有数据"挡住 —— 他可能就是在两家都报了课的家长
+        localBad: !sync.canJoin() && !sync.canAddOrg()
       });
     });
   },
   // 显式二次确认：点开卡片不算绑定，必须填姓名并按「我是，确认加入」
-  doCardClaim() {
+  // merge：'' 第一次；<pid> 确认是同一个孩子；'new' 不是同一个
+  doCardClaim(merge) {
     if (this.data.busy || this.data.cardLoading || this.data.localBad) return;
     if (!String(this.data.name || '').trim()) { this.setData({ err: '请填写你的姓名' }); return; }
+    const m = typeof merge === 'string' ? merge : '';
     this.setData({ busy: true, err: '' });
-    sync.joinByCard(this.data.card, String(this.data.name).trim()).then(r => {
+    sync.joinByCard(this.data.card, String(this.data.name).trim(), m).then(r => {
       this.setData({ busy: false });
       if (!r || !r.ok) {
+        // 这个微信以前绑过一个对得上的孩子（同名 / 同家长手机）——停下来问一句，
+        // 绝不替家长决定：误合并会把两个孩子的成长记录混成一页，还牵涉两家机构。
+        if (r && r.code === 'SAME_KID') {
+          this.setData({
+            sameShow: true, samePid: r.pid || '', sameName: r.sameName || '',
+            sameOrg: r.sameOrgName || '', sameTarget: r.stuName || this.data.cardStu
+          });
+          return;
+        }
         const msg = r && r.code === 'LOCAL_DATA'
           ? '这台手机已经有数据了，请先在「我的 → 存储空间」清空后再加入'
           : ((r && r.msg) || '确认失败，请重试');
@@ -84,6 +102,18 @@ Page({
       }, 700);
     });
   },
+  // 是同一个孩子 → 挂到已有的平台身份上，两家机构的成果并在一页
+  sameYes() {
+    const pid = this.data.samePid;
+    this.setData({ sameShow: false });
+    this.doCardClaim(pid || 'new');
+  },
+  // 不是同一个（比如老二恰巧同名）→ 各算各的
+  sameNo() {
+    this.setData({ sameShow: false });
+    this.doCardClaim('new');
+  },
+  sameCancel() { this.setData({ sameShow: false }); },
   // 老师这条路：去开通向导自己建机构（把首次引导的那次机会用掉，别再被弹一次）
   goSetup() {
     firstrun.markAutoShown();
@@ -134,7 +164,23 @@ Page({
         this.setData({ err: msg });
         return;
       }
-      wx.showToast({ title: '已加入 ' + (this.data.orgName || '该机构'), icon: 'success' });
+      const orgName = this.data.orgName || '该机构';
+      // 再加一家：不擅自把人从手头那家拽走，问一句
+      if (this.data.add) {
+        wx.showModal({
+          title: '已加入「' + orgName + '」',
+          content: '现在切到这家开始录入吗？首页顶部随时能换回来。',
+          confirmText: '切过去', cancelText: '先留着',
+          success: m => {
+            if (!m.confirm) { wx.reLaunch({ url: '/pages/index/index' }); return; }
+            sync.switchOrg(String(r.orgId || '')).then(() => {
+              wx.reLaunch({ url: '/pages/index/index' });
+            }).catch(() => { wx.reLaunch({ url: '/pages/index/index' }); });
+          }
+        });
+        return;
+      }
+      wx.showToast({ title: '已加入 ' + orgName, icon: 'success' });
       setTimeout(() => {
         wx.reLaunch({ url: '/pages/index/index' });
       }, 700);

@@ -28,6 +28,7 @@ const SUITES = [
   ['verify_pull.js', '云端拉取分页'],
   ['verify_invite.js', '邀请码加入'],
   ['verify_invite_card.js', '家长免码邀请卡'],
+  ['verify_multi_org.js', '多机构与跨机构看孩子'],
   ['verify_family_feedback.js', '家长已读回执与留言'],
   ['verify_admin.js', '电脑端后台'],
   ['verify_ava.js', '头像统一'],

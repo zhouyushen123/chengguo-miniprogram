@@ -26,6 +26,20 @@
       <view wx:if="{{err}}" class="err">{{err}}</view>
       <view class="btn {{busy||localBad?'off':''}}" hover-class="btn-hover" bindtap="doCardClaim">{{busy ? '确认中…' : '我是，确认加入'}}</view>
       <view class="later" bindtap="goCode">我有老师给的邀请码，走老入口 ›</view>
+
+      <!-- 同一个孩子确认：这个微信以前绑过一个同名/同手机号的孩子。
+           服务端只提出疑问，不替家长决定 —— 并错了会把两个孩子的记录混在一页。 -->
+      <view wx:if="{{sameShow}}" class="mask">
+        <view class="samecard">
+          <view class="same-t">你以前绑过「{{sameName}}」<text wx:if="{{sameOrg}}">（{{sameOrg}}）</text></view>
+          <view class="same-d">这张卡上的孩子也是「{{sameTarget}}」吗？<br/>是同一个孩子的话，两家的课堂成果会并在一页里，按机构分开看。</view>
+          <view class="same-btns">
+            <view class="same-b pri" hover-class="btn-hover" bindtap="sameYes">是同一个孩子</view>
+            <view class="same-b sec" hover-class="btn-hover" bindtap="sameNo">不是，另一个孩子</view>
+          </view>
+          <view class="same-x" bindtap="sameCancel">先不确认</view>
+        </view>
+      </view>
     </block>
   </block>
 
@@ -55,7 +69,7 @@
     </view>
     <view wx:if="{{err}}" class="err">{{err}}</view>
     <view class="btn {{busy ? 'off' : ''}}" hover-class="btn-hover" bindtap="check">{{busy ? '查询中…' : '下一步'}}</view>
-    <view class="later" bindtap="back">我有自己的机构，去建一个 ›</view>
+    <view wx:if="{{!add}}" class="later" bindtap="back">我有自己的机构，去建一个 ›</view>
   </block>
 
   <!-- 第二步：确认机构 + 填自己是谁 -->

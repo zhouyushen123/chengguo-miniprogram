@@ -40,7 +40,14 @@
   <block wx:else>
   <!-- 顶部欢迎 -->
   <view class="topbar">
-    <view class="hello">{{roleLabel}} · 欢迎回来，{{uName}}</view>
+    <view class="tb-l">
+      <!-- 多机构：两家以上才出现。点开换一家干活，数据各归各的 -->
+      <view wx:if="{{orgs.length>1}}" class="orgchip" hover-class="btn-hover" bindtap="openOrgPick">
+        <text class="orgchip-n">{{navTitle}}</text>
+        <text class="orgchip-ic">切换</text>
+      </view>
+      <view class="hello">{{roleLabel}} · 欢迎回来，{{uName}}</view>
+    </view>
     <view class="datechip">{{dateStr}}</view>
   </view>
 
@@ -142,9 +149,9 @@
     <view class="datechip">{{dateStr}}</view>
   </view>
 
-  <!-- 多孩家庭：切换孩子 -->
+  <!-- 多孩家庭：切换孩子。右上角数字 = 这个孩子在几家机构上课（1 家时不显示） -->
   <view wx:if="{{kids.length > 1}}" class="kidchips">
-    <view wx:for="{{kids}}" wx:key="id" class="kchip {{kidId===item.id?'on':''}}" bindtap="pickKid" data-id="{{item.id}}">{{item.name}}</view>
+    <view wx:for="{{kids}}" wx:key="id" class="kchip {{kidId===item.id?'on':''}}" bindtap="pickKid" data-id="{{item.id}}">{{item.name}}<text wx:if="{{item.orgN > 1}}" class="kchip-n">{{item.orgN}}</text></view>
   </view>
 
   <!-- 订阅成绩通知：微信服务通知（唯一官方免费触达）。未配置模板时点了解并跳过，不弹窗也不报错 -->
@@ -170,7 +177,11 @@
       <text class="pstat ps-c">{{stats.lessons}} 节课</text>
       <text class="pstat ps-g">优秀 {{stats.great}} 次</text>
       <text class="pstat ps-d">{{stats.days}} 个学习日</text>
-      <text wx:if="{{hasCarry}}" class="pstat ps-b">剩余 {{hoursRemain}} 课时</text>
+      <!-- 课时包按机构分开：两家各买各的，加在一起没有意义 -->
+      <block wx:if="{{hoursGroups.length > 1}}">
+        <text wx:for="{{hoursGroups}}" wx:key="orgId" class="pstat ps-b">{{item.orgName || '机构'}} 剩 {{item.remain}} 节</text>
+      </block>
+      <text wx:elif="{{hasCarry}}" class="pstat ps-b">剩余 {{hoursRemain}} 课时</text>
     </view>
     <view wx:if="{{stats && stats.care}}" class="caretip">有 {{stats.care}} 次课需要多鼓励，见下方「需要注意」</view>
   </view>
@@ -182,6 +193,7 @@
       <text class="lcourse">{{kLatest.course}}</text>
       <view class="dhr">
         <text class="mi">{{kLatest.date}}</text>
+        <text wx:if="{{kLatest.orgName}}" class="orgtag">{{kLatest.orgName}}</text>
         <text wx:if="{{kLatest.tag}}" class="badge {{kLatest.tcls}}">{{kLatest.tag}}</text>
       </view>
     </view>
@@ -220,7 +232,7 @@
     <block wx:if="{{kHistory.length}}">
     <view class="histr" wx:for="{{kHistory}}" wx:key="id" hover-class="btn-hover" bindtap="openRec" data-rid="{{item.id}}" data-sid="{{kidId}}">
       <view class="hmain">
-        <view class="ht1"><b>{{item.course}}</b><text wx:if="{{item.tag}}" class="badge sm {{item.tcls}}">{{item.tag}}</text></view>
+        <view class="ht1"><b>{{item.course}}</b><text wx:if="{{item.orgName}}" class="orgtag">{{item.orgName}}</text><text wx:if="{{item.tag}}" class="badge sm {{item.tcls}}">{{item.tag}}</text></view>
         <view class="mi">{{item.date}} · {{item.score}}分{{item.snip?' · '+item.snip:''}}</view>
       </view>
       <view wx:if="{{item.pcnt}}" class="hcam"><image class="camico" src="{{icoCam}}" mode="aspectFit" />{{item.pcnt}}</view>
@@ -232,4 +244,23 @@
 
 <!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
 <privacy-popup />
+
+<!-- 机构切换：只换"当前是哪一家"这个指针，两家的数据各自独立、互不可见 -->
+<view wx:if="{{orgPickShow}}" class="mask" bindtap="closeOrgPick">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-t">换一家干活</view>
+    <view class="sheet-d">你在几家机构都有账号。切换只是换个地方录入，两家的学生和记录互不可见。</view>
+    <view wx:for="{{orgs}}" wx:key="orgId"
+      class="orgrow {{item.orgId===curOrg?'on':''}}"
+      hover-class="mrow-hover" bindtap="pickOrg" data-id="{{item.orgId}}">
+      <view class="orgrow-l">
+        <view class="orgrow-n">{{item.orgName || '未命名机构'}}</view>
+        <view class="orgrow-r">{{item.roleLabel}}</view>
+      </view>
+      <view wx:if="{{item.orgId===curOrg}}" class="orgrow-ck">当前</view>
+    </view>
+    <view class="sheet-add" hover-class="btn-hover" bindtap="goAddOrg">＋ 再加一家机构</view>
+    <view class="sheet-x" bindtap="closeOrgPick">取消</view>
+  </view>
+</view>
 </view>

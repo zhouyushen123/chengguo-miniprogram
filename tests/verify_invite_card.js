@@ -296,14 +296,26 @@ const ok = (name, fn) => Promise.resolve().then(fn).then(() => {
     assert.ok(/同步/.test(r.msg));
   });
 
-  await ok('已绑别的机构的微信点卡：拒绝并回滚卡片，可重发', async () => {
+  await ok('已绑别家机构的微信点卡：允许，追加一张工牌，原来那家不动（多机构）', async () => {
     seed();
     rowsOf('users').push({ _id: 'u9', _openid: 'oid-other', orgId: 'org_else' });
     const c = await createCard(101);
     const r = await call('cardClaim', { token: c.token, name: '甲' }, 'oid-other');
-    assert.strictEqual(r.code, 'ORG_BOUND');
-    const card = rowsOf('invite_cards').find(x => x._id === c.token);
-    assert.strictEqual(card.status, 'unused', '失败要把卡还原，不能白白废掉');
+    assert.strictEqual(r.ok, true, JSON.stringify(r));
+    const u = rowsOf('users').find(x => x._id === 'u9');
+    // 两张工牌都在，主机构仍然是原来那家（不因为加入了新的就把旧的顶掉）
+    assert.deepStrictEqual(u.orgIds, ['org_else', 'org1']);
+    assert.strictEqual(u.orgId, 'org_else');
+    assert.strictEqual(rowsOf('invite_cards').find(x => x._id === c.token).status, 'approved');
+  });
+
+  await ok('同一张卡被两个人抢：只有一个成功，另一个被告知已确认', async () => {
+    seed();
+    const c = await createCard(101);
+    const a = await call('cardClaim', { token: c.token, name: '甲' }, 'oid-parent-a');
+    const b = await call('cardClaim', { token: c.token, name: '乙' }, 'oid-parent-b');
+    assert.strictEqual(a.ok, true, JSON.stringify(a));
+    assert.strictEqual(b.code, 'USED');
   });
 
   await ok('没填姓名的确认直接拒，且不消耗卡片', async () => {
@@ -347,7 +359,7 @@ const ok = (name, fn) => Promise.resolve().then(fn).then(() => {
     assert.ok(/q && q\.card/.test(srcJoin) && /stage: 3/.test(srcJoin));
     assert.ok(/sync\.canJoin\(\)/.test(srcJoin));
     assert.ok(/localBad/.test(wxmlJoin));
-    const claimSeg = srcJoin.slice(srcJoin.indexOf('doCardClaim()'), srcJoin.indexOf('goSetup()'));
+    const claimSeg = srcJoin.slice(srcJoin.indexOf('doCardClaim('), srcJoin.indexOf('goSetup()'));
     assert.ok(/sync\.joinByCard\(/.test(claimSeg));
     assert.ok(!/sync\.join\(/.test(claimSeg), '卡片态不能退回老入口');
     assert.ok(/\/pages\/index\/index/.test(claimSeg), '确认后回首页，返回路径完整');
@@ -364,10 +376,11 @@ const ok = (name, fn) => Promise.resolve().then(fn).then(() => {
 
   await ok('joinByCard 复用 adopt：不再打一次 inviteJoin，拉一次全量', async () => {
     const s = read('utils/sync.js');
-    assert.ok(/function joinByCard\(token, name\)/.test(s));
-    assert.ok(/api\.cardClaim\(token, name\)/.test(s));
+    // 第三参 merge：'' 第一次问 / 'new' 不是同一个孩子 / <pid> 确认是同一个孩子
+    assert.ok(/function joinByCard\(token, name, merge\)/.test(s));
+    assert.ok(/api\.cardClaim\(token, name, merge\)/.test(s));
     assert.ok(/function adopt\(r\)/.test(s));
-    assert.ok(!/api\.inviteJoin/.test(s.slice(s.indexOf('function joinByCard'))), '卡片链路不能再走老接口');
+    assert.ok(!/api\.inviteJoin/.test(s.slice(s.indexOf('function joinByCard'), s.indexOf('function orgList'))), '卡片链路不能再走老接口');
     assert.ok(/canJoin: \(\) => isEmptyLocal\(\)/.test(s));
     assert.ok(/join, joinByCard, claim/.test(s));
   });
@@ -414,7 +427,8 @@ const ok = (name, fn) => Promise.resolve().then(fn).then(() => {
     assert.ok(pulls >= 1, '加入后必须拉一次全量');
   });
 
-  await ok('本机已有数据时 joinByCard 提前拒绝（LOCAL_DATA）', async () => {
+  await ok('本机有数据但还没绑过任何机构 → 拒绝（LOCAL_DATA），两份数据不搅在一起', async () => {
+    Object.keys(mem).forEach(k => delete mem[k]);   // 用例之间必须隔离：上一个用例留下了 org-card
     const dbb = freshDb();
     dbb.students.create({ name: '小明' });
     const api = require('../utils/api');
@@ -426,6 +440,25 @@ const ok = (name, fn) => Promise.resolve().then(fn).then(() => {
     assert.strictEqual(r.ok, false);
     assert.strictEqual(r.code, 'LOCAL_DATA');
     assert.strictEqual(called, 0, '不该打网络');
+  });
+
+  await ok('已经在 A 家、又认 B 家的卡 → 走追加，不改挂当前机构（多机构）', async () => {
+    Object.keys(mem).forEach(k => delete mem[k]);
+    const dbb = freshDb();
+    dbb.students.create({ name: '小明' });
+    dbb.patchMeta({ orgId: 'org_a', openid: 'oid-x' });
+    const api = require('../utils/api');
+    const sync = require('../utils/sync');
+    api.syncOn = () => true;
+    let pulls = 0;
+    api.cardClaim = () => Promise.resolve({ ok: true, orgId: 'org_b', sid: 202, pid: 'p_abc' });
+    api.syncCall = () => { pulls++; return Promise.resolve({ ok: true, docs: [], cursor: 0, more: false }); };
+    const r = await sync.joinByCard('abcd23456789', '甲');
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.strictEqual(r.added, true, '这是"再加一家"');
+    assert.strictEqual(dbb.real().meta.orgId, 'org_a', '不许把老师/家长从手头那家拽走');
+    assert.ok(pulls >= 1, 'B 家的数据要拉进本机（按 orgId 隔离，不会和 A 家混）');
+    assert.strictEqual(r.pid, 'p_abc', '平台身份要带回去，家长端靠它把两家并成一页');
   });
 
   console.log('\nverify_invite_card: ' + pass + ' passed, ' + fail + ' failed');

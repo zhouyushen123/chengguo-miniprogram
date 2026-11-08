@@ -44,6 +44,7 @@ const classes = require('./classes');
 const courses = require('./courses');
 const content = require('./content');
 const students = require('./students');
+const family = require('./family');
 const enrollments = require('./enrollments');
 const records = require('./records');
 const settle = require('./settle');
@@ -203,13 +204,11 @@ const db = {
   },
   students: {
     list: students.studentList, of: students.studentOf, get: students.studentGet,
-    search: students.studentSearch, name: students.studentName,
-    byNo: students.studentByNo, siblings: students.studentSiblings,
-    create: students.studentCreate, update: students.studentUpdate,
-    updateProfile: students.studentUpdateProfile, remove: students.studentRemove,
-    restore: students.studentRestore
+    search: students.studentSearch, name: students.studentName, byNo: students.studentByNo, siblings: students.studentSiblings,
+    create: students.studentCreate, update: students.studentUpdate, updateProfile: students.studentUpdateProfile,
+    remove: students.studentRemove, restore: students.studentRestore
   },
-  records: {
+  family: { kids: family.kids, kid: family.kid, records: family.records, className: family.className, hours: family.hours },  records: {
     list: records.recordList, ofStudent: records.recordOfStudent, ofClass: records.recordOfClass,
     get: records.recordGet, latest: records.recordLatest, save: records.recordSave,
     markSent: records.recordMarkSent, attachCloud: records.recordAttachCloud, remove: records.recordRemove,

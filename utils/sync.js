@@ -12,12 +12,14 @@
 const db = require('./db');
 const api = require('./api');
 const syncmerge = require('./syncmerge');
+const schema = require('./db/schema');
 
 let ready = false;        // hello 已通过（机构已绑定）
 let busy = false;         // 防并发：同一时间只跑一轮
 let conflict = false;     // 本机有数据但云端绑定另一个机构 → 停手，别把两边搅在一起
 let pendingOrg = '';      // 待采纳的云端机构 id（本机空库=换手机/重装）；拉回数据后才真正切过去
 let minted = false;       // 本机数据刚被改挂到服务端新发的机构号上（首次上云）
+let switching = false;    // 正在换机构：此时不能把"游标 0"当成"首次上云"去全量重推
 let timer = null;
 let lastRun = 0;
 const MIN_GAP = 20000;    // 前台联动的最小间隔（onShow 频繁触发，别每次都全量拉）
@@ -29,6 +31,14 @@ const orgId = () => {
 const isEmptyLocal = () => {
   const s = db.real() || {};
   return !(s.students || []).length && !(s.records || []).length;
+};
+// 这个微信号是不是"已经在云端有身份"（可以再加一家机构了）。
+// 【不能只看 orgId 非空】新装设备的 meta.orgId 常常还是出厂号 org1 —— 那只是本机骨架的归属，
+// 云端一条数据都没有。把出厂号当成"已绑定"，会让第一次加入的人走成"追加"，两份数据从此混在一个界面里。
+const bound = () => {
+  const o = orgId();
+  if (o && !schema.isFactoryOrg(o)) return true;
+  return !!((db.real() && db.real().meta) || {}).openid;
 };
 // 同步目标的机构 id：恢复过程中先用云端 id 拉，拉成功才切本地 meta
 const targetOrg = () => pendingOrg || orgId();
@@ -87,8 +97,10 @@ function init() {
       // 认领之后，换手机/重装靠 openid 就能找回"我是谁"，不用信本机随机生成的 userId。
       // 改挂（minted）场景下成员表就是我们自己的，照常认领；只有"拉别人数据"的恢复场景才跳过。
       if (r.openid) claim(String(r.openid), adopted && !minted);
-      // 从未同步过（游标 0）→ 现有本机数据全部标脏，首次把所有内容推上去
-      if (!db.sync.cursor() && !adopted) db.sync.markAllDirty();
+      // 从未同步过（游标 0）→ 现有本机数据全部标脏，首次把所有内容推上去。
+      // 【切机构时不做】新换的那家游标天然是 0，但本机在这家的数据可能只是上次拉下来的副本，
+      // 全量重推一遍既慢又容易把本机旧值盖到云端（虽然有 updatedAt 兜着，但没必要赌）。
+      if (!db.sync.cursor() && !adopted && !switching) db.sync.markAllDirty();
       return { ok: true, orgId: cloudOrg, adopted, minted, firstTime: !!r.firstTime };
     })
     .catch(() => ({ ok: false, code: 'CLOUD_OFF' }));
@@ -108,19 +120,21 @@ function claim(openid, adopted) {
 // 因为换手机 / 从备份恢复后的首次全量很容易超过原来的 5 轮上限，
 // 拉不完就停会让"看起来同步了、其实少了几百条"这种最难查的问题出现。
 const PULL_ROUNDS = 20;
-function pullNow() {
+// only：指定拉哪一家（新增第二家机构时用）。不传就是"当前机构"。
+function pullNow(only) {
+  const useOrg = String(only || targetOrg());
   let round = 0, added = 0, updated = 0;
   const step = () => {
     if (round++ >= PULL_ROUNDS) return Promise.resolve({ added, updated, more: true });
-    return api.syncCall('pull', { orgId: targetOrg(), since: db.sync.cursor() }).then(r => {
+    return api.syncCall('pull', { orgId: useOrg, since: db.sync.cursor(useOrg) }).then(r => {
       if (!r || !r.ok) throw new Error((r && r.msg) || 'pull 失败');
       const st = db.sync.applyRemote(r.docs);
       // 有集合没写进磁盘时不能推进游标：推了这批文档就再也不会被拉下来，
       // 变成"云端有、本机没有"。留在这里报错，下次同步从同一游标重拉（合并是幂等的）。
       if (!st.ok) throw new Error('本地存储空间不足，' + st.failed.length + ' 个集合没能写入，稍后自动重试');
       added += st.added; updated += st.updated;
-      const next = Math.max(syncmerge.cursorOf(r.docs, db.sync.cursor()), Number(r.cursor) || 0);
-      if (next) db.sync.setCursor(next);
+      const next = Math.max(syncmerge.cursorOf(r.docs, db.sync.cursor(useOrg)), Number(r.cursor) || 0);
+      if (next) db.sync.setCursor(next, useOrg);
       return r.more ? step() : { added, updated, more: false };
     });
   };
@@ -198,6 +212,9 @@ function adopt(r) {
 
 function join(code, name, stuNo) {
   if (!api.syncOn()) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪，请稍后重试' });
+  // 已经有云端身份 → 这次是「再加一家」，不是首次加入。
+  // 两条路的差别只在"加完切不切过去"，云端建绑定/建成员完全一样。
+  if (bound()) return joinMore(code, name, stuNo);
   if (!isEmptyLocal()) {
     return Promise.resolve({ ok: false, code: 'LOCAL_DATA', msg: '本机已有数据，请先在「存储空间」里清空后再加入' });
   }
@@ -210,14 +227,109 @@ function join(code, name, stuNo) {
  * 与 join 共用 adopt：云端 cardClaim 已经把绑定和成员关系建好了，
  * 这里只负责把本机改挂过去并全量拉回，绝不再打一次 inviteJoin（那会重复建成员）。
  */
-function joinByCard(token, name) {
+function joinByCard(token, name, merge) {
   if (!api.syncOn()) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪，请稍后重试' });
+  // 已经有云端身份 → 认第二张卡是"再加一家"，不是"首次加入"（家长可能两家都报了课）。
+  // 【加完不切走】家长的心智里只有"我的孩子"，不该被要求记住自己在哪家机构；
+  // 成员关系已经落到云端，家长端的跨机构视图会把这一家的成果一并显示出来。
+  if (bound()) {
+    return api.cardClaim(token, name, merge)
+      .then(r => {
+        if (!r || !r.ok) return r || { ok: false, msg: '确认失败' };
+        const target = String(r.orgId || '');
+        if (!target || target === orgId()) return Object.assign({}, r, { already: true });
+        return pullNow(target).then(p => Object.assign({}, r, { orgId: target, pulled: p.added + p.updated, added: true }));
+      })
+      .catch(e => ({ ok: false, msg: (e && e.message) || '确认失败' }));
+  }
   if (!isEmptyLocal()) {
     return Promise.resolve({ ok: false, code: 'LOCAL_DATA', msg: '本机已有数据，请先在「存储空间」里清空后再加入' });
   }
-  return api.cardClaim(token, name)
+  return api.cardClaim(token, name, merge)
     .then(r => (!r || !r.ok) ? (r || { ok: false, msg: '确认失败' }) : adopt(r))
     .catch(e => ({ ok: false, msg: (e && e.message) || '确认失败' }));
+}
+
+/* ---------------- 多机构：清单 / 切换 / 再加一家 ----------------
+ * 一个微信可以有多张机构工牌（老师同时在两家上课、负责人在两家管事）。
+ *
+ * 【切换只换指针，不搬数据】本机是一个全量库：所有机构的数据都在这台手机的存储里，
+ * 读的时候按 meta.orgId 过滤（core.orgColl），写的时候也只认当前这家。
+ * 所以切换一条都不删，切回来还是原样；云端那边依旧按 orgId 物理隔离，
+ * 不存在"平台集中存了一份合并名单"这回事。
+ */
+function orgList() {
+  if (!api.syncOn()) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', orgs: [] });
+  return api.myOrgs()
+    .then(r => (r && r.ok)
+      ? { ok: true, orgs: r.orgs || [], cur: orgId() }
+      : { ok: false, code: (r && r.code) || 'FAIL', orgs: [] })
+    .catch(() => ({ ok: false, code: 'NET', orgs: [] }));
+}
+
+// 切到另一家机构。任何一步失败都退回原来那家 —— 宁可让人留在能用的地方，
+// 也别停在一个页面全空、还不知道为什么空的界面上。
+function switchOrg(to) {
+  const target = String(to || '');
+  if (!target) return Promise.resolve({ ok: false, msg: '缺少机构标识' });
+  if (target === orgId()) return Promise.resolve({ ok: true, same: true, orgId: target });
+  if (!api.syncOn()) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪，请稍后重试' });
+  if (conflict) return Promise.resolve({ ok: false, code: 'ORG_CONFLICT', msg: '这台手机的同步有冲突，先处理完才能切换' });
+  if (busy) return Promise.resolve({ ok: false, code: 'BUSY', msg: '正在同步，等两秒再切' });
+  busy = true;
+  return pushNow().then(
+    () => doSwitch(target),
+    // 【推不上去就不切】snapshot 只打包"当前机构"的文档，切走之后这些脏数据再也推不上去：
+    // 数据还在手机里，但云端永远缺这一段，而且两端都不会报错。
+    () => { busy = false; return { ok: false, code: 'PUSH_FAIL', msg: '当前机构还有内容没传上云，等网络好了再切换（数据在本机，不会丢）' }; }
+  ).catch(e => { busy = false; return { ok: false, code: 'SWITCH_FAIL', msg: (e && e.message) || '切换失败' }; });
+}
+
+function doSwitch(target) {
+  const m = db.real().meta || {};
+  const back = { orgId: String(m.orgId || ''), me: String(m.me || '') };
+  switching = true;
+  db.patchMeta({ orgId: target, me: '' });
+  ready = false;
+  const fail = e => {
+    db.patchMeta(back);
+    ready = false;
+    busy = false; switching = false;
+    return { ok: false, code: 'SWITCH_FAIL', msg: (e && e.message) || '切换失败，已退回原来的机构' };
+  };
+  return init()
+    .then(r => {
+      if (!r || !r.ok) throw new Error((r && r.msg) || '没拿到这一家的访问权限');
+      return pullNow(target);
+    })
+    .then(p => {
+      // 认领：这一家的成员表已经拉到本机，按 openid 找回"我是谁"
+      const oid = (db.real().meta || {}).openid;
+      if (oid) claim(oid, false);
+      // 本地可能还留着这一家上次没推完的东西，补推一次
+      return pushNow().then(() => p);
+    })
+    .then(p => {
+      busy = false; switching = false;
+      return { ok: true, orgId: target, pulled: p.added + p.updated };
+    })
+    .catch(fail);
+}
+
+// 再加一家机构：本机已经有别家数据时也能加（老师去另一家兼课）。
+// 与 join 的区别只有两点：① 不要求本机为空 ② 加完**不切走**，留在手头这家继续用。
+function joinMore(code, name, stuNo) {
+  if (!api.syncOn()) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪，请稍后重试' });
+  return api.inviteJoin({ code, name, stuNo })
+    .then(r => {
+      if (!r || !r.ok) return r || { ok: false, msg: '加入失败' };
+      const target = String(r.orgId);
+      if (!target) return { ok: false, msg: '云端没返回机构' };
+      if (target === orgId()) return { ok: true, orgId: target, already: true };
+      // 只把这一家的数据拉进来，不切走：他只是多了一张工牌，手头还在另一家上班
+      return pullNow(target).then(p => ({ ok: true, orgId: target, pulled: p.added + p.updated, added: true }));
+    })
+    .catch(e => ({ ok: false, msg: (e && e.message) || '加入失败' }));
 }
 
 // 写后自动上推：本地一次保存常常连续写几个集合，防抖合并成一轮
@@ -288,7 +400,11 @@ try {
 
 module.exports = {
   init, pullNow, pushNow, syncNow, kick, schedule, join, joinByCard, claim, history, revert,
+  orgList, switchOrg, joinMore,
   // 确认页提前检测本机是否为空库，别让人填完姓名才看到 LOCAL_DATA
   canJoin: () => isEmptyLocal(),
+  // 已经有机构的人还能不能再加一家：能（多机构）
+  canAddOrg: () => bound(),
+  currentOrg: () => orgId(),
   isReady: () => ready, isConflict: () => conflict
 };

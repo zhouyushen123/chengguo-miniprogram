@@ -27,6 +27,8 @@ Page({
     fbText: '', fbBusy: false, fbErr: '', fbNotes: []
   },
   onLoad(q) {
+    // pid：平台身份（跨机构）。家长端首页传 pid=1&id=p_xxx，一个孩子在两家机构的记录并在一页
+    this.pid = (q && q.pid) ? String(q.id || q.sid || '') : '';
     this.sid = +q.id || +q.sid || 0; // 兼容 id / sid 两种参数名
     this.rid = +q.rid || 0;
   },
@@ -41,18 +43,32 @@ Page({
   // 统一渲染：拉记录 → 按班级/课程双维过滤 → 首条做详情，其余进历史列表
   render() {
     // 兼容只带 rid 的入口（如首页最近成果）：先从记录反查学生
-    if (!this.sid && this.rid) {
+    if (!this.pid && !this.sid && this.rid) {
       const r0 = db.records.get(this.rid);
       if (r0) this.sid = r0.sid;
     }
-    const s = db.students.get(this.sid);
+    let s = null, recs = [];
+    if (this.pid) {
+      /* 跨机构档案：一个孩子在 A、B 两家各有一条学生档案，pid 把它们认成同一个人。
+       * 学生实体只是"显示用的那一条"（姓名、头像），记录从 family 取 —— 两家已发布的都在里面。 */
+      const k = db.family.kid(this.pid);
+      if (k && k.orgs.length) {
+        const base = k.orgs[0];
+        s = { id: base.sid, pid: k.pid, name: k.name, photo: k.photo, clsIds: base.clsIds || [], orgId: base.orgId };
+        recs = db.family.records(this.pid);
+        this.sid = base.sid;
+        this.orgs = k.orgs;
+      }
+    } else {
+      s = db.students.get(this.sid);
+      if (s) recs = db.records.ofStudent(this.sid);
+    }
     // 学生不在可见范围（老师跨班、家长非自家孩子）时明确提示，不留白屏
     if (!s) {
       wx.showToast({ title: this.sid ? '该学生不在你的查看范围' : '没有找到这个学生', icon: 'none' });
       setTimeout(() => wx.navigateBack(), 900);
       return;
     }
-    const recs = db.records.ofStudent(this.sid);
     // 语音条上的老师名：优先用这条记录的录入老师，老数据回退到机构默认老师
     // 署名兜底：新装没填名字时不留空白，署「老师」
     const tname = r => (r && db.users.name(r.tid)) || db.settings().teacher || '老师';
@@ -76,7 +92,14 @@ Page({
       let snip = first ? (first.text || first.label) : '';
       if (snip.length > 16) snip = snip.slice(0, 16) + '…';
       // 班级结课前的记录随时可改：能不能改由权限层判定（负责人/管理员全可改，老师限本人）
-      return x && Object.assign(x, { clsName: db.classes.name(r.cid), tcls: tagCls(r.tag), pcnt: (r.photos || []).length, snip, sess: r.session || 0, canEdit: db.auth.can('record.update', { record: r }) });
+      return x && Object.assign(x, {
+        // clsName：跨机构时 family 已经把机构名/班级名带好了（两家都有 id=11 的班，
+        // 只按 id 查会张冠李戴）；单机构仍然走原来的查表
+        clsName: r.clsName || db.classes.name(r.cid),
+        orgName: r.orgName || '',
+        tcls: tagCls(r.tag), pcnt: (r.photos || []).length, snip, sess: r.session || 0,
+        canEdit: db.auth.can('record.update', { record: r })
+      });
     };
 
     // 指定某条记录（从记录列表点入）

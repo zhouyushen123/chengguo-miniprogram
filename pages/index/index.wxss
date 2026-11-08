@@ -36,6 +36,66 @@
   padding: 6rpx 30rpx 28rpx;
 }
 .hello { font-size: 27rpx; color: var(--sub); font-weight: 600; }
+/* 跨机构：一个孩子的记录可能来自两家，必须标清哪条是谁给的 */
+.orgtag {
+  font-size: 20rpx; font-weight: 600; color: var(--sub);
+  background: var(--bg, #f2f2ef); border-radius: 6rpx;
+  padding: 2rpx 8rpx; margin-left: 8rpx;
+}
+.kchip-n {
+  font-size: 18rpx; font-weight: 700; color: #fff;
+  background: var(--brand); border-radius: 999rpx;
+  padding: 0 8rpx; margin-left: 6rpx;
+}
+/* 多机构：两家以上才出现的小标签，点了换一家 */
+.tb-l { min-width: 0; }
+.orgchip {
+  display: inline-flex; align-items: center; gap: 10rpx;
+  max-width: 420rpx; margin-bottom: 8rpx;
+  background: var(--brand-soft); border: 2rpx solid var(--brand-border);
+  border-radius: 999rpx; padding: 6rpx 8rpx 6rpx 20rpx;
+}
+.orgchip-n {
+  font-size: 23rpx; font-weight: 700; color: var(--brand);
+  max-width: 300rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.orgchip-ic {
+  flex: none; font-size: 20rpx; font-weight: 700; color: var(--brand);
+  background: #fff; border-radius: 999rpx; padding: 4rpx 14rpx;
+}
+/* 切换弹层 */
+.mask {
+  position: fixed; left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.45); z-index: 90;
+  display: flex; align-items: flex-end;
+}
+.sheet {
+  width: 100%; background: var(--card, #fff);
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 40rpx 32rpx calc(28rpx + env(safe-area-inset-bottom));
+}
+.sheet-t { font-size: 34rpx; font-weight: 800; color: var(--text); }
+.sheet-d { margin-top: 12rpx; font-size: 24rpx; color: var(--muted); line-height: 1.6; }
+.orgrow {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 18rpx; padding: 26rpx 24rpx;
+  background: var(--bg, #f7f7f5); border-radius: 18rpx;
+  border: 2rpx solid transparent;
+}
+.orgrow.on { border-color: var(--brand-border); background: var(--brand-soft); }
+.orgrow-l { min-width: 0; }
+.orgrow-n {
+  font-size: 30rpx; font-weight: 700; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.orgrow-r { margin-top: 6rpx; font-size: 23rpx; color: var(--muted); }
+.orgrow-ck { flex: none; font-size: 22rpx; font-weight: 700; color: var(--brand); }
+.sheet-add {
+  margin-top: 24rpx; height: 88rpx; line-height: 88rpx; text-align: center;
+  font-size: 28rpx; font-weight: 700; color: var(--brand);
+  background: var(--brand-soft); border-radius: 16rpx;
+}
+.sheet-x { margin-top: 16rpx; text-align: center; font-size: 26rpx; color: var(--muted); padding: 12rpx; }
 .datechip {
   flex: none; font-size: 24rpx; color: var(--sub); font-weight: 600;
   background: #fff; border-radius: 999rpx; padding: 12rpx 24rpx;

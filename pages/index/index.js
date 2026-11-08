@@ -11,6 +11,9 @@ const sync = require('../../utils/sync');
 Page({
   data: {
     isParent: false, kids: [], kidId: 0,
+    // familyMode：家长端用跨机构视图（pid 归并）。成员关系还没拉回来时退回单机构视图，
+    // 两种视图的 kidId 类型不同，页面靠这个开关决定走哪条渲染与跳转。
+    familyMode: false, kOrgs: [], hoursGroups: [],
     kName: '', kCls: '', stats: null, kLatest: null, latestPhotos: [],
     kHistory: [], kCare: [],
     roleLabel: '', uName: '', dateStr: '',
@@ -29,7 +32,10 @@ Page({
     // 同步冲突：本机数据与云端绑定的机构不一致（换手机前后各建了一份），横幅提示 + 说明
     syncConflict: false,
     // 家长反馈：云通且是老师时出现入口；unread 只做红点提醒，不阻塞首页任何操作
-    fbReady: false, fbUnread: 0, fbNote: ''
+    fbReady: false, fbUnread: 0, fbNote: '',
+    // 多机构：我这个微信能进的机构（>=2 才显示切换器）。
+    // 只有一家时整块不出现 —— 大多数老师一辈子只用一家，不该多一个按钮。
+    orgs: [], curOrg: '', orgPickShow: false, orgSwitching: false
   },
   onLoad() {
     // 自定义导航要自己腾出状态栏的空间；取不到时用常见默认值兜底
@@ -56,12 +62,32 @@ Page({
     const isParent = db.auth.isParent();
 
     if (isParent) {
-      // 家长端首页：统计 + 最近一次详情 + 需要注意 + 历史列表（数据已经权限层过滤，只见已发布）
-      const kids = db.students.list().map(s => ({ id: s.id, name: s.name, photo: s.photo || '' }));
+      /* 家长端首页：用跨机构视图（db.family）。
+       * 一个孩子在 A、B 两家上课时，这里是"一个孩子一张卡"，卡片上标着他在几家机构；
+       * 点进去两家的成果在同一页里，每条标明是哪家给的 —— 家长不需要知道"机构"是个什么东西，
+       * 更不能被要求自己切换。 */
+      const fam = db.family.kids();
+      if (fam.length) {
+        const kids = fam.map(k => ({
+          id: k.pid, name: k.name, photo: k.photo,
+          orgN: k.orgs.length,
+          orgs: k.orgs.map(o => o.orgName).filter(Boolean).join(' · ')
+        }));
+        const kidId = kids.some(k => k.id === this.data.kidId) ? this.data.kidId : kids[0].id;
+        this.setData({
+          isParent: true, kids, kidId, roleLabel: '家长端', uName: u.name, dateStr,
+          familyMode: true,
+          notifyTip: kids.length > 0 && !sec.subscribed()
+        });
+        this.renderKidPid(kidId);
+        return;
+      }
+      // 成员关系还没拉到本机（首次进入 / 换手机 / 云端未通）→ 退回单机构视图，别让首页空白
+      const kids = db.students.list().map(s => ({ id: s.id, name: s.name, photo: s.photo || '', orgN: 1, orgs: '' }));
       const kidId = kids.some(k => k.id === this.data.kidId) ? this.data.kidId : (kids[0] ? kids[0].id : 0);
-      // 订阅横幅：开过就不再骚扰；云/模板未配时点击后静默降级，横幅也收起（家长少一块无用区域）
       this.setData({
         isParent: true, kids, kidId, roleLabel: '家长端', uName: u.name, dateStr,
+        familyMode: false,
         notifyTip: kids.length > 0 && !sec.subscribed()
       });
       if (kidId) this.renderKid(kidId);
@@ -112,6 +138,57 @@ Page({
     });
     if (empty && !st.sandbox) this.autoSetup();
     this._loadFb();
+    this._loadOrgs();
+  },
+  /* ---------------- 多机构：切换器 ----------------
+   * 一个微信可以有多张机构工牌（老师同时在两家上课）。
+   * 只有一家时整块不出现：多一个按钮对多数人是噪音。
+   * 切换只换"当前是哪一家"这个指针，两家的数据在云端各自独立、互不可见。
+   */
+  _loadOrgs() {
+    if (!api.syncOn() || this.data.sandbox || this.data.isParent) {
+      if (this.data.orgs.length) this.setData({ orgs: [], curOrg: '' });
+      return;
+    }
+    sync.orgList().then(r => {
+      if (!r || !r.ok || !r.orgs || r.orgs.length < 2) {
+        if (this.data.orgs.length) this.setData({ orgs: [], curOrg: '' });
+        return;
+      }
+      const label = { owner: '负责人', admin: '管理员', teacher: '老师', parent: '家长' };
+      this.setData({
+        orgs: r.orgs.map(o => Object.assign({}, o, { roleLabel: label[o.role] || '成员' })),
+        curOrg: r.cur || ''
+      });
+    }).catch(() => { /* 网络不通就当作只有一家，切换器不出现 */ });
+  },
+  openOrgPick() { this.setData({ orgPickShow: true }); },
+  closeOrgPick() { this.setData({ orgPickShow: false }); },
+  noop() { },
+  pickOrg(e) {
+    const id = String(e.currentTarget.dataset.id || '');
+    if (!id || id === this.data.curOrg) { this.setData({ orgPickShow: false }); return; }
+    if (this.data.orgSwitching) return;
+    this.setData({ orgSwitching: true });
+    wx.showLoading({ title: '正在切换…', mask: true });
+    sync.switchOrg(id).then(r => {
+      wx.hideLoading();
+      if (!r || !r.ok) {
+        this.setData({ orgSwitching: false });
+        wx.showModal({ title: '切换不了', content: (r && r.msg) || '请稍后再试', showCancel: false });
+        return;
+      }
+      // 整页重来：班级、学生、成果、角色全部跟着换一套，最不容易残留上家的状态
+      wx.reLaunch({ url: '/pages/index/index' });
+    }).catch(() => {
+      wx.hideLoading();
+      this.setData({ orgSwitching: false });
+      wx.showModal({ title: '切换不了', content: '网络不通，请稍后再试', showCancel: false });
+    });
+  },
+  goAddOrg() {
+    this.setData({ orgPickShow: false });
+    wx.navigateTo({ url: '/pages/join/join?add=1' });
   },
   // 家长反馈（已读回执 / 留言）：云没通或接口失败就整块不显示，绝不在首页摆假数据
   _loadFb() {
@@ -146,7 +223,65 @@ Page({
     wx.showToast({ title: '已进入示例数据（只看不改）', icon: 'none' });
   },
   /* ================= 家长端：孩子主页数据 ================= */
-  // 评价分档配色：优秀/最佳绿、良好橙、加油/待提高蓝灰
+  /* 按平台身份（pid）渲染：孩子在 A、B 两家上课时，两家的成果并在这一页里。
+   * 与 renderKid 的唯一差别是"记录从哪儿来"——这里用 db.family.records(pid)，
+   * 它已经把两家机构的已发布记录并好、并标了 orgName；统计口径完全一样。 */
+  renderKidPid(pid) {
+    const k = db.family.kid(pid);
+    if (!k) return;
+    const GOOD = ['优秀', '最佳'], CARE = ['加油', '待提高'];
+    const tcls = t => !t ? '' : GOOD.indexOf(t) > -1 ? 'good' : t === '良好' ? 'mid' : 'low';
+    const parseLine = t => {
+      const i = t.indexOf('：') > -1 ? t.indexOf('：') : t.indexOf(':');
+      return i > -1
+        ? { label: t.slice(0, i), text: t.slice(i + 1).replace(/^\s+/, '') }
+        : { label: '', text: t };
+    };
+    const multi = k.orgs.length > 1;
+    const deco = r => {
+      const lines = (r.note || '').split('\n').filter(Boolean).map(parseLine);
+      const first = lines[0] || null;
+      let snip = first ? (first.text || first.label) : '';
+      if (snip.length > 16) snip = snip.slice(0, 16) + '…';
+      return {
+        id: r.id, course: r.course, tag: r.tag, tcls: tcls(r.tag),
+        date: r.date, score: r.score,
+        // 一页里有好几家的记录，必须标清哪条是谁给的；只有一家时不占地方
+        orgName: multi ? (r.orgName || '') : '',
+        clsName: r.clsName || '',
+        pcnt: (r.photos || []).length, snip, noteLines: lines
+      };
+    };
+    const recs = db.family.records(pid);
+    const daySet = {};
+    recs.forEach(r => { daySet[r.date] = 1; });
+    const stats = {
+      lessons: recs.length,
+      great: recs.filter(r => GOOD.indexOf(r.tag) > -1).length,
+      days: Object.keys(daySet).length,
+      care: recs.filter(r => CARE.indexOf(r.tag) > -1).length
+    };
+    // 课时包按机构分开：两家各买各的，加在一起是个没有意义的数字
+    const hoursGroups = db.family.hours(pid);
+    const latest = recs[0] ? deco(recs[0]) : null;
+    this.setData({
+      kName: k.name,
+      kPhoto: k.photo || '',
+      kCls: k.orgs.map(o => (o.orgName || '')
+        + ((o.clsIds && o.clsIds.length) ? ' · ' + db.family.className(o.orgId, o.clsIds[0]) : '')
+      ).filter(Boolean).join(' ｜ '),
+      kOrgs: k.orgs,
+      stats,
+      hoursGroups,
+      hoursRemain: hoursGroups.reduce((n, g) => n + g.remain, 0),
+      hasCarry: hoursGroups.length > 0,
+      kLatest: latest,
+      latestPhotos: recs[0] ? (recs[0].photos || []).slice(0, 3) : [],
+      kHistory: recs.slice(1).map(deco),
+      // 需要注意：评价为加油/待提高的最近几次
+      kCare: recs.filter(r => CARE.indexOf(r.tag) > -1).slice(0, 3).map(deco)
+    });
+  },
   renderKid(sid) {
     const s = db.students.get(sid);
     if (!s) return;
@@ -203,11 +338,17 @@ Page({
     });
   },
   pickKid(e) {
-    const id = +e.currentTarget.dataset.id;
+    const id = e.currentTarget.dataset.id;   // familyMode 下是 pid（跨机构），否则是学生 id
     this.setData({ kidId: id });
-    this.renderKid(id);
+    if (this.data.familyMode) this.renderKidPid(id);
+    else this.renderKid(Number(id));
   },
-  goKidPage() { wx.navigateTo({ url: '/pages/student/student?id=' + this.data.kidId }); },
+  goKidPage() {
+    const q = this.data.familyMode
+      ? '?id=' + encodeURIComponent(this.data.kidId) + '&pid=1'
+      : '?id=' + this.data.kidId;
+    wx.navigateTo({ url: '/pages/student/student' + q });
+  },
   // 开启成绩通知：微信订阅消息授权 → openid 登记（bind 记授权额度）。
   // 模板未配（备案/类目未过）时云函数返回 NO_TPL，这里静默收起横幅，不弹任何报错。
   onSubscribe() {
@@ -289,7 +430,12 @@ Page({
   goTab(e) { wx.navigateTo({ url: '/pages/mgr/mgr?tabK=' + e.currentTarget.dataset.k }); },
   // mgr 已从 tab 降为二级页，只能 navigateTo（switchTab 会静默失败）
   goMgr() { wx.navigateTo({ url: '/pages/mgr/mgr' }); },
-  openRec(e) { wx.navigateTo({ url: '/pages/student/student?rid=' + e.currentTarget.dataset.rid + '&sid=' + e.currentTarget.dataset.sid }); },
+  openRec(e) {
+    const d = e.currentTarget.dataset;
+    // familyMode 下 sid 是平台身份（pid），档案页要按它跨机构找这条记录
+    const q = '?rid=' + d.rid + '&sid=' + encodeURIComponent(d.sid) + (this.data.familyMode ? '&pid=1' : '');
+    wx.navigateTo({ url: '/pages/student/student' + q });
+  },
   goStudent(e) {
     wx.navigateTo({ url: '/pages/student/student?id=' + e.currentTarget.dataset.sid });
     this.setData({ q: '', results: [], moreCount: 0 });

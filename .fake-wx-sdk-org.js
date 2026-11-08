@@ -1,0 +1,1 @@
+module.exports = global.__WX_SDK_ORG__;

@@ -57,6 +57,15 @@ function inviteGet(role, orgId) {
   return callFn('syncv2', { action: 'inviteGet', role, orgId: String(orgId || '') }).catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
 }
 
+/* ---------------- 多机构身份 ----------------
+ * 一个微信可以有多张机构工牌（老师在两家上课）。myOrgs 回可进入的机构清单，
+ * 顶部切换器与"再加一家"都靠它。同样不走 syncOn 闸门：和加入机构是一类事。
+ */
+function myOrgs() {
+  if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', orgs: [] });
+  return callFn('syncv2', { action: 'myOrgs' }).catch(() => ({ ok: false, code: 'NET', orgs: [] }));
+}
+
 /* ---------------- 家长邀请卡（一人一卡，免记码） ----------------
  * 和邀请码同一条云函数、同样不走 syncOn 闸门：家长点卡片进来时还没绑机构。
  * 卡片链接里只有一个一次性 token，机构码和学号从头到尾只在服务端出现。
@@ -71,9 +80,10 @@ function cardInfo(token) {
   return callFn('syncv2', { action: 'cardInfo', token: String(token || '') })
     .catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
 }
-function cardClaim(token, name) {
+function cardClaim(token, name, merge) {
   if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪' });
-  return callFn('syncv2', { action: 'cardClaim', token: String(token || ''), name })
+  // merge：'' 第一次问；'new' 不是同一个孩子；<pid> 确认是同一个孩子
+  return callFn('syncv2', { action: 'cardClaim', token: String(token || ''), name, merge: String(merge || '') })
     .catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
 }
 function cardRevoke(token, orgId) {
@@ -265,4 +275,4 @@ function cloudBackup(action, data) {
     .catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
 }
 
-module.exports = { initCloud, enabled, syncOn, syncCall, login, pushRecord, pull, uploadFile, uploadPhoto, aiEvalDraft, stuImport, secText, secImage, requestSubscribe, familyBind, familyNotify, fbView, fbNote, fbList, fbStats, fbHandle, inviteInfo, inviteJoin, inviteGet, adminAccount, cloudBackup, cardCreate, cardInfo, cardClaim, cardRevoke, CLOUD_ENV };
+module.exports = { initCloud, enabled, syncOn, syncCall, login, pushRecord, pull, uploadFile, uploadPhoto, aiEvalDraft, stuImport, secText, secImage, requestSubscribe, familyBind, familyNotify, fbView, fbNote, fbList, fbStats, fbHandle, inviteInfo, inviteJoin, inviteGet, myOrgs, adminAccount, cloudBackup, cardCreate, cardInfo, cardClaim, cardRevoke, CLOUD_ENV };

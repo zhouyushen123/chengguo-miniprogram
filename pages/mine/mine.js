@@ -83,6 +83,11 @@ Page({
     if (!isManager && !db.students.list().length) {
       entries.push({ k: 'join', t: '输入邀请码加入', d: '老师发了机构码，从这儿加入' });
     }
+    // 多机构：首页的切换器只在「已有 2 家以上」时才出现，而恰恰是只有一家的老师
+    // 最需要"再加一家"的入口 —— 只靠切换器会变成鸡生蛋。所以这里常驻一条。
+    if (!db.auth.isParent()) {
+      entries.push({ k: 'addorg', t: '再加一家机构', d: '在别家也带课？输入那家的机构码，数据各归各家' });
+    }
     // 家长反馈：家长留言与已读回执（老师/负责人可见；家长自己不需要这个入口）
     if (!db.auth.isParent()) {
       entries.push({ k: 'feedback', t: '家长反馈', d: '谁看过成果、家长说了什么' });
@@ -114,6 +119,7 @@ Page({
     if (k === 'storage') { wx.navigateTo({ url: '/pages/storage/storage' }); return; }
     if (k === 'feedback') { wx.navigateTo({ url: '/pages/feedback/feedback' }); return; }
     if (k === 'join') { wx.navigateTo({ url: '/pages/join/join' }); return; }
+    if (k === 'addorg') { wx.navigateTo({ url: '/pages/join/join?add=1' }); return; }
     if (k === 'invite') { this.inviteMenu(); return; }
     if (k === 'web') { this.webAdmin(); return; }
   },

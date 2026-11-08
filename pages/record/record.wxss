@@ -161,3 +161,34 @@
 
 /* 保存中：按钮变淡，视觉上明确"已经收到点击了"，配合 JS 里的同步锁防连点 */
 .btn.busy { opacity: .55; }
+
+/* ---------- AI 评价引导（半屏） ---------- */
+.aimask {
+  position: fixed; left: 0; top: 0; right: 0; bottom: 0;
+  z-index: 95; background: rgba(20, 16, 12, 0.42);
+}
+.aisheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 96;
+  background: var(--card); border-radius: 28rpx 28rpx 0 0;
+  padding: 34rpx 32rpx calc(30rpx + env(safe-area-inset-bottom));
+  animation: aiup 0.22s ease-out;
+}
+@keyframes aiup {
+  from { transform: translateY(48rpx); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.aitit { font-size: 34rpx; font-weight: 700; color: var(--text); }
+.aisub { margin-top: 8rpx; font-size: 24rpx; color: var(--muted); line-height: 1.5; }
+.ailab { display: flex; align-items: baseline; margin: 30rpx 0 14rpx; }
+.ailabt { font-size: 27rpx; font-weight: 600; color: var(--text); }
+.ailabh { margin-left: 12rpx; font-size: 23rpx; color: var(--muted); }
+.aichips { display: flex; flex-wrap: wrap; margin-bottom: -14rpx; }
+.aichip {
+  margin: 0 14rpx 14rpx 0; padding: 14rpx 26rpx;
+  border-radius: 999rpx; font-size: 26rpx;
+  background: var(--chip); color: var(--sub);
+}
+.aichip.on { background: var(--brand); color: #fff; font-weight: 600; }
+.aift { display: flex; margin-top: 32rpx; }
+.aift .btn { flex: 1; }
+.aift .btn + .btn { margin-left: 20rpx; }

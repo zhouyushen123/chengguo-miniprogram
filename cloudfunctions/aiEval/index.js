@@ -22,17 +22,8 @@ const TIMEOUT_MS = 18000;
 const MAX_B64 = 4 * 1024 * 1024;   // base64 超过 4MB 直接拒绝（约 3MB 原图）
 const BATCH_SIZE = 10;             // 批量评语每批人数：一次太多容易超时/截断
 
-function buildPrompt(hint) {
-  return [
-    '你是一位课外培训机构的授课老师，请根据这张课堂照片，写一条发给家长的课后评价草稿。',
-    '要求：',
-    '- 60~120 字，亲切自然、具体可信，最后给孩子一句鼓励',
-    '- 只描述照片里能看到的表现或作品（如书写、绘画、动作、神态），不要编造看不清的细节',
-    '- 不出现"照片""图片"这类字眼，直接以课堂口吻描述',
-    '- 直接输出评价正文，不要任何前缀、引号或解释',
-    hint ? '课程类型：' + hint : ''
-  ].filter(Boolean).join('\n');
-}
+// 提示词与学科词表见 prompt.js：那是产品能力的本体，单独成文件才能直接做行为断言
+const P = require('./prompt');
 
 // 图片 MIME 必须与实际内容一致，否则智谱直接回 1210「图片格式/解析错误」。
 // 按 base64 开头的魔数判断（PNG iVBOR / JPEG /9j/ / WEBP UklGR），默认 jpeg。
@@ -84,25 +75,12 @@ function callGLMText(key, messages, maxTokens) {
 
 // 批量评语：一扫学生（姓名+分数+上次评语）+ 本课主题 → 逐人一条差异化评语。
 // 从模型回的 JSON 里按姓名对号；解析不了/漏掉的返回 null，由前端保留原值并提示。
-async function batchNotes(key, students, topic) {
+async function batchNotes(key, students, opts) {
+  const o = opts || {};
   const out = {};
   for (let i = 0; i < students.length; i += BATCH_SIZE) {
     const slice = students.slice(i, i + BATCH_SIZE);
-    const roster = slice.map((s, k) =>
-      (k + 1) + '. 姓名：' + s.name + '；本次等第：' + (s.tag || '未评') +
-      (s.prev ? '；上次评价：' + s.prev : '')).join('\n');
-    const prompt = [
-      '你是一位课外培训机构的授课老师。根据下面的学生名单和本次课程信息，给每位学生写一条发给家长的课后评价。',
-      '要求：',
-      '- 每条 50~100 字，亲切自然、具体可信，结尾给孩子一句鼓励',
-      '- 结合等第高低调子不同：优秀多表扬细节，待提高提期望但不批评',
-      '- 同一批人的评语不许雷同，各人侧重点不同',
-      topic ? '- 本次课程主题：' + topic : '',
-      '- 输出严格的 JSON 数组，不要任何其它文字：[{"name":"学生姓名","note":"评价正文"}]，姓名必须与名单完全一致',
-      '',
-      '学生名单：',
-      roster
-    ].filter(Boolean).join('\n');
+    const prompt = P.buildBatchPrompt(slice, { topic: o.topic, course: o.course, subjectGid: o.subjectGid });
     const text = await callGLMText(key, [{ role: 'user', content: prompt }], 2000);
     // 模型有时会包一层 ```json 围栏，剥掉再解析
     const clean = String(text).replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
@@ -120,7 +98,8 @@ function callGLM(key, prompt, b64) {
   const body = JSON.stringify({
     model: MODEL,
     temperature: 0.6,
-    max_tokens: 300,
+    // 150 字中文约 250 tokens，再加上模型偶尔啰嗦，300 会把结尾的期待截断
+    max_tokens: 420,
     messages: [{
       role: 'user',
       content: [
@@ -176,7 +155,9 @@ exports.main = async (event) => {
     const students = Array.isArray(event.students) ? event.students.slice(0, 60) : [];
     if (!students.length) return { ok: false, msg: '缺少学生名单' };
     try {
-      const notes = await batchNotes(key, students, String(event.topic || '').slice(0, 100));
+      const notes = await batchNotes(key, students, {
+        topic: event.topic, course: event.course, subjectGid: event.subjectGid
+      });
       // AI 生成的评语也是 UGC，逐条过微信内容安全；命中违规的直接置 null（前端保留原值并提示）。
       // fail-open：检查接口本身报错（非 87014）不拦截，保证 AI 主链路不被安全服务抖动拖死。
       let blocked = 0;
@@ -211,7 +192,7 @@ exports.main = async (event) => {
   if (b64.length > MAX_B64) return { ok: false, msg: '照片过大，请压缩后重试' };
 
   try {
-    const text = await callGLM(key, buildPrompt(event.hint || ''), b64);
+    const text = await callGLM(key, P.buildPrompt(event), b64);
     return { ok: true, text: String(text).trim() };
   } catch (e) {
     return { ok: false, msg: (e && e.message) || 'AI 调用失败' };

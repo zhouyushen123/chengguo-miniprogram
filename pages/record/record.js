@@ -7,6 +7,7 @@ const media = require('../../utils/media');
 const sec = require('../../utils/sec');
 const photocloud = require('../../utils/photocloud');
 const theme = require('../../utils/theme');
+const aipref = require('../../utils/aipref');
 
 // 媒体限制：单个文件 50MB；照片/视频张数取数据层那一份（db.LIMITS），不在这里再写一遍
 const MAX_FILE = 50 * 1024 * 1024;
@@ -23,6 +24,16 @@ const TAGS = [
   { t: '最佳', anchor: 98 }
 ];
 
+// AI 评价的「重点看什么」。k 与云函数 aiEval 的 VIEWS 一一对应：
+// 改这里必须同步那边，否则勾了却没生效（tests/verify_ai_guide.js 会拦）。
+const AI_VIEWS = [
+  { k: 'skill', t: '专业技法' },
+  { k: 'compose', t: '画面与结构' },
+  { k: 'habit', t: '课堂状态' },
+  { k: 'progress', t: '和上次比' },
+  { k: 'mood', t: '情绪与状态' }
+];
+
 Page({
   data: {
     clsId: null, students: [], stuShow: [], stuQuery: '', stuExpanded: false, over45: false,
@@ -30,7 +41,10 @@ Page({
     // 补录切换：归入哪次课（默认本次）。只有班上已经结清过（sessMax>1）才出现
     sessMax: 1, sessOpts: ['第1次课'], sessIdx: 0,
     score: 85, tags: TAGS, tag: '',
-    note: '', photos: [], videos: [], audio: null, recording: false, recognizing: false, canSend: false, aiBusy: false,
+    note: '', photos: [], videos: [], audio: null, recording: false, recognizing: false, canSend: false,
+    // AI 引导层：aiChips 是五个可选视角，aiWho 只用来告诉老师「这一条是写给谁、什么课」
+    aiBusy: false, aiOpen: false, aiSay: '', aiWho: '',
+    aiChips: AI_VIEWS.map(v => ({ k: v.k, t: v.t, on: false })),
     selCount: 0, editing: false, saving: false,
     tplOpen: false, tplList: [], sel: [],
     icoCamera: icons.camera, icoAlbum: icons.album, icoAudio: icons.audio,
@@ -181,24 +195,87 @@ Page({
   },
   goTpls() { wx.navigateTo({ url: '/pages/tpls/tpls?mode=select' }); },
 
-  // AI 评：把第一张照片交给 aiEval 云函数（智谱 GLM-4V-Flash 识图），生成评价草稿填入输入框
-  // 图片通道：云存储图直接传 fileID；本地图压缩后转 base64（callFunction 有包体上限，必须先压）
-  async aiDraft() {
+  // AI 评：先让老师把"这节课想让人看见什么"勾一下，再交给 aiEval 生成。
+  // 以前是直接把照片丢给模型：它不知道这孩子学什么、上次写到哪、今天想让他被夸什么，
+  // 只能吐「孩子们表现非常棒」这种谁都能用的话——家长看完等于没看。
+  aiDraft() {
     if (this.data.aiBusy) return;
     if (!this.data.photos.length) { wx.showToast({ title: '先拍或选一张照片，AI 才有得看', icon: 'none' }); return; }
     if (String(this.data.note || '').trim()) {
-      const go = await new Promise(res => wx.showModal({
+      wx.showModal({
         title: '覆盖当前评价？', content: 'AI 将根据照片重新生成，替换已输入的内容',
-        success: r => res(!!(r && r.confirm)), fail: () => res(false)
-      }));
-      if (!go) return;
+        success: r => { if (r && r.confirm) this._openAi(); }
+      });
+      return;
     }
+    this._openAi();
+  },
+  // 引导层：上次勾过的视角默认带上，省得每节课重选一遍
+  _openAi() {
+    const pref = aipref.views();
+    const kid = this.data.sid ? (db.students.name(this.data.sid) || '') : '';
+    this.setData({
+      aiOpen: true,
+      aiSay: '',
+      aiChips: AI_VIEWS.map(v => ({ k: v.k, t: v.t, on: pref.indexOf(v.k) > -1 })),
+      aiWho: [kid, this.data.course].filter(Boolean).join(' · ')
+    });
+  },
+  aiPickView(e) {
+    const k = e.currentTarget.dataset.k;
+    this.setData({ aiChips: this.data.aiChips.map(c => (c.k === k ? { k: c.k, t: c.t, on: !c.on } : c)) });
+  },
+  onAiSay(e) { this.setData({ aiSay: e.detail.value }); },
+  aiSayClear() { this.setData({ aiSay: '' }); },
+  aiClose() { this.setData({ aiOpen: false }); },
+  // 什么都不勾也允许生成：默认路径已经带上姓名 / 课程 / 学科维度 / 上次评语，
+  // 引导是加分项，不是必经步骤——录入现场老师赶时间，多一道强制就是负担。
+  aiGo() {
+    const views = this.data.aiChips.filter(c => c.on).map(c => c.k);
+    const say = String(this.data.aiSay || '').trim().slice(0, 120);
+    aipref.save(views);
+    this.setData({ aiOpen: false });
+    // 返回 promise：调用方（含测试）能等它跑完，不用猜加载圈什么时候结束
+    return this._aiRun(views, say);
+  },
+  // 该生上一次已发布的评语：让 AI 接着上次说，而不是每次都像第一次见这孩子
+  _prevNote(sid, rid) {
+    if (!sid) return '';
+    try {
+      const hit = db.records.ofStudent(sid)
+        .filter(r => r.id !== rid && r.sent && String(r.note || '').trim())
+        .sort((a, b) => (a.date === b.date ? b.id - a.id : (a.date < b.date ? 1 : -1)))[0];
+      return hit ? String(hit.note).slice(0, 200) : '';
+    } catch (e) { return ''; }
+  },
+  // 课程名 → 学科 gid：让云端挑对专业词表（美术说线条明暗，数学说算理步骤）
+  _subjectGid(course) {
+    try {
+      const id = db.subjects.guessFor(course);
+      const s = id ? db.subjects.get(id) : null;
+      return s ? String(s.gid || '') : '';
+    } catch (e) { return ''; }
+  },
+  // 图片通道：云存储图直接传 fileID；本地图压缩后转 base64（callFunction 有包体上限，必须先压）
+  async _aiRun(views, say) {
     this.setData({ aiBusy: true });
     // 识图本来就要几秒，先说清楚要等，免得老师以为没反应就反复点
     wx.showLoading({ title: 'AI 识图中，约需几秒…', mask: true });
     try {
       const src = this.data.photos[0];
-      const payload = { hint: this.data.course || '' };
+      // 老师脑子里的上下文全在这一包里：谁、什么课、什么学科、什么等第、第几次、
+      // 想强调什么（views/say）、上次写到哪（prev）。少一项，AI 就退回说套话。
+      const payload = {
+        hint: this.data.course || '',
+        kid: this.data.sid ? (db.students.name(this.data.sid) || '') : '',
+        course: this.data.course || '',
+        subjectGid: this._subjectGid(this.data.course),
+        tag: this.data.tag || '',
+        session: (this.data.sessIdx || 0) + 1,
+        views: views || [],
+        say: say || '',
+        prev: this._prevNote(this.data.sid, this.data.rid)
+      };
       if (String(src).indexOf('cloud://') === 0) {
         payload.fileID = src;
       } else {

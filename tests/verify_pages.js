@@ -731,28 +731,41 @@ console.log('\n全部 ' + pass + ' 项页面级断言通过');
   global.wx.getFileSystemManager = () => ({ readFile(o) { o.success({ data: 'ZmFrZQ==' }); } });
   apiMod.initCloud();
 
-  // 2. 全链路：压缩 → 读 base64 → 调 aiEval → trim 回填 → 可发送
+  // 2. 点「AI 评」只打开引导层，不直接打网络：老师要先说清这节课重点看什么
+  record.setData({ photos: ['/tmp/a.jpg'], note: '' });
+  called = null;
+  await record.aiDraft();
+  assert.strictEqual(called, null, '点了 AI 评只应打开引导层，不该直接调云函数');
+  assert.strictEqual(record.data.aiOpen, true, '应打开 AI 引导层');
+  assert.strictEqual(record.data.aiChips.length, 5, '五个视角都要在');
+  console.log('  ✓ 点 AI 评先开引导层（不直接打网络）');
+
+  // 3. 全链路：确认生成 → 压缩 → 读 base64 → 调 aiEval → trim 回填 → 可发送
   record.setData({ photos: ['/tmp/a.jpg'], note: '' });
   toasts.length = 0;
   await record.aiDraft();
+  await record.aiGo();
   assert.ok(called && called.name === 'aiEval', '应调用 aiEval 云函数');
   assert.strictEqual(called.data.imageBase64, 'ZmFrZQ==');
   assert.strictEqual(record.data.note, AIDRAFT, '生成文本应 trim 后回填');
   assert.strictEqual(record.data.canSend, true);
   assert.strictEqual(record.data.aiBusy, false, '结束后忙碌态复位');
-  console.log('  ✓ 有照片全链路：压缩 → base64 → aiEval → 回填可发送');
+  assert.strictEqual(record.data.aiOpen, false, '生成后引导层要收起');
+  console.log('  ✓ 有照片全链路：引导层 → 压缩 → base64 → aiEval → 回填可发送');
 
-  // 3. 已有评价时先确认（mock showModal 恒 confirm）再覆盖
+  // 4. 已有评价时先确认（mock showModal 恒 confirm）再覆盖
   record.setData({ note: '旧评价' });
   await record.aiDraft();
+  await record.aiGo();
   assert.strictEqual(record.data.note, AIDRAFT);
   console.log('  ✓ 已有评价时确认后覆盖');
 
-  // 4. 云函数业务错误透出中文提示（NO_KEY）
+  // 5. 云函数业务错误透出中文提示（NO_KEY）
   global.wx.cloud.callFunction = o => o.success({ result: { ok: false, code: 'NO_KEY', msg: 'x' } });
   record.setData({ note: '' });
   toasts.length = 0;
   await record.aiDraft();
+  await record.aiGo();
   assert.ok(toasts.some(x => x.indexOf('ZHIPU_API_KEY') > -1), '应提示缺 Key');
   console.log('  ✓ 云函数业务错误透出中文提示');
 
@@ -760,5 +773,5 @@ console.log('\n全部 ' + pass + ' 项页面级断言通过');
   delete global.wx.cloud;
   delete global.wx.compressImage;
   global.wx.getFileSystemManager = origFSM;
-  console.log('  ✓ AI 评价草稿链路 4 项通过');
+  console.log('  ✓ AI 评价草稿链路 5 项通过');
 })().catch(e => { console.error('AI 草稿测试失败:', (e && e.message) || e); process.exit(1); });

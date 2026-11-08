@@ -136,6 +136,42 @@
   </view>
 </view>
 
+<!-- AI 评价引导：先告诉 AI 这节课要看什么，再生成。不勾任何一项也能直接生成 -->
+<view wx:if="{{aiOpen}}" class="aimask" bindtap="aiClose"></view>
+<view wx:if="{{aiOpen}}" class="aisheet">
+  <view class="aitit">让 AI 按你的要求写</view>
+  <view class="aisub">{{aiWho || '这节课'}} · 会自动带上姓名、课程和上次评语</view>
+  <view class="ailab">
+    <text class="ailabt">重点看什么</text>
+    <text class="ailabh">可多选，不选就让 AI 自己找</text>
+  </view>
+  <view class="aichips">
+    <view wx:for="{{aiChips}}" wx:key="k" class="aichip {{item.on?'on':''}}"
+          data-k="{{item.k}}" bindtap="aiPickView">{{item.t}}</view>
+  </view>
+  <view class="ailab">
+    <text class="ailabt">再跟 AI 说一句</text>
+    <text class="ailabh">选填 · 一手拿作品时直接说</text>
+  </view>
+  <view class="notearea" style="margin-top:0">
+    <textarea class="noteta" style="min-height:96rpx" value="{{aiSay}}" bindinput="onAiSay"
+              maxlength="120" auto-height placeholder="例：重点夸构图，他这学期线条进步很大"
+              placeholder-class="ph" />
+    <view class="notetools">
+      <image wx:if="{{aiSay}}" class="noteclear" src="{{icoClose}}" mode="aspectFit"
+             hover-class="btn-hover" catchtap="aiSayClear" />
+      <text class="notecnt">{{aiSay.length}}/120</text>
+      <view class="micbtn {{micKey==='aiSay'?'rec':''}}" hover-class="btn-hover" catchtap="onMic" data-k="aiSay">
+        <image class="micico" src="{{micKey==='aiSay'?icoWhite:icoOrange}}" mode="aspectFit" />
+      </view>
+    </view>
+  </view>
+  <view class="aift">
+    <view class="btn ghost" hover-class="btn-hover" bindtap="aiClose">取消</view>
+    <view class="btn" hover-class="btn-hover" bindtap="aiGo">生成评价</view>
+  </view>
+</view>
+
 <!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
 <privacy-popup id="privacy" />
 </view>

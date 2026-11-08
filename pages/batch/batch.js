@@ -290,7 +290,18 @@ Page({
         tag: self.data.rows[i].tag || '',
         prev: (self.data.rows[i].prev || '').slice(0, 80)
       }));
-      api.aiEvalDraft({ action: 'batch', students, topic: self.data.topic })
+      // 学科决定云端用哪套专业词表：美术说构图与明暗，书法说间架与笔锋。
+      // 不传的话云端只能按课程名猜，猜不中就走通用词——AI 立刻退回「孩子们表现很棒」。
+      const courseName = String(self.data.course || '');
+      let subjectGid = '';
+      try {
+        const subId = db.subjects.guessFor(courseName);
+        const sub = subId ? db.subjects.get(subId) : null;
+        subjectGid = sub ? String(sub.gid || '') : '';
+      } catch (e) { subjectGid = ''; }
+      api.aiEvalDraft({
+        action: 'batch', students, topic: self.data.topic, course: courseName, subjectGid
+      })
         .then(out => {
           if (!out.ok) {
             self.setData({ aiBusy: false, aiProg: '' });

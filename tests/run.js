@@ -18,6 +18,7 @@ const SUITES = [
   ['verify_term.js', '学期与课时'],
   ['verify_p0.js', 'P0 止血'],
   ['verify_pages.js', '页面级'],
+  ['verify_ai_guide.js', 'AI 评价引导'],
   ['verify_phone.js', '手机号'],
   ['verify_session.js', '课次结清'],
   ['verify_batch.js', '批量录入成绩单'],

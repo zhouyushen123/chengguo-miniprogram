@@ -342,6 +342,19 @@ async function ok(name, fn) {
     assert.ok(/switchOrg/.test(srcJoin), '加完问一句要不要切过去，别替人做主');
   });
 
+  await ok('云端合并按「机构 + id」索引：两家撞同一个 id 也不会互相顶掉', () => {
+    Object.keys(require.cache).forEach(k => { if (k.indexOf('utils') > -1) delete require.cache[k]; });
+    const sm = require('../utils/syncmerge');
+    // 一家机构一份 id 空间时，撞号只影响自己；多机构之后影响的是别人，这个概率不值得赌
+    const r = sm.mergeList(
+      [{ id: 500, orgId: 'org_a', name: '我们班的', updatedAt: 1 }],
+      [{ id: 500, orgId: 'org_b', name: '别家的', updatedAt: 2 }]
+    );
+    assert.strictEqual(r.list.length, 2, '同 id 不同机构 → 两条都得留');
+    assert.strictEqual(r.added, 1);
+    assert.ok(r.list.some(x => x.name === '别家的'));
+  });
+
   console.log('\nverify_multi_org: ' + pass + ' passed, ' + fail + ' failed');
   if (fail) process.exit(1);
 })();

@@ -30,15 +30,26 @@ function pickWinner(local, remote) {
 
 // 合并一个集合：按 id 索引，返回新数组与统计。
 // 不修改入参（数据层要拿结果去 setColl，改原数组会让"回滚"失效）
+//
+// 【索引键必须带 orgId】本机是一个全量库，两家机构的数据躺在同一个数组里。
+// 只按 id 索引时，A 家的「学生 173xxx」和 B 家恰好同 id 的那条会被认成同一份：
+// 后到的把先到的顶掉 —— 表现是"另一个机构的孩子凭空变成我们班的了"，而且不报错。
+// 跨设备用毫秒时间戳撞号本来极低，但一家机构一份 id 空间时它只影响自己，
+// 多机构之后影响的是别人 —— 这个概率不值得赌，键上直接带上机构。
+function docKey(d) {
+  if (!d || d.id === undefined) return '';
+  return (d.orgId ? String(d.orgId) : '') + '\u0000' + String(d.id);
+}
 function mergeList(localList, remoteList) {
   const list = (localList || []).slice();
   const idx = {};
-  list.forEach((d, i) => { if (d && d.id !== undefined) idx[d.id] = i; });
+  list.forEach((d, i) => { const k = docKey(d); if (k) idx[k] = i; });
   let added = 0, updated = 0;
   (remoteList || []).forEach(rd => {
-    if (!rd || rd.id === undefined) return;
-    const i = idx[rd.id];
-    if (i === undefined) { list.push(rd); idx[rd.id] = list.length - 1; added++; return; }
+    const k = docKey(rd);
+    if (!k) return;
+    const i = idx[k];
+    if (i === undefined) { list.push(rd); idx[k] = list.length - 1; added++; return; }
     const win = pickWinner(list[i], rd);
     if (win !== list[i]) { list[i] = win; updated++; }
   });

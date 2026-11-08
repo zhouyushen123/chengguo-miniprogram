@@ -352,7 +352,10 @@
   }
   function dt(ms) {
     if (!ms) return '—';
-    var d = new Date(Number(ms));
+    var n = Number(ms);
+    if (!isFinite(n) || n <= 0) return '—';
+    var d = new Date(n);
+    if (isNaN(d.getTime())) return '—';
     return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
   }
   function p2(n) { return String(n).length < 2 ? '0' + n : String(n); }
@@ -444,7 +447,7 @@
   $('loginForm').addEventListener('submit', function (e) { e.preventDefault(); doLogin(); });
   $('acc').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('pin').focus(); } });
   $('doLogout').addEventListener('click', function () {
-    post('logout', {}).then(function () {}).catch(function () {});
+    post('logout', {}).then(function () {}).catch(function () { /* 退出已本地生效，云端撤销失败可忽略 */ });
     S.token = ''; localStorage.removeItem(TOKEN_KEY); $('pin').value = ''; showLogin();
   });
   $('doRefresh').addEventListener('click', function () {
@@ -569,8 +572,9 @@
    * 文字和圆点不会被非等比压扁，X 轴末刻度也不会被裁掉。
    */
   function niceTop(v) {
-    var p = Math.pow(10, Math.floor(Math.log(v || 1) / Math.LN10));
-    var n = (v || 1) / p;
+    v = Math.abs(Number(v)) || 1;
+    var p = Math.pow(10, Math.floor(Math.log(v) / Math.LN10));
+    var n = v / p;
     var m = n <= 1 ? 1 : n <= 1.5 ? 1.5 : n <= 2 ? 2 : n <= 3 ? 3 : n <= 4 ? 4 : n <= 5 ? 5 : 10;
     return m * p;
   }
@@ -903,7 +907,7 @@
       setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
       var lines = Number(r.rows) || (r.csv ? r.csv.split('\r\n').length - 1 : 0);
       toast('已导出 ' + num(lines) + ' 行' + (r.truncated ? '（达到 ' + num(r.cap || 2000) + ' 行上限，请分机构导出）' : ''));
-    }).catch(function () {}).then(function () { busy(btn, false); });
+    }).catch(function () { /* guard 已 toast 过真实原因，这里只兜住未处理拒绝 */ }).then(function () { busy(btn, false); });
   }
 
   /* ---------------- 演示数据入口见脚本最末尾的「自动进入」 ---------------- */
@@ -1096,7 +1100,7 @@
     if (action === 'platOrgs') {
       var q = String(d.q || '').toLowerCase();
       var list = q ? rows.filter(function (o) { return (o.name + o.orgId + o.owner).toLowerCase().indexOf(q) >= 0; }) : rows;
-      var size = Number(d.size) || 20, page = Number(d.page) || 1;
+      var size = Number(d.size) || 20, page = Math.max(1, Number(d.page) || 1);
       return { ok: true, total: list.length, page: page, size: size, rows: list.slice((page - 1) * size, page * size), all: rows };
     }
 
@@ -1149,7 +1153,7 @@
       if (kw) out = out.filter(function (s) { return s.name.indexOf(kw) >= 0 || String(s.no).indexOf(kw) >= 0; });
       if (d.orgId) out = out.filter(function (s) { return s.orgId === d.orgId; });
       out.sort(function (a, b) { return b.records - a.records || (a.name < b.name ? -1 : 1); });
-      var sz = Number(d.size) || 30, pg = Number(d.page) || 1;
+      var sz = Number(d.size) || 30, pg = Math.max(1, Number(d.page) || 1);
       return {
         ok: true, total: out.length, page: pg, size: sz,
         rows: out.slice((pg - 1) * sz, pg * sz),

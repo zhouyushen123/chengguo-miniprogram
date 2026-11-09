@@ -1786,3 +1786,18 @@ Major-3（callGLM/callGLMText 去重复）留待下次动 aiEval 时一起做。
 - TC-SEC-004（口令明文）**预期 FAIL**，用例设计的一部分，缺陷照提。
 - metrics 面板：`python <qa-testing skill>/scripts/calculate_metrics.py
   tests/docs/TEST-EXECUTION-TRACKING.csv`（已验证可读 60 条）。
+
+## 页面走查 + BUG-003/004 修复（2026-11-09，提交 ba9a14c + db9079b）
+
+- 新增 `tools/pagewalk.js`：21 页静态交叉核对（绑定变量/事件函数/跳转注册/
+  setData 量级/组件注册），口径校准后从 407 误报收敛到 1 条真信号。
+- LLM 侧走查结论：无 P0/P1/P2。深读 index/record/mine 三页加载/空态/错误分支均合格。
+- **BUG-003（P3，已修 db9079b）**：batch 绑了不存在的 clearHit → 补 `clearHit(e)`
+  聚焦清红标。
+- **BUG-004（P3，已修 db9079b）**：15 处 WXML 不支持的 `<b>` → `<text class="b">`
+  （app.wxss 全局 `.b{font-weight:600}`）；join `<br/>` → 内层两 `<view>` 分行。
+  grep 清零验证；pagewalk 复跑 0 硬伤；lint 0；全套件绿。
+- 视觉效果（加粗/换行）待真机 TC-REAL 复核。**注意：此修复未发版——
+  下次 `npm run ship` 时一起带出。**
+- 仍开放：BUG-001（P1 口令明文，待拍板 M-2）、BUG-002（P3 教师无班无显式码，
+  改 syncv2 需重部署，可与下次云函数变更同车）。

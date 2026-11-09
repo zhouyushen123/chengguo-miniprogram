@@ -1770,3 +1770,19 @@ Major-3（callGLM/callGLMText 去重复）留待下次动 aiEval 时一起做。
 - 真机重点：老师账号正常录课/发布；被分新班后历史记录能自动补齐；
   两台设备改同一条记录 → 存储页出现「被覆盖的改动」且可找回。
 - 控制台顺手删掉旧 `sync` 云函数实例（本仓库已删，云端不会自动卸载）。
+
+## QA 测试流程基建（2026-11-09，提交 8a113ea，未发版纯文档）
+
+- 用 Horizon QA 专家套件落 `tests/docs/`：**60 条 AAA 用例**五类（页面 12 /
+  同步 14 / 云函数 12 / OWASP 安全 12 / 真机人工 10），P0×19 P1×29 P2×11 P3×1。
+- 基线已填 `BASELINE-METRICS.md`：46 套件绿 / lint 0 / 主包 62% / OWASP 现状 8/10
+  （A02 口令明文待 M-2、A09 日志豁免）；风险预测 RISK-001~004 对应用例可验证。
+- 执行分工：43 条 LLM 可自主跑（跑 node 套件 + 源码走查），17 条真机 + 2 条控制台
+  人工（含 ⭐TC-REAL-003 新班补齐 / TC-REAL-004 冲突找回，即上面待人工真机项的
+  用例化版本）。LLM 执行 = 复制 `tests/docs/MASTER-QA-PROMPT.md` 代码段整段粘贴。
+- 铁律：用例文档是步骤权威，`TEST-EXECUTION-TRACKING.csv` 只记状态；每测完一条
+  立即更新禁批量；失败即提 `BUG-TRACKING.csv`（编号复现步骤）；P0 发现即停即报。
+- 质量门禁：执行率 100% / 通过率 ≥80% / P0=0 / P1≤5 / OWASP 9/10，全绿才放发版。
+- TC-SEC-004（口令明文）**预期 FAIL**，用例设计的一部分，缺陷照提。
+- metrics 面板：`python <qa-testing skill>/scripts/calculate_metrics.py
+  tests/docs/TEST-EXECUTION-TRACKING.csv`（已验证可读 60 条）。

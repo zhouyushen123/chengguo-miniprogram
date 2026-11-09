@@ -96,14 +96,34 @@ function kb(n) {
 }
 
 const ignore = loadIgnore();
-const acc = { total: 0, files: [] };
-walk(ROOT, '', ignore, acc);
 
-// 按体积排序，用于 --list 和超线时的定位
-acc.files.sort((a, b) => b.size - a.size);
+// 【分包感知】app.json 的 subPackages 根目录不算主包，各自有独立的 2MB 上限。
+// 以前门禁把整个仓库当一个包算：拆了分包后主包被虚报，门禁口径与上传口径分叉。
+const app = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8'));
+const SUB_ROOTS = ((app.subPackages || []).map(s => String(s.root || '')).filter(Boolean));
 
-const pct = ((acc.total / LIMIT) * 100).toFixed(1);
-console.log('主包体积：' + kb(acc.total) + ' / 上限 ' + kb(LIMIT) + '（' + pct + '%）');
+const mainAcc = { total: 0, files: [] };
+const subAccs = SUB_ROOTS.map(() => ({ total: 0, files: [] }));
+
+// 一次 walk 拿全部文件，按 relPath 前缀分流到主包 / 各分包
+(function split() {
+  const all = { total: 0, files: [] };
+  walk(ROOT, '', ignore, all);
+  for (const f of all.files) {
+    const si = SUB_ROOTS.findIndex(r => f.path === r || f.path.indexOf(r + '/') === 0);
+    if (si > -1) { subAccs[si].total += f.size; subAccs[si].files.push(f); }
+    else { mainAcc.total += f.size; mainAcc.files.push(f); }
+  }
+  mainAcc.files.sort((a, b) => b.size - a.size);
+})();
+
+const acc = mainAcc;
+
+const pct = ((mainAcc.total / LIMIT) * 100).toFixed(1);
+console.log('主包体积：' + kb(mainAcc.total) + ' / 上限 ' + kb(LIMIT) + '（' + pct + '%）');
+SUB_ROOTS.forEach((r, i) => {
+  console.log('分包 ' + r + '：' + kb(subAccs[i].total) + ' / 上限 ' + kb(LIMIT) + '（' + ((subAccs[i].total / LIMIT) * 100).toFixed(1) + '%）');
+});
 
 if (acc.files.length && acc.files[0].size > 200 * 1024) {
   console.log('最大文件：' + acc.files[0].path + ' ' + kb(acc.files[0].size));
@@ -116,12 +136,18 @@ if (process.argv.includes('--list')) {
   });
 }
 
-if (acc.total > LIMIT) {
+if (mainAcc.total > LIMIT) {
   console.error('\n✖ 主包超过 2MB，上传会失败。');
   console.error('  先看 `node tools/size.js --list` 找大头，再决定分包 / 压图 / 移出主包。');
   process.exit(1);
 }
-if (acc.total > WARN) {
+for (let i = 0; i < SUB_ROOTS.length; i++) {
+  if (subAccs[i].total > LIMIT) {
+    console.error('\n✖ 分包 ' + SUB_ROOTS[i] + ' 超过 2MB，上传会失败。');
+    process.exit(1);
+  }
+}
+if (mainAcc.total > WARN) {
   console.log('⚠ 已用超过 80%，注意控制新增资源体积。');
   process.exit(0);
 }

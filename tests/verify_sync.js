@@ -291,6 +291,95 @@ t('init：云端已是别人的号 + 本机有数据 → 冲突并停手（绝�
   assert.strictEqual(db.students.list().length, 1);
 });
 
+// ---------- LWW 冲突：败者不静默消失（架构体检 A2） ----------
+t('mergeList：判负且内容真不同 → 返回败者副本；内容相同不算冲突', () => {
+  const local = [{ id: 1, note: '老师B写的长评', updatedAt: 10 }];
+  const out = merge.mergeList(local, [{ id: 1, note: '老师A的版本', updatedAt: 20 }]);
+  assert.strictEqual(out.conflicts.length, 1, '败者要被交出来');
+  assert.strictEqual(out.conflicts[0].note, '老师B写的长评');
+  // 第二次同步同样内容（只是 srvAt 变了）：不再报冲突，否则每轮同步都误报
+  const again = merge.mergeList(out.list, [{ id: 1, note: '老师A的版本', updatedAt: 21 }]);
+  assert.strictEqual(again.conflicts.length, 0, '内容相同不算冲突');
+});
+
+t('mergeList：键序不同但内容相同不算冲突（云端回推不保证键序）', () => {
+  const local = [{ id: 1, a: 1, b: 2, updatedAt: 10 }];
+  const remote = [{ b: 2, a: 1, id: 1, updatedAt: 20 }];
+  assert.strictEqual(merge.mergeList(local, remote).conflicts.length, 0);
+});
+
+t('applyRemote：冲突败者存进本地副本，找回后以新时间写回（能重新胜出）', () => {
+  for (const k in mem) delete mem[k];
+  const db = freshDb();
+  db.init();
+  db.classes.create({ name: '旧班名' });
+  const doc = db.real().classes[0];
+  // 本地版本是 3 秒前写的，云端版本 2 秒前（更新，所以 LWW 胜出），但都比"现在"早：
+  // 这样「找回」用 Date.now() 写回才能真的重新胜出
+  doc.updatedAt = Date.now() - 3000;
+  const remote = Object.assign({}, doc, { name: '新班名', updatedAt: Date.now() - 2000 });
+  const st = db.sync.applyRemote([{ c: 'classes', d: remote }]);
+  assert.ok(st.ok && st.updated === 1, JSON.stringify(st));
+  assert.strictEqual(db.real().classes[0].name, '新班名', 'LWW：新版本落盘');
+  const cl = db.sync.conflicts();
+  assert.strictEqual(cl.length, 1, '败者副本要留下');
+  assert.strictEqual(cl[0].loser.name, '旧班名');
+  assert.strictEqual(cl[0].c, 'classes');
+  // 找回：旧班名以「现在」的时间戳写回，下一轮推送重新参战
+  const res = db.sync.restoreConflict(0);
+  assert.ok(res.ok, JSON.stringify(res));
+  assert.strictEqual(db.real().classes[0].name, '旧班名');
+  assert.ok(db.real().classes[0].updatedAt > remote.updatedAt, '找回后必须比云端版本新');
+  assert.ok(db.sync.dirtyCols().indexOf('classes') > -1, '找回等于一次本地写，要标脏重推');
+  db.sync.clearConflicts();
+  assert.strictEqual(db.sync.conflicts().length, 0);
+});
+
+// ---------- 我的范围变了：游标归零重拉（架构体检 A1 客户端半边） ----------
+t('applyRemote：工牌被远端改了范围（新分班）→ 机构进 rescoped 队列', () => {
+  for (const k in mem) delete mem[k];
+  const db = freshDb();
+  db.init();
+  db.patchMeta({ orgId: 'orgX', openid: 'oX' });
+  db.sync.applyRemote([{ c: 'members', d: { id: 11, orgId: 'orgX', openid: 'oX', role: 'teacher', clsIds: [1], updatedAt: 10 } }]);
+  assert.deepStrictEqual(db.sync.rescoped(), [], '首次拉到工牌（新增）不算范围变化');
+  db.sync.applyRemote([{ c: 'members', d: { id: 11, orgId: 'orgX', openid: 'oX', role: 'teacher', clsIds: [1, 2], updatedAt: 20 } }]);
+  assert.deepStrictEqual(db.sync.rescoped(), ['orgX'], 'clsIds 变化要记机构');
+  // 同名/改名这类不影响范围的变化不能误报
+  db.sync.clearRescoped('orgX');
+  db.sync.applyRemote([{ c: 'members', d: { id: 11, orgId: 'orgX', openid: 'oX', role: 'teacher', clsIds: [1, 2], name: '张三', updatedAt: 30 } }]);
+  assert.deepStrictEqual(db.sync.rescoped(), [], '改名字不算范围变化');
+});
+
+t('pullNow：新分班 → 游标归零并自动重拉一轮，新班的历史补得回来', async () => {
+  for (const k in mem) delete mem[k];
+  const db = freshDb();
+  db.init();
+  db.patchMeta({ orgId: 'orgX', openid: 'oX' });
+  // 先铺底：本地已有一张只带 1 班的工牌（上一轮同步拉到的）
+  db.sync.applyRemote([{ c: 'members', d: { id: 11, orgId: 'orgX', openid: 'oX', role: 'teacher', clsIds: [1], updatedAt: 10 } }]);
+  db.sync.setCursor(0, 'orgX');
+  const api = require('../utils/api');
+  api.syncOn = () => true;
+  let call = 0;
+  const mV2 = { c: 'members', d: { id: 11, orgId: 'orgX', openid: 'oX', role: 'teacher', clsIds: [1, 2], name: '老师', updatedAt: 20 }, srvAt: 110 };
+  const rec = { c: 'records', d: { id: 1, orgId: 'orgX', cid: 2, sid: 1, note: '新班的历史记录', updatedAt: 30 }, srvAt: 150 };
+  api.syncCall = (action) => {
+    if (action !== 'pull') return Promise.resolve({ ok: true });
+    call++;
+    // 每次都返回：被分了 2 班 + 新班的历史（历史数据的 srvAt 早就过去，只有归零重拉才拿得到）
+    return Promise.resolve({ ok: true, more: false, cursor: 100, docs: [mV2, rec] });
+  };
+  const sync = require('../utils/sync');
+  const r = await sync.pullNow('orgX');
+  assert.ok(r.more === false);
+  // 第 1 次拉到范围变化 → 游标归零 → 第 2 次重拉。没有重拉的话新班历史永远拉不到。
+  assert.strictEqual(call, 2, '应自动重拉一轮，实际调用 ' + call + ' 次');
+  assert.deepStrictEqual(db.sync.rescoped(), [], '重拉完成后标记要消费掉');
+  assert.ok(db.sync.cursor('orgX') >= 150, '游标推进到重拉后的最新位置');
+  assert.ok((db.real().records || []).some(x => x.note === '新班的历史记录'), '新班的历史记录要进本机');
+});
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {

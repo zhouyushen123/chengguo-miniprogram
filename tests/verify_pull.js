@@ -21,7 +21,12 @@ function match(row, cond) {
     const c = cond[k];
     if (c && typeof c === 'object' && '$gt' in c) return Number(row[k] || 0) > c.$gt;
     if (c && typeof c === 'object' && '$eq' in c) return row[k] === c.$eq;
-    if (c && typeof c === 'object' && '$in' in c) return c.$in.map(String).indexOf(String(row[k])) > -1;
+    if (c && typeof c === 'object' && '$in' in c) {
+      // 数组字段（如 students.clsIds）＝交集即命中；普通字段＝成员命中
+      const vals = c.$in.map(String);
+      if (Array.isArray(row[k])) return row[k].some(x => vals.indexOf(String(x)) > -1);
+      return vals.indexOf(String(row[k])) > -1;
+    }
     if (c && typeof c === 'object' && '$ne' in c) return row[k] !== c.$ne;
     return row[k] === c;
   });
@@ -129,10 +134,10 @@ async function pullAll(since) {
   await ok('同一时间戳正好跨在 100 条边界上：一条都不漏', async () => {
     reset();
     // 98 条同一时刻（旧版本批量写入的样子）+ 5 条更晚的
-    for (let i = 0; i < 98; i++) rowsOf('records').push({ _id: 'a' + i, orgId: 'org1', id: 1000 + i, srvAt: 1000 });
-    for (let i = 0; i < 5; i++) rowsOf('records').push({ _id: 'b' + i, orgId: 'org1', id: 2000 + i, srvAt: 2000 });
+    for (let i = 0; i < 98; i++) rowsOf('records').push({ _id: 'a' + i, orgId: 'org1', id: 1000 + i, cid: 1, srvAt: 1000 });
+    for (let i = 0; i < 5; i++) rowsOf('records').push({ _id: 'b' + i, orgId: 'org1', id: 2000 + i, cid: 1, srvAt: 2000 });
     // 另外还有别的集合的数据，混在一起更接近真实情况
-    rowsOf('students').push({ _id: 's1', orgId: 'org1', id: 1, name: '小明', srvAt: 1500 });
+    rowsOf('students').push({ _id: 's1', orgId: 'org1', id: 1, name: '小明', clsIds: [1], srvAt: 1500 });
 
     const all = await pullAll(0);
     const recIds = all.filter(x => x.c === 'records').map(x => x.d.id);
@@ -143,8 +148,8 @@ async function pullAll(since) {
 
   await ok('游标只停在"确定完整"的位置（不会跳过没取完的那一组）', async () => {
     reset();
-    for (let i = 0; i < 98; i++) rowsOf('records').push({ _id: 'a' + i, orgId: 'org1', id: 1000 + i, srvAt: 1000 });
-    for (let i = 0; i < 5; i++) rowsOf('records').push({ _id: 'b' + i, orgId: 'org1', id: 2000 + i, srvAt: 2000 });
+    for (let i = 0; i < 98; i++) rowsOf('records').push({ _id: 'a' + i, orgId: 'org1', id: 1000 + i, cid: 1, srvAt: 1000 });
+    for (let i = 0; i < 5; i++) rowsOf('records').push({ _id: 'b' + i, orgId: 'org1', id: 2000 + i, cid: 1, srvAt: 2000 });
 
     const first = await syncv2.main({ action: 'pull', orgId: 'org1', since: 0 });
     assert.strictEqual(first.more, true, '应该告诉客户端还有');
@@ -154,7 +159,7 @@ async function pullAll(since) {
 
   await ok('150 条不同时间戳：分两轮拉完，顺序与条数都对', async () => {
     reset();
-    for (let i = 0; i < 150; i++) rowsOf('records').push({ _id: 'r' + i, orgId: 'org1', id: 3000 + i, srvAt: 5000 + i });
+    for (let i = 0; i < 150; i++) rowsOf('records').push({ _id: 'r' + i, orgId: 'org1', id: 3000 + i, cid: 1, srvAt: 5000 + i });
     const all = await pullAll(0);
     const ids = all.filter(x => x.c === 'records').map(x => x.d.id).sort((a, b) => a - b);
     assert.strictEqual(ids.length, 150);
@@ -164,7 +169,7 @@ async function pullAll(since) {
 
   await ok('重复拉同一段不会产生重复（客户端幂等的前提）', async () => {
     reset();
-    for (let i = 0; i < 10; i++) rowsOf('records').push({ _id: 'r' + i, orgId: 'org1', id: 4000 + i, srvAt: 9000 + i });
+    for (let i = 0; i < 10; i++) rowsOf('records').push({ _id: 'r' + i, orgId: 'org1', id: 4000 + i, cid: 1, srvAt: 9000 + i });
     const a = await pullAll(0);
     const b = await pullAll(0);
     assert.strictEqual(a.length, b.length);
@@ -247,6 +252,68 @@ async function pullAll(since) {
     assert.ok(r.ok, JSON.stringify(r));
     assert.strictEqual(r.docs.length, 0, '被移除的人不能再拉到任何数据');
     assert.strictEqual(r.code, 'NO_MEMBER');
+  });
+
+  console.log('\n【老师按班级订阅（2026-11-09 架构体检 A1：存储量从机构规模变班级规模）】');
+
+  await ok('老师只拉自己带的班：学生/记录/班级/报名四个集合都按班级收窄', async () => {
+    reset();
+    rowsOf('members').length = 0;
+    rowsOf('members').push(
+      { _id: 'm1', orgId: 'org1', openid: OPENID, role: 'teacher', status: 'active', removed: false, clsIds: [1], id: 101, srvAt: 1500 }
+    );
+    rowsOf('students').push(
+      { _id: 's1', orgId: 'org1', id: 1, name: '自己班的孩子', clsIds: [1], srvAt: 1500 },
+      { _id: 's2', orgId: 'org1', id: 2, name: '别的班的孩子', clsIds: [2], srvAt: 1500 }
+    );
+    rowsOf('classes').push(
+      { _id: 'c1', orgId: 'org1', id: 1, name: '我的班', srvAt: 1500 },
+      { _id: 'c2', orgId: 'org1', id: 2, name: '别人的班', srvAt: 1500 }
+    );
+    rowsOf('records').push(
+      { _id: 'r1', orgId: 'org1', id: 100, sid: 1, cid: 1, sent: true, srvAt: 2000, note: '我班的记录' },
+      { _id: 'r2', orgId: 'org1', id: 101, sid: 2, cid: 2, sent: true, srvAt: 2100, note: '别班的记录' }
+    );
+    rowsOf('enrollments').push(
+      { _id: 'e1', orgId: 'org1', id: 201, clsId: 1, studentId: 1, status: 'active', srvAt: 1500 },
+      { _id: 'e2', orgId: 'org1', id: 202, clsId: 2, studentId: 2, status: 'active', srvAt: 1500 }
+    );
+    const r = await syncv2.main({ action: 'pull', orgId: 'org1', since: 0 });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.deepStrictEqual(r.docs.filter(x => x.c === 'students').map(x => x.d.id), [1], '学生只给本班的');
+    assert.deepStrictEqual(r.docs.filter(x => x.c === 'classes').map(x => x.d.id), [1], '班级只给本班');
+    assert.deepStrictEqual(r.docs.filter(x => x.c === 'records').map(x => x.d.id), [100], '记录只给本班');
+    assert.deepStrictEqual(r.docs.filter(x => x.c === 'enrollments').map(x => x.d.id), [201], '报名只给本班');
+    // members 老师保持全量（机构通讯录口径）
+    assert.deepStrictEqual(r.docs.filter(x => x.c === 'members').map(x => x.d.id), [101]);
+  });
+
+  await ok('老师没分班 = fail-closed：四个集合一条都不给', async () => {
+    rowsOf('members')[0].clsIds = [];
+    const r = await syncv2.main({ action: 'pull', orgId: 'org1', since: 0 });
+    assert.ok(r.ok, JSON.stringify(r));
+    ['students', 'classes', 'records', 'enrollments'].forEach(c => {
+      assert.strictEqual(r.docs.filter(x => x.c === c).length, 0, c + ' 应为空');
+    });
+  });
+
+  await ok('家长报名按 studentId 过滤（不是按自己的 id：那会把别人的账单当自己的）', async () => {
+    reset();
+    rowsOf('members').length = 0;
+    rowsOf('members').push(
+      { _id: 'm2', orgId: 'org1', openid: OPENID, role: 'parent', status: 'active', removed: false, studentIds: [1], clsIds: [], id: 102, srvAt: 1500 }
+    );
+    rowsOf('students').push(
+      { _id: 's1', orgId: 'org1', id: 1, name: '自家孩子', clsIds: [11], srvAt: 1500 }
+    );
+    // 陷阱：报名 id 恰好等于别家孩子的 sid，旧实现（按 id 过滤）会误放行
+    rowsOf('enrollments').push(
+      { _id: 'e1', orgId: 'org1', id: 2, clsId: 11, studentId: 1, status: 'active', srvAt: 1500 },
+      { _id: 'e2', orgId: 'org1', id: 1, clsId: 22, studentId: 2, status: 'active', srvAt: 1500 }
+    );
+    const r = await syncv2.main({ action: 'pull', orgId: 'org1', since: 0 });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.deepStrictEqual(r.docs.filter(x => x.c === 'enrollments').map(x => x.d.id), [2], '只能拉到自家孩子的报名');
   });
 
   console.log('\n全部 ' + pass + ' 项拉取断言通过');

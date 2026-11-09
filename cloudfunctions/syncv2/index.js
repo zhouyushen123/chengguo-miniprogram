@@ -815,13 +815,20 @@ exports.main = async (event) => {
      * 姓名、家长手机号、老师 openid、未发布草稿、照片 fileID 全在里面；前端的
      * permissions.js 只是显示层过滤，数据那一刻已经落盘。闸门必须移到查询层：
      *   家长   → 只拉自家孩子 + 这些孩子所在班级 + 自己那条成员 + 自家孩子的已发布记录
+     *   老师   → 只拉自己带的班（students/records/enrollments/classes 四个集合按班级收窄；
+     *            没分班 = 什么都拉不到，fail-closed，与 permissions.js 同语义）。
+     *            这是「按班级订阅」：老师手机的存储量从机构规模变成班级规模，机构再大也不怕。
+     *   负责人/管理员 → 全量（他们本来就管全机构，members 通讯录也要看）
      *   无身份（成员表没有我 / 已被移除或停用）→ 什么都不拉（fail-closed）
-     * 游标是过滤条件的函数：家长新绑孩子时客户端会重置该机构游标重拉（utils/sync.js）。
+     * 游标是过滤条件的函数：家长新绑孩子、老师新分班时客户端会重置该机构游标重拉（utils/sync.js）。
      */
     const rawMe = await memberOf(OPENID, orgId);
     const me = aliveMember(rawMe) ? rawMe : null;
     if (!me) return { ok: true, docs: [], cursor: since, more: false, code: 'NO_MEMBER' };
     const isParent = me.role === 'parent';
+    const isMgr = me.role === 'owner' || me.role === 'admin';
+    const myCls = me.role === 'teacher'
+      ? (Array.isArray(me.clsIds) ? me.clsIds : []).map(Number).filter(n => n > 0) : null;
     const kidIds = (Array.isArray(me.studentIds) ? me.studentIds : []).map(Number).filter(n => n > 0);
     let kidCls = null;
     if (isParent) {
@@ -839,15 +846,28 @@ exports.main = async (event) => {
     let more = false;
     for (const c of COLLS) {
       let r = { data: [] };
-      // 家长的可见范围（非家长保持原全量口径：老师/负责人本来就管全机构）
+      // 各角色的可见范围（负责人/管理员保持全量口径）
       const where = { orgId, srvAt: _.gt(since) };
       if (isParent) {
-        if (c === 'students' || c === 'enrollments') { where.id = _.in(kidIds); }
+        if (c === 'students') { where.id = _.in(kidIds); }
+        else if (c === 'enrollments') { where.studentId = _.in(kidIds); } // 报名按孩子过滤（字段是 studentId）
         else if (c === 'records') { where.sid = _.in(kidIds); where.sent = true; } // 草稿不给家长
         else if (c === 'members') { where.openid = OPENID; }                       // 只要自己那条
         else if (c === 'classes') { if (!kidCls.length) continue; where.id = _.in(kidCls); }
         // orgs/terms/courses/class_courses/subjects/knowledge_points/templates：
         // 机构配置与模板，不含个人信息、家长端展示需要 → 保持全量
+      } else if (myCls) {
+        // 老师：按班级订阅。没分班（fail-closed）时这四个集合直接不查。
+        if (c === 'students' || c === 'classes' || c === 'enrollments' || c === 'records') {
+          if (!myCls.length) continue;
+          if (c === 'students') where.clsIds = _.in(myCls);        // 学生可跨班：数组交叠即命中
+          else if (c === 'records') where.cid = _.in(myCls);
+          else if (c === 'enrollments') where.clsId = _.in(myCls);
+          else if (c === 'classes') where.id = _.in(myCls);
+        }
+        // members：老师保持全量 —— 机构通讯录（同事/家长联系方式）是老师日常沟通要用的，
+        // 与前端展示口径一致；家长才是被收窄到自己那条的那个人。
+        // 其余配置集合（terms/courses/subjects…）同样保持全量：不含个人信息、展示需要。
       }
       // 首次部署集合可能不存在：跳过一次并在下一轮补建（pull 不能因为一个集合报错全挂）
       try {

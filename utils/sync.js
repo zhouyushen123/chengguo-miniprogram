@@ -121,9 +121,15 @@ function claim(openid, adopted) {
 // 拉不完就停会让"看起来同步了、其实少了几百条"这种最难查的问题出现。
 const PULL_ROUNDS = 20;
 // only：指定拉哪一家（新增第二家机构时用）。不传就是"当前机构"。
+// 【重拉保护】 rescoped 重置游标后最多再全量拉一轮。第二轮里成员范围不会再变
+//（同一张工牌），所以不会无限循环；万一真变了（连续两次改分工），留到下一轮
+// 前台同步再拉，宁可慢一点也不要在后台转圈。
 function pullNow(only) {
   const useOrg = String(only || targetOrg());
-  let round = 0, added = 0, updated = 0;
+  // 启动时兜底：上次拉到了"我的范围变了"但还没来得及重拉（杀进程/断网），
+  // rescoped 落在 meta 里没丢，这里先归零再拉。
+  if (db.sync.rescoped().indexOf(useOrg) > -1) db.sync.setCursor(0, useOrg);
+  let round = 0, added = 0, updated = 0, repull = false;
   const step = () => {
     if (round++ >= PULL_ROUNDS) return Promise.resolve({ added, updated, more: true });
     return api.syncCall('pull', { orgId: useOrg, since: db.sync.cursor(useOrg) }).then(r => {
@@ -135,10 +141,23 @@ function pullNow(only) {
       added += st.added; updated += st.updated;
       const next = Math.max(syncmerge.cursorOf(r.docs, db.sync.cursor(useOrg)), Number(r.cursor) || 0);
       if (next) db.sync.setCursor(next, useOrg);
+      // 工牌范围变了（新分班/新绑孩子）：这一批已经合并完，范围变更已生效。
+      // 游标归零再整轮重拉，把新范围的历史数据补齐（第二轮里范围不会再变，
+      // 同一张工牌不可能在同一批里改两次；万一真变了留给下次前台同步）。
+      if (!repull && db.sync.rescoped().indexOf(useOrg) > -1) {
+        repull = true;
+        db.sync.setCursor(0, useOrg);
+        round = 0;
+        return step();
+      }
       return r.more ? step() : { added, updated, more: false };
     });
   };
-  return step();
+  // 拉完消费掉标记；拉失败抛出时不消费，标记留在 meta 里，下次同步开头会再归零重拉
+  return step().then(out => {
+    db.sync.clearRescoped(useOrg);
+    return out;
+  });
 }
 
 /* ---------------- 自动上推：四条路，一条都不能少 ----------------

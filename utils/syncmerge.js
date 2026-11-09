@@ -4,6 +4,20 @@
 // 时间戳相同时按「活着的优先」决胜（见 pickWinner 里的说明），不让一次时间撞车静默抹掉数据。
 // 删除是软删（removed:true 是普通字段），所以"谁删的晚"同样按 updatedAt 决胜。
 //
+// 【败者不静默消失】LWW 的代价是"输的那一版没了"。mergeList 在判负且两版内容
+// 真不同时把败者收进 conflicts 返回，由数据层存进本地副本（meta.sync.conflicts），
+// 人可以找回（写入方以当前时间戳写回即重新胜出）。判负但内容相同（只是 srvAt
+// 推进）不算冲突，否则每轮普通同步都会误报。
+
+// 稳定序列化：键排序后比对，键序不同不算内容不同（云端回推的键序不保证与本地一致）。
+// updatedAt 不参与比对：它只表达"谁更新"，不表达"内容"——内容一样只是时间戳
+// 变化的覆盖（如空转写回）没有丢失任何东西，不该报冲突。
+function stableOf(d) {
+  if (!d || typeof d !== 'object') return String(d);
+  return Object.keys(d).filter(k => k !== 'updatedAt').sort()
+    .map(k => k + ':' + (d[k] && typeof d[k] === 'object' ? stableOf(d[k]) : String(d[k]))).join(';');
+}
+//
 // 【为什么不做字段级合并】评语、分数是整段写的，字段级合并会把 A 老师的分数和 B 老师的评语
 // 拼成一条谁都没写过的记录。整条覆盖 + 明确的更新时间，行为可预期得多。
 
@@ -45,15 +59,21 @@ function mergeList(localList, remoteList) {
   const idx = {};
   list.forEach((d, i) => { const k = docKey(d); if (k) idx[k] = i; });
   let added = 0, updated = 0;
+  const conflicts = [];
   (remoteList || []).forEach(rd => {
     const k = docKey(rd);
     if (!k) return;
     const i = idx[k];
     if (i === undefined) { list.push(rd); idx[k] = list.length - 1; added++; return; }
     const win = pickWinner(list[i], rd);
-    if (win !== list[i]) { list[i] = win; updated++; }
+    if (win !== list[i]) {
+      // 内容真不同才留副本：updatedAt 一样但同活/同删时 pickWinner 取远端，
+      // 这种"同一秒的两版"也值得留底；内容一致只是 srvAt 变化则不算。
+      if (stableOf(list[i]) !== stableOf(rd)) conflicts.push(list[i]);
+      list[i] = win; updated++;
+    }
   });
-  return { list, added, updated };
+  return { list, added, updated, conflicts };
 }
 
 // 把推送批次切成每包 n 条（云函数入参有大小上限，记录多了要分批）

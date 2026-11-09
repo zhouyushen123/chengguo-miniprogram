@@ -72,7 +72,7 @@ let db = freshDb();
 db.init();
 const cls = db.classes.create({ name: '照片分拣班' }).item;
 const stus = ['周诺昭', '李明', '王小虎'].map(n => db.students.create({ name: n, clsIds: [cls.id] }).item);
-const page = loadPage('pages/batch/batch.js');
+const page = loadPage('pkg-low/batch/batch.js');
 page.onLoad({ id: String(cls.id) });
 
 const tests = [];
@@ -248,7 +248,7 @@ t('D01 草稿带照片池、分配关系与共用开关', () => {
   assert.ok(Array.isArray(d.rows) && d.rows.every(r => Array.isArray(r.photos)));
 });
 t('D02 重进页面恢复草稿，不用重选图重分', () => {
-  const p2 = loadPage('pages/batch/batch.js');
+  const p2 = loadPage('pkg-low/batch/batch.js');
   p2.onLoad({ id: String(cls.id) });
   assert.deepStrictEqual(p2.data.photos, page.data.photos);
   assert.strictEqual(p2.data.shared, true);
@@ -296,8 +296,8 @@ t('D05 共用 + 超过 9 张：落库时每人截断到 9 张', () => {
   assert.ok(added.every(r => new Set(r.photos).size === 9), '不能有重复路径');
 });
 t('D06 源码守卫：持久化、上云去重、删除清引用都在链路上', () => {
-  const js = read('pages/batch/batch.js');
-  const wxml = read('pages/batch/batch.wxml');
+  const js = read('pkg-low/batch/batch.js');
+  const wxml = read('pkg-low/batch/batch.wxml');
   const cloud = read('utils/photocloud.js');
   assert.ok(/media\.persist\(/.test(js), '选图必须转存，不能留临时路径');
   assert.ok(/photocloud\.flushBatch\(/.test(js), '保存后必须后台统一上云');

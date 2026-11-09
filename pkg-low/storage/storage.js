@@ -51,6 +51,8 @@ Page({
     cbShow: true, cbBusy: false, cbHint: '读取中…',
     // 被云端拒绝的改动：本地改成功了、云端没接受，不说出来就是静默不一致
     rejects: [], rejectCount: 0, trashCount: 0,
+    // 被覆盖的本地改动（LWW 冲突败者副本）：不是丢了，是存在这里，可以找回
+    conflicts: [], conflictCount: 0,
     rawRows: [],
     dirtyCount: 0, syncHint: '', syncBusy: false
   },
@@ -148,20 +150,41 @@ Page({
     });
   },
 
-  // 同步被拒 + 回收站条数：都是"数据没在预期位置"的信号，放在一起看
+  // 同步被拒 + 回收站 + 冲突副本条数：都是"数据没在预期位置"的信号，放在一起看
   refreshRejects() {
     let list = [];
     let trash = 0;
+    let clist = [];
     try { list = db.sync.rejects() || []; } catch (e) { list = []; }
     try { const r = db.trash.list(); trash = (r && r.ok) ? r.total : 0; } catch (e) { trash = 0; }
+    try { clist = db.sync.conflicts() || []; } catch (e) { clist = []; }
+    const CLS = { records: '记录', students: '学生', members: '成员', classes: '班级', courses: '课程', enrollments: '报名', terms: '学期' };
     this.setData({
       rejectCount: list.length,
       rejects: list.slice(0, 5).map((x, i) => ({ idx: i, msg: x.msg || x.code, time: fmtTime(x.at) })),
-      trashCount: trash
+      trashCount: trash,
+      conflictCount: clist.length,
+      conflicts: clist.slice(0, 5).map((x, i) => ({
+        idx: i, time: fmtTime(x.at),
+        text: (CLS[x.c] || x.c) + '「' + ((x.loser && (x.loser.name || x.loser.note || x.loser.id)) || '') + '」的旧版本'
+      }))
     });
   },
 
-  goTrash() { wx.navigateTo({ url: '/pages/trash/trash' }); },
+  // 找回被覆盖的那一版：以当前时间写回，下一轮同步会重新胜出
+  restoreConflict(e) {
+    const i = e.currentTarget.dataset.i;
+    const res = db.sync.restoreConflict(i);
+    wx.showToast({ title: res && res.ok ? '已找回，会重新同步' : ((res && res.msg) || '找回失败'), icon: 'none' });
+    this.refreshRejects();
+  },
+
+  clearConflicts() {
+    try { db.sync.clearConflicts(); } catch (e) { /* 清不掉也不影响业务 */ }
+    this.refreshRejects();
+  },
+
+  goTrash() { wx.navigateTo({ url: '/pkg-low/trash/trash' }); },
 
   clearRejects() {
     try { db.sync.clearRejects(); } catch (e) { /* 清不掉也不影响业务 */ }

@@ -137,6 +137,40 @@ ok('家长确认第二张卡时重置该机构游标（新孩子要拉回历史�
   assert.ok(/setCursor\(0, target\)/.test(seg), '游标重置必须发生在「再加一家」分支里');
 });
 
+console.log('\n【架构体检收口（2026-11-09 A1/A3）】');
+
+ok('aiEval 的 HTTP 传输层只有一份（callGLM 去重后不许再复制粘贴）', () => {
+  const src = read('cloudfunctions/aiEval/index.js');
+  const n = (src.match(/https\.request\(/g) || []).length;
+  assert.strictEqual(n, 1, 'https.request 出现 ' + n + ' 次，只允许 callGLMApi 一处');
+  assert.ok(/function callGLMApi/.test(src), '公共传输层必须叫 callGLMApi（可被守卫引用）');
+  ['callGLMText', 'callGLM'].forEach(fn => {
+    const i = src.indexOf('function ' + fn);
+    const seg = src.slice(i, src.indexOf('function', i + 1) > -1 ? src.indexOf('function', i + 1) : i + 600);
+    assert.ok(/callGLMApi\(/.test(seg), fn + ' 必须复用公共传输层');
+  });
+});
+
+ok('老师 pull 按班级订阅：四个集合都带班级过滤，没分班直接跳过', () => {
+  const src = read('cloudfunctions/syncv2/index.js');
+  const i = src.indexOf('老师：按班级订阅');
+  assert.ok(i > -1, '缺老师订阅段');
+  const seg = src.slice(i, i + 700);
+  ['students', 'classes', 'enrollments', 'records'].forEach(c => {
+    assert.ok(new RegExp("c === '" + c + "'").test(seg), c + ' 要在按班收窄清单里');
+  });
+  assert.ok(/myCls\.length\) continue/.test(seg), '没分班（fail-closed）要直接跳过');
+});
+
+ok('工牌范围变化 → 游标重拉链路齐备（applyRemote 检测 + pullNow 消费）', () => {
+  const dbSrc = read('utils/db/sync.js');
+  assert.ok(/addRescoped\(/.test(dbSrc), '数据层要能记「范围变了」的机构');
+  const sSrc = read('utils/sync.js');
+  const seg = sSrc.slice(sSrc.indexOf('function pullNow'), sSrc.indexOf('function flush'));
+  assert.ok(/rescoped\(\)/.test(seg), 'pullNow 要消费 rescoped');
+  assert.ok(/setCursor\(0, useOrg\)/.test(seg), '消费后要把该机构游标归零重拉');
+});
+
 console.log('');
 console.log((fail ? '有 ' + fail + ' 项失败' : '全部 ' + pass + ' 项服务端权限断言通过'));
 console.log('verify_server_guard: ' + pass + ' passed, ' + fail + ' failed');

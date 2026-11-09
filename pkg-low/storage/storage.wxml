@@ -52,6 +52,14 @@
       <view class="btn clean" hover-class="btn-hover" bindtap="clearRejects">知道了，隐藏</view>
     </view>
 
+    <!-- 被覆盖的本地改动（LWW 冲突败者）：副本在这里，可以整条找回 -->
+    <view wx:if="{{conflictCount}}" class="card">
+      <view class="sec"><view class="label">被覆盖的改动</view><view class="sechint">{{conflictCount}} 版</view></view>
+      <view wx:for="{{conflicts}}" wx:key="idx" class="hint note" data-i="{{item.idx}}" bindtap="restoreConflict">· {{item.text}}（{{item.time}}）<text class="lnk"> 点此找回</text></view>
+      <view class="hint note">别人（或另一台设备）后保存的同一条内容覆盖了这一版。副本留在本机，点「找回」会以最新时间写回并重新同步；不需要就忽略。</view>
+      <view class="btn clean" hover-class="btn-hover" bindtap="clearConflicts">不需要，隐藏</view>
+    </view>
+
     <!-- 数据体检：两层 —— ① 人和机构本身对不对 ② 它们之间的连线有没有指着空气 -->
     <view class="card">
       <view class="sec">

@@ -1721,3 +1721,52 @@ Major-3（callGLM/callGLMText 去重复）留待下次动 aiEval 时一起做。
 - mp.weixin.qq.com → 版本管理 → **把 1148 设为体验版**。
 - 真机回归重点：家长账号确认卡 → 只能看到自家孩子；老师正常录课/发布不受影响；
   被移除的成员不再收到新数据。
+
+## 2026-11-09（五）架构体检七项全部落地（1149）
+
+来源：`docs/architecture-review-2026-11-09.md` 的 A1~A7，用户拍板「全部都要改」。
+
+### A1 老师端 pull 按班级订阅（最重要）
+- syncv2 pull：老师只拉自己带的班（students/records/enrollments/classes 四集合按班级过滤，
+  没分班 fail-closed 一条不给）；负责人/管理员保持全量。**顺手修了 1148 的一个真 bug**：
+  家长 enrollments 过滤字段误写 `id`（应为 `studentId`）——别人的账单会误当自己的下发。
+- 客户端：`applyRemote` 检测「我的工牌范围变化」（新分班/新绑孩子）→ 记入
+  `meta.sync.rescoped`（杀进程不丢）→ `pullNow` 把该机构游标归零自动重拉一轮。
+  没有这一步，新分到的班的历史数据永远拉不下来（游标已越过）。
+- 守卫：verify_pull 13 项（老师收窄/空班 fail-closed/报名字段陷阱）、
+  verify_sync +5 项（rescoped 检测与 pullNow 重拉）、verify_server_guard +3 项。
+
+### A2 LWW 败者副本（不静默丢失）
+- `syncmerge.mergeList` 判负且内容真不同（键序无关、updatedAt 不算内容）时交出败者；
+  `db.sync` 存进 `meta.sync.conflicts`（上限 20）；存储页新卡片「被覆盖的改动」
+  可查看、**点行找回**（以当前时间写回重新胜出）、可忽略。
+
+### A3 callGLM 去重（M-3 收口）
+- 抽 `callGLMApi` 公共传输层，callGLM/callGLMText 只剩 body 差异；守卫断言全文件
+  `https.request` 只允许出现 1 处。
+
+### A4 低频六页拆分包
+- batch/tpls/import/trash/storage/terms → `pkg-low/`（git mv 保留历史）；
+  主包 1367→**1269KB（62.0%）**，分包 109KB。`tools/size.js` 升级为分包感知
+  （主包/分包分别限 2MB，口径与上传一致）。
+
+### A5 遗留物清理 + 冻结清单
+- 删 `cloudfunctions/sync`（旧版，无调用方；**云端函数实例需在控制台手动删**）；
+  清 `.workbuddy/_plat*.js` 3.4MB 草稿；新建 `docs/freeze-list.md` 废弃日历。
+
+### A6 五篇 ADR
+- `docs/adr/`：local-first / LWW / 软删回收站 / 权限双层守卫 / 多机构+按班级订阅。
+
+### A7 部署脚本支持 staging
+- `npm run cloud -- --env <id>`（或 WX_ENV 环境变量）；用法与控制台开环境步骤
+  见 `docs/staging-env.md`。环境本身需控制台手动创建（拉新用户前做）。
+
+### 验证与发布
+- lint 0 提醒；**全部测试套件通过**（verify_pull 13、verify_sync 28、server_guard 16）。
+- syncv2、aiEval 已重新部署；**1149 已上传**。
+
+### 待人工
+- mp.weixin.qq.com → 版本管理 → **把 1149 设为体验版**。
+- 真机重点：老师账号正常录课/发布；被分新班后历史记录能自动补齐；
+  两台设备改同一条记录 → 存储页出现「被覆盖的改动」且可找回。
+- 控制台顺手删掉旧 `sync` 云函数实例（本仓库已删，云端不会自动卸载）。

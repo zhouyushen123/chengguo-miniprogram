@@ -20,8 +20,11 @@ const P = p => path.join(ROOT, p);
 let pass = 0;
 const ok = (name, fn) => { fn(); pass++; console.log('  ✓ ' + name); };
 
-function wxml(page) { return fs.readFileSync(P('pages/' + page + '/' + page + '.wxml'), 'utf8'); }
-function pageJs(page) { return fs.readFileSync(P('pages/' + page + '/' + page + '.js'), 'utf8'); }
+// 低频六页已拆到 pkg-low 分包，其余仍在 pages/
+const SUB = new Set(['batch', 'tpls', 'import', 'trash', 'storage', 'terms']);
+const pageDir = page => (SUB.has(page) ? 'pkg-low/' : 'pages/') + page + '/' + page;
+function wxml(page) { return fs.readFileSync(P(pageDir(page) + '.wxml'), 'utf8'); }
+function pageJs(page) { return fs.readFileSync(P(pageDir(page) + '.js'), 'utf8'); }
 
 // [页面, 事件, 文案(数组，空表示不校验), 说明]
 // 第 3 项只放**界面上真实出现的字**：数据驱动的文案会在 wxml 或 js 的数组里找到。
@@ -228,12 +231,21 @@ const CHAPTERS = [
 console.log('· 手册与用例的功能点存在性');
 
 /* ---------------- 1. 页面文件齐不齐 ---------------- */
-ok('app.json 里 18 个页面都有 wxml/js/json/wxss 四件套', () => {
+ok('主包 15 页 + 分包 6 页都有 wxml/js/json/wxss 四件套', () => {
   const app = JSON.parse(fs.readFileSync(P('app.json'), 'utf8'));
-  assert.ok(app.pages.length >= 18, '页面数异常：' + app.pages.length);
+  assert.strictEqual(app.pages.length, 15, '主包页面数异常：' + app.pages.length);
+  assert.strictEqual(app.subPackages.length, 1, '应有 1 个低频页分包');
+  const sub = app.subPackages[0];
+  assert.strictEqual(sub.root, 'pkg-low');
+  assert.strictEqual(sub.pages.length, 6, '分包页面数异常：' + sub.pages.length);
   app.pages.forEach(p => {
     ['wxml', 'js', 'json', 'wxss'].forEach(ext => {
       assert.ok(fs.existsSync(P(p + '.' + ext)), '缺文件：' + p + '.' + ext);
+    });
+  });
+  sub.pages.forEach(p => {
+    ['wxml', 'js', 'json', 'wxss'].forEach(ext => {
+      assert.ok(fs.existsSync(P(sub.root + '/' + p + '.' + ext)), '缺文件：' + sub.root + '/' + p + '.' + ext);
     });
   });
 });
@@ -310,9 +322,9 @@ ok('手册承诺的能力都有实现支撑', () => {
   has('utils/dailybackup.js', /cg_bk_day/, '每日云端备份兜底');
   has('utils/db/factory.js', /repairIdentity/, '身份自愈');
   has('utils/phone.js', /fmt|digits/, '手机号格式化');
-  has('pages/trash/trash.js', /restore/, '回收站恢复');
-  has('pages/terms/terms.js', /wzGenerate/, '学期结转向导');
-  has('pages/import/import.js', /pickFile/, '表格导入');
+  has('pkg-low/trash/trash.js', /restore/, '回收站恢复');
+  has('pkg-low/terms/terms.js', /wzGenerate/, '学期结转向导');
+  has('pkg-low/import/import.js', /pickFile/, '表格导入');
 });
 
 console.log('\n全部 ' + pass + ' 项手册/用例守卫通过');

@@ -232,24 +232,21 @@ const db = {
     replaceAll: templates.tplReplaceAll
   },
   // 同步的数据层半边（网络编排在 utils/sync.js）：脏集合、推送快照、远端合并、游标
+  // 【为什么逐个登记】漏一个，pushNow 一成功就抛 "db.sync.xxx is not a function"，
+  // 脏集合清不掉 → 每次启动全量重推。新方法必须两边一起加。
   sync: {
     COLLS: syncStore.COLLS,
-    dirtyCols: syncStore.dirtyCols,
-    markDirty: syncStore.markDirty,
-    snapshot: syncStore.snapshot,
-    applyRemote: syncStore.applyRemote,
-    markAllDirty: syncStore.markAllDirty,
-    clearDirty: syncStore.clearDirty,
-    cursor: syncStore.cursor,
-    setCursor: syncStore.setCursor,
-    onDirty: syncStore.onDirty,
-    // 云端拒绝的改动（学号重号、微信已绑给别人…）：推送成功后要读它才能如实上报，
-    // 以前门面漏登记这三个，pushNow 一成功就抛 "db.sync.rejects is not a function"，
-    // 脏集合永远清不掉 —— 表现是每次启动都把整个机构重推一遍。
-    rejects: syncStore.rejects,
-    addRejects: syncStore.addRejects,
-    clearRejects: syncStore.clearRejects,
-    // 机构号换代：只在服务端刚发号（minted）时用，别的地方调用等于把两个机构的数据搅在一起
+    dirtyCols: syncStore.dirtyCols, markDirty: syncStore.markDirty,
+    snapshot: syncStore.snapshot, applyRemote: syncStore.applyRemote,
+    markAllDirty: syncStore.markAllDirty, clearDirty: syncStore.clearDirty,
+    cursor: syncStore.cursor, setCursor: syncStore.setCursor, onDirty: syncStore.onDirty,
+    // 云端拒绝的改动（学号重号、微信已绑给别人…）
+    rejects: syncStore.rejects, addRejects: syncStore.addRejects, clearRejects: syncStore.clearRejects,
+    // LWW 败者副本（可找回）与「我的范围变了」重拉标记
+    conflicts: syncStore.conflicts, addConflicts: syncStore.addConflicts,
+    clearConflicts: syncStore.clearConflicts, restoreConflict: syncStore.restoreConflict,
+    rescoped: syncStore.rescoped, clearRescoped: syncStore.clearRescoped,
+    // 机构号换代：只在服务端刚发号（minted）时用
     reorg: syncStore.reorg
   },
   // 设备级 meta 读写（仅同步层/身份层使用）

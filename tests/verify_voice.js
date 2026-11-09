@@ -95,7 +95,7 @@ ok('视觉与交互统一在 app.wxss，页面不再各写一套圆形麦克风'
 });
 ok('新接入的页面都接了 onMic，并在离开页面时关掉麦克风', () => {
   ['setup', 'batch', 'join'].forEach(d => {
-    const src = read('pages/' + d + '/' + d + '.js');
+    const src = read(d === 'batch' ? 'pkg-low/batch/batch.js' : 'pages/' + d + '/' + d + '.js');
     assert.ok(/onMic\(e\)\s*\{\s*voice\.dictate/.test(src), d + ' 缺 onMic');
     assert.ok(/onHide\(\)[\s\S]{0,120}voice\.stop\(this\)/.test(src), d + ' 缺 onHide 停录');
   });

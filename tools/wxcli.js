@@ -28,7 +28,11 @@ function requireCli() {
   return CLI;
 }
 
-function envId() {
+function envId(override) {
+  // 显式覆盖优先（staging 预发环境用）：--env 参数或 WX_ENV 环境变量。
+  // 覆盖值只影响本次部署，不改 utils/api.js（客户端仍指向生产环境）。
+  const o = override || process.env.WX_ENV;
+  if (o) return String(o);
   const src = fs.readFileSync(path.join(ROOT, 'utils/api.js'), 'utf8');
   const m = src.match(/CLOUD_ENV\s*=\s*['"]([^'"]+)['"]/);
   if (!m) {

@@ -147,7 +147,7 @@ ok('G05 语音说完搜索框会刷新候选；列表学号点一下可复制', 
 });
 
 /* ---------- H-20：预览是家长视角成果卡 ---------- */
-const tw = read('pages/tpls/tpls.wxml');
+const tw = read('pkg-low/tpls/tpls.wxml');
 ok('H-20 预览页是家长卡片结构，不再只有通知文本 + 附件列表', () => {
   ['pvcard', 'pvhead', 'pvscore', 'pvnote', 'pvfoot', '<ava '].forEach(c =>
     assert.ok(tw.indexOf(c) > -1, '缺 ' + c));
@@ -158,7 +158,7 @@ ok('H-20 预览页是家长卡片结构，不再只有通知文本 + 附件列�
 });
 
 const stu0 = db.students.list()[0];
-const tpls = loadPage('pages/tpls/tpls.js');
+const tpls = loadPage('pkg-low/tpls/tpls.js');
 ok('H-20 buildPreview 填出孩子/课程/分数/评语全文/媒体', () => {
   appInst.globalData.pick = {
     sid: stu0.id, cls: db.classes.list()[0].id, course: '素描', score: 92, tag: '优秀',

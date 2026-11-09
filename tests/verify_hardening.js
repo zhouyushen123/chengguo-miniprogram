@@ -426,7 +426,7 @@ console.log('\n【保存防重 + 存储空间页】');
   });
 
   ok('存储空间页：用量、可清理数量与一键清理都能跑通', () => {
-    const page = loadPage('pages/storage/storage.js');
+    const page = loadPage('pkg-low/storage/storage.js');
     page.onShow();
     assert.ok(page.data.kvText && page.data.kvText !== '0 B', '应显示结构化数据占用');
     assert.ok(typeof page.data.mdFiles === 'number');

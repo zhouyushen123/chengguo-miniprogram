@@ -76,6 +76,57 @@ function addRejects(list) {
   patchSync({ rejects: next.concat(rejects()).slice(0, 20) });
 }
 function clearRejects() { patchSync({ rejects: [] }); }
+
+/* ---------------- 冲突败者副本：LWW 的「不静默丢失」底线 ----------------
+ * 两台设备同时改同一条记录，后推的赢 —— 这是选定的策略（见 syncmerge），
+ * 但「输的那一版直接消失、没有任何痕迹」不行：老师 B 写了半小时的评语被
+ * 老师 A 的版本盖掉时，得有一份能找回来的副本，而不是让他以为自己没保存。
+ * 败者整份存进 meta.sync.conflicts（本地、不回推云端），上限 20 条、先进先出。
+ */
+const conflicts = () => (syncMeta().conflicts || []);
+function addConflicts(list) {
+  if (!list || !list.length) return;
+  const at = Date.now();
+  const next = list.map(x => ({ at, c: String(x.c || ''), id: x.id, loser: x.loser || null }));
+  patchSync({ conflicts: next.concat(conflicts()).slice(0, 20) });
+}
+function clearConflicts() { patchSync({ conflicts: [] }); }
+// 找回败者：以「现在」的时间戳写回，它会在下一轮推送里重新参战并胜出
+function restoreConflict(i) {
+  const all = conflicts();
+  const one = all[Number(i)];
+  if (!one || !one.loser) return { ok: false, msg: '副本不存在' };
+  const d = JSON.parse(JSON.stringify(one.loser));
+  d.updatedAt = Date.now();
+  d.removed = false;
+  const coll = core.coll(one.c) || [];
+  const at = coll.findIndex(x => x && String(x.orgId) === String(d.orgId) && String(x.id) === String(d.id));
+  if (at > -1) coll[at] = d; else coll.push(d);
+  if (!core.setColl(one.c, coll)) return { ok: false, msg: '写入失败' };
+  markDirty(one.c);
+  return { ok: true };
+}
+
+/* ---------------- 我的可见范围变了：游标必须归零 ----------------
+ * pull 的过滤条件现在按「我的角色与班级/孩子」计算（服务端收窄）。负责人给老师
+ * 新分了班（成员表 clsIds 变化）、家长被绑了新孩子（studentIds 变化）时，
+ * 新范围的历史数据 srvAt 早就过去、游标已越过 —— 不重置就永远拉不下来。
+ * 这里在合并远端成员时检测「我的工牌范围变化」，记进 meta（杀进程也不丢），
+ * 同步引擎（utils/sync.js）消费它：游标归零 + 再拉一轮。
+ */
+const scopeOf = m => (!m ? '' : [m.role, (m.clsIds || []).join(','), (m.studentIds || [])].join('|'));
+const myOpenid = () => String(core.realMeta().openid || '');
+const rescoped = () => (syncMeta().rescoped || []);
+function addRescoped(org) {
+  const o = String(org || '');
+  if (!o) return;
+  if (rescoped().indexOf(o) > -1) return;
+  patchSync({ rescoped: rescoped().concat([o]) });
+}
+function clearRescoped(org) {
+  const left = rescoped().filter(o => o !== String(org || ''));
+  patchSync({ rescoped: left });
+}
 // 首次上云：把当前机构的全部数据标脏，一次推完（幂等，重复标脏没有副作用）
 function markAllDirty() { patchSync({ dirty: COLLS.slice() }); }
 
@@ -119,17 +170,36 @@ function applyRemote(items) {
   const names = Object.keys(byColl);
   if (!names.length) return { ok: true, added: 0, updated: 0, failed: [] };
   const failed = [];
+  // 【合并前】留一份「我的工牌」快照：mergeList 是整条替换，合并后就找不到旧值了。
+  // 元素本身不被就地修改，拿引用比较是安全的。
+  const oid = myOpenid();
+  const mineBefore = oid
+    ? (core.coll('members') || []).filter(m => m && String(m.openid || '') === oid) : [];
   applying = true;
   try {
     names.forEach(c => {
       const res = syncmerge.mergeList(core.coll(c) || [], byColl[c]);
       added += res.added; updated += res.updated;
+      // LWW 判负但内容真不同的：留一份败者副本（不静默丢失，见 addConflicts 注释）
+      if (res.conflicts && res.conflicts.length) {
+        addConflicts(res.conflicts.map(d => ({ c, id: d.id, loser: d })));
+      }
       // 【落盘失败必须报出去】以前这里不看返回值：内存改了、磁盘没写进去，
       // 而调用方照样推进同步游标 —— 这批文档以后永远不会再被拉一次，
       // 表现就是"云端有、手机上没有"，重启后彻底消失。宁可这次同步报错重来。
       if ((res.added || res.updated) && !core.setColl(c, res.list)) failed.push(c);
     });
   } finally { applying = false; }
+  // 我的工牌范围被远端改了（新分班 / 新绑孩子 / 换角色）：把这家机构记进 rescoped，
+  // 同步引擎会把游标归零重拉 —— 不然新范围的历史数据永远拉不下来（游标已越过）。
+  // 多机构：逐张工牌比对（每家一条），不止当前这家。
+  if (oid) {
+    (byColl.members || []).forEach(rd => {
+      if (!rd || String(rd.openid || '') !== oid) return;
+      const before = mineBefore.find(m => String(m.orgId || '') === String(rd.orgId || ''));
+      if (before && scopeOf(before) !== scopeOf(rd)) addRescoped(rd.orgId);
+    });
+  }
   return { ok: failed.length === 0, added, updated, failed };
 }
 
@@ -169,5 +239,7 @@ function reorg(to) {
 
 module.exports = {
   COLLS, dirtyCols, markDirty, clearDirty, markAllDirty, snapshot, applyRemote,
-  cursor, setCursor, onWrite, onDirty, reorg, rejects, addRejects, clearRejects
+  cursor, setCursor, onWrite, onDirty, reorg, rejects, addRejects, clearRejects,
+  conflicts, addConflicts, clearConflicts, restoreConflict,
+  rescoped, clearRescoped
 };

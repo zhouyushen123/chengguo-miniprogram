@@ -99,7 +99,7 @@ const reset = (m) => { mode = m; calls = 0; };
     assert.ok(/timeout:\s*TIMEOUT_MS/.test(CF), '请求要带超时，不能无限挂着');
   });
   ok('批量评语也走同一个 aiEvalDraft，自动重试对它同样生效', () => {
-    const b = read('pages/batch/batch.js');
+    const b = read('pkg-low/batch/batch.js');
     assert.ok(/api\.aiEvalDraft\(\{\s*action:\s*'batch'/.test(b));
     assert.ok(/\.catch\(/.test(b), '三次都失败时批量页要有兜底');
   });

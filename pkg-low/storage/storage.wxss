@@ -50,3 +50,6 @@
 .sep { height: 2rpx; margin: 24rpx 0 8rpx; background: var(--chip); }
 .btnrow { display: flex; gap: 16rpx; margin-top: 22rpx; }
 .btnrow .btn { flex: 1; margin-top: 0; }
+
+/* 被覆盖的改动：行内找回入口（link 色 + 下划线感） */
+.lnk { color: #576b95; }

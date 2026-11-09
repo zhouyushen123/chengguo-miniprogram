@@ -193,7 +193,7 @@ Page({
       }
     });
   },
-  goTpls() { wx.navigateTo({ url: '/pages/tpls/tpls?mode=select' }); },
+  goTpls() { wx.navigateTo({ url: '/pkg-low/tpls/tpls?mode=select' }); },
 
   // AI 评：先让老师把"这节课想让人看见什么"勾一下，再交给 aiEval 生成。
   // 以前是直接把照片丢给模型：它不知道这孩子学什么、上次写到哪、今天想让他被夸什么，
@@ -461,7 +461,7 @@ Page({
     pick.photos = this.data.photos.slice();
     pick.videos = this.data.videos.slice();
     pick.audio = this.data.audio || null;
-    wx.navigateTo({ url: '/pages/tpls/tpls?mode=preview' });
+    wx.navigateTo({ url: '/pkg-low/tpls/tpls?mode=preview' });
   },
   save(e) {
     // 【防重】保存是同步的，但成功后有 800ms 的停留再返回上一页。

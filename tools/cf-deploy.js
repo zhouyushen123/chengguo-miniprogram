@@ -11,6 +11,7 @@
 //   npm run cloud                   部署「被引用到的」全部函数
 //   npm run cloud -- syncv2 admin   只部署指定函数
 //   npm run cloud -- --all          连未被引用的目录也一起部署（慎用）
+//   npm run cloud -- --env <id>     部署到指定云环境（staging 预发，见 docs/staging-env.md）
 //   npm run cloud:ls                只看云端现状与差异（不部署）
 //   npm run cloud:info              看每个云函数的超时（默认 3 秒会掐断 AI 评 / 同步）
 //
@@ -21,7 +22,7 @@ const wx = require('./wxcli');
 
 const ROOT = wx.ROOT;
 const CF_DIR = path.join(ROOT, 'cloudfunctions');
-const ENV = wx.envId();
+// ENV 在拿到 argv 后再算（--env 覆盖需要先解析参数），见下方 --env 段
 const run = wx.run;
 const judge = wx.judge;
 
@@ -57,6 +58,11 @@ function cloudFns() {
 }
 
 const argv = process.argv.slice(2);
+
+// --env <id>：本次部署指向另一个环境（staging 预发）。默认仍是生产（api.js 的 CLOUD_ENV）。
+const envFlag = argv.indexOf('--env');
+const ENV_OVERRIDE = envFlag > -1 && argv[envFlag + 1] ? argv.splice(envFlag, 2)[1] : '';
+const ENV = wx.envId(ENV_OVERRIDE);
 
 // 超时复核：CLI 的 deploy 不会应用 config.json 的 timeout，只能控制台改，
 // 改完用这条命令看一眼（尤其是 aiEval：3 秒会把 AI 识图掐断）

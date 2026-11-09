@@ -356,7 +356,7 @@ ok('家长身份下记录页只显示孩子、且编辑被拒', () => {
 });
 
 console.log('\n【学期管理页：新建 + 结转向导】');
-const terms = loadPage('pages/terms/terms.js');
+const terms = loadPage('pkg-low/terms/terms.js');
 ok('学期列表渲染：内置长期班 + 建议胶囊生成', () => {
   terms.onShow();
   assert.ok(terms.data.terms.some(t => t.builtIn && t.name === '长期班'));
@@ -415,7 +415,7 @@ ok('归档学期的班级不再出现在录入页班级列表', () => {
 });
 
 console.log('\n【模板页：增删改选项】');
-const tpls = loadPage('pages/tpls/tpls.js');
+const tpls = loadPage('pkg-low/tpls/tpls.js');
 ok('渲染 5 个维度', () => {
   tpls.onLoad({ mode: 'select' });
   assert.strictEqual(tpls.data.groups.length, 5);

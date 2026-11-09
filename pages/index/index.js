@@ -215,7 +215,7 @@ Page({
     } catch (e) { /* 数据层不可用就不显示 */ }
   },
   // 退回原因在存储页（那儿有明细和"清空/重推"），首页只负责把人送过去
-  goStorage() { wx.navigateTo({ url: '/pages/storage/storage' }); },
+  goStorage() { wx.navigateTo({ url: '/pkg-low/storage/storage' }); },
   // 催促一下（不是必须的）：点了就立刻推一轮，失败也只会更早进入下一次自动重试
   doFlush() {
     if (this.data.flushBusy) return;

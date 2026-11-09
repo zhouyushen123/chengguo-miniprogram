@@ -69,10 +69,10 @@ Page({
   },
   tapEntry(e) {
     const k = e.currentTarget.dataset.k;
-    if (k === 'term') { wx.navigateTo({ url: '/pages/terms/terms' }); return; }
+    if (k === 'term') { wx.navigateTo({ url: '/pkg-low/terms/terms' }); return; }
     if (k === 'setup') { wx.navigateTo({ url: '/pages/setup/setup' }); return; }
     if (k === 'join') { wx.navigateTo({ url: '/pages/join/join' }); return; }
-    if (k === 'storage') { wx.navigateTo({ url: '/pages/storage/storage' }); return; }
+    if (k === 'storage') { wx.navigateTo({ url: '/pkg-low/storage/storage' }); return; }
     if (k === 'about') { this.showAbout(); return; }
     if (k === 'demo') { this.demoMenu(); return; }
     if (k === 'switch') { this.switchIdentity(); return; }

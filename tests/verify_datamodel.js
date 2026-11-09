@@ -352,8 +352,8 @@ ok('rawCounts 不数死行：removed 的成员不能把坏档伪装成好的', (
 ok('存储页必须有重置入口与诊断区块（没有出口，坏档就只能卸载重装）', () => {
   const fs = require('fs');
   const path = require('path');
-  const wxml = fs.readFileSync(path.join(__dirname, '../pages/storage/storage.wxml'), 'utf8');
-  const js = fs.readFileSync(path.join(__dirname, '../pages/storage/storage.js'), 'utf8');
+  const wxml = fs.readFileSync(path.join(__dirname, '../pkg-low/storage/storage.wxml'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '../pkg-low/storage/storage.js'), 'utf8');
   assert.ok(wxml.indexOf('重置本机数据') > -1, '页面上要有重置按钮');
   assert.ok(wxml.indexOf('rawRows') > -1, '页面上要显示原始条数');
   assert.ok(js.indexOf('db.resetReal') > -1, '按钮要接重置实现');

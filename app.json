@@ -9,18 +9,12 @@
     "pages/teacher/teacher",
     "pages/profile/profile",
     "pages/mgr/mgr",
-    "pages/import/import",
-    "pages/batch/batch",
-    "pages/terms/terms",
     "pages/mine/mine",
     "pages/orgid/orgid",
     "pages/setting/setting",
-    "pages/tpls/tpls",
     "pages/cls/cls",
     "pages/feedback/feedback",
-    "pages/apply/apply",
-    "pages/storage/storage",
-    "pages/trash/trash"
+    "pages/apply/apply"
   ],
   "window": {
     "navigationBarBackgroundColor": "#FAF9F7",
@@ -57,9 +51,25 @@
     "ava": "/components/ava/ava"
   },
   "plugins": {
-    "WechatSI": { "version": "0.3.5", "provider": "wx069ba97219f66d99" }
+    "WechatSI": {
+      "version": "0.3.5",
+      "provider": "wx069ba97219f66d99"
+    }
   },
   "__usePrivacyCheck__": true,
   "sitemapLocation": "sitemap.json",
-  "style": "v2"
+  "style": "v2",
+  "subPackages": [
+    {
+      "root": "pkg-low",
+      "pages": [
+        "batch/batch",
+        "tpls/tpls",
+        "import/import",
+        "trash/trash",
+        "storage/storage",
+        "terms/terms"
+      ]
+    }
+  ]
 }

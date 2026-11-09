@@ -54,21 +54,21 @@ function mimeOf(b64) {
   return 'image/jpeg';
 }
 
-// 纯文本调用（批量评语用）：不需要识图，走 glm-4-flash
-function callGLMText(key, messages, maxTokens) {
-  const body = JSON.stringify({
-    model: TEXT_MODEL,
-    temperature: 0.7,
-    max_tokens: maxTokens || 2000,
-    messages
-  });
+/* ---------------- GLM 传输层（唯一一份） ----------------
+ * 识图（callGLM）与纯文本（callGLMText）的 HTTP 收发完全同构：同一个 host/path、
+ * 同一套鉴权与超时、同一套响应解析。以前是两段各 40 行的复制粘贴——改 max_tokens
+ * 只改一处没出事纯属运气（两轮代码审查都挂着这条）。现在只剩这一个函数
+ * 会碰 https：模型/温度/max_tokens/messages 的差异全部收敛在调用方的 body 里。
+ */
+function callGLMApi(key, body) {
+  const payload = JSON.stringify(body);
   return new Promise((resolve, reject) => {
     const req = https.request({
       host: HOST, path: PATH, method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + key,
-        'Content-Length': Buffer.byteLength(body)
+        'Content-Length': Buffer.byteLength(payload)
       },
       timeout: TIMEOUT_MS
     }, res => {
@@ -88,8 +88,18 @@ function callGLMText(key, messages, maxTokens) {
     });
     req.on('timeout', () => { req.destroy(new Error('GLM 请求超时')); });
     req.on('error', reject);
-    req.write(body);
+    req.write(payload);
     req.end();
+  });
+}
+
+// 纯文本调用（批量评语用）：不需要识图，走 glm-4-flash
+function callGLMText(key, messages, maxTokens) {
+  return callGLMApi(key, {
+    model: TEXT_MODEL,
+    temperature: 0.7,
+    max_tokens: maxTokens || 2000,
+    messages
   });
 }
 
@@ -115,7 +125,7 @@ async function batchNotes(key, students, opts) {
 }
 
 function callGLM(key, prompt, b64) {
-  const body = JSON.stringify({
+  return callGLMApi(key, {
     model: MODEL,
     temperature: 0.6,
     // 150 字中文约 250 tokens，再加上模型偶尔啰嗦，300 会把结尾的期待截断
@@ -127,35 +137,6 @@ function callGLM(key, prompt, b64) {
         { type: 'text', text: prompt }
       ]
     }]
-  });
-  return new Promise((resolve, reject) => {
-    const req = https.request({
-      host: HOST, path: PATH, method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + key,
-        'Content-Length': Buffer.byteLength(body)
-      },
-      timeout: TIMEOUT_MS
-    }, res => {
-      let raw = '';
-      res.on('data', c => { raw += c; });
-      res.on('end', () => {
-        try {
-          const j = JSON.parse(raw);
-          if (res.statusCode !== 200) {
-            return reject(new Error('GLM_' + res.statusCode + ': ' + ((j.error && j.error.message) || raw.slice(0, 120))));
-          }
-          const text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
-          if (!text) return reject(new Error('GLM 空响应'));
-          resolve(text);
-        } catch (e) { reject(new Error('GLM 响应解析失败')); }
-      });
-    });
-    req.on('timeout', () => { req.destroy(new Error('GLM 请求超时')); });
-    req.on('error', reject);
-    req.write(body);
-    req.end();
   });
 }
 

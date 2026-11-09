@@ -348,8 +348,8 @@ ok('G1 体检分组：缺行归「待同步」、墓碑归「故障」，两组�
 });
 
 ok('G2 存储页的体检入口在页面上真的接上了（模板绑的事件都有对应方法）', () => {
-  const wxml = fs.readFileSync(path.join(ROOT, 'pages/storage/storage.wxml'), 'utf8');
-  const js = fs.readFileSync(path.join(ROOT, 'pages/storage/storage.js'), 'utf8');
+  const wxml = fs.readFileSync(path.join(ROOT, 'pkg-low/storage/storage.wxml'), 'utf8');
+  const js = fs.readFileSync(path.join(ROOT, 'pkg-low/storage/storage.js'), 'utf8');
   ['fixLinks', 'fixData'].forEach(fn => {
     assert.ok(wxml.indexOf('bindtap="' + fn + '"') > -1, '模板里没有 ' + fn + ' 的入口');
     assert.ok(new RegExp('\\b' + fn + '\\(\\)').test(js), 'js 里没有 ' + fn + ' 方法');

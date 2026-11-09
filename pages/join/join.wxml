@@ -32,7 +32,7 @@
       <view wx:if="{{sameShow}}" class="mask">
         <view class="samecard">
           <view class="same-t">你以前绑过「{{sameName}}」<text wx:if="{{sameOrg}}">（{{sameOrg}}）</text></view>
-          <view class="same-d">这张卡上的孩子也是「{{sameTarget}}」吗？<br/>是同一个孩子的话，两家的课堂成果会并在一页里，按机构分开看。</view>
+          <view class="same-d"><view>这张卡上的孩子也是「{{sameTarget}}」吗？</view><view>是同一个孩子的话，两家的课堂成果会并在一页里，按机构分开看。</view></view>
           <view class="same-btns">
             <view class="same-b pri" hover-class="btn-hover" bindtap="sameYes">是同一个孩子</view>
             <view class="same-b sec" hover-class="btn-hover" bindtap="sameNo">不是，另一个孩子</view>

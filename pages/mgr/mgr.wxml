@@ -61,7 +61,7 @@
     <view class="clsrow">
       <view class="clshd" bindtap="onClsTap" data-id="{{item.id}}">
         <view class="itrow"><view class="clsbar"></view>
-          <view><b>{{item.name}}</b>
+          <view><text class="b">{{item.name}}</text>
           <view class="mi">{{item.termName || '未挂学期'}} · {{item.modeLabel}}<text wx:if="{{item.teacherLabel}}"> · 主讲 {{item.teacherLabel}}</text> · {{item.stuN}} 人</view></view>
         </view>
       </view>
@@ -122,7 +122,7 @@
   <view class="card item crsitem" wx:for="{{courses}}" wx:key="id">
     <view class="crsline">
       <view style="flex:1;min-width:0">
-        <b>{{item.name}}</b>
+        <text class="b">{{item.name}}</text>
         <view class="mi" wx:if="{{!item.clsList.length}}">未开设到任何班级</view>
         <view class="crsintro" wx:if="{{item.introBrief}}">{{item.introBrief}}</view>
       </view>
@@ -168,7 +168,7 @@
     <view style="flex:1;min-width:0" bindtap="goStudentPage" data-id="{{item.id}}">
       <view class="itrow">
         <ava src="{{item.photo}}" name="{{item.name}}" size="{{64}}" radius="{{18}}" />
-        <view style="min-width:0"><b>{{item.name}}</b><text wx:if="{{item.gender}}" class="gtag">{{item.gender}}</text>
+        <view style="min-width:0"><text class="b">{{item.name}}</text><text wx:if="{{item.gender}}" class="gtag">{{item.gender}}</text>
         <view class="mi"><text wx:if="{{item.no}}" class="sno" catchtap="copyStuNoList" data-no="{{item.no}}">学号 {{item.no}} · 点按复制</text>{{item.cls}}{{item.year?' · '+item.year+' 年入学':''}}{{item.parent?' · 家长 '+item.parent:''}}{{item.parentPhone?' · 手机 '+item.parentPhone:''}}{{item.wechat?' · 微信 '+item.wechat:''}}</view></view>
       </view>
     </view>
@@ -205,7 +205,7 @@
     <view class="memmain" bindtap="goTeacher" data-id="{{item.id}}">
       <view class="itrow">
         <ava src="{{item.photo}}" name="{{item.name}}" size="{{76}}" radius="{{24}}" tone="{{item.avaTone}}" />
-        <view class="memtxt"><b>{{item.name}}</b>
+        <view class="memtxt"><text class="b">{{item.name}}</text>
           <view class="mi memmeta">{{item.roleLabel}} · {{item.meta}}<text wx:if="{{item.invited}}" class="mi"> · 待绑定</text><text wx:else class="mi">{{item.bound ? ' · 已绑定微信' : ' · 未绑定微信'}}</text></view>
         </view>
       </view>

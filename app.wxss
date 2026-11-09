@@ -272,3 +272,5 @@ page {
 .field-err { font-size: 22rpx; color: var(--warn); margin-top: 8rpx; line-height: 1.5; }
 /* 表单必填星号（原来只在申请页有，机构资料页也用） */
 .req { color: var(--danger); margin-left: 6rpx; }
+/* 加粗行内文字：替代 WXML 不支持的 <b> 标签（BUG-004，全局统一口径） */
+.b { font-weight: 600; }

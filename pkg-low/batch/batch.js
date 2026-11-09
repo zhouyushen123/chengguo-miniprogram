@@ -246,6 +246,14 @@ Page({
     this.setData({ ['rows[' + i + '].note']: e.detail.value, ['rows[' + i + '].hit']: false });
     this._saveDraft();
   },
+  // BUG-003：聚焦输入框即清「未过安全检查」红标——此前 wxml 绑定的 clearHit 不存在，
+  // 聚焦静默无操作，红标要等敲入第一个字符才被 onNote 清掉。
+  clearHit(e) {
+    const i = +e.currentTarget.dataset.i;
+    if (this.data.rows[i] && this.data.rows[i].hit) {
+      this.setData({ ['rows[' + i + '].hit']: false });
+    }
+  },
   onTopic(e) { this.setData({ topic: e.detail.value }); this._saveDraft(); },
   // 长按学生行 = 标记/取消请假（请假的人本次不落库，结清时不算未录）
   toggleLeave(e) {

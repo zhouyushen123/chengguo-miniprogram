@@ -34,7 +34,7 @@
 
     <view wx:for="{{shown}}" wx:key="id" class="card fb {{item.handled?'done':''}}">
       <view class="fbh">
-        <b>{{item.stuName}}</b>
+        <text class="b">{{item.stuName}}</text>
         <text wx:if="{{item.clsName}}" class="mi ell">{{item.clsName}}</text>
         <text class="pill {{item.handled?'p-done':'p-new'}}">{{item.handled?'已处理':'待处理'}}</text>
       </view>

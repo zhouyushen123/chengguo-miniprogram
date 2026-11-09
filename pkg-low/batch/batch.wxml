@@ -56,7 +56,7 @@
       <ava name="{{row.name}}" src="{{row.photo}}" size="{{64}}" />
       <view class="rmain">
         <view class="rhead">
-          <b>{{row.name}}</b>
+          <text class="b">{{row.name}}</text>
           <text wx:if="{{row.carried && !row.leave}}" class="mi">沿用上次</text>
           <text wx:if="{{row.leave}}" class="lvtag">请假</text>
           <text wx:if="{{row.hit}}" class="lvtag bad">未过安全检查</text>

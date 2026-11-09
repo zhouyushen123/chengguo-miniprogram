@@ -23,7 +23,7 @@
 <!-- 今天未录视图：学生行（复用记录卡视觉），每行一个「去录入」直达带预选的录入页 -->
 <block wx:if="{{missMode}}">
   <view class="card rec" wx:for="{{missList}}" wx:key="key">
-    <view class="r1"><b>{{item.name}}</b><text class="mi">{{item.clsName}} · 课次 {{item.session}}</text></view>
+    <view class="r1"><text class="b">{{item.name}}</text><text class="mi">{{item.clsName}} · 课次 {{item.session}}</text></view>
     <view class="btnrow">
       <view class="btn send" hover-class="btn-hover" catchtap="goMissRec" data-sid="{{item.sid}}" data-cid="{{item.cid}}">去录入</view>
     </view>
@@ -33,7 +33,7 @@
 <block wx:else>
 <view class="card rec" wx:for="{{list}}" wx:key="id">
   <view bindtap="openRec" data-rid="{{item.id}}" data-sid="{{item.sid}}">
-    <view class="r1"><b>{{item.name}}</b><text class="mi">{{item.course}} · {{item.date}}</text><text class="scoretag">{{item.score}}分{{item.tag ? ' · ' + item.tag : ''}}</text></view>
+    <view class="r1"><text class="b">{{item.name}}</text><text class="mi">{{item.course}} · {{item.date}}</text><text class="scoretag">{{item.score}}分{{item.tag ? ' · ' + item.tag : ''}}</text></view>
     <view class="recrow">
       <image wx:if="{{item.photo}}" class="thumb" src="{{item.photo}}" mode="aspectFill" />
       <view class="recinfo">

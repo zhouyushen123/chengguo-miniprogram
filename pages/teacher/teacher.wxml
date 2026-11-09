@@ -32,7 +32,7 @@
     <view class="sec"><view class="label">负责班级</view></view>
     <view class="clsrow" wx:for="{{clsList}}" wx:key="id">
       <view class="clsbar"></view>
-      <view><b>{{item.name}}</b><view class="mi">{{item.modeLabel}} · {{item.stuN}} 人</view></view>
+      <view><text class="b">{{item.name}}</text><view class="mi">{{item.modeLabel}} · {{item.stuN}} 人</view></view>
     </view>
   </view>
 
@@ -47,7 +47,7 @@
     <view class="histhead"><view class="label" style="margin:0">最近成果</view><text class="mi">共 {{recTotal}} 条</text></view>
     <view wx:for="{{recent}}" wx:key="id" class="recrow">
       <view class="rleft">
-        <view class="rt1"><b>{{item.course}}</b><text wx:if="{{item.tag}}" class="badge {{item.tcls}}">{{item.tag}}</text></view>
+        <view class="rt1"><text class="b">{{item.course}}</text><text wx:if="{{item.tag}}" class="badge {{item.tcls}}">{{item.tag}}</text></view>
         <view class="mi">{{item.stuName || '已删除学生'}} · {{item.date}} · {{item.score}}分</view>
       </view>
     </view>

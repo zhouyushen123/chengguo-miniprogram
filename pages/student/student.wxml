@@ -137,7 +137,7 @@
       <block wx:for="{{history}}" wx:key="id">
         <view class="hist" hover-class="btn-hover" bindtap="toggleExpand" data-rid="{{item.id}}">
           <view class="hleft">
-            <view class="ht1"><b>{{item.course}}</b><text wx:if="{{item.tag}}" class="badge {{item.tcls}}">{{item.tag}}</text></view>
+            <view class="ht1"><text class="b">{{item.course}}</text><text wx:if="{{item.tag}}" class="badge {{item.tcls}}">{{item.tag}}</text></view>
             <view class="mi">{{item.clsName}} · {{item.date}}{{item.sess ? ' · 第' + item.sess + '课' : ''}} · {{item.score}}分{{item.snip?' · '+item.snip:''}}</view>
           </view>
           <view class="hright">

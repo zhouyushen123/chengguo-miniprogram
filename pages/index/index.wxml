@@ -225,7 +225,7 @@
       <view class="histr" wx:for="{{kCare}}" wx:key="id" hover-class="btn-hover" bindtap="openRec" data-rid="{{item.id}}" data-sid="{{kidId}}">
         <text class="badge {{item.tcls}}">{{item.tag}}</text>
         <view class="hmain">
-          <view class="ht1"><b>{{item.course}}</b></view>
+          <view class="ht1"><text class="b">{{item.course}}</text></view>
           <view class="mi">{{item.date}} · {{item.snip}}</view>
         </view>
         <image class="chev" src="{{icoChev}}" mode="aspectFit" />
@@ -242,7 +242,7 @@
     <block wx:if="{{kHistory.length}}">
     <view class="histr" wx:for="{{kHistory}}" wx:key="id" hover-class="btn-hover" bindtap="openRec" data-rid="{{item.id}}" data-sid="{{kidId}}">
       <view class="hmain">
-        <view class="ht1"><b>{{item.course}}</b><text wx:if="{{item.orgName}}" class="orgtag">{{item.orgName}}</text><text wx:if="{{item.tag}}" class="badge sm {{item.tcls}}">{{item.tag}}</text></view>
+        <view class="ht1"><text class="b">{{item.course}}</text><text wx:if="{{item.orgName}}" class="orgtag">{{item.orgName}}</text><text wx:if="{{item.tag}}" class="badge sm {{item.tcls}}">{{item.tag}}</text></view>
         <view class="mi">{{item.date}} · {{item.score}}分{{item.snip?' · '+item.snip:''}}</view>
       </view>
       <view wx:if="{{item.pcnt}}" class="hcam"><image class="camico" src="{{icoCam}}" mode="aspectFit" />{{item.pcnt}}</view>

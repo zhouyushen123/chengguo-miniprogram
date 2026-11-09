@@ -32,12 +32,13 @@
 3. `<template data="{{vk:'rec',...}}">` 传参键是模板局部作用域
 4. theme.js/icons.std()/voice.js 注入页面的键全页共享
 
-## 缺陷
+## 缺陷（两处均已于同日修复，见缺陷单 Resolved）
 
-- **BUG-003（P3）**：`pkg-low/batch/batch.wxml:71` `bindfocus="clearHit"` 函数不存在——
-  标红行点进输入框不清红标，须敲字才清（onNote 有兜底，故仅体验问题）
-- **BUG-004（P3）**：8 页使用 WXML 不支持的 `<b>`/`<br/>`——加粗/换行意图静默失效
-  （cls/feedback/index/mgr/records 的 <b>；join.wxml:35 的 <br/>）
+- **BUG-003（P3，已修）**：`pkg-low/batch/batch.wxml:71` `bindfocus="clearHit"` 函数不存在——
+  已补 `clearHit(e)`：按 data-i 清 `rows[i].hit` 红标；pagewalk 复跑 0 硬伤
+- **BUG-004（P3，已修）**：15 处 `<b>`/`<br/>`（9 页）——
+  `<b>` 全部替换为 `<text class="b">`（app.wxss 全局 `.b{font-weight:600}`），
+  join 的 `<br/>` 改为内层两个 `<view>` 分行；grep 清零验证通过
 
 ## 提示项（不计缺陷，记录备查）
 

@@ -7,7 +7,7 @@
   <view wx:for="{{terms}}" wx:key="id" class="card">
     <view class="trow">
       <view class="tmain">
-        <view class="t1"><b>{{item.name}}</b><text wx:if="{{item.builtIn}}" class="pill pill-mi">内置</text><text class="pill pill-{{item.status}}">{{item.statusLabel}}</text></view>
+        <view class="t1"><text class="b">{{item.name}}</text><text wx:if="{{item.builtIn}}" class="pill pill-mi">内置</text><text class="pill pill-{{item.status}}">{{item.statusLabel}}</text></view>
         <view class="t2">{{item.dates}} · {{item.clsCount}} 个班级</view>
       </view>
       <view wx:if="{{item.canSettle}}" class="btn ghost sm" hover-class="btn-hover" bindtap="startWizard" data-id="{{item.id}}">结束本学期</view>

@@ -1766,7 +1766,7 @@ Major-3（callGLM/callGLMText 去重复）留待下次动 aiEval 时一起做。
 - syncv2、aiEval 已重新部署；**1149 已上传**。
 
 ### 待人工
-- mp.weixin.qq.com → 版本管理 → **把 1150 设为体验版**（含走查修复；不再需要 1149）。
+- mp.weixin.qq.com → 版本管理 → **把 1151 设为体验版**（含走查修复+班级改名+课程方向自定义；不再需要 1150）。
 - 真机重点：老师账号正常录课/发布；被分新班后历史记录能自动补齐；
   两台设备改同一条记录 → 存储页出现「被覆盖的改动」且可找回。
   测完顺手填 tests/docs/TEST-EXECUTION-TRACKING.csv 的 17 条 TC-REAL。

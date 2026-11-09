@@ -232,5 +232,31 @@ ok('本地存了脏值也不让录入页崩掉（手改、旧版本结构）', (
   assert.deepStrictEqual(aipref.views(), ['skill', 'mood'], '非字符串项要被过滤');
 });
 
+console.log('\n【云函数防御：限流与批量上限（2026-11-09 审查收口）】');
+
+const idxSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions/aiEval/index.js'), 'utf8');
+
+ok('按 openid 每日限流存在且在 OPENID 校验之后立刻执行', () => {
+  assert.ok(/function allow\(openid\)/.test(idxSrc), '缺 allow 限流函数');
+  assert.ok(/DAILY_LIMIT = 80/.test(idxSrc), '限额应显式命名为常量');
+  const gate = idxSrc.indexOf("if (!allow(OPENID))");
+  const loginAt = idxSrc.indexOf("if (!OPENID)");
+  assert.ok(gate > loginAt && gate > -1, '限流必须在登录校验之后、业务之前');
+  assert.ok(/RATE_LIMIT/.test(idxSrc), '超限要有业务错误码，前端好给出人话提示');
+});
+
+ok('record 页认得 RATE_LIMIT 码（否则老师只看到一串原文）', () => {
+  assert.ok(/RATE_LIMIT/.test(fs.readFileSync(path.join(ROOT, 'pages/record/record.js'), 'utf8')));
+});
+
+ok('批量入口服务端上限 10 人，超出明确报错而不是默默收下', () => {
+  assert.ok(!/slice\(0,\s*60\)/.test(idxSrc), '不允许再出现 60 人的暗口子');
+  assert.ok(/MAX_BATCH_IN\s*=\s*10/.test(idxSrc), '上限要用具名常量且与单批人数一致');
+  // 找 batch 分支本身（用 exports.main 之后的段落做锚，避免被上方的函数定义干扰）
+  const seg = idxSrc.slice(idxSrc.indexOf('exports.main'));
+  const branch = seg.slice(seg.indexOf("action === 'batch'"), seg.indexOf('return { ok: true, notes'));
+  assert.ok(/students\.length > MAX_BATCH_IN/.test(branch), '超限要走显式报错分支');
+});
+
 console.log('\nverify_ai_guide: ' + pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

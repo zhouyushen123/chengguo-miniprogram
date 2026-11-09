@@ -36,6 +36,34 @@
         "type": "folder"
       },
       {
+        "value": ".workbuddy",
+        "type": "folder"
+      },
+      {
+        "value": ".preview",
+        "type": "folder"
+      },
+      {
+        "value": ".fake-wx-sdk-card.js",
+        "type": "file"
+      },
+      {
+        "value": ".fake-wx-sdk-fb.js",
+        "type": "file"
+      },
+      {
+        "value": "debug.log",
+        "type": "file"
+      },
+      {
+        "value": "deploy.log",
+        "type": "file"
+      },
+      {
+        "value": ".git",
+        "type": "folder"
+      },
+      {
         "value": "deploy.js",
         "type": "file"
       },

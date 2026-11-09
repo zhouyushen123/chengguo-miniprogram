@@ -314,7 +314,8 @@ Page({
         });
         return;
       }
-      const tip = (e && e.code) === 'NO_KEY' ? 'AI 未配置：云函数缺 ZHIPU_API_KEY 环境变量'
+      const tip = (e && e.code) === 'RATE_LIMIT' ? '今日 AI 次数已用完（80 次），请明天再试'
+        : (e && e.code) === 'NO_KEY' ? 'AI 未配置：云函数缺 ZHIPU_API_KEY 环境变量'
         : m.indexOf('CLOUD_OFF') > -1 ? '云开发未开通：需开通环境并部署 aiEval 云函数'
         : m.indexOf('NO_KEY') > -1 ? 'AI 未配置：云函数缺 ZHIPU_API_KEY 环境变量'
         : m.indexOf('GLM 请求超时') > -1 ? 'AI 服务响应慢，请稍后再试'

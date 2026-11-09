@@ -21,6 +21,25 @@ const PATH = '/api/paas/v4/chat/completions';
 const TIMEOUT_MS = 18000;
 const MAX_B64 = 4 * 1024 * 1024;   // base64 超过 4MB 直接拒绝（约 3MB 原图）
 const BATCH_SIZE = 10;             // 批量评语每批人数：一次太多容易超时/截断
+// 【为什么服务端也要限 10】客户端 batch.js 每批只送 10 人，但云函数不能指望
+// 调用方永远守规矩（新入口、脚本、伪造请求都会绕过前端）：60 人 = 6 次串行
+// GLM 调用，函数 20 秒超时必被掐死，前端只剩 -504003。防线要立在自己手里。
+const MAX_BATCH_IN = 10;
+
+// 【按人限流】任何登录用户（家长账号也算）都能调本函数烧智谱免费配额，
+// 烧干后全机构的 AI 评价一起瘫痪。实例内存计数：冷启动清零、多实例各记各的——
+// 不精确，但挡「单账号高频刷」足够；将来要精确再升级成云数据库计数。
+// 80 次/天：老师期末一天 6 个班全员生成 + 反复重写也碰不到顶，宽松但不失控。
+const DAILY_LIMIT = 80;
+const hitMap = new Map();          // openid -> { day, count }
+function allow(openid) {
+  const today = new Date().toISOString().slice(0, 10);
+  const h = hitMap.get(openid);
+  if (!h || h.day !== today) { hitMap.set(openid, { day: today, count: 1 }); return true; }
+  if (h.count >= DAILY_LIMIT) return false;
+  h.count++;
+  return true;
+}
 
 // 提示词与学科词表见 prompt.js：那是产品能力的本体，单独成文件才能直接做行为断言
 const P = require('./prompt');
@@ -146,13 +165,20 @@ exports.main = async (event) => {
   }
   const { OPENID } = cloud.getWXContext();
   if (!OPENID) return { ok: false, msg: '未登录，拒绝调用' };
+  if (!allow(OPENID)) {
+    return { ok: false, code: 'RATE_LIMIT', msg: '今日 AI 次数已用完（80 次），请明天再试' };
+  }
 
   const key = process.env.ZHIPU_API_KEY;
   if (!key) return { ok: false, code: 'NO_KEY', msg: '云函数缺 ZHIPU_API_KEY 环境变量' };
 
   // 批量评语：纯文本通道，不需要照片
   if (event && event.action === 'batch') {
-    const students = Array.isArray(event.students) ? event.students.slice(0, 60) : [];
+    if (!Array.isArray(event.students)) return { ok: false, msg: '缺少学生名单' };
+    if (event.students.length > MAX_BATCH_IN) {
+      return { ok: false, msg: '一次最多 ' + MAX_BATCH_IN + ' 人，请分批调用' };
+    }
+    const students = event.students;
     if (!students.length) return { ok: false, msg: '缺少学生名单' };
     try {
       const notes = await batchNotes(key, students, {

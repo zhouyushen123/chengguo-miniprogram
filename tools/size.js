@@ -7,8 +7,12 @@
  * 这里在本地/CI 用同一套排除规则先算一遍，超线当场失败。
  *
  * 排除规则与 project.config.json 的 packOptions.ignore 保持一致，
- * 另外固定排除：.git / .github / .workbuddy / node_modules / cloudfunctions
- * （云函数目录不参与小程序包）以及所有点开头的隐藏项。
+ * 另外固定排除：node_modules / cloudfunctions（云函数目录不参与小程序包）。
+ *
+ * 【2026-11-09 踩坑】以前运默「点开头的隐藏项不进包」直接跳过 .workbuddy/，
+ * 结果门禁绿着、IDE 上传却报 7770KB 超限：开发者工具会打包点开头目录，
+ * 只认 packOptions.ignore。修复：不再无条件跳过隐藏项，只有显式忽略的才跳，
+ * 没被忽略的点开头目录照算体积——它一定会进上传包，门禁不能再瞎。
  *
  * 用法：
  *   node tools/size.js          正常检查，超过 WARN 提示、超过 LIMIT 失败
@@ -28,8 +32,10 @@ const LIMIT = 2 * 1024 * 1024;      // 主包上限 2MB（官方）
 const WARN = Math.floor(LIMIT * 0.8); // 超过 80% 提醒
 
 // 固定排除（不依赖配置，防止配置被改坏后静默放行）
+// 注意：点开头的目录（.git/.workbuddy/.preview…）不在这里默认排除——
+// IDE 会打包它们，必须显式写进 packOptions.ignore，否则这里会被量出来拦下
 const ALWAYS_SKIP_DIRS = new Set([
-  '.git', '.github', '.workbuddy', 'node_modules', 'cloudfunctions',
+  'node_modules', 'cloudfunctions',
 ]);
 const ALWAYS_SKIP_FILES = new Set([
   'project.private.config.json',
@@ -65,7 +71,6 @@ function walk(dir, rel, ignore, acc) {
   }
   for (const ent of entries) {
     const name = ent.name;
-    if (name.startsWith('.')) continue;             // 隐藏项不进包
     const relPath = rel ? rel + '/' + name : name;
     if (ent.isDirectory()) {
       if (ALWAYS_SKIP_DIRS.has(name)) continue;

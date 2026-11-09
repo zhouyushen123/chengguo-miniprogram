@@ -46,6 +46,7 @@
     <view class="sec"><view class="label">课程方向（可多选）</view></view>
     <view class="chips">
       <view wx:for="{{orgCourseChips}}" wx:key="name" class="chip {{item.on?'on':''}}" bindtap="toggleOrgCourse" data-v="{{item.name}}">{{item.name}}</view>
+      <view class="chip" hover-class="btn-hover" bindtap="onOrgCourseAdd" style="color:#576b95">＋ 自定义</view>
     </view>
 
     <view class="mi" style="margin-top:16rpx">这些信息来自开通引导里填的资料，改完点下面按钮保存；机构名称会同步到首页与记录页的展示。</view>

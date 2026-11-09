@@ -287,7 +287,9 @@ Page({
     this.setData({
       orgForm: f,
       orgPhoneBad: false,
-      orgCourseChips: ORG_COURSES.map(n => ({ name: n, on: f.courses.indexOf(n) > -1 }))
+      // 勾选列表 = 预设 8 项 + 留档里的自定义项（自定义方向选过一次就常驻）
+      orgCourseChips: ORG_COURSES.concat((f.courses || []).filter(n => ORG_COURSES.indexOf(n) < 0))
+        .map(n => ({ name: n, on: f.courses.indexOf(n) > -1 }))
     });
   },
   onOrgName(e) { this.setData({ 'orgForm.name': e.detail.value }); },
@@ -312,6 +314,22 @@ Page({
     this.setData({
       'orgForm.courses': cur,
       orgCourseChips: this.data.orgCourseChips.map(c => ({ name: c.name, on: cur.indexOf(c.name) > -1 }))
+    });
+  },
+  // 自定义课程方向：showModal 自带输入框；重名直接点亮已有项，不重复加
+  onOrgCourseAdd() {
+    wx.showModal({
+      title: '自定义课程方向', editable: true, placeholderText: '例如：陶艺、围棋、口才…',
+      success: r => {
+        if (!r.confirm) return;
+        const n = (r.content || '').trim().slice(0, 10);
+        if (!n) { wx.showToast({ title: '名称不能为空', icon: 'none' }); return; }
+        const chips = this.data.orgCourseChips;
+        if (chips.some(c => c.name === n)) { this.toggleOrgCourse({ currentTarget: { dataset: { v: n } } }); return; }
+        const cur = (this.data.orgForm.courses || []).slice();
+        cur.push(n);
+        this.setData({ 'orgForm.courses': cur, orgCourseChips: chips.concat([{ name: n, on: true }]) });
+      }
     });
   },
   // 保存：机构名落 orgs 表（会同步到首页/记录页的口径），其余资料留在申请单档（utils/apply.js）

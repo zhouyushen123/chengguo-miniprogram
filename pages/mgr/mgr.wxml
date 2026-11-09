@@ -66,6 +66,7 @@
         </view>
       </view>
       <view class="clscaret {{clsExpand===item.id?'up':''}}">▾</view>
+      <view class="mi" style="color:#576b95;font-size:25rpx;padding:10rpx 0 10rpx 16rpx;flex:none" catchtap="renameClass" data-id="{{item.id}}" data-name="{{item.name}}">改名</view>
       <view class="mi del" catchtap="delClass" data-id="{{item.id}}">删除</view>
     </view>
     <!-- 展开：本班学生筛选 + 名单 -->

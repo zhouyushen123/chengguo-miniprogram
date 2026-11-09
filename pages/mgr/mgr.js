@@ -356,6 +356,22 @@ Page({
     this.setData({ newCls: '', clsFormOpen: false }); this.refresh();
     wx.showToast({ title: '已添加', icon: 'success' });
   },
+  // 班级改名（与课程改名同款：showModal 自带输入框；权限与校验在 db.classes.update 内）
+  renameClass(e) {
+    const id = +e.currentTarget.dataset.id;
+    wx.showModal({
+      title: '修改班级名称', editable: true, placeholderText: '新的班级名称',
+      content: e.currentTarget.dataset.name || '',
+      success: r => {
+        if (!r.confirm) return;
+        const n = (r.content || '').trim();
+        if (!n) { wx.showToast({ title: '名称不能为空', icon: 'none' }); return; }
+        const res = db.classes.update(id, { name: n });
+        if (!res.ok) { wx.showToast({ title: res.msg, icon: 'none' }); return; }
+        this.refresh();
+      }
+    });
+  },
   delClass(e) {
     const id = +e.currentTarget.dataset.id;
     wx.showModal({

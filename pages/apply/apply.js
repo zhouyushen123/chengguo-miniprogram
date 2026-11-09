@@ -112,6 +112,17 @@ Page({
       const fix = db.repairIdentity();
       if (fix.ok && fix.code !== 'FINE') up = db.orgs.update({ name });
     }
+    // 入驻时填的联系人，多半就是负责人本人：当前身份还没名字就顺手补上。
+    // 身份卡读的是成员姓名，「联系人」只存在申请单里，两处不通永远显示「未命名」
+    // （2026-11-09 用户反馈：填了联系人周要，我的页还是未命名）。
+    if (up.ok) {
+      try {
+        const a = db.auth.actor && db.auth.actor();
+        if (a && a.role === 'owner' && !String(a.name || '').trim()) {
+          db.setTeacher((f.contact || '').trim().slice(0, 12));
+        }
+      } catch (e) { /* 改名失败不影响入驻 */ }
+    }
     const courses = (f.courses || []).slice();
     const item = apply.save({
       name,

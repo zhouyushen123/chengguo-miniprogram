@@ -1664,3 +1664,26 @@ Major-3（callGLM/callGLMText 去重复）留待下次动 aiEval 时一起做。
 ### 待人工
 - mp.weixin.qq.com → 版本管理 → **把 1146 设为体验版**。
 - 限流验证：连点 AI 生成不超 80 次/天；超限应弹「今日 AI 次数已用完」。
+
+## 2026-11-09（三）负责人命名链路三条落地（1147）
+
+来源：用户反馈「权限分得不清楚」+ 三张截图（入驻填了联系人但我的页「未命名」、
+同步页三条「机构已有负责人「」」）。详细分析见 `docs/roles-org-owner-explained.md`。
+
+### 改了什么
+- `pages/apply/apply.js`：入驻提交成功且**本人是负责人 + 姓名为空**时，把「联系人」写进
+  成员/账号姓名（已有名字不覆盖）。
+- `pages/setup/setup.js`：开通向导的 `_renameMe` 从「只认测试老师」改为「空名或测试老师都算没起名」。
+- `pages/mine`：身份卡名字为空时显示「点此设置姓名」，点卡片弹可输入弹窗改名（`db.setTeacher`），
+  有名字才进「机构与身份」；wxml 绑 `onUserCard`，wxss 加 `.uc-setname`。
+- `cloudfunctions/syncv2/index.js`：OWNER_EXISTS 报文改为「『机构名』已有负责人『姓名』，
+  如需换人请在机构里用『移交负责人』」，空名兜底「机构创始人」（多一次 orgs 查询，仅在出错分支）。
+- `utils/db/identity.js`：本地建成员的同款报文同步补人名与指引。
+- 新增 `tests/verify_owner_naming.js`（6 项）；更新 `verify_mine_simple` S03 与 `verify_manual`
+  的身份卡入口断言（从 goOrgId 改为 onUserCard + 仍能走到 goOrgId）。**44 套件全绿。**
+- `docs/user-manual.md` 我的页身份卡一行补充「未命名 → 点此设置姓名」。
+
+### 待人工
+- 后台把 **1147** 设为体验版；
+- 真机自查：我的页点「未命名」→ 起名 → 名字立即更新；同步页若仍有负责人冲突，报错应带机构名与人名。
+- 云端那条空名负责人仍建议手工补名字（会影响记录署名）。

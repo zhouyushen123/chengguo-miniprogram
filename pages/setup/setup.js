@@ -166,7 +166,10 @@ Page({
     if (!name) return;
     try {
       const me = db.members.current && db.members.current();
-      if (me && /^测试老师$/.test(me.name || '')) db.members.update(me.id, { name });
+      // 出厂名可能是「测试老师」，也可能直接是空串（新装不预置姓名）——
+      // 两种都算"还没起名字"，都该换成他填的联系人，否则我的页一直显示「未命名」
+      const cur = String((me && me.name) || '').trim();
+      if (me && (!cur || /^测试老师$/.test(cur))) db.members.update(me.id, { name });
     } catch (e) { /* 改名失败不影响开通，名字能在「我的」里改 */ }
   },
 

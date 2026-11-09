@@ -10,6 +10,7 @@ Page({
   data: {
     // 身份卡
     name: '', roleLabel: '', orgName: '', meta: '', uPhoto: '',
+    noName: false,   // 姓名为空：身份卡显示「点此设置姓名」，点卡片直接改名
     isParent: false, isManager: false, canSwitchHome: false, sandbox: false,
     // 三个数字：学生 / 班级 / 课程（家长/老师数、学期数在二级页里）
     stats: [],
@@ -56,6 +57,7 @@ Page({
 
     this.setData({
       name: u.name || '未命名',
+      noName: !String(u.name || '').trim(),
       uPhoto: u.photo || '',
       roleLabel: s.roleLabel,
       orgName: s.orgName,
@@ -74,6 +76,25 @@ Page({
     });
   },
   goOrgId() { wx.navigateTo({ url: '/pages/orgid/orgid' }); },
+  // 身份卡：有名字才进「机构与身份」；没名字先改名——这是新负责人第一次打开
+  // 唯一能改自己名字的入口（设置页里没有姓名项，2026-11-09 用户反馈）
+  onUserCard() {
+    if (!this.data.noName) { this.goOrgId(); return; }
+    wx.showModal({
+      title: '先给自己起个名字',
+      content: '',
+      editable: true,
+      placeholderText: '例如：周老师（记录署名用）',
+      success: r => {
+        if (!r || !r.confirm) return;
+        const v = String(r.content || '').trim().slice(0, 12);
+        if (!v) { wx.showToast({ title: '姓名不能为空', icon: 'none' }); return; }
+        db.setTeacher(v);
+        this.refresh();
+        wx.showToast({ title: '称呼已设为「' + v + '」', icon: 'none' });
+      }
+    });
+  },
   goSetting() { wx.navigateTo({ url: '/pages/setting/setting' }); },
   goKid(e) { wx.navigateTo({ url: '/pages/student/student?id=' + e.currentTarget.dataset.id }); },
   // 统计卡点按：负责人管理页多了「机构」页签插在最前（0机构 1班级 2课程 3学生 4人员），所以 tab 统一 +1

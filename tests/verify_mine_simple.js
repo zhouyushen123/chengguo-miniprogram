@@ -89,7 +89,12 @@ function freshDb() {
   await ok('S03 身份卡进「机构与身份」、底部进「设置」，两个入口都真的绑上了', async () => {
     const w = read('pages/mine/mine.wxml');
     const j = read('pages/mine/mine.js');
-    assert.ok(/bindtap="goOrgId"/.test(w) && /goOrgId\s*\(/.test(j), '身份卡应可点进机构与身份');
+    // 身份卡 2026-11-09 起绑 onUserCard：有名字才进「机构与身份」，没名字先弹改名
+    // （负责人第一次进来显示「未命名」，得有个地方能把名字填上）。两条路都要通
+    assert.ok(/bindtap="(goOrgId|onUserCard)"/.test(w), '身份卡没有点击入口');
+    assert.ok(/goOrgId\s*\(/.test(j), '身份卡应可点进机构与身份');
+    assert.ok(!/bindtap="onUserCard"/.test(w) || /onUserCard\(\)[\s\S]{0,200}goOrgId/.test(j),
+      'onUserCard 必须仍能走到 goOrgId（改名只是前置分支，不能把入口吃掉）');
     assert.ok(/bindtap="goSetting"/.test(w) && /goSetting\s*\(/.test(j), '底部应有设置入口');
     assert.ok(/pages\/orgid\/orgid/.test(j) && /pages\/setting\/setting/.test(j));
   });

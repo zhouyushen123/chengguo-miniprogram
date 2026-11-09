@@ -7,11 +7,12 @@
   <text class="idback" bindtap="backHome">切回我自己</text>
 </view>
 
-<!-- ① 身份卡：整张可点 → 机构与身份（当前机构 / 切换 / 再加一家 / 后台 / 邀请） -->
-<view class="card usercard" hover-class="mrow-hover" bindtap="goOrgId">
+<!-- ① 身份卡：整张可点 → 机构与身份（当前机构 / 切换 / 再加一家 / 后台 / 邀请）；
+     没名字时点它先改名，并在名字后面显式提示，不留一个「未命名」让人发懵 -->
+<view class="card usercard" hover-class="mrow-hover" bindtap="onUserCard">
   <ava src="{{uPhoto}}" name="{{name}}" size="{{92}}" radius="{{30}}" />
   <view class="uc-txt">
-    <view class="uc-name">{{name}}</view>
+    <view class="uc-name">{{name}}<text wx:if="{{noName}}" class="uc-setname">点此设置姓名</text></view>
     <view class="uc-meta">{{roleLabel}}<text wx:if="{{orgName}}"> · {{orgName}}</text><text wx:if="{{sandbox}}" class="uc-demo">演示</text></view>
     <view wx:if="{{meta}}" class="uc-meta">{{meta}}</view>
   </view>

@@ -165,7 +165,18 @@ async function checkCore(c, d, orgId) {
   if (c === 'members' && d.removed !== true && d.role === 'owner') {
     const r = await db.collection('members').where({ orgId, role: 'owner' }).limit(10).get().catch(() => ({ data: [] }));
     const clash = r.data.filter(x => String(x.id) !== String(d.id) && x.removed !== true);
-    if (clash.length) return { code: 'OWNER_EXISTS', msg: '机构已有负责人「' + (clash[0].name || '') + '」' };
+    if (clash.length) {
+      // 报错要说清楚"谁"已是负责人、这是"哪家"机构、接下来该点什么：
+      // 只说「机构已有负责人」时，引号里还可能是个空名字（出厂负责人没起名），
+      // 家长/老师看到等于没说（2026-11-09 用户反馈：同步页三条「机构已有负责人「」」）。
+      const who = String(clash[0].name || '').trim() || '机构创始人';
+      const od = await db.collection('orgs').where({ id: orgId }).limit(1).get().catch(() => ({ data: [] }));
+      const orgName = String((od.data[0] && od.data[0].name) || '').trim() || '本机构';
+      return {
+        code: 'OWNER_EXISTS',
+        msg: '「' + orgName + '」已有负责人「' + who + '」，如需换人请在机构里用「移交负责人」'
+      };
+    }
   }
   return null;
 }

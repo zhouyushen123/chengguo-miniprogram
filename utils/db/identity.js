@@ -93,9 +93,15 @@ function memberCreate(data) {
   const err = deny('member.manage');
   if (err) return { ok: false, msg: err };
   const d = data || {};
-  // 一个机构只能有一个负责人：多个人都拿 owner 会让"谁最大"失去意义
-  if (d.role === 'owner' && oc('members').some(m => m.role === 'owner')) {
-    return { ok: false, msg: '该机构已有负责人，请用「移交负责人」转移' };
+  // 一个机构只能有一个负责人：多个人都拿 owner 会让"谁最大"失去意义。
+  // 报错要带上是「谁」已是负责人——只说「已有负责人」时老师不知道该找谁移交
+  // （2026-11-09 用户反馈：同步页三条「机构已有负责人「」」，引号里是空的，等于没说）。
+  if (d.role === 'owner') {
+    const cur = oc('members').find(m => m.role === 'owner');
+    if (cur) {
+      const who = String(cur.name || '').trim() || '机构创始人';
+      return { ok: false, msg: '该机构已有负责人「' + who + '」，如需换人请用「移交负责人」' };
+    }
   }
   // 建人 + 建成员关系是同一件事：用事务包起来，避免"人建好了、成员关系没建成"的孤儿账号
   return core.tx(() => {

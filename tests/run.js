@@ -33,6 +33,7 @@ const SUITES = [
   ['verify_invite_card.js', '家长免码邀请卡'],
   ['verify_multi_org.js', '多机构与跨机构看孩子'],
   ['verify_mine_simple.js', '我的页简化（首屏 5 块）'],
+  ['verify_owner_naming.js', '负责人命名链路'],
   ['verify_family_feedback.js', '家长已读回执与留言'],
   ['verify_admin.js', '电脑端后台'],
   ['verify_platform.js', '平台控制台'],

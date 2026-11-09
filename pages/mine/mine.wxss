@@ -21,6 +21,12 @@
 }
 .uc-txt { flex: 1; min-width: 0; }
 .uc-name { font-size: 34rpx; font-weight: 700; margin-bottom: 8rpx; }
+/* 姓名为空时的引导：跟着名字走，弱化处理，不抢身份卡的视觉重心 */
+.uc-setname {
+  margin-left: 12rpx; padding: 2rpx 12rpx; border-radius: 8rpx;
+  font-size: 22rpx; font-weight: 400; color: var(--primary, #3b7cff);
+  background: rgba(59, 124, 255, .08);
+}
 .uc-meta { font-size: 24rpx; color: var(--muted); line-height: 1.5; }
 /* 演示模式徽标：跟在身份后面的一颗小胶囊，提醒现在看的是样板间 */
 .uc-demo {

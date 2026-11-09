@@ -295,6 +295,11 @@ function joinByCard(token, name, merge) {
         if (!r || !r.ok) return r || { ok: false, msg: '确认失败' };
         const target = String(r.orgId || '');
         if (!target || target === orgId()) return Object.assign({}, r, { already: true });
+        // 【游标必须归零】家长确认第二张卡 = 在这家绑上了新孩子。这家的历史记录
+        // srvAt 早就过去、游标已越过，不重置的话新孩子的成果永远拉不下来
+        //（pull 现在按「自家孩子」过滤，游标是过滤条件的函数）。
+        // 第一次进这家时游标本来就是 0，这行等于 no-op，无副作用。
+        db.sync.setCursor(0, target);
         return pullNow(target).then(p => Object.assign({}, r, { orgId: target, pulled: p.added + p.updated, added: true }));
       })
       .catch(e => ({ ok: false, msg: (e && e.message) || '确认失败' }));

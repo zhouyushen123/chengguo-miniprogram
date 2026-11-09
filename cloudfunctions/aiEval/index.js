@@ -8,6 +8,7 @@
 // 【合规】AI 生成的评价在发送给家长前仍需走内容审核（msgSecCheck，全局待办 P1-9）。
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
+const db = cloud.database();
 
 const https = require('https');
 const MODEL = 'glm-4v-flash';
@@ -165,6 +166,17 @@ exports.main = async (event) => {
   }
   const { OPENID } = cloud.getWXContext();
   if (!OPENID) return { ok: false, msg: '未登录，拒绝调用' };
+  // 【角色闸门】只有老师及以上能生成评语。没有这一道，家长可以先用本函数生成
+  // 一段"专业评语"，再借 push 的越权把它写进云端记录 —— 整条链不需要老师参与。
+  // fail-closed：成员表里查不到有效身份的一律拒绝（被移除/停用同样算没有）。
+  {
+    const mem = await db.collection('members').where({ openid: OPENID })
+      .limit(5).get().catch(() => ({ data: [] }));
+    const WRITERS = ['owner', 'admin', 'teacher'];
+    const okRole = (mem.data || []).some(m =>
+      m && m.removed !== true && m.status !== 'disabled' && WRITERS.indexOf(m.role) > -1);
+    if (!okRole) return { ok: false, code: 'FORBIDDEN', msg: '只有老师可以使用 AI 评语' };
+  }
   if (!allow(OPENID)) {
     return { ok: false, code: 'RATE_LIMIT', msg: '今日 AI 次数已用完（80 次），请明天再试' };
   }

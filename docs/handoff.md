@@ -1687,3 +1687,37 @@ Major-3（callGLM/callGLMText 去重复）留待下次动 aiEval 时一起做。
 - 后台把 **1147** 设为体验版；
 - 真机自查：我的页点「未命名」→ 起名 → 名字立即更新；同步页若仍有负责人冲突，报错应带机构名与人名。
 - 云端那条空名负责人仍建议手工补名字（会影响记录署名）。
+
+## 2026-11-09（四）服务端权限闸门（C-1/C-2 收口，1148）
+
+来源：第二轮全系统审查（`docs/code-review-round2-2026-11-09.md`）。根因只有一个：
+权限模型只活在客户端 —— `permissions.js` 承诺"服务端用同一套规则"但 syncv2 从未引用，
+家长工牌可 pull 全机构 12 个集合、push 改全班评语。本轮把闸门移到服务端。
+
+### 改了什么
+- `cloudfunctions/syncv2/index.js`：
+  ①**push 写权限白名单**（COLL_MGR_ONLY 配置类 / COLL_TEACHER 教学类 + inTeacherScope
+  班级范围判定，与前端 permissions.js 的 scoped 规则同语义）；家长及身份无效者直接 denied；
+  ②**pull 按「自家孩子」收窄**：家长只拉自家学生/已发布记录/自己那条成员/孩子所在班级；
+  ③`aliveMember`：被移除/停用的成员一律当没有身份（原来 removed 的老师照样全量拉、写库）；
+  ④截断保护的 count 查询带上同一 where（否则家长拉满一页游标会原地踏步）。
+- `cloudfunctions/aiEval/index.js`：角色闸门（owner/admin/teacher），家长不能生成评语——
+  否则配合 push 越权形成"生成→写入"完整攻击链。
+- `utils/sync.js`：joinByCard「再加一家」分支补 `setCursor(0, target)`（家长绑新孩子后
+  要拉回历史；pull 过滤后游标是孩子集合的函数）。
+- `tests/verify_server_guard.js`（新，13 项）：白名单存在/互斥/全集合归档/老师 fail-closed/
+  **前后端规则一致**（require permissions.js 的 ACTIONS 与 syncv2 白名单逐条比对，一边改
+  忘另一边就红）。
+- `tests/verify_pull.js` 7→10 项：mock 补 $in/$ne 与身份种子；新增三个行为级用例——
+  家长只拉自家已发布（草稿/别家学生/别班/别的老师全拿不到）、家长 push 两条全 denied
+  且库无变化、被移除成员 pull 返回 NO_MEMBER 空集。
+- **44→46 套件全绿**；syncv2、aiEval 已重新部署；**1148 已上传**。
+
+### 没做（明示）
+- 家长本地存量数据清理：无真实用户，跳过（报告 C-1 里的 privacy_trim_v1 方案留档备用）。
+- M-2 后台口令 hash、M-3 callGLM 去重、M-4 平台聚合超时：待用户拍板后排期。
+
+### 待人工
+- mp.weixin.qq.com → 版本管理 → **把 1148 设为体验版**。
+- 真机回归重点：家长账号确认卡 → 只能看到自家孩子；老师正常录课/发布不受影响；
+  被移除的成员不再收到新数据。

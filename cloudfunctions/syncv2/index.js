@@ -75,6 +75,47 @@ async function memberOf(openid, orgId) {
   } catch (e) { return null; }
 }
 
+// 成员身份有效性：被移除/被停用的一律当作「没身份」（fail-closed）。
+// 【为什么需要】memberOf 只查「有没有这条记录」：被移除的老师依然 role 正常，
+// pull 全量、push 写库都拦不住他。身份判定必须连生死一起看。
+function aliveMember(m) {
+  return !!m && m.removed !== true && m.status !== 'disabled';
+}
+
+/* ---------------- push 写权限（服务端白名单，fail-closed）----------------
+ * 2026-11-09 第二轮审查 Critical-2：push 原来只对 members 集合做角色拦截，
+ * students/records/classes 全放 —— 拿着家长工牌的人可以改全班评语、把草稿标成
+ * 已发布、改别人家孩子的信息。现在改成集合白名单：
+ *   机构配置（orgs/terms/classes/…）→ 只有负责人/管理员能写
+ *   教学内容（students/enrollments/records）→ 老师也能写，但必须落在
+ *   自己负责的班级里（与前端 permissions.js 的 scoped 规则同一语义）
+ * 新增集合默认「谁都不能写」—— 要放开必须来这里显式登记。
+ */
+const COLL_MGR_ONLY = ['orgs', 'terms', 'classes', 'courses', 'class_courses',
+  'subjects', 'knowledge_points', 'templates'];   // 机构配置：负责人/管理员
+const COLL_TEACHER = ['students', 'enrollments', 'records']; // 教学内容：老师（受班级范围限制）
+
+// 老师的写入范围：目标必须落在自己负责的班级里。
+async function inTeacherScope(c, d, me) {
+  const cls = (Array.isArray(me.clsIds) ? me.clsIds : []).map(Number).filter(n => n > 0);
+  if (!cls.length) return false;                    // 没分配班级 = 没有范围，什么都写不了
+  if (c === 'students' || c === 'enrollments') {
+    const ids = (Array.isArray(d.clsIds) ? d.clsIds : []).map(Number);
+    if (!ids.length) return true;                   // 还没分班：允许老师先建人（与前端行为一致）
+    return ids.some(x => cls.indexOf(x) > -1);
+  }
+  if (c === 'records') {
+    if (d.cid && cls.indexOf(Number(d.cid)) > -1) return true;
+    const r = await db.collection('students')
+      .where({ orgId: me.orgId, id: Number(d.sid) }).limit(1).get()
+      .catch(() => ({ data: [] }));
+    const s = (r.data || [])[0];
+    if (!s) return false;
+    return (Array.isArray(s.clsIds) ? s.clsIds : []).map(Number).some(x => cls.indexOf(x) > -1);
+  }
+  return false;
+}
+
 function newCode() {
   let s = '';
   for (let i = 0; i < 6; i++) s += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
@@ -712,7 +753,8 @@ exports.main = async (event) => {
     let accepted = 0, newer = 0, denied = 0;
     // 被服务端拒绝的改动要回传给客户端：静默丢弃等于让人以为改成功了
     const rejected = [];
-    const mine = await memberOf(OPENID, orgId);
+    const raw = await memberOf(OPENID, orgId);
+    const mine = aliveMember(raw) ? raw : null;      // 被移除/停用 = 没身份
     const isMgr = !!mine && (mine.role === 'owner' || mine.role === 'admin');
     for (const it of docs) {
       const c = String((it && it.c) || '');
@@ -721,6 +763,13 @@ exports.main = async (event) => {
       // 核心资产的硬约束（机构不可删、学号不重、一个微信一条成员、一个机构一个负责人）
       const bad = await checkCore(c, d, orgId);
       if (bad) { rejected.push({ c, id: d.id, code: bad.code, msg: bad.msg }); continue; }
+      // 【写权限白名单】机构配置只有管理角色能写；教学内容老师也要在班级范围内。
+      // 家长（及身份无效者）从这里就被挡住，不再等到 members 分支。
+      if (COLL_MGR_ONLY.indexOf(c) > -1 && !isMgr) { denied++; continue; }
+      if (COLL_TEACHER.indexOf(c) > -1 && !isMgr) {
+        if (!mine || mine.role !== 'teacher') { denied++; continue; }
+        if (!(await inTeacherScope(c, d, mine))) { denied++; continue; }
+      }
       // 成员表是权限的源头，必须服务端把关：客户端推送来的角色/范围一律不可信。
       // 非管理者只能改自己的姓名头像；连"认领自己"都不行的话，第一台设备永远建不出成员，
       // 所以机构还没有任何成员时放行第一条（谁先建机构，谁就是负责人）。
@@ -760,17 +809,52 @@ exports.main = async (event) => {
 
   if (action === 'pull') {
     const since = Number(event.since) || 0;
+    /* ---------------- 家长/无效身份：按「自家孩子」收窄 ----------------
+     * 【Critical-1 修复，2026-11-09】原来 where 只有 { orgId, srvAt > since }：
+     * 只要拿到工牌，家长账号也会把全机构 12 个集合整包拉回手机 —— 别人家孩子的
+     * 姓名、家长手机号、老师 openid、未发布草稿、照片 fileID 全在里面；前端的
+     * permissions.js 只是显示层过滤，数据那一刻已经落盘。闸门必须移到查询层：
+     *   家长   → 只拉自家孩子 + 这些孩子所在班级 + 自己那条成员 + 自家孩子的已发布记录
+     *   无身份（成员表没有我 / 已被移除或停用）→ 什么都不拉（fail-closed）
+     * 游标是过滤条件的函数：家长新绑孩子时客户端会重置该机构游标重拉（utils/sync.js）。
+     */
+    const rawMe = await memberOf(OPENID, orgId);
+    const me = aliveMember(rawMe) ? rawMe : null;
+    if (!me) return { ok: true, docs: [], cursor: since, more: false, code: 'NO_MEMBER' };
+    const isParent = me.role === 'parent';
+    const kidIds = (Array.isArray(me.studentIds) ? me.studentIds : []).map(Number).filter(n => n > 0);
+    let kidCls = null;
+    if (isParent) {
+      if (!kidIds.length) return { ok: true, docs: [], cursor: since, more: false, code: 'NO_KIDS' };
+      // 班级名家长端要显示（"周六素描班"），但只给自家孩子所在的班
+      const ks = await db.collection('students').where({ orgId, id: _.in(kidIds) })
+        .limit(50).get().catch(() => ({ data: [] }));
+      kidCls = [];
+      (ks.data || []).forEach(s => (Array.isArray(s.clsIds) ? s.clsIds : []).forEach(x => {
+        const n = Number(x); if (n > 0 && kidCls.indexOf(n) < 0) kidCls.push(n);
+      }));
+    }
     const docs = [];
     let cursor = since;
     let more = false;
     for (const c of COLLS) {
       let r = { data: [] };
+      // 家长的可见范围（非家长保持原全量口径：老师/负责人本来就管全机构）
+      const where = { orgId, srvAt: _.gt(since) };
+      if (isParent) {
+        if (c === 'students' || c === 'enrollments') { where.id = _.in(kidIds); }
+        else if (c === 'records') { where.sid = _.in(kidIds); where.sent = true; } // 草稿不给家长
+        else if (c === 'members') { where.openid = OPENID; }                       // 只要自己那条
+        else if (c === 'classes') { if (!kidCls.length) continue; where.id = _.in(kidCls); }
+        // orgs/terms/courses/class_courses/subjects/knowledge_points/templates：
+        // 机构配置与模板，不含个人信息、家长端展示需要 → 保持全量
+      }
       // 首次部署集合可能不存在：跳过一次并在下一轮补建（pull 不能因为一个集合报错全挂）
       try {
         // 必须按 srvAt 升序：没有排序时数据库返回顺序不确定，取到的 100 条可能是
         // 一段时间里最晚的那些，游标一推就越过了中间没取到的数据（下面的截断保护只能兜住
         // 同一毫秒的边界，兜不住这种跳跃）。升序 + 复合索引（orgId, srvAt）才是增量拉取的形状。
-        r = await db.collection(c).where({ orgId, srvAt: _.gt(since) })
+        r = await db.collection(c).where(where)
           .orderBy('srvAt', 'asc').limit(PAGE).get();
       } catch (e) {
         await ensureCollections();
@@ -793,7 +877,9 @@ exports.main = async (event) => {
         const got = batch.filter(d => (Number(d.srvAt) || 0) === maxAt).length;
         let total = got;
         try {
-          const cnt = await db.collection(c).where({ orgId, srvAt: maxAt }).count();
+          // 【必须用同一个 where】家长的过滤条件在这里不带上，count 会把全机构
+          // 同一 srvAt 的文档都数进来，误判「组不完整」→ 整组退回 → 游标永远原地踏步。
+          const cnt = await db.collection(c).where(Object.assign({}, where, { srvAt: maxAt })).count();
           total = Number(cnt && cnt.total) || got;
         } catch (e) { total = got; }
         if (total > got) {

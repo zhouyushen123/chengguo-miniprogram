@@ -35,8 +35,8 @@ TC-CLOUD-007,Cloud,P1,batch 上限 10 人,2,batch 有 cap,Completed,✅ PASSED,,
 TC-CLOUD-008,Cloud,P1,callGLMApi 出网单点守卫,2,守卫套件在,Completed,✅ PASSED,,2026-11-09,Horizon(LLM),aiEval https.request仅1处(66)+server_guard绿,
 TC-CLOUD-009,Cloud,P2,OWNER_EXISTS 报文可读,3,套件在,Completed,✅ PASSED,,2026-11-09,Horizon(LLM),verify_owner_naming 6项绿含三要素+空名兜底,
 TC-CLOUD-010,Cloud,P2,--env staging 指向验证,3,cf-deploy 支持,Completed,✅ PASSED,,2026-11-09,Horizon(LLM),argv解析--env→wx.envId覆盖(63-65/31-34)，不传回落默认,
-TC-CLOUD-011,Cloud,P1,云端函数版本与仓库一致,5,控制台可登录,Pending-Human,,,2026-11-09,Horizon(LLM),待人工,控制台人工
-TC-CLOUD-012,Cloud,P2,旧 sync 云函数已删除,3,控制台可登录,Pending-Human,,,2026-11-09,Horizon(LLM),待人工，勿误删 syncv2,控制台人工
+TC-CLOUD-011,Cloud,P1,云端函数版本与仓库一致,5,控制台可登录,Completed,✅ PASSED,,2026-11-09,Horizon(LLM),控制台实测：syncv2 更新 11-09 13:13、aiEval 13:14 与今日重部署时间一致，共 7 函数全部已部署,控制台人工
+TC-CLOUD-012,Cloud,P2,旧 sync 云函数已删除,3,控制台可登录,Completed,✅ PASSED,,2026-11-09,Horizon(LLM),控制台实测函数列表无 sync（仅 syncv2）；无需操作，待办销项,控制台人工
 TC-SEC-001,Sec,P0,A01 家长横向越权,3,套件可跑,Completed,✅ PASSED,,2026-11-09,Horizon(LLM),kidIds由服务端members表推导(832)非客户端参数,
 TC-SEC-002,Sec,P0,A01 无身份 openid fail-closed,2,套件可跑,Completed,✅ PASSED,,2026-11-09,Horizon(LLM),无身份→NO_MEMBER空数据(827),
 TC-SEC-003,Sec,P0,A01 前后端权限规则一致性守卫,3,守卫套件在,Completed,✅ PASSED,,2026-11-09,Horizon(LLM),server_guard 16项逐条比对绿,

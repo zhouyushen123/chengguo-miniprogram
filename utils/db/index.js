@@ -246,6 +246,7 @@ const db = {
     conflicts: syncStore.conflicts, addConflicts: syncStore.addConflicts,
     clearConflicts: syncStore.clearConflicts, restoreConflict: syncStore.restoreConflict,
     rescoped: syncStore.rescoped, clearRescoped: syncStore.clearRescoped,
+    epochs: syncStore.epochs, setEpoch: syncStore.setEpoch, wipeOrg: syncStore.wipeOrg,
     // 机构号换代：只在服务端刚发号（minted）时用
     reorg: syncStore.reorg
   },

@@ -266,6 +266,34 @@ function syncNow(opts) {
     .catch(e => { busy = false; return { ok: false, code: 'SYNC_FAIL', msg: (e && e.message) || '' }; });
 }
 
+/* ---------------- 机构数据整体重置（试用数据清零，"重开张"）----------------
+ * 双重确认弹窗在页面层（pkg-low/storage）；这里只负责执行，顺序是铁律：
+ *   服务端快照+软删+纪元+1 成功 → 本机这一家清空（游标归零）→ 立刻全量重拉对齐。
+ * 云端没动之前绝不碰本机数据，任何一步失败都如实抛给页面。
+ */
+function resetOrg() {
+  const org = targetOrg();
+  if (!org) return Promise.reject(new Error('还没有机构，无从重置'));
+  busy = true;
+  lastRun = Date.now();
+  return api.syncCall('resetOrg', { orgId: org })
+    .then(r => {
+      if (!r || !r.ok) throw new Error((r && r.msg) || '云端重置失败');
+      // 云端已重置：本机这一家全部作废（wipe 内含游标归零），再全量拉回
+      db.sync.wipeOrg(org);
+      db.sync.setEpoch(org, r.epoch);
+      // 拉回失败不算重置失败：云端与本机都已清空，只是新状态没拉全，
+      // 下一次前台同步会从游标 0 自动补齐。如实带回去让页面提示。
+      return pullNow(org)
+        .catch(e => ({ added: 0, updated: 0, pullError: (e && e.message) || '拉回失败' }))
+        .then(p => {
+          busy = false;
+          return { ok: true, epoch: r.epoch, pulled: p.added + p.updated, pullError: p.pullError || '' };
+        });
+    })
+    .catch(e => { busy = false; throw e; });
+}
+
 /* ---------------- 邀请码加入机构 ----------------
  * 家长/老师拿到机构码后走这里：云端建绑定 + 建成员关系 → 本机改挂到该机构 → 全量拉回。
  * 【前置条件】本机必须是空的。有数据还强行加入，等于把一个机构的记录塞进另一个机构的 id 空间，
@@ -479,7 +507,7 @@ try {
 module.exports = {
   init, pullNow, pushNow, syncNow, kick, schedule, flush, pending, rejectedCount,
   join, joinByCard, claim, history, revert,
-  orgList, switchOrg, joinMore,
+  orgList, switchOrg, joinMore, resetOrg,
   // 确认页提前检测本机是否为空库，别让人填完姓名才看到 LOCAL_DATA
   canJoin: () => isEmptyLocal(),
   // 已经有机构的人还能不能再加一家：能（多机构）

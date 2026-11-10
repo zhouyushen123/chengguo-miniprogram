@@ -794,8 +794,12 @@ exports.main = async (event) => {
         if (HIST_COLLS.indexOf(c) > -1 && !sameContent(found.data[0], d)) {
           await keepHistory(orgId, c, d.id, found.data[0], OPENID);
         }
+        // orgs.epoch 是服务端权威字段（重置纪元）：客户端推来的旧机构文档可能没有它，
+        // 直接整份覆盖会把纪元抹掉 → 其他设备检测不到重置。推送时一律保留云端原值。
+        const keepEpoch = c === 'orgs' && found.data[0].epoch !== undefined
+          ? { epoch: found.data[0].epoch } : {};
         await col.doc(found.data[0]._id).update({
-          data: Object.assign({}, d, { orgId, srvAt: at })
+          data: Object.assign({}, d, keepEpoch, { orgId, srvAt: at })
         });
       } else {
         await col.add({ data: Object.assign({}, d, { orgId, srvAt: at }) });
@@ -805,6 +809,56 @@ exports.main = async (event) => {
       accepted++;
     }
     return { ok: true, accepted, newer, denied, rejected };
+  }
+
+  /* ---------------- resetOrg：机构数据整体重置（试用数据清零，"重开张"）----------------
+   * 场景：负责人第一遍试用录了一堆错数据，想清空重来但不换微信号。
+   * 口径：保留 orgs（机构本身）+ 负责人自己的成员条，其余全部软删；
+   *       未停用的邀请码/家长卡一并关闭，旧试用账号无法凭码再进来。
+   * 顺序是铁律：先快照后删除 —— 备份没存成功就中止，数据一条不动（fail-closed）。
+   * 跨设备：orgs.epoch（重置纪元）+1，其他设备 pull 到后发现纪元变了 → 清本机这一家
+   *          的数据重拉（utils/db/sync.js 的纪元检测），否则旧数据会一直躺在
+   *          那台手机上冒充真实数据、还会尝试往回推。
+   */
+  if (action === 'resetOrg') {
+    const me = await memberOf(OPENID, orgId);
+    if (!aliveMember(me) || me.role !== 'owner') {
+      return { ok: false, code: 'FORBIDDEN', msg: '只有机构负责人可以重置机构数据' };
+    }
+    // 1) 快照先行：复用 backup 云函数，唯一 tag 留一份可追溯的全量快照
+    const tag = 'reset' + Date.now().toString(36);
+    let snap = null;
+    try {
+      snap = await cloud.callFunction({ name: 'backup', data: { action: 'run', orgId, tag } });
+    } catch (e) { snap = null; }
+    if (!snap || !snap.result || !snap.result.ok) {
+      return { ok: false, code: 'SNAPSHOT_FAIL', msg: '重置前的快照没有存成功，已中止（数据未动），请稍后再试' };
+    }
+    // 2) 软删全量业务数据（与既有删除同口径：removed:true 走同步，回收站可恢复）
+    const t = nextSrvAt();
+    const wipe = ['terms', 'classes', 'courses', 'class_courses', 'subjects',
+      'knowledge_points', 'templates', 'students', 'enrollments', 'records'];
+    for (const c of wipe) {
+      await db.collection(c).where({ orgId })
+        .update({ data: { removed: true, updatedAt: t, srvAt: t } }).catch(() => {});
+    }
+    // 成员：只留负责人自己（他是唯一能进后台的人，删了他这家就没人管了）
+    await db.collection('members').where({ orgId, role: _.neq('owner') })
+      .update({ data: { removed: true, updatedAt: t, srvAt: t } }).catch(() => {});
+    // 3) 关掉还没停用的邀请码与家长卡
+    await db.collection(INVITES).where({ orgId, closed: _.neq(true) })
+      .update({ data: { closed: true, closedAt: t } }).catch(() => {});
+    await db.collection(CARDS).where({ orgId, status: 'unused' })
+      .update({ data: { status: 'revoked', revokedAt: t } }).catch(() => {});
+    // 4) 纪元 +1（其他设备据此判定"这一家被重置过"，清本机重拉）
+    const org = await db.collection('orgs').where({ id: orgId }).limit(1).get().catch(() => ({ data: [] }));
+    let epoch = 1;
+    if (org.data.length) {
+      epoch = (Number(org.data[0].epoch) || 0) + 1;
+      await db.collection('orgs').doc(org.data[0]._id)
+        .update({ data: { epoch, updatedAt: t, srvAt: t } }).catch(() => {});
+    }
+    return { ok: true, epoch, tag, at: t, backup: (snap.result && snap.result.items && snap.result.items[0]) || null };
   }
 
   if (action === 'pull') {

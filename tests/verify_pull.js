@@ -41,7 +41,15 @@ function query(name, cond) {
       const list = rowsOf(name).filter(r => match(r, cond));
       return { data: list.slice(this._skip, this._skip + this._limit).map(r => JSON.parse(JSON.stringify(r))) };
     },
-    async count() { return { total: rowsOf(name).filter(r => match(r, cond)).length }; }
+    async count() { return { total: rowsOf(name).filter(r => match(r, cond)).length }; },
+    // 服务端批量更新（resetOrg 用）：命中即改，返回更新数
+    async update({ data }) {
+      let n = 0;
+      rowsOf(name).forEach(r => {
+        if (match(r, cond)) { Object.assign(r, JSON.parse(JSON.stringify(data))); n++; }
+      });
+      return { stats: { updated: n } };
+    }
   };
 }
 function collection(name) {
@@ -82,6 +90,11 @@ const fake = {
   DYNAMIC_CURRENT_ENV: 'env',
   init() {},
   getWXContext: () => ({ OPENID }),
+  // 跨函数调用（resetOrg → backup 快照）：测试里默认快照成功，可按需改写
+  callFunction: async ({ name, data }) => {
+    if (name !== 'backup' || (data && data.action) !== 'run') return { result: { ok: false } };
+    return { result: { ok: true, items: [{ orgId: data.orgId, tag: data.tag, total: 0 }] } };
+  },
   database: () => ({
     collection,
     command: { gt: v => ({ $gt: v }), eq: v => ({ $eq: v }), in: v => ({ $in: v }), neq: v => ({ $ne: v }) },
@@ -314,6 +327,91 @@ async function pullAll(since) {
     const r = await syncv2.main({ action: 'pull', orgId: 'org1', since: 0 });
     assert.ok(r.ok, JSON.stringify(r));
     assert.deepStrictEqual(r.docs.filter(x => x.c === 'enrollments').map(x => x.d.id), [2], '只能拉到自家孩子的报名');
+  });
+
+  console.log('\n【resetOrg：机构数据整体重置（试用数据清零）】');
+
+  // resetOrg 的固定布景：负责人 + 一堆业务数据 + 没停用的邀请码/家长卡
+  function resetOrgScene() {
+    reset();
+    rowsOf('members').length = 0;
+    rowsOf('members').push(
+      { _id: 'mo', orgId: 'org1', openid: OPENID, role: 'owner', status: 'active', removed: false, clsIds: [], studentIds: [], id: 100 },
+      { _id: 'mt', orgId: 'org1', openid: 'openid-b', role: 'teacher', status: 'active', removed: false, clsIds: [1], studentIds: [], id: 101 },
+      { _id: 'mp', orgId: 'org1', openid: 'openid-c', role: 'parent', status: 'active', removed: false, clsIds: [], studentIds: [5], id: 102 }
+    );
+    rowsOf('orgs').push({ _id: 'o1', id: 'org1', orgId: 'org1', name: '试用机构', srvAt: 100 });
+    rowsOf('classes').push({ _id: 'c1', orgId: 'org1', id: 1, name: '试用班', srvAt: 200 });
+    rowsOf('students').push({ _id: 's1', orgId: 'org1', id: 5, name: '试用孩子', clsIds: [1], srvAt: 300 });
+    rowsOf('records').push({ _id: 'r1', orgId: 'org1', id: 900, sid: 5, cid: 1, sent: true, srvAt: 400, note: '试用记录' });
+    rowsOf('invites').push({ _id: 'iv1', orgId: 'org1', code: 'ABC234', role: 'parent', closed: false });
+    rowsOf('invite_cards').push({ _id: 'tk1', orgId: 'org1', token: 'aaaaaaaaaaaa', status: 'unused', sid: 5 });
+  }
+
+  await ok('非负责人调 resetOrg：拒绝且数据一条不动', async () => {
+    resetOrgScene();
+    rowsOf('members')[0].role = 'teacher';    // 把负责人降级成老师
+    const r = await syncv2.main({ action: 'resetOrg', orgId: 'org1' });
+    assert.strictEqual(r.ok, false);
+    assert.strictEqual(r.code, 'FORBIDDEN');
+    assert.ok(!rowsOf('students')[0].removed, '学生不应被软删');
+  });
+
+  await ok('快照失败：中止删除（fail-closed，先备份后动刀）', async () => {
+    resetOrgScene();
+    const saved = fake.callFunction;
+    fake.callFunction = async () => ({ result: { ok: false, code: 'ERR' } });
+    const r = await syncv2.main({ action: 'resetOrg', orgId: 'org1' });
+    fake.callFunction = saved;
+    assert.strictEqual(r.ok, false);
+    assert.strictEqual(r.code, 'SNAPSHOT_FAIL');
+    assert.ok(!rowsOf('students')[0].removed, '快照失败时学生不能被动');
+    assert.ok(!rowsOf('records')[0].removed, '快照失败时记录不能被动');
+  });
+
+  await ok('负责人重置：业务数据全软删、负责人保留、邀请码家长卡关闭、纪元+1', async () => {
+    resetOrgScene();
+    const r = await syncv2.main({ action: 'resetOrg', orgId: 'org1' });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.strictEqual(r.epoch, 1, '纪元从无到有应为 1');
+    assert.strictEqual(r.tag.indexOf('reset'), 0, '快照 tag 应以 reset 开头');
+    // 业务数据全软删
+    assert.ok(rowsOf('students')[0].removed === true, '学生被软删');
+    assert.ok(rowsOf('records')[0].removed === true, '记录被软删');
+    assert.ok(rowsOf('classes')[0].removed === true, '班级被软删');
+    // 成员：负责人保留，老师家长软删
+    const owner = rowsOf('members').find(m => m.id === 100);
+    const teacher = rowsOf('members').find(m => m.id === 101);
+    const parent = rowsOf('members').find(m => m.id === 102);
+    assert.ok(!owner.removed, '负责人自己必须保留');
+    assert.ok(teacher.removed === true, '老师被软删');
+    assert.ok(parent.removed === true, '家长被软删');
+    // 邀请码与家长卡关闭
+    assert.ok(rowsOf('invites')[0].closed === true, '邀请码停用');
+    assert.ok(rowsOf('invite_cards')[0].status === 'revoked', '家长卡作废');
+    // 机构本身保留且纪元+1
+    assert.ok(!rowsOf('orgs')[0].removed, '机构本身保留');
+    assert.strictEqual(rowsOf('orgs')[0].epoch, 1, 'orgs.epoch 应写入 1');
+  });
+
+  await ok('第二次重置：纪元递增为 2（客户端据此区分“登记过”和“又重置了”）', async () => {
+    const r = await syncv2.main({ action: 'resetOrg', orgId: 'org1' });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.strictEqual(r.epoch, 2, '纪元应递增');
+    assert.strictEqual(rowsOf('orgs')[0].epoch, 2);
+  });
+
+  await ok('旧设备回推不带 epoch 的 orgs 文档：服务端保住纪元不被抹掉', async () => {
+    // 模拟重置前的旧手机：本地 org 文档没有 epoch 字段、updatedAt 比云端新
+    const serverOrg = rowsOf('orgs')[0];
+    const stale = { id: 'org1', name: '试用机构', updatedAt: (serverOrg.updatedAt || 0) + 5000 };
+    const r = await syncv2.main({
+      action: 'push', orgId: 'org1',
+      docs: [{ c: 'orgs', d: stale }]
+    });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.strictEqual(r.accepted, 1, '文档本身应被接受');
+    assert.strictEqual(rowsOf('orgs')[0].epoch, 2, 'epoch 不能被旧文档抹掉');
   });
 
   console.log('\n全部 ' + pass + ' 项拉取断言通过');

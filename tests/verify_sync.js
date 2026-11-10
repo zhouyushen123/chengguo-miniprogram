@@ -380,6 +380,81 @@ t('pullNow：新分班 → 游标归零并自动重拉一轮，新班的历史�
   assert.ok((db.real().records || []).some(x => x.note === '新班的历史记录'), '新班的历史记录要进本机');
 });
 
+// ---------- 重置纪元：机构被云端整体重置 → 本机这一家作废重拉（resetOrg 客户端半边） ----------
+t('applyRemote：第一次见到 epoch 只登记不动数据；变了才作废', () => {
+  for (const k in mem) delete mem[k];
+  const db = freshDb();
+  db.init();
+  db.patchMeta({ orgId: 'orgX', openid: 'oX' });
+  // 本地数据与 epoch 都是上一轮 pull 拉下来的（不绕登录闸，直接走同步通道铺底）
+  db.sync.applyRemote([{ c: 'orgs', d: { id: 'orgX', orgId: 'orgX', name: '机构', epoch: 3, updatedAt: 10 } }]);
+  db.sync.applyRemote([{ c: 'students', d: { id: 9, orgId: 'orgX', name: '试用孩子', updatedAt: 15 } }]);
+  assert.ok((db.real().students || []).some(s => s.name === '试用孩子'), '铺底：本地有试用数据');
+  db.sync.setCursor(500, 'orgX');
+  assert.strictEqual(db.sync.epochs()['orgX'], 3, 'epoch 已登记');
+  assert.strictEqual(db.sync.cursor('orgX'), 500, '首次登记不动游标');
+  assert.deepStrictEqual(db.sync.rescoped(), [], '首次登记不触发重拉');
+  // epoch 变了：本机这一家全部作废（旧试用数据不能继续冒充真实数据）
+  db.sync.applyRemote([{ c: 'orgs', d: { id: 'orgX', orgId: 'orgX', name: '机构', epoch: 4, updatedAt: 20 } }]);
+  assert.strictEqual((db.real().students || []).filter(s => String(s.orgId) === 'orgX').length, 0, '这一家的学生要清掉');
+  assert.strictEqual(db.sync.cursor('orgX'), 0, '游标归零');
+  assert.deepStrictEqual(db.sync.rescoped(), ['orgX'], '要走重拉路径');
+  assert.strictEqual(db.sync.epochs()['orgX'], 4);
+});
+
+t('applyRemote：orgX 被重置不影响 orgY（多机构互不牵连）', () => {
+  for (const k in mem) delete mem[k];
+  const db = freshDb();
+  db.init();
+  db.patchMeta({ orgId: 'orgX', openid: 'oX' });
+  // 两家各登记过 epoch，各有学生
+  ['orgX', 'orgY'].forEach(o => {
+    db.sync.applyRemote([{ c: 'orgs', d: { id: o, orgId: o, name: '机构' + o, epoch: 1, updatedAt: 10 } }]);
+    db.sync.applyRemote([{ c: 'students', d: { id: o === 'orgX' ? 1 : 2, orgId: o, name: '孩子' + o, updatedAt: 15 } }]);
+  });
+  // orgX 重置（epoch 2）
+  db.sync.applyRemote([{ c: 'orgs', d: { id: 'orgX', orgId: 'orgX', name: '机构orgX', epoch: 2, updatedAt: 20 } }]);
+  const left = (db.real().students || []).map(s => String(s.orgId));
+  assert.ok(left.indexOf('orgX') < 0, 'orgX 的学生要清掉');
+  assert.ok(left.indexOf('orgY') > -1, 'orgY 的学生必须还在');
+});
+
+t('pullNow：纪元变化 → 本机作废并自动重拉一轮（其他设备视角）', async () => {
+  for (const k in mem) delete mem[k];
+  const db = freshDb();
+  db.init();
+  db.patchMeta({ orgId: 'orgX', openid: 'oX' });
+  // 铺底：本地已有旧数据 + 已登记 epoch=1 + 游标已推进
+  db.sync.applyRemote([{ c: 'orgs', d: { id: 'orgX', orgId: 'orgX', name: '机构', epoch: 1, updatedAt: 10 } }]);
+  db.sync.applyRemote([{ c: 'students', d: { id: 9, orgId: 'orgX', name: '旧试用孩子', updatedAt: 15 } }]);
+  db.sync.setCursor(500, 'orgX');
+  db.sync.clearRescoped('orgX');
+  const api = require('../utils/api');
+  api.syncOn = () => true;
+  let call = 0;
+  api.syncCall = (action) => {
+    if (action !== 'pull') return Promise.resolve({ ok: true });
+    call++;
+    // 第 1 次：只带回带着新纪元的 orgs 文档（这一刻旧数据全部作废）
+    if (call === 1) return Promise.resolve({
+      ok: true, more: false, cursor: 600,
+      docs: [{ c: 'orgs', d: { id: 'orgX', orgId: 'orgX', name: '机构', epoch: 2, updatedAt: 600 }, srvAt: 600 }]
+    });
+    // 第 2 次（归零重拉）：重置后新录的数据
+    return Promise.resolve({
+      ok: true, more: false, cursor: 700,
+      docs: [{ c: 'students', d: { id: 20, orgId: 'orgX', name: '重置后的新孩子', updatedAt: 700 }, srvAt: 700 }]
+    });
+  };
+  const sync = require('../utils/sync');
+  const r = await sync.pullNow('orgX');
+  assert.ok(r.more === false);
+  assert.strictEqual(call, 2, '纪元变化要自动重拉一轮，实际调用 ' + call + ' 次');
+  assert.strictEqual((db.real().students || []).filter(s => s.name === '旧试用孩子').length, 0, '旧试用数据必须清掉');
+  assert.ok((db.real().students || []).some(s => s.name === '重置后的新孩子'), '重置后的新数据要拉回来');
+  assert.deepStrictEqual(db.sync.rescoped(), [], '重拉完成后标记要消费掉');
+});
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {

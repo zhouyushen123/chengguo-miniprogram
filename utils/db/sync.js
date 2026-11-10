@@ -127,6 +127,35 @@ function clearRescoped(org) {
   const left = rescoped().filter(o => o !== String(org || ''));
   patchSync({ rescoped: left });
 }
+/* ---------------- 重置纪元（epoch）：这家机构的数据在云端被整体重置了 ----------------
+ * resetOrg 之后云端的旧数据全部软删，但其他设备的本地副本还活着，而且
+ * 会往下推（flush 只 push 不 pull）—— 没有统一作废信号的话，旧手机上的
+ * 试用数据会无限期冒充真实数据。orgs 文档的 epoch 就是这个信号：
+ *   · 第一次见到某家的 epoch → 只登记，不动数据（不能把新装设备误判成重置）
+ *   · 之后发现 epoch 变了 → 本机这一家的数据全部清掉 + 游标归零重拉
+ */
+const epochs = () => (syncMeta().epochs || {});
+function setEpoch(org, v) {
+  patchSync({ epochs: Object.assign({}, epochs(), { [String(org)]: Number(v) || 0 }) });
+}
+// 清掉本机这一家机构的全部数据（orgs 是主键即机构号，按 id 匹配；其余按 orgId）。
+// 这家的冲突败者副本与云端拒收记录一并过期：它们指向的数据已经不存在了。
+function wipeOrg(org) {
+  const o = String(org || '');
+  if (!o) return;
+  COLLS.forEach(name => {
+    const all = core.coll(name) || [];
+    const left = all.filter(d => !d
+      || (name === 'orgs' ? String(d.id) !== o : String(d.orgId || '') !== o));
+    if (left.length !== all.length) core.setColl(name, left);
+  });
+  patchSync({
+    conflicts: conflicts().filter(x => !x.loser || String(x.loser.orgId || '') !== o),
+    rejects: rejects().filter(x => !x || String(x.orgId || '') !== o)
+  });
+  setCursor(0, o);
+}
+
 // 首次上云：把当前机构的全部数据标脏，一次推完（幂等，重复标脏没有副作用）
 function markAllDirty() { patchSync({ dirty: COLLS.slice() }); }
 
@@ -200,6 +229,20 @@ function applyRemote(items) {
       if (before && scopeOf(before) !== scopeOf(rd)) addRescoped(rd.orgId);
     });
   }
+  // 纪元检测：合并进来的 orgs 文档带着 epoch，与登记值不同 = 这家在云端被重置过
+  // → 本机这一家全部作废（含刚合并的这批，重拉会重新拿到），rescoped 触发整轮重拉。
+  (byColl.orgs || []).forEach(od => {
+    if (!od || od.id === undefined) return;
+    const key = String(od.id);
+    const seen = epochs()[key];
+    const cur = Number(od.epoch) || 0;
+    if (seen === undefined) { setEpoch(key, cur); return; }
+    if (Number(seen) !== cur) {
+      wipeOrg(key);
+      setEpoch(key, cur);
+      addRescoped(key);
+    }
+  });
   return { ok: failed.length === 0, added, updated, failed };
 }
 
@@ -241,5 +284,5 @@ module.exports = {
   COLLS, dirtyCols, markDirty, clearDirty, markAllDirty, snapshot, applyRemote,
   cursor, setCursor, onWrite, onDirty, reorg, rejects, addRejects, clearRejects,
   conflicts, addConflicts, clearConflicts, restoreConflict,
-  rescoped, clearRescoped
+  rescoped, clearRescoped, epochs, setEpoch, wipeOrg
 };

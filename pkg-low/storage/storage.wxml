@@ -119,6 +119,13 @@
       <view class="hint note">重置会清掉这台手机上的全部学生、班级与记录，且不能撤销（云端数据不受影响）。只在"任何操作都提示请先登录"这种坏档时使用，重置后重新走一遍开通向导即可。</view>
     </view>
 
+    <!-- 重置机构数据：负责人专用（试用数据清零），双重确认 + 输入「重置」二字 -->
+    <view wx:if="{{canReset}}" class="card">
+      <view class="sec"><view class="label">重置机构数据</view><view class="sechint">试用数据清零</view></view>
+      <view class="hint note">把这家机构的全部学生、班级、课堂记录、课程与成员一次性清空（机构与你本人保留）。云端会先存一份快照、30 天内可找后台恢复。适合第一遍试用录了错数据、想清空重来的情况。</view>
+      <view class="btn clean" hover-class="btn-hover" bindtap="askReset" style="color:var(--danger)">重置这家机构的全部数据</view>
+    </view>
+
     <view class="card note">
       <view class="tip">照片和视频存在这台手机上：换手机、清理小程序存储或卸载重装都会丢失。文字评价与分数存在上面几张卡片里，不受影响。</view>
       <view class="tip">视频最占空间（每条约 10–50 MB）。空间紧张时，删掉几条不需要的视频就能腾出很多。</view>

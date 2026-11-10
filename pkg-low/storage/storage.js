@@ -12,6 +12,7 @@ const media = require('../../utils/media');
 const theme = require('../../utils/theme');
 const api = require('../../utils/api');
 const sync = require('../../utils/sync');
+const schema = require('../../utils/db/schema');
 
 const KB = 1024;
 const MB = 1024 * 1024;
@@ -54,10 +55,12 @@ Page({
     // 被覆盖的本地改动（LWW 冲突败者副本）：不是丢了，是存在这里，可以找回
     conflicts: [], conflictCount: 0,
     rawRows: [],
-    dirtyCount: 0, syncHint: '', syncBusy: false
+    dirtyCount: 0, syncHint: '', syncBusy: false,
+    // 重置机构数据：仅负责人（且已上云）可见；双重确认 + 输入「重置」才执行
+    canReset: false, resetBusy: false
   },
 
-  onShow() { theme.apply(this); this.refresh(); this.refreshCloud(); this.refreshSync(); },
+  onShow() { theme.apply(this); this.refresh(); this.refreshCloud(); this.refreshSync(); this.refreshReset(); },
 
   refresh() {
     const h = db.health();
@@ -286,6 +289,70 @@ Page({
           }
         });
       }
+    });
+  },
+
+  /* ============ 重置机构数据（负责人专用，试用数据清零） ============ */
+  // 可见性：负责人 + 机构已真实上云（出厂号还没 hello 过的谈不上“云端重置”）
+  refreshReset() {
+    let ok = false;
+    try {
+      const o = String(((db.real() && db.real().meta) || {}).orgId || '');
+      ok = db.auth.isOwner() && !!o && !schema.isFactoryOrg(o);
+    } catch (e) { ok = false; }
+    this.setData({ canReset: ok });
+  },
+
+  // 第一道：红色警告，把删什么/留什么/怎么恢复说全
+  askReset() {
+    if (!this.data.canReset || this.data.resetBusy) return;
+    wx.showModal({
+      title: '重置这家机构的全部数据？',
+      content: '会清空：全部学生、班级、课堂记录、课程、老师与家长账号、邀请码。保留：机构本身和你的负责人身份。云端会先存一份快照，30 天内可找后台恢复。这台手机上还没同步上去的改动会一并丢失，不能撤销。',
+      confirmText: '继续', cancelText: '取消',
+      confirmColor: theme.danger(),
+      success: r => { if (r.confirm) this.confirmReset(); }
+    });
+  },
+
+  // 第二道：输入「重置」二字才放行 —— 比连点两次确认更防手滑
+  confirmReset() {
+    wx.showModal({
+      title: '输入「重置」确认',
+      editable: true, placeholderText: '请输入：重置',
+      confirmText: '执行重置', cancelText: '放弃',
+      confirmColor: theme.danger(),
+      success: r => {
+        if (!r.confirm) return;
+        if ((r.content || '').trim() !== '重置') {
+          wx.showToast({ title: '输入不一致，未执行重置', icon: 'none' });
+          return;
+        }
+        this.doResetOrg();
+      }
+    });
+  },
+
+  doResetOrg() {
+    this.setData({ resetBusy: true });
+    wx.showLoading({ title: '正在重置…', mask: true });
+    sync.resetOrg().then(out => {
+      wx.hideLoading();
+      this.setData({ resetBusy: false });
+      // 云端与本机都已清空；拉回没拉全不算失败，提示下次同步自动补
+      const tip = out && out.pullError
+        ? '已重置，但新状态没拉全：下次打开会自动补齐'
+        : '已重置';
+      wx.showToast({ title: tip, icon: 'none' });
+      this.refresh(); this.refreshSync(); this.syncHead();
+    }).catch(e => {
+      wx.hideLoading();
+      this.setData({ resetBusy: false });
+      // 只有走到这里才是“什么都没动”：快照失败/无权限在云端就拦下了
+      wx.showModal({
+        title: '重置没有执行', showCancel: false,
+        content: ((e && e.message) || '网络异常') + '。数据没有被动过，可以稍后再试。'
+      });
     });
   },
 

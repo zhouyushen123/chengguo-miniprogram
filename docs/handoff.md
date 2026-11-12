@@ -1822,3 +1822,49 @@ Major-3（callGLM/callGLMText 去重复）留待下次动 aiEval 时一起做。
 - 验证：全套件绿（新增 5 个用例：向导长期班复用/自定义、弹层预填、结课归档、
   不限期可建）；lint 0；pagewalk 0 硬伤；主包 1279.4KB（62.5%）。
 - 待办不变：真机 TC-REAL 清单、BUG-001/002；本改动未发版，随下次 `npm run ship` 带出。
+
+## 课次（lessons）功能 P1 数据层（2026-11-12，未发版，页面待做）
+
+- **方案**：docs/lesson-plan.md（九轮收敛定稿：纯课程维度+挂学期、C' 序号、方式 C 确认）。
+- **数据层**：新增 `lessons` 集合（entities 登记、schema normalize/validate、maintenance 归一化）；
+  `records` 加 `lessonId`（0=未关联，编辑不改，保存时校验课次与课程一致）。
+- **新模块 `utils/db/lessons.js`**：增删改查/批量生成（事务）/确认/错乱检测+一键重排。
+  门面 `db.lessons`（groups/create/batch/update/remove/confirm/disorder/reorder/linked）。
+- **权限**：`lesson.write` / `lesson.confirm`（owner/admin/teacher，teacher 限 member.courseIds）。
+- **云函数清单**：syncv2 COLLS、backup lib COLLS、admin BACKUP_COLLS/CB_COLLS 均已加 'lessons'
+  —— **改完必须重部署三个云函数**：`npm run cloud`（tools/cf-deploy.js）。
+- 数据字典已重生成（14 张本机表）。
+- 页面（课程详情课次区/录入页课次下拉+弹窗）为下一步，未动。
+
+## 课次（lessons）P1 全量落地（2026-11-12 下午，未发版，门禁全绿）
+
+数据层（见上一节）之外，本轮完成：
+
+- **课次管理页 `pkg-low/lessons/lessons`**（新分包页，app.json 分包 7 页）：
+  按学期分组列表（归档只读）+ 单次添加/批量生成（起始日+每周几+次数+可选时间段）/
+  编辑/确认（方式 C 标记）/删除（有记录关联先提示作废）/错乱提示条+一键重排。
+  入口：管理页课程行「课次」、课程详情弹层「管理课次」。
+- **录入页（pages/record）**：选了建有课次的课程才出现「关联课次」选择器
+  （与班级维度「归入课次」并存：前者=课程第 N 课，后者=班级第 N 课）；
+  默认选日期最接近今天的课次；"＋ 新建本次课"就地弹窗，保存后自动选中；
+  编辑态不显示（保持原关联，与 session 同哲学）。
+- **records.save**：新建可带 lessonId（0=不关联合法；非零校验存在+课程一致，
+  不匹配明报错）；编辑保持原关联。
+- **schema 拆分**：新增 `utils/db/schema-lesson.js`（课次 normalize/validate 纯函数），
+  缓解 schema.js 500 行上限；lessons.js 自带 `api` 对象，门面一行接入（260 行卡线）。
+- **守卫测试同步**：verify_arch LAYER/API 面、verify_schema_doc 总数 24、
+  verify_manual 分包 7 页、verify_server_guard lessons 白名单、fixture COLLS。
+- **修的真 bug**：records.save 曾把 lessonId=0 当"课次不存在"拦掉（测试抓出）；
+  demo 包缺 lessons 键导致 writeDemoPackage 分片层炸（补空数组兜底）。
+- 验证：`npm run check` 全绿（新套件 verify_lesson 27 项；lint 0；主包 63.8%）。
+- **⚠️ 发版前必须重部署云函数**：`npm run cloud`（syncv2/backup/admin 三个都改了）。
+- P2 待做：家长端"第 N 次课"展示、AI 评语提示词带课次课题/内容、老师确认流打磨。
+
+## 上课方式智能默认（2026-11-12，提交 b3478db，未发版）
+
+- 用户提出：学校=学期制，机构/个人=课时结转。落地为「按机构类型智能默认 + 可改」：
+  setup 第 3 步进页时按第 1 步 org.type 预选 mode（学校/幼儿园→term，其余→carry），
+  推荐项挂「荐」小标；modeTouched 标记保护用户手动选择，回退重进不覆盖。
+- 文案改写为面向人群（term 适合学校/幼儿园；carry 适合机构/一对一）。schema 不动。
+- 补 J1a2 断言（verify_journey 22 项）；lint 0；全套件绿。
+- P1 未做：机构/个人的第 2 步学期默认「长期班」预设，待拍板。

@@ -55,6 +55,15 @@ ok('J1a 向导第 1 步：机构名校验与保存（A-04/A-05/A-06 等价）', 
   assert.ok(up.ok, '机构保存失败：' + (up.msg || ''));
 });
 let termId, clsId, stuId;
+ok('J1a2 上课方式按机构类型智能默认（学校→学期制，机构/个人→课时结转）', () => {
+  const fs2 = require('fs');
+  const src = fs2.readFileSync(path.join(ROOT, 'pages/setup/setup.js'), 'utf8');
+  assert.ok(src.indexOf('function recMode') > -1, '应有 recMode 推荐函数');
+  assert.ok(/'学校' \|\| type === '幼儿园'/.test(src), '学校/幼儿园应推荐学期制');
+  assert.ok(src.indexOf('modeTouched') > -1, '手动改过后不应被预选覆盖（modeTouched）');
+  const wxml = fs2.readFileSync(path.join(ROOT, 'pages/setup/setup.wxml'), 'utf8');
+  assert.ok(wxml.indexOf('modeRec') > -1, '推荐标记应由 modeRec 驱动');
+});
 ok('J1b 第 2 步：建学期（A-09）', () => {
   const r = db.terms.create({ name: '2026 秋季学期', startDate: '2026-09-01', endDate: '2027-01-20', status: 'active' });
   assert.ok(r.ok, '学期创建失败：' + (r.msg || ''));

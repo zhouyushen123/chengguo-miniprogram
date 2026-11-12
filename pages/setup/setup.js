@@ -19,6 +19,9 @@ const termPresets = require('../../utils/term-presets');
 
 const TYPES = ['培训机构', '学校', '幼儿园', '个人工作室'];
 const MODES = [{ k: 'term', t: '学期制' }, { k: 'carry', t: '课时结转' }];
+// 按机构类型推默认上课方式：学校/幼儿园走学期制，机构/个人走课时结转。
+// 只是默认值 + 推荐标记，用户随时可改（modeTouched 记住手动选择，回退重进不覆盖）。
+function recMode(type) { return (type === '学校' || type === '幼儿园') ? 'term' : 'carry'; }
 
 Page({
   data: {
@@ -40,6 +43,9 @@ Page({
     term: { name: '', startDate: '', endDate: '', kind: '' },
     // 班级
     cls: { name: '', mode: 'term', course: '' },
+    // 上课方式推荐项（跟着机构类型走）与「用户手动改过」标记
+    modeRec: 'term',
+    modeTouched: false,
     // 学生
     stuName: '',
     added: [],
@@ -62,6 +68,7 @@ Page({
       'term.kind': t.k,
       'org.name': rec.name || orgName || '',
       'org.type': rec.type || TYPES[0],
+      'modeRec': recMode(rec.type || TYPES[0]),
       'org.contact': rec.contact || u.name || '',
       'org.phone': rec.phone || '',
       idle: db.classes.list().length > 0 || db.students.list().length > 0
@@ -101,7 +108,7 @@ Page({
   onStart(e) { this.setData({ 'term.startDate': e.detail.value, 'term.kind': '' }); },
   onEnd(e) { this.setData({ 'term.endDate': e.detail.value, 'term.kind': '' }); },
   onClsName(e) { this.setData({ 'cls.name': e.detail.value }); },
-  pickMode(e) { this.setData({ 'cls.mode': e.currentTarget.dataset.v }); },
+  pickMode(e) { this.setData({ 'cls.mode': e.currentTarget.dataset.v, modeTouched: true }); },
   onStuName(e) { this.setData({ stuName: e.detail.value }); },
 
   /* ---------------- 流程 ---------------- */
@@ -203,6 +210,12 @@ Page({
     return this._afterTermOk();
   },
   _afterTermOk() {
+    // 上课方式默认值按第 1 步的机构类型给：学校/幼儿园 → 学期制，其余 → 课时结转。
+    // 只在用户没手动改过时预选（modeTouched），避免回退重进覆盖用户的选择。
+    const rec = recMode(this.data.org.type);
+    const patch = { 'modeRec': rec };
+    if (!this.data.modeTouched) patch['cls.mode'] = rec;
+    this.setData(patch);
     // 班级默认名跟着机构名给个建议值，省一次输入（用户可改）；课程默认同名
     if (!this.data.cls.name) {
       const guess = (this.data.org.name || '').replace(/(培训|教育|有限|公司|中心)/g, '').slice(0, 6);

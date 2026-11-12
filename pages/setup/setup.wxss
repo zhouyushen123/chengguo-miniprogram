@@ -20,6 +20,17 @@
 
 .note.sm { margin: 20rpx 0 0; font-size: 23rpx; }
 
+/* 上课方式：推荐标记（跟着机构类型走，只是提示不是锁死） */
+.rectag {
+  display: inline-block; margin-left: 8rpx; padding: 0 8rpx;
+  font-size: 19rpx; line-height: 26rpx; border-radius: 6rpx;
+  color: var(--brand); background: var(--brand-soft);
+  border: 2rpx solid var(--brand-border); vertical-align: 2rpx;
+}
+.chip.on .rectag { color: #fff; background: rgba(255,255,255,.2); border-color: rgba(255,255,255,.45); }
+/* label 后的小灰注（如「按你的机构类型预选」） */
+.labelsub { font-size: 21rpx; color: var(--faint); font-weight: 400; margin-left: 10rpx; }
+
 .row2 { display: flex; gap: 20rpx; }
 .row2 .col { flex: 1; min-width: 0; }
 

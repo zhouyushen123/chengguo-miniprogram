@@ -104,11 +104,11 @@
       <image class="vmic {{micKey==='cls.course'?'rec':''}}" src="{{micKey==='cls.course'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="cls.course" />
     </view>
     <view class="note sm">录入成果时要选课程，这里先建一门；后面还能在「管理 · 课程」里加。</view>
-    <view class="label">上课方式</view>
+    <view class="label">上课方式<text wx:if="{{!modeTouched}}" class="labelsub">按你的机构类型预选</text></view>
     <view class="chips">
-      <view wx:for="{{modes}}" wx:key="k" class="chip {{cls.mode===item.k?'on':''}}" bindtap="pickMode" data-v="{{item.k}}">{{item.t}}</view>
+      <view wx:for="{{modes}}" wx:key="k" class="chip {{cls.mode===item.k?'on':''}}" bindtap="pickMode" data-v="{{item.k}}">{{item.t}}<text wx:if="{{modeRec===item.k}}" class="rectag">荐</text></view>
     </view>
-    <view class="note sm">{{cls.mode==='carry' ? '课时结转：按购买的课时扣减，适合一对一/小班。' : '学期制：按学期上课，不单独算课时。'}}</view>
+    <view class="note sm">{{cls.mode==='carry' ? '课时结转：按购买的课时扣减，上不完结转下期，适合培训机构、个人工作室、一对一。' : '学期制：随学期上课，学期结束归档，适合学校、幼儿园。'}}</view>
   </view>
 </block>
 

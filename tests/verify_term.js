@@ -98,6 +98,12 @@ ok('结束日期早于开始日期被拦', () => {
   const r = db.terms.create({ name: '坏学期', startDate: '2026-09-01', endDate: '2026-08-01' });
   assert.ok(!r.ok && /早于/.test(r.msg));
 });
+ok('长期班：结束日期留空可建（老师长期带学生，不限期）', () => {
+  const r = db.terms.create({ name: '王老师长期班', startDate: '2026-03-01' });
+  assert.ok(r.ok, r.msg);
+  assert.strictEqual(r.item.endDate, '');
+  assert.strictEqual(r.item.name, '王老师长期班');
+});
 ok('无名称被拦', () => {
   const r = db.terms.create({ name: '  ' });
   assert.ok(!r.ok);

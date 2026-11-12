@@ -60,8 +60,12 @@
 <!-- ============ 第 2 步：学期 ============ -->
 <block wx:elif="{{step===2}}">
   <view class="q">这一期课程什么时候开始？</view>
-  <view class="note">学期只是一个时间段（如「2026 秋季学期」），班级挂在学期下面。已经排好了就改成真实日期。</view>
+  <view class="note">点「学期类型」会按中小学历自动填好名称和起止日期（可再改）；长期带学生的选「长期班」，不限结束日期。</view>
   <view class="card">
+    <view class="label">学期类型</view>
+    <view class="chips">
+      <view wx:for="{{termKinds}}" wx:key="k" class="chip {{term.kind===item.k?'on':''}}" bindtap="pickTerm" data-k="{{item.k}}">{{item.t}}</view>
+    </view>
     <view class="label">学期名称</view>
     <view class="vin">
       <input class="input vin-in" placeholder="如：2026 秋季学期" placeholder-class="ph" value="{{term.name}}" bindinput="onTermName" maxlength="20" />
@@ -77,7 +81,7 @@
       <view class="col">
         <view class="label">结束日期</view>
         <picker mode="date" value="{{term.endDate}}" bindchange="onEnd">
-          <view class="pickerbox">{{term.endDate || '选择日期'}}</view>
+          <view class="pickerbox">{{term.endDate || (term.kind==='ongoing' ? '不限 · 进行中' : '选择日期')}}</view>
         </picker>
       </view>
     </view>

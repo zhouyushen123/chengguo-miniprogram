@@ -357,10 +357,26 @@ ok('家长身份下记录页只显示孩子、且编辑被拒', () => {
 
 console.log('\n【学期管理页：新建 + 结转向导】');
 const terms = loadPage('pkg-low/terms/terms.js');
-ok('学期列表渲染：内置长期班 + 建议胶囊生成', () => {
+ok('学期列表渲染：内置长期班 + 历法预设胶囊生成', () => {
   terms.onShow();
   assert.ok(terms.data.terms.some(t => t.builtIn && t.name === '长期班'));
   assert.ok(terms.data.sugg.length >= 5);
+  assert.strictEqual(terms.data.termKinds.length, 5, '秋季/寒假/春季/暑假/长期班五个预设');
+});
+ok('新建弹层按中小学历预填，点「长期班」胶囊换成不限结束日期', () => {
+  terms.openCreate();
+  assert.ok(terms.data.form.name.length > 0, '应预填学期名');
+  assert.ok(/\d{4}-\d{2}-\d{2}/.test(terms.data.form.startDate), '应预填开始日期');
+  assert.ok(terms.data.form.endDate >= terms.data.form.startDate, '默认预设的结束应在开始之后');
+  assert.ok(terms.data.formKind, '默认选中一个预设');
+  terms.pickPreset({ currentTarget: { dataset: { k: 'ongoing' } } });
+  assert.strictEqual(terms.data.form.name, '长期班');
+  assert.strictEqual(terms.data.form.endDate, '', '长期班不限结束日期');
+  assert.strictEqual(terms.data.formKind, 'ongoing');
+  // 同名拦截：库里已有内置「长期班」，不能再造一个
+  terms.saveTerm();
+  assert.strictEqual(db.terms.list().filter(t => t.name === '长期班').length, 1, '不应重复创建长期班');
+  assert.strictEqual(terms.data.showCreate, false);
 });
 ok('新建学期（秋季班）落库并出现在列表', () => {
   terms.openCreate();
@@ -368,6 +384,23 @@ ok('新建学期（秋季班）落库并出现在列表', () => {
   terms.saveTerm();
   assert.ok(terms.data.terms.some(t => t.name === '2027 春季班'));
   assert.strictEqual(terms.data.showCreate, false);
+});
+ok('长期班结课：结束日期记为当天并归档为只读，成果记录保留', () => {
+  const lt = db.terms.create({ name: '王老师长期班', startDate: '2026-03-01' }).item;
+  db.terms.update(lt.id, { status: 'active' });
+  const lc = db.classes.create({ name: '长期跟读班', termId: lt.id, mode: 'term' }).item;
+  const ls = db.students.create({ name: '长期生', clsIds: [lc.id] }).item;
+  db.records.save({ sid: ls.id, cls: lc.id, course: '硬笔', score: 90, tag: '优秀', note: '好' }, false);
+  terms.onShow();
+  const row = terms.data.terms.find(t => t.id === lt.id);
+  assert.ok(row && row.canClose, '无结束日期的进行中学期应有「结课」动作');
+  assert.ok(!row.canSettle, '没有结束日期不该走结转向导');
+  assert.ok(/起$/.test(row.dates), '长期班的日期应显示为开工日「xxx 起」');
+  terms.closeTerm({ currentTarget: { dataset: { id: lt.id } } });   // showModal 模拟环境默认点确认
+  const after = db.terms.get(lt.id);
+  assert.strictEqual(after.status, 'archived', '结课后学期应归档');
+  assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(after.endDate), '结束日期应记为当天');
+  assert.ok(db.records.list().some(r => r.cid === lc.id), '成果记录应保留');
 });
 ok('结转向导：建结转班+报名+记录后可走通四步', () => {
   // 准备：上一个进行中学期 + 结转制班级 + 10 课时的学生

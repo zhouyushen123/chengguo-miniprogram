@@ -15,21 +15,10 @@ const theme = require('../../utils/theme');
 const applyUtils = require('../../utils/apply');
 const tel = require('../../utils/phone');
 const voice = require('../../utils/voice');
+const termPresets = require('../../utils/term-presets');
 
 const TYPES = ['培训机构', '学校', '幼儿园', '个人工作室'];
 const MODES = [{ k: 'term', t: '学期制' }, { k: 'carry', t: '课时结转' }];
-
-const pad = n => (n < 10 ? '0' + n : '' + n);
-const dateStr = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-
-// 学期默认名按当前月份推：3~8 月开春季，9 月到次年 2 月算秋季（秋季以开学那年的年份命名）
-function seasonName() {
-  const now = new Date();
-  const m = now.getMonth() + 1;
-  const y = now.getFullYear();
-  if (m >= 3 && m <= 8) return y + ' 春季学期';
-  return (m >= 9 ? y : y - 1) + ' 秋季学期';
-}
 
 Page({
   data: {
@@ -43,10 +32,12 @@ Page({
     ],
     types: TYPES,
     modes: MODES,
+    // 学期：kind 是当前选中的预设（秋季/寒假/春季/暑假/长期班），手动改过任何字段就清空
+    termKinds: termPresets.KINDS,
     // 机构
     org: { name: '', type: TYPES[0], contact: '', phone: '' },
     // 学期
-    term: { name: '', startDate: '', endDate: '' },
+    term: { name: '', startDate: '', endDate: '', kind: '' },
     // 班级
     cls: { name: '', mode: 'term', course: '' },
     // 学生
@@ -59,16 +50,16 @@ Page({
 
   onLoad() {
     theme.apply(this);
-    const today = new Date();
-    const end = new Date();
-    end.setMonth(end.getMonth() + 6);
+    // 学期默认值按中小学历智能预填：11 月进来就是「2026 秋季学期 · 今天~次年1/20」
+    const t = termPresets.smart(new Date());
     const u = (db.users.current && db.users.current()) || {};
     const rec = applyUtils.get() || {};
     const orgName = (db.settings().orgName || '').replace(/^我的机构$/, '');
     this.setData({
-      'term.name': seasonName(),
-      'term.startDate': dateStr(today),
-      'term.endDate': dateStr(end),
+      'term.name': t.name,
+      'term.startDate': t.startDate,
+      'term.endDate': t.endDate,
+      'term.kind': t.k,
       'org.name': rec.name || orgName || '',
       'org.type': rec.type || TYPES[0],
       'org.contact': rec.contact || u.name || '',
@@ -93,9 +84,22 @@ Page({
     this.setData({ 'org.phone': raw, 'org.phoneBad': raw.length > 0 && !tel.valid(raw) });
   },
   onPhoneBlur() { this.setData({ 'org.phone': tel.fmt(this.data.org.phone) }); },
-  onTermName(e) { this.setData({ 'term.name': e.detail.value }); },
-  onStart(e) { this.setData({ 'term.startDate': e.detail.value }); },
-  onEnd(e) { this.setData({ 'term.endDate': e.detail.value }); },
+  // 点预设胶囊：名称与起止日期整套填好（学期中途建班的从今天起）
+  pickTerm(e) {
+    const k = e.currentTarget.dataset.k;
+    const p = termPresets.pick(k, new Date());
+    if (!p) return;
+    this.setData({
+      'term.kind': k,
+      'term.name': p.name,
+      'term.startDate': p.startDate,
+      'term.endDate': p.endDate
+    });
+  },
+  // 手动改过任何字段：预设高亮退掉（已经是自定义学期了）
+  onTermName(e) { this.setData({ 'term.name': e.detail.value, 'term.kind': '' }); },
+  onStart(e) { this.setData({ 'term.startDate': e.detail.value, 'term.kind': '' }); },
+  onEnd(e) { this.setData({ 'term.endDate': e.detail.value, 'term.kind': '' }); },
   onClsName(e) { this.setData({ 'cls.name': e.detail.value }); },
   pickMode(e) { this.setData({ 'cls.mode': e.currentTarget.dataset.v }); },
   onStuName(e) { this.setData({ stuName: e.detail.value }); },
@@ -177,12 +181,28 @@ Page({
     const f = this.data.term;
     const name = (f.name || '').trim();
     if (!name) return this._toast('请给学期起个名字');
-    if (!f.startDate || !f.endDate) return this._toast('请选择学期起止日期');
-    if (f.endDate < f.startDate) return this._toast('结束日期不能早于开始日期');
+    if (!f.startDate) return this._toast('请选择开始日期');
+    if (f.endDate && f.endDate < f.startDate) return this._toast('结束日期不能早于开始日期');
 
-    const r = db.terms.create({ name, startDate: f.startDate, endDate: f.endDate, status: 'active' });
+    // 结束日期留空 = 长期班：老师长期带学生、不限期。选「长期班」预设时
+    // 直接复用库里的内置长期班（新库自带一个，永不归档），不另造一个。
+    if (!f.endDate) {
+      const bi = db.terms.list().find(t => t.builtIn && t.name === name);
+      if (bi) {
+        if (f.startDate !== bi.startDate) {
+          db.terms.update(bi.id, { startDate: f.startDate });  // 记个开工日，列表里好看；失败不拦流程
+        }
+        this._termId = bi.id;
+        return this._afterTermOk();
+      }
+    }
+
+    const r = db.terms.create({ name, startDate: f.startDate, endDate: f.endDate || '', status: 'active' });
     if (!r.ok) return this._toast(r.msg || '学期创建失败');
     this._termId = r.item.id;
+    return this._afterTermOk();
+  },
+  _afterTermOk() {
     // 班级默认名跟着机构名给个建议值，省一次输入（用户可改）；课程默认同名
     if (!this.data.cls.name) {
       const guess = (this.data.org.name || '').replace(/(培训|教育|有限|公司|中心)/g, '').slice(0, 6);

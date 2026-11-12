@@ -100,10 +100,12 @@ ok('再次进入首页：标记已写，不再自动跳（改由首页卡片引�
 console.log('\n【向导 · 第 1 步 机构】');
 const setup = loadPage('pages/setup/setup.js');
 setup.onLoad();
-ok('进入向导时预填：学期名按当前月份推、日期默认今天起半年', () => {
+ok('进入向导时预填：学期名与起止日期按当前月份贴中小学历', () => {
   assert.ok(setup.data.term.name.length > 0, '学期名应有默认值');
   assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(setup.data.term.startDate));
   assert.ok(setup.data.term.endDate > setup.data.term.startDate);
+  assert.ok(setup.data.term.kind, '默认应选中一个历法预设（秋季/寒假/春季/暑假）');
+  assert.notStrictEqual(setup.data.term.kind, 'ongoing', '默认预设按日历走，不会默认长期班');
   assert.strictEqual(setup.data.step, 1);
 });
 ok('机构名太短：拦下并停在第一步', () => {
@@ -282,6 +284,38 @@ ok('重复提交第 3 步：复用同名班，不造出第二个班级', () => {
   assert.strictEqual(p.data.step, 4);
   assert.strictEqual(db.classes.list().filter(x => x.name === '素描').length, 1);
   assert.strictEqual(db.courses.list().filter(x => x.name === '几何石膏').length, 1, '同名课程也要复用');
+});
+
+console.log('\n【向导 · 长期班路径（老师长期带学生）】');
+ok('选「长期班」预设：复用内置长期班，不另建学期', () => {
+  const before = db.terms.list().length;
+  const p = loadPage('pages/setup/setup.js');
+  p.onLoad();
+  p.setData({ step: 2 });
+  p.pickTerm({ currentTarget: { dataset: { k: 'ongoing' } } });
+  assert.strictEqual(p.data.term.name, '长期班');
+  assert.strictEqual(p.data.term.endDate, '', '长期班不限结束日期');
+  assert.strictEqual(p.data.term.kind, 'ongoing');
+  p.next();
+  assert.strictEqual(p.data.step, 3, '提交后应进第 3 步');
+  const bi = db.terms.list().find(t => t.builtIn);
+  assert.strictEqual(p._termId, bi.id, '班级应挂进内置长期班，而不是另建一个');
+  assert.strictEqual(db.terms.list().length, before, '不应新建学期');
+});
+ok('给长期班起自定义名：另建一个不限期学期（结束日期留空）', () => {
+  const before = db.terms.list().length;
+  const p = loadPage('pages/setup/setup.js');
+  p.onLoad();
+  p.setData({ step: 2 });
+  p.pickTerm({ currentTarget: { dataset: { k: 'ongoing' } } });
+  p.setData({ 'term.name': '陈老师长期带教' });
+  p.next();
+  assert.strictEqual(p.data.step, 3);
+  const nt = db.terms.list().find(t => t.name === '陈老师长期带教');
+  assert.ok(nt, '应新建自定义长期班');
+  assert.strictEqual(nt.endDate, '', '自定义长期班也不限期');
+  assert.strictEqual(nt.status, 'active');
+  assert.strictEqual(db.terms.list().length, before + 1);
 });
 
 console.log('\n全部 ' + pass + ' 项新手引导断言通过');

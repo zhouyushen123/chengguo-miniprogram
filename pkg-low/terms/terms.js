@@ -2,6 +2,7 @@
 const db = require('../../utils/db');
 const theme = require('../../utils/theme');
 const voice = require('../../utils/voice');
+const termPresets = require('../../utils/term-presets');
 
 const STATUS_LABEL = { upcoming: '未开始', active: '进行中', archived: '已归档' };
 const MODE_LABEL = { term: '学期制', carry: '课时结转' };
@@ -13,7 +14,8 @@ Page({
     // 新建学期表单
     showCreate: false,
     form: { name: '', startDate: '', endDate: '' },
-    sugg: [],                // 命名建议胶囊（按当前年份生成，点一下填入）
+    formKind: '',          // 当前选中的预设（秋季/寒假/春季/暑假/长期班），手动改过就清空
+    termKinds: termPresets.KINDS,  // 历法预设胶囊：点一下填好名称+起止日期
     // 结转向导
     wz: null
   },
@@ -26,37 +28,89 @@ Page({
       .map(m => ({ id: m.id, name: m.name || m.roleLabel }));
     const terms = db.terms.list().map(t => ({
       id: t.id, name: t.name,
-      dates: [t.startDate, t.endDate].filter(Boolean).join(' ~ ') || '未设置起止日期',
+      // 结束日期留空 = 长期班：只展示开工日；两段都没有才说“未设置”
+      dates: t.endDate
+        ? [t.startDate, t.endDate].filter(Boolean).join(' ~ ')
+        : (t.startDate ? t.startDate + ' 起' : '未设置起止日期'),
       status: t.status, statusLabel: STATUS_LABEL[t.status] || t.status,
       builtIn: !!t.builtIn,
       // 班级数由数据层按当前身份可见范围算，页面不碰全量
       clsCount: db.classes.countOfTerm(t.id),
-      canSettle: t.status === 'active' && !t.builtIn
+      canSettle: t.status === 'active' && !t.builtIn && !!t.endDate,
+      // 没约结束日期的长期班：给「结课」动作（归档，结束日期记为当天）；内置长期班是免维护兜底，不给
+      canClose: t.status === 'active' && !t.builtIn && !t.endDate
     }));
     const y = new Date().getFullYear();
     this.setData({
       terms,
       staff,
+      // 结转向导第 1 步的命名胶囊（新学期名，只填名不填日期）
       sugg: [y + ' 春季班', y + ' 暑假班', y + ' 秋季班', y + ' 寒假班', (y + 1) + ' 春季班', '第 1 期']
     });
   },
 
   /* ================= 新建学期 ================= */
-  openCreate() { this.setData({ showCreate: true, form: { name: '', startDate: '', endDate: '' } }); },
+  // 打开弹层就按中小学历预填（11 月 → 「2026 秋季学期 · 今天~次年1/20」），不想用就点胶囊换
+  openCreate() {
+    const p = termPresets.smart(new Date());
+    this.setData({
+      showCreate: true,
+      form: { name: p.name, startDate: p.startDate, endDate: p.endDate },
+      formKind: p.k
+    });
+  },
   closeCreate() { this.setData({ showCreate: false }); },
+  // 点预设胶囊：名称 + 起止日期整套填好（学期中途建的从今天起）
+  pickPreset(e) {
+    const k = e.currentTarget.dataset.k;
+    const p = termPresets.pick(k, new Date());
+    if (!p) return;
+    this.setData({
+      form: { name: p.name, startDate: p.startDate, endDate: p.endDate },
+      formKind: k
+    });
+  },
   onF(e) {
     const k = e.currentTarget.dataset.k;
-    this.setData({ ['form.' + k]: e.detail.value });
+    this.setData({ ['form.' + k]: e.detail.value, formKind: '' });
   },
-  // 点建议胶囊填入名称
-  pickSugg(e) { this.setData({ 'form.name': e.currentTarget.dataset.v }); },
   saveTerm() {
     const f = this.data.form;
-    const r = db.terms.create({ name: (f.name || '').trim(), startDate: f.startDate, endDate: f.endDate });
+    const name = (f.name || '').trim();
+    if (!name) { wx.showToast({ title: '请给学期起个名字', icon: 'none' }); return; }
+    // 长期班（结束日期留空）不设重名闸：尤其不能和内置「长期班」撞名造出第二个
+    if (!f.endDate) {
+      const dup = db.terms.list().find(t => t.status !== 'archived' && t.name === name);
+      if (dup) {
+        wx.showToast({ title: '已有同名的进行中学期，无需重复创建', icon: 'none' });
+        this.setData({ showCreate: false });
+        return;
+      }
+    }
+    const r = db.terms.create({ name, startDate: f.startDate, endDate: f.endDate });
     if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
     this.setData({ showCreate: false });
     this.refresh();
     wx.showToast({ title: '已创建「' + r.item.name + '」', icon: 'none' });
+  },
+
+  /* ================= 长期班结课 ================= */
+  // 结束日期留空的学期没有「到期日」可等，用主动结课收尾：结束日期=今天，学期归档为只读
+  closeTerm(e) {
+    const id = +e.currentTarget.dataset.id;
+    const t = db.terms.get(id);
+    if (!t) return;
+    wx.showModal({
+      title: '结课「' + t.name + '」？',
+      content: '结束日期将记为今天，学期归档后只读（课堂成果全部保留），此操作不可撤销。',
+      success: r => {
+        if (!r.confirm) return;
+        const res = db.terms.update(id, { status: 'archived', endDate: termPresets.dateStr(new Date()) });
+        if (!res.ok) { wx.showToast({ title: res.msg || '结课失败', icon: 'none' }); return; }
+        this.refresh();
+        wx.showToast({ title: '已结课归档', icon: 'none' });
+      }
+    });
   },
 
   /* ================= 结转向导 ================= */

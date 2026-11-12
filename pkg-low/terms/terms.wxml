@@ -2,7 +2,7 @@
 
 <!-- ============ 学期列表 ============ -->
 <view wx:if="{{mode === 'list'}}" class="listwrap">
-  <view class="hint note">学期 = 开班的时间段。名称随意（春季班 / 暑假班 / 第 N 期都行），排序按日期算。学期结束时用「结束本学期」把班级归档或结转到下期。</view>
+  <view class="hint note">学期 = 开班的时间段。名称随意（春季班 / 暑假班 / 第 N 期都行），排序按日期算。学期结束时用「结束本学期」把班级归档或结转到下期；长期班不限结束日期，用「结课」收尾。</view>
 
   <view wx:for="{{terms}}" wx:key="id" class="card">
     <view class="trow">
@@ -11,6 +11,7 @@
         <view class="t2">{{item.dates}} · {{item.clsCount}} 个班级</view>
       </view>
       <view wx:if="{{item.canSettle}}" class="btn ghost sm" hover-class="btn-hover" bindtap="startWizard" data-id="{{item.id}}">结束本学期</view>
+      <view wx:if="{{item.canClose}}" class="btn ghost sm" hover-class="btn-hover" bindtap="closeTerm" data-id="{{item.id}}">结课</view>
     </view>
   </view>
 
@@ -132,21 +133,22 @@
 <view wx:if="{{showCreate}}" class="mask" catchtap="closeCreate">
   <view class="sheet" catchtap="noop">
     <view class="sheet-t">新建学期</view>
+    <view class="lbl">学期类型</view>
+    <view class="chips">
+      <view wx:for="{{termKinds}}" wx:key="k" class="chip {{formKind===item.k?'on':''}}" bindtap="pickPreset" data-k="{{item.k}}">{{item.t}}</view>
+    </view>
     <view class="lbl">学期名称</view>
     <view class="vin">
-      <input class="inp vin-in" value="{{form.name}}" placeholder="如：2026 秋季班" bindinput="onF" data-k="name" />
+      <input class="inp vin-in" value="{{form.name}}" placeholder="如：2026 秋季学期" bindinput="onF" data-k="name" />
       <image class="vmic {{micKey==='form.name'?'rec':''}}" src="{{micKey==='form.name'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="form.name" />
     </view>
-    <view class="chips">
-      <view wx:for="{{sugg}}" wx:key="*this" class="chip {{form.name === item ? 'on' : ''}}" bindtap="pickSugg" data-v="{{item}}">{{item}}</view>
-    </view>
-    <view class="lbl">开始日期（选填）</view>
+    <view class="lbl">开始日期</view>
     <picker mode="date" value="{{form.startDate}}" bindchange="onF" data-k="startDate">
       <view class="inp pick">{{form.startDate || '点击选择（默认今天）'}}</view>
     </picker>
-    <view class="lbl">结束日期（选填）</view>
+    <view class="lbl">结束日期</view>
     <picker mode="date" value="{{form.endDate}}" bindchange="onF" data-k="endDate">
-      <view class="inp pick">{{form.endDate || '点击选择（默认今天）'}}</view>
+      <view class="inp pick">{{form.endDate || (formKind==='ongoing' ? '不限 · 进行中' : '点击选择（选填）')}}</view>
     </picker>
     <view class="row2">
       <view class="btn ghost" bindtap="closeCreate">取消</view>

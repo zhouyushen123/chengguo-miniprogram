@@ -111,39 +111,64 @@ async function mkAccount(openid) {
   if (!acc) {
     for (let i = 0; i < 5; i++) {
       const account = lib.newAccount();
+      const plain = lib.newPin();
       const dup = await db.collection(ACCOUNTS).doc(account).get().catch(() => null);
       if (dup && dup.data) continue;
       // doc(id).set 的 data 里绝对不能带 _id：云数据库会报 -501007
       // 「invalid parameters. 不能更新 _id」，函数抛错 → 客户端只看到「网络不通」。
       // backup.saveManifest 早就 delete data._id 避开了，这里曾漏掉。
+      // 口令只存哈希（M-2）：明文 plain 只在本次响应里出现一次，负责人抄走即焚。
       const doc = {
-        account, orgId, pin: lib.newPin(),
+        account, orgId, pin: lib.newPinRecord(plain),
         fail: 0, lockUntil: 0, createdAt: now(), by: openid
       };
       await db.collection(ACCOUNTS).doc(account).set({ data: doc });
       acc = doc;   // 后面只用 account / pin，不需要本地补 _id
+      acc._plain = plain;   // 只活在本次响应，不落库
       break;
     }
     if (!acc) return { ok: false, msg: '后台账号生成失败，请重试' };
+  } else if (lib.isHashedPin(acc.pin)) {
+    // 已加密保存的账号无法还原明文（这正是加密的目的）：返回空串让客户端
+    // 引导负责人走「重置口令」（小程序端负责人专属，忘了就换新的）。
+    acc._plain = '';
+  } else {
+    // 旧明文账号：展示后顺手迁移成哈希，明文从此不再落库
+    await db.collection(ACCOUNTS).doc(acc._id)
+      .update({ data: { pin: lib.newPinRecord(str(acc.pin).trim()) } }).catch(() => {});
   }
   let orgName = '';
   try {
     const o = await db.collection('orgs').where({ id: orgId }).limit(1).get();
     orgName = (o.data[0] && o.data[0].name) || '';
   } catch (e) { /* 机构名还没同步上去也不影响登录 */ }
-  return { ok: true, account: acc.account, pin: acc.pin, orgId, orgName, url: lib.adminUrl(process.env.ADMIN_ENV || '') };
+  return { ok: true, account: acc.account, pin: acc._plain !== undefined ? acc._plain : str(acc.pin).trim(), orgId, orgName, url: lib.adminUrl(process.env.ADMIN_ENV || '') };
 }
 
-// 重置口令：负责人手上那份丢了（换人、被同事改过）时用，旧口令立刻失效
+// 重置口令：负责人手上那份丢了（换人、被同事改过）时用，旧口令立刻失效。
+// 支持两种入口：①网页端登录后（传 orgId，token 已鉴权）②小程序端负责人（resetAccount 走
+// members 表鉴权后转发到这里——口令加密后明文不可还原，忘了口令只能在小程序里换新的）。
 async function resetPin(orgId) {
   const r = await db.collection(ACCOUNTS).where({ orgId }).limit(1).get().catch(() => ({ data: [] }));
   const acc = (r.data || [])[0];
   if (!acc) return { ok: false, msg: '还没有后台账号，请先在小程序里打开一次「电脑端后台」' };
-  const pin = lib.newPin();
-  await db.collection(ACCOUNTS).doc(acc._id).update({ data: { pin, fail: 0, lockUntil: 0, resetAt: now() } });
+  const plain = lib.newPin();
+  await db.collection(ACCOUNTS).doc(acc._id).update({ data: { pin: lib.newPinRecord(plain), fail: 0, lockUntil: 0, resetAt: now() } });
   // 口令换了，所有旧会话一起作废——否则改了等于没改
   await db.collection(SESSIONS).where({ account: acc._id }).remove().catch(() => {});
-  return { ok: true, account: acc.account, pin };
+  return { ok: true, account: acc.account, pin: plain };
+}
+
+// 小程序端重置口令：鉴权同 mkAccount（members 表判 owner/admin），不信任客户端参数。
+async function resetAccount(openid) {
+  if (!openid) return { ok: false, code: 'NO_LOGIN', msg: '请在微信小程序内打开' };
+  let mem = [];
+  try {
+    const r = await db.collection('members').where({ openid }).limit(5).get();
+    mem = (r.data || []).filter(m => !m.removed && (m.role === 'owner' || m.role === 'admin'));
+  } catch (e) { /* 集合不存在时下面判空拦住 */ }
+  if (!mem.length) return { ok: false, code: 'FORBIDDEN', msg: '只有机构负责人/管理员能重置后台口令' };
+  return resetPin(str(mem[0].orgId));
 }
 
 async function doLogin(data) {
@@ -159,11 +184,17 @@ async function doLogin(data) {
   const t = now();
   const lock = lib.lockedUntil(rec, t);
   if (lock) return { ok: false, code: 'LOCKED', until: lock, msg: '试错了太多次，请 ' + Math.ceil((lock - t) / 60000) + ' 分钟后再试' };
-  if (str(data.pin).trim() !== str(rec.pin)) {
+  // 口令比对（M-2）：库里是哈希，恒时比较；旧明文记录命中后当场迁移成哈希
+  const m = lib.pinMatches(data.pin, rec);
+  if (!m.ok) {
     const next = lib.afterFail(rec, t);
     await db.collection(ACCOUNTS).doc(account).update({ data: next }).catch(() => {});
     if (next.lockUntil) return { ok: false, code: 'LOCKED', until: next.lockUntil, msg: '试错了太多次，请 10 分钟后再试' };
     return { ok: false, code: 'BAD_PIN', msg: '账号或口令不对' };
+  }
+  if (m.migrated) {
+    await db.collection(ACCOUNTS).doc(account)
+      .update({ data: { pin: lib.newPinRecord(str(data.pin).trim()) } }).catch(() => {});
   }
   const token = lib.newToken();
   await ensure(SESSIONS).catch(() => {});
@@ -906,9 +937,11 @@ function platformPage() {
 exports.main = async (event) => {
   const ev = event || {};
   const { OPENID } = cloud.getWXContext() || {};
-  // 小程序里调用（callFunction）：只开放"取后台账号"这一个动作。
+  // 小程序里调用（callFunction）：只开放「取后台账号」和「重置后台口令」两个动作，
+  // 两者都在服务端查 members 表判负责人/管理员，不信任客户端参数。
   // HTTP 访问服务是公开入口，绝不能让浏览器请求也能生成/读到机构口令。
   if (ev.action === 'mkAccount' && !ev.httpMethod && !ev.requestContext) return mkAccount(OPENID);
+  if (ev.action === 'resetAccount' && !ev.httpMethod && !ev.requestContext) return resetAccount(OPENID);
   // HTTP 访问服务：GET 出页面、POST 走接口
   if (ev.httpMethod || ev.requestContext) {
     const method = str(ev.httpMethod || 'GET').toUpperCase();

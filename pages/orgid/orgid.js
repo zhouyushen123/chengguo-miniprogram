@@ -134,24 +134,53 @@ Page({
         return;
       }
       const url = out.url || '';
-      const txt = '账号：' + out.account + '\n口令：' + out.pin + (url ? '\n网址：' + url : '');
-      wx.showModal({
-        title: '电脑端后台登录信息',
-        content: txt + '\n\n在电脑浏览器打开网址，输入上面两行即可。口令只给负责人和管理员，别发到班级群。',
-        confirmText: '复制全部',
-        cancelText: '知道了',
-        success: r => {
-          if (r.confirm) {
-            wx.setClipboardData({
-              data: txt,
-              success: () => wx.showToast({ title: '已复制', icon: 'none' })
-            });
-          }
-        }
-      });
+      // 口令加密保存（M-2）后，已有账号拿不到明文（空串）——这正是加密的目的。
+      // 引导负责人走「重置口令」换新的，旧口令与所有已登录浏览器立刻失效。
+      if (!String(out.pin || '').trim()) {
+        wx.showModal({
+          title: '口令已加密保存',
+          content: '后台口令现在加密存储，不再明文展示。忘记口令就点「重置口令」换一个新的：\n\n· 旧口令立刻失效\n· 已登录的电脑全部踢下线\n· 账号 ' + out.account + ' 不变',
+          confirmText: '重置口令', cancelText: '知道了',
+          success: r => { if (r.confirm) this.webAdminReset(); }
+        });
+        return;
+      }
+      this.showAdminCreds(out, url);
     }).catch(e => {
       wx.hideLoading();
       wx.showToast({ title: '取账号失败：' + String((e && e.message) || e).slice(0, 12), icon: 'none' });
+    });
+  },
+
+  // 重置后台口令（负责人/管理员）：新口令只在这次弹窗里出现一次，抄完即焚
+  webAdminReset() {
+    wx.showLoading({ title: '重置中', mask: true });
+    api.adminReset().then(out => {
+      wx.hideLoading();
+      if (!out || !out.ok) {
+        wx.showModal({ title: '重置失败', content: (out && out.msg) || '请稍后再试', showCancel: false });
+        return;
+      }
+      this.showAdminCreds(out, out.url || '');
+    }).catch(() => wx.hideLoading());
+  },
+
+  // 展示后台登录信息：账号 + 口令（+ 网址），一键复制
+  showAdminCreds(out, url) {
+    const txt = '账号：' + out.account + '\n口令：' + out.pin + (url ? '\n网址：' + url : '');
+    wx.showModal({
+      title: '电脑端后台登录信息',
+      content: txt + '\n\n在电脑浏览器打开网址，输入上面两行即可。口令只给负责人和管理员，别发到班级群。',
+      confirmText: '复制全部',
+      cancelText: '知道了',
+      success: r => {
+        if (r.confirm) {
+          wx.setClipboardData({
+            data: txt,
+            success: () => wx.showToast({ title: '已复制', icon: 'none' })
+          });
+        }
+      }
     });
   }
 });

@@ -4,9 +4,12 @@
 // 字段白名单、分页参数）都能在 node 里直接跑，tests/verify_admin.js 才测得到。
 // 云函数入口 index.js 只负责"取数据 → 调这里的函数 → 写回库"。
 //
-// 【为什么口令存明文】机构负责人要能随时在手机上把口令抄给同事（后台是内部工具，
-// 不是面向用户的账号体系）。为了不把明文当作唯一防线，登录端做了失败计数与锁账号：
-// 连续错 5 次锁 10 分钟，6 位数字口令在锁之前最多被穷举 5 次。
+// 【口令怎么存（M-2，2026-11-18）】库里只存 HMAC-SHA256 + 随机盐（hmac$<salt>$<hash>），
+// 不存明文：拖库拿不到口令。明文只在「生成/重置」的响应里出现一次，负责人抄走即焚。
+// 为了不把哈希当作唯一防线，登录端做了失败计数与锁账号：连续错 5 次锁 10 分钟，
+// 6 位数字口令在锁之前最多被穷举 5 次。旧明文记录在登录成功那一刻懒迁移成哈希，
+// 不需要停机迁移脚本；明文忘了就丢（小程序端负责人可用「重置口令」换新的）。
+const crypto = require('crypto');
 const ALPHABET = 'ACDEFGHJKLMNPQRSTUVWXY3456789'; // 去掉了 0/O/1/I/2/Z，抄写不会看错
 
 // 后台账号：6 位，字母数字，统一大写。输入时的空格、短横一律忽略，
@@ -34,6 +37,41 @@ function newPin(rand) {
   let s = '';
   for (let i = 0; i < 6; i++) s += String(Math.floor(Math.min(0.999999, Math.max(0, r())) * 10));
   return s;
+}
+
+/* ---------------- 口令哈希（M-2）----------------
+ * 存储格式：hmac$<salt>$<hash>。盐随机 16 字节 hex，每条记录各不相同——
+ * 同一个口令在两家机构里哈希值也不同，彩虹表没用。
+ * 比对用 timingSafeEqual 恒时比较，长度不一致直接判负（不等时比较会抛错）。
+ */
+function hashPin(plain, salt) {
+  return crypto.createHmac('sha256', String(salt)).update(String(plain)).digest('hex');
+}
+function newPinRecord(plain) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  return 'hmac$' + salt + '$' + hashPin(plain, salt);
+}
+function isHashedPin(pin) {
+  return String(pin === undefined || pin === null ? '' : pin).indexOf('hmac$') === 0;
+}
+// 登录比对。返回 { ok, migrated }：
+//   · 哈希记录：恒时比对，migrated 恒为 false
+//   · 旧明文记录：命中时 migrated = true，调用方必须立刻把库里那条换成哈希
+//     （懒迁移——部署新版后不需要任何一次性脚本，老账号首次登录自动升级）
+function pinMatches(input, rec) {
+  const p = String(input === undefined || input === null ? '' : input).trim();
+  const raw = rec ? rec.pin : undefined;
+  const stored = String(raw === undefined || raw === null ? '' : raw).trim();
+  if (isHashedPin(stored)) {
+    const parts = stored.split('$');           // ['hmac', salt, hash]
+    const expect = parts[2] || '';
+    const got = hashPin(p, parts[1] || '');
+    const ok = expect.length === got.length
+      && crypto.timingSafeEqual(Buffer.from(expect), Buffer.from(got));
+    return { ok, migrated: false };
+  }
+  const ok = p !== '' && p === stored;
+  return { ok, migrated: ok };
 }
 function newToken(rand) {
   const r = rand || Math.random;
@@ -145,6 +183,7 @@ module.exports = {
   ALPHABET, MAX_FAIL, LOCK_MS, SESSION_MS, PAGE_SIZE, MAX_ROWS, DEFAULT_ENV, ADMIN_PATH,
   EDIT, CREATE,
   normAccount, isAccount, newAccount, newPin, newToken,
+  hashPin, newPinRecord, isHashedPin, pinMatches,
   lockedUntil, afterFail, safePatch, csvCell, csvOf, normPage,
   schoolYear, pct, adminUrl
 };

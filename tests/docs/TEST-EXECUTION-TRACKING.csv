@@ -40,7 +40,7 @@ TC-CLOUD-012,Cloud,P2,旧 sync 云函数已删除,3,控制台可登录,Completed
 TC-SEC-001,Sec,P0,A01 家长横向越权,3,套件可跑,Completed,✅ PASSED,,2026-11-09,Horizon(LLM),kidIds由服务端members表推导(832)非客户端参数,
 TC-SEC-002,Sec,P0,A01 无身份 openid fail-closed,2,套件可跑,Completed,✅ PASSED,,2026-11-09,Horizon(LLM),无身份→NO_MEMBER空数据(827),
 TC-SEC-003,Sec,P0,A01 前后端权限规则一致性守卫,3,守卫套件在,Completed,✅ PASSED,,2026-11-09,Horizon(LLM),server_guard 16项逐条比对绿,
-TC-SEC-004,Sec,P1,A02 admin 口令明文存储验证,3,无,Completed,❌ FAILED,BUG-001,2026-11-09,Horizon(LLM),预期FAIL：明文存储+明文比对（admin login），已提缺陷,预期FAIL提缺陷（M-2）
+TC-SEC-004,Sec,P1,A02 admin 口令明文存储验证,3,无,Completed,✅ PASSED,,2026-11-18,Horizon(LLM),M-2 已修（提交见 BUG-001 Resolved）：哈希落库+恒时比对+懒迁移；verify_admin 35 项含 5 条新用例全绿,原预期 FAIL 提缺陷（M-2）已闭环
 TC-SEC-005,Sec,P2,A02 口令暴力破解保护评估,3,走查校验分支,Completed,✅ PASSED,,2026-11-09,Horizon(LLM),LOCKED 10分钟冷却+fail计数(161-165),
 TC-SEC-006,Sec,P1,A03 prompt 注入防御,4,走查 aiEval 出口,Completed,✅ PASSED,,2026-11-09,Horizon(LLM),出口JSON结构解析(118)+msgSecCheck(183-191)两道闸,
 TC-SEC-007,Sec,P1,A04 限流键取自服务端上下文,2,走查限流键,Completed,✅ PASSED,,2026-11-09,Horizon(LLM),键=wxContext.OPENID(148)客户端无法伪造,

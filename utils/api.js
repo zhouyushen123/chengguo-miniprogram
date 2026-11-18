@@ -265,6 +265,14 @@ function adminAccount() {
     }));
 }
 
+// 重置电脑端后台口令（负责人/管理员专属，服务端按 members 表判角色，不信任客户端）。
+// 口令改为哈希落库后明文不可还原，忘了只能在这里换新的；新口令只在响应里出现一次。
+function adminReset() {
+  if (!cloudReady) return Promise.resolve({ ok: false, code: 'CLOUD_OFF', msg: '网络未就绪' });
+  return callFn('admin', { action: 'resetAccount' })
+    .catch(() => ({ ok: false, code: 'NET', msg: '云函数没响应，请重试' }));
+}
+
 // 云端每日备份（backup 云函数）：
 //   info/list 看最近备份（老师以上）；run 立刻备份一个集合（限负责人/管理员）
 // 一次只备一个集合：云函数 60 秒超时，整包一次数据多一点就会被掐断，掐断时还不知道停在哪。
@@ -275,4 +283,4 @@ function cloudBackup(action, data) {
     .catch(() => ({ ok: false, code: 'NET', msg: '网络不通，请重试' }));
 }
 
-module.exports = { initCloud, enabled, syncOn, syncCall, login, pushRecord, pull, uploadFile, uploadPhoto, aiEvalDraft, stuImport, secText, secImage, requestSubscribe, familyBind, familyNotify, fbView, fbNote, fbList, fbStats, fbHandle, inviteInfo, inviteJoin, inviteGet, myOrgs, adminAccount, cloudBackup, cardCreate, cardInfo, cardClaim, cardRevoke, CLOUD_ENV };
+module.exports = { initCloud, enabled, syncOn, syncCall, login, pushRecord, pull, uploadFile, uploadPhoto, aiEvalDraft, stuImport, secText, secImage, requestSubscribe, familyBind, familyNotify, fbView, fbNote, fbList, fbStats, fbHandle, inviteInfo, inviteJoin, inviteGet, myOrgs, adminAccount, adminReset, cloudBackup, cardCreate, cardInfo, cardClaim, cardRevoke, CLOUD_ENV };

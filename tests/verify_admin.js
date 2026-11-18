@@ -48,6 +48,52 @@ t('token 32 位十六进制', () => {
   assert.ok(/^[0-9a-f]{32}$/.test(lib.newToken()));
 });
 
+/* ---------------- 口令哈希（M-2）---------------- */
+
+t('newPinRecord：哈希格式正确、盐随机、同口令两记录哈希不同', () => {
+  const a = lib.newPinRecord('123456');
+  assert.ok(/^hmac\$[0-9a-f]{32}\$[0-9a-f]{64}$/.test(a), a);
+  const b = lib.newPinRecord('123456');
+  assert.notStrictEqual(a, b, '随机盐必须让同口令的哈希也不同');
+  assert.ok(lib.isHashedPin(a) && !lib.isHashedPin('123456'));
+});
+
+t('pinMatches：哈希记录恒时比对，对错分明', () => {
+  const rec = { pin: lib.newPinRecord('654321') };
+  assert.deepStrictEqual(lib.pinMatches('654321', rec), { ok: true, migrated: false });
+  assert.deepStrictEqual(lib.pinMatches('000000', rec), { ok: false, migrated: false });
+  // 带空白（手抄多敲了空格）也能过：登录端 trim
+  assert.strictEqual(lib.pinMatches(' 654321 ', rec).ok, true);
+  // 篡改盐/哈希必须判负而不是抛错
+  const bad1 = { pin: rec.pin.replace(/^hmac\$\S+\$/, 'hmac$zz$') };
+  const bad2 = { pin: rec.pin.slice(0, -1) + (rec.pin.endsWith('a') ? 'b' : 'a') };
+  assert.strictEqual(lib.pinMatches('654321', bad1).ok, false);
+  assert.strictEqual(lib.pinMatches('654321', bad2).ok, false);
+});
+
+t('pinMatches：旧明文记录命中返回 migrated=true（懒迁移信号）', () => {
+  const rec = { pin: '888888' };
+  assert.deepStrictEqual(lib.pinMatches('888888', rec), { ok: true, migrated: true });
+  assert.deepStrictEqual(lib.pinMatches('111111', rec), { ok: false, migrated: false });
+  assert.deepStrictEqual(lib.pinMatches('', { pin: '' }), { ok: false, migrated: false }, '空口令不许直接通过');
+});
+
+t('服务端收口：登录比对必须走 pinMatches，库里不得再写明文口令', () => {
+  assert.ok(SRC.indexOf('lib.pinMatches(') > -1, 'doLogin 必须调用 lib.pinMatches');
+  assert.strictEqual(
+    SRC.indexOf('!== str(rec.pin)'), -1,
+    '明文比对残留 —— doLogin 应改用 pinMatches');
+  // 存库口令只允许两种写法：新签发 newPinRecord、懒迁移 newPinRecord；裸 newPin() 落库就是明文
+  assert.ok(/pin:\s*lib\.newPin\(\)/.test(SRC) === false, 'pin: lib.newPin() 是明文落库，必须包 newPinRecord');
+});
+
+t('服务端收口：小程序端重置口令走 members 鉴权，HTTP 请求不能触发', () => {
+  const mk = SRC.indexOf("ev.action === 'resetAccount'");
+  assert.ok(mk > -1 && /httpMethod/.test(SRC.slice(mk, mk + 140)), 'HTTP 请求不能触发重置口令');
+  assert.ok(SRC.indexOf("mem[0].orgId") > -1 || /resetAccount[\s\S]*?role === 'owner'/.test(SRC),
+    'resetAccount 必须从服务端 members 表取 orgId/角色');
+});
+
 /* ---------------- 登录节流 ---------------- */
 t('前 4 次错只计数，不锁', () => {
   let acc = { fail: 0, lockUntil: 0 };

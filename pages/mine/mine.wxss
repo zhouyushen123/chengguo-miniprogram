@@ -86,3 +86,9 @@
 
 /* 底部留白：贴底的"设置"卡在 iPhone 上不能被小黑条盖住 */
 .slogan { padding-bottom: env(safe-area-inset-bottom); }
+
+/* ICP 备案号：弱化的小字一行，点按复制核验 */
+.icp {
+  text-align: center; font-size: 22rpx; color: var(--muted);
+  padding: 6rpx 0 calc(16rpx + env(safe-area-inset-bottom));
+}

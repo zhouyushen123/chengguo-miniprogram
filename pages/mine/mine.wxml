@@ -65,6 +65,9 @@
 
 <view class="slogan">橙果 · 让每一次进步都被看见</view>
 
+<!-- ICP 备案号（微信要求展示）：点击复制，到工信部官网核验 -->
+<view class="icp" bindtap="copyIcp">湘ICP备2026053144号-1X</view>
+
 <!-- 隐私授权弹窗（全局组件，首次使用前必须同意） -->
 <privacy-popup />
 </view>

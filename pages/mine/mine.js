@@ -114,5 +114,17 @@ Page({
     if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
     this.refresh();
     wx.showToast({ title: '已切回 ' + (r.item.name || '本人'), icon: 'none' });
+  },
+  // 备案号：小程序内没法直接跳外部网站，复制后提示去工信部官网核验
+  copyIcp() {
+    wx.setClipboardData({
+      data: '湘ICP备2026053144号-1X',
+      success: () => wx.showModal({
+        title: '已复制备案号',
+        content: '可到工信部备案查询网站 beian.miit.gov.cn 粘贴核验',
+        showCancel: false,
+        confirmText: '知道了'
+      })
+    });
   }
 });

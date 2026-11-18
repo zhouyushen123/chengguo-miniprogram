@@ -70,10 +70,10 @@ ok('被移除/停用的成员当作没有身份（push 与 pull 都要看生死�
 
 console.log('\n【前后端一套规则：白名单 = permissions.js 的 ACTIONS】');
 
-ok('老师可写的集合，与前端 student.write / record.create 的角色完全一致', () => {
+ok('老师可写的集合，与前端 student.write / record.create / lesson.write 的角色完全一致', () => {
   const tea = collsOf('COLL_TEACHER');
-  ['students', 'records'].forEach(c => assert.ok(tea.indexOf(c) > -1, c + ' 不在老师可写集合里'));
-  ['student.write', 'record.create', 'record.update'].forEach(a => {
+  ['students', 'records', 'lessons'].forEach(c => assert.ok(tea.indexOf(c) > -1, c + ' 不在老师可写集合里'));
+  ['student.write', 'record.create', 'record.update', 'lesson.write'].forEach(a => {
     const roles = ACTIONS[a].roles;
     assert.ok(roles.indexOf('teacher') > -1, a + ' 前端没放开给老师，云端白名单却开了');
     assert.ok(roles.indexOf('parent') < 0, a + ' 前端放开给了家长，请立刻检查云端白名单');
@@ -89,7 +89,7 @@ ok('只有管理角色能写的集合，前端对应动作也没放开给老师/
     const roles = ACTIONS[map[c]].roles;
     assert.ok(roles.indexOf('teacher') < 0, map[c] + ' 前端放开了老师，云端白名单没跟');
   });
-  ['records', 'students'].forEach(c => assert.ok(mgr.indexOf(c) < 0, c + ' 是教学内容，不该锁成管理专用'));
+  ['records', 'students', 'lessons'].forEach(c => assert.ok(mgr.indexOf(c) < 0, c + ' 是教学内容，不该锁成管理专用'));
 });
 
 console.log('\n【pull：按自家孩子收窄（C-1）】');

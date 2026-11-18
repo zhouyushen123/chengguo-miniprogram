@@ -129,6 +129,7 @@
         <view class="crsintro" wx:if="{{item.introBrief}}">{{item.introBrief}}</view>
       </view>
       <view class="mi act" catchtap="openCrsDetail" data-id="{{item.id}}">详情</view>
+      <view class="mi act" catchtap="goLessons" data-id="{{item.id}}">课次</view>
       <view class="mi act" catchtap="renameCourse" data-id="{{item.id}}" data-name="{{item.name}}">改名</view>
       <view class="mi del" catchtap="delCourse" data-id="{{item.id}}">删除</view>
     </view>
@@ -432,6 +433,7 @@
       <image class="vmic {{micKey==='crsDetail.intro'?'rec':''}}" src="{{micKey==='crsDetail.intro'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="crsDetail.intro" />
     </view>
     <view class="mi" style="margin-top:12rpx">{{crsDetail.intro.length}}/500　以后还能接着加：适合年龄、课时、教材、教学目标、封面</view>
+    <view class="btn ghost" style="margin-top:24rpx" hover-class="btn-hover" catchtap="goLessons" data-id="{{crsDetail.id}}">管理课次（每次课的课题与内容）›</view>
     <view class="row2">
       <view class="btn ghost" hover-class="btn-hover" bindtap="closeCrsDetail">取消</view>
       <view class="btn" hover-class="btn-hover" bindtap="saveCrsDetail">保存</view>

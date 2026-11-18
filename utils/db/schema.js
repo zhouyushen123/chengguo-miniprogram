@@ -63,6 +63,8 @@ const MEMBER_STATUS = ['active', 'invited', 'disabled'];
 const ORG_STATUS = ['active', 'suspended'];
 // 学期状态：upcoming 未开始 / active 进行中（录入入口只看它）/ archived 已归档（只读）
 const TERM_STATUS = ['upcoming', 'active', 'archived'];
+// 课次的规范化/校验拆在 schema-lesson.js（schema.js 有 500 行上限，课次字段又最多）
+const lesson = require('./schema-lesson');
 // 班级模式：term 随学期结束归档；carry 课时包，没上完结转下期
 const CLASS_MODES = ['term', 'carry'];
 // 报名状态：active 在读 / carried 已结转到新班 / churned 未续报（流失，档案保留）/ refunded 退费
@@ -312,6 +314,9 @@ function normalizeRecord(raw, orgId, stamp) {
     // 单独留字段而不是将来加关联表，是因为一条记录挂 1~3 个知识点，键值对足够且省一次联表。
     // 只留正整数：null/''/脏值经 Number() 会变 0，留着就是一个指向不存在知识点的引用
     kpIds: numList(r.kpIds).filter(x => x > 0),
+    // 关联课次（lessons.id）：0 = 未关联（含所有存量老记录）。不冗余存"第几次"：
+    // seq 可能被重排，冗余会过期；展示时按 lessonId 实时查，课次已删则回退显示"未关联"。
+    lessonId: num(r.lessonId, 0),
     tid: str(r.tid),        // 录入老师，用于"XX老师的课堂语音"
     demo: r.demo === true
   }, audit(r, orgId, stamp));
@@ -382,6 +387,7 @@ function normalize(entity, raw, orgId, stamp) {
     case 'class': return normalizeClass(raw, orgId, stamp);
     case 'course': return normalizeCourse(raw, orgId, stamp);
     case 'classCourse': return normalizeClassCourse(raw, orgId, stamp);
+    case 'lesson': return lesson.normalizeLesson(raw, orgId, stamp);
     case 'subject': return normalizeSubject(raw, orgId, stamp);
     case 'knowledgePoint': return normalizeKnowledgePoint(raw, orgId, stamp);
     case 'student': return normalizeStudent(raw, orgId, stamp);
@@ -432,6 +438,8 @@ function validate(entity, e) {
       if (!e.clsId) return '绑定必须关联班级';
       if (!e.courseId) return '绑定必须关联课程';
       return null;
+    case 'lesson':
+      return lesson.validateLesson(e);
     case 'subject':
       if (!e.gid) return '学科缺少全局标识（gid）';
       if (!e.name) return '学科名称不能为空';
@@ -474,13 +482,14 @@ function validate(entity, e) {
 module.exports = {
   VERSION, DEFAULT_ORG, FACTORY_ORG, newOrgId, isFactoryOrg, ORG_CHARS,
   TAGS, LIMITS, RECORD_TYPES, ROLES, MEMBER_STATUS, ORG_STATUS,
-  TERM_STATUS, CLASS_MODES, ENROLL_STATUS, DEFAULT_TEMPLATES,
+  TERM_STATUS, CLASS_MODES, ENROLL_STATUS, LESSON_STATUS: lesson.LESSON_STATUS, DEFAULT_TEMPLATES,
   SUBJECT_KINDS, SUBJECT_SEEDS, SUBJECT_KEYWORDS, KP_SOURCES,
   str, num, list, numList, txtList, ymd, normDate,
   normalize, validate,
   normalizeOrg, normalizeMember,
   normalizeTerm, normalizeClass, normalizeCourse, normalizeClassCourse, normalizeStudent, normalizeEnrollment,
   normalizeSubject, normalizeKnowledgePoint, buildSubjectSeeds, guessSubjectId,
+  normalizeLesson: lesson.normalizeLesson, weekdayOf: lesson.weekdayOf,
   assignStudentNos, NO_START,
   assignRecordSessions,
   normalizeRecord, normalizeUser, normalizeTemplate

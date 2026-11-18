@@ -122,6 +122,28 @@ const ENTITIES = [
     ]
   },
   {
+    coll: 'lessons', entity: 'lesson', label: '课次', domain: '内容域',
+    idType: 'num', sync: true, writer: '客户端（负责人/管理员/老师）',
+    retention: '长期保留；学期归档后随期只读',
+    indexes: [['orgId + courseId + termId', '复合（这门课这个学期的课次列表）'], ['orgId + termId', '复合（学期视图）']],
+    fields: [
+      { k: 'id', t: INT, d: '课次 id' },
+      { k: 'courseId', t: INT, d: '所属课程 courses.id' },
+      { k: 'termId', t: INT, d: '教学周期 terms.id（期班=所在学期；长期课程挂内置「长期班」）' },
+      { k: 'seq', t: INT, d: '第几次课，同一课程同学期内递增；存储序号（档案锚点，不随日期实时变），错乱可一键重排' },
+      { k: 'date', t: STR, d: '上课日期 YYYY-MM-DD，可空（空 = 大纲型课次，还没排到）' },
+      { k: 'weekday', t: INT, d: '星期几 1~7，由 date 自动推导，0 = 未排日期' },
+      { k: 'startTime', t: STR, d: '开始时间 HH:mm，可空（学生排课匹配的机器可读预留）' },
+      { k: 'endTime', t: STR, d: '结束时间 HH:mm，可空' },
+      { k: 'title', t: STR, d: '课题，如 球体明暗' },
+      { k: 'content', t: STR, d: '本课详细内容/知识点/作业，可课后补充' },
+      { k: 'status', t: STR, d: 'draft 待确认 / confirmed 已确认（软标记，非强制）' },
+      { k: 'confirmedBy', t: INT, d: '确认人 member.id，0 = 未确认' },
+      { k: 'confirmedAt', t: INT, d: '确认时间' },
+      { k: 'contentEditedAt', t: INT, d: '内容编辑时间（≠updatedAt：仅内容字段变化才动）。与 confirmedAt 对比显示"已确认·内容有更新"' }
+    ]
+  },
+  {
     coll: 'subjects', entity: 'subject', label: '学科', domain: '内容域',
     idType: 'num', sync: true, writer: '客户端（首次使用种子化 + 负责人可改名）',
     retention: '随机构存在',
@@ -211,7 +233,8 @@ const ENTITIES = [
       { k: 'videos', t: ARR, d: '视频（最多 3 个）' },
       { k: 'audio', t: STR, d: '语音 fileID 或本地路径' },
       { k: 'sent', t: BOOL, d: '是否已发布到家长端' },
-      { k: 'session', t: INT, d: '课次号' },
+      { k: 'session', t: INT, d: '课次号（班级维度的第几次课，结清时 +1）' },
+      { k: 'lessonId', t: INT, d: '关联课次 lessons.id（课程维度的第几次课），0 = 未关联；展示时实时查序号，不冗余存"第几次"' },
       { k: 'kpIds', t: ARR, d: '关联知识点（阶段二填，V9 新增）' },
       { k: 'tid', t: STR, d: '录入老师 user.id' },
       { k: 'demo', t: BOOL, d: '演示数据标记' }

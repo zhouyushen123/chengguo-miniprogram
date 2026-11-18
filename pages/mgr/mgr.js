@@ -479,6 +479,11 @@ Page({
     });
   },
   openCourseForm() { this.setData({ courseFormOpen: true }); },
+  // 课次管理：独立分包页（低频管理入口），传课程 id
+  goLessons(e) {
+    const id = +e.currentTarget.dataset.id;
+    wx.navigateTo({ url: '/pkg-low/lessons/lessons?id=' + id });
+  },
   // 课程详情：介绍是课程本体的一部分，改它不动班级开设关系与历史记录
   openCrsDetail(e) {
     const id = +e.currentTarget.dataset.id;

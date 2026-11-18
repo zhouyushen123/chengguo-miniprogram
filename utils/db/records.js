@@ -114,6 +114,17 @@ function recordSave(pick, send) {
     sess = s;
   }
 
+  // 关联课次（lessons）：新建时可选；编辑不改（与 session 同哲学：编辑历史记录不能悄悄挪课）。
+  // 0 = 不关联，是合法值（千万别当成"课次不存在"拦掉，否则每条不带课次的记录都存不了）。
+  // 非零值校验不静默回落——课程对不上就报错，宁拦不错位。
+  let lessonId = 0;
+  if (p.lessonId !== undefined && p.lessonId !== null && p.lessonId !== '' && Number(p.lessonId) > 0) {
+    const l = oc('lessons').find(x => x.id === Number(p.lessonId) && !x.removed);
+    if (!l) return { ok: false, msg: '所选课次不存在' };
+    if (l.courseId !== courseId) return { ok: false, msg: '课次与所选课程不一致' };
+    lessonId = l.id;
+  }
+
   const base = {
     // type 不传则沿用原有类型（编辑时不要把它冲掉），新建时默认 achievement
     type: p.type,
@@ -144,7 +155,8 @@ function recordSave(pick, send) {
 
   const e = schema.normalizeRecord(Object.assign({}, base, {
     tid: core.meta().me || '',
-    date: schema.normDate(p.date) || schema.ymd()
+    date: schema.normDate(p.date) || schema.ymd(),
+    lessonId
   }), org(), now());
   const ev = schema.validate('record', e);
   if (ev) return { ok: false, msg: ev };

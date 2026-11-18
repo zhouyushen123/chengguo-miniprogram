@@ -231,13 +231,13 @@ const CHAPTERS = [
 console.log('· 手册与用例的功能点存在性');
 
 /* ---------------- 1. 页面文件齐不齐 ---------------- */
-ok('主包 15 页 + 分包 6 页都有 wxml/js/json/wxss 四件套', () => {
+ok('主包 15 页 + 分包 7 页都有 wxml/js/json/wxss 四件套', () => {
   const app = JSON.parse(fs.readFileSync(P('app.json'), 'utf8'));
   assert.strictEqual(app.pages.length, 15, '主包页面数异常：' + app.pages.length);
   assert.strictEqual(app.subPackages.length, 1, '应有 1 个低频页分包');
   const sub = app.subPackages[0];
   assert.strictEqual(sub.root, 'pkg-low');
-  assert.strictEqual(sub.pages.length, 6, '分包页面数异常：' + sub.pages.length);
+  assert.strictEqual(sub.pages.length, 7, '分包页面数异常：' + sub.pages.length);
   app.pages.forEach(p => {
     ['wxml', 'js', 'json', 'wxss'].forEach(ext => {
       assert.ok(fs.existsSync(P(p + '.' + ext)), '缺文件：' + p + '.' + ext);

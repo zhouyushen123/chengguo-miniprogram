@@ -68,7 +68,8 @@
         "import/import",
         "trash/trash",
         "storage/storage",
-        "terms/terms"
+        "terms/terms",
+        "lessons/lessons"
       ]
     }
   ]

@@ -1,0 +1,134 @@
+<view class="theme-root {{themeCls}}">
+
+<view class="listwrap">
+  <view class="hint note">课次 = 这门课每次上什么（课题/日期/内容）。按学期计数；学期归档后课次随期只读。关联课次录的成果，家长端会显示「第 N 次课」。</view>
+
+  <view wx:for="{{groups}}" wx:key="id" wx:for-item="g" class="card">
+    <view class="trow">
+      <view class="tmain">
+        <view class="t1"><text class="b">{{g.name}}</text><text class="pill pill-mi">{{g.statusLabel}}</text></view>
+        <view class="t2">{{g.lessons.length}} 次课</view>
+      </view>
+      <block wx:if="{{canWrite && !g.archived}}">
+        <view class="btn ghost sm" hover-class="btn-hover" catchtap="openBatch" data-tid="{{g.id}}">批量生成</view>
+        <view class="btn ghost sm" hover-class="btn-hover" catchtap="openAdd" data-tid="{{g.id}}">＋ 添加</view>
+      </block>
+    </view>
+
+    <!-- 序号与日期错乱提示（C'：检测到才提示，不强制） -->
+    <view wx:if="{{g.disorder}}" class="disorder" catchtap="reorderTip" data-tid="{{g.id}}">
+      <text class="dis-t">序号与日期顺序不一致</text>
+      <text class="dis-b">按日期重排 ›</text>
+    </view>
+
+    <view wx:for="{{g.lessons}}" wx:for-item="l" wx:key="id" class="lsnrow">
+      <view class="lsnmain" catchtap="{{canWrite && !g.archived ? 'openEdit' : ''}}" data-id="{{l.id}}">
+        <view class="lsn1">
+          <text class="b">第 {{l.seq}} 次</text>
+          <text class="mi">{{l.date ? l.date + (l.weekday ? ' ' + l.weekday : '') : '未排日期'}}{{l.time ? ' ' + l.time : ''}}</text>
+          <text class="pill {{l.pill}}">{{l.statusLabel}}</text>
+        </view>
+        <view class="lsn2" wx:if="{{l.title}}">{{l.title}}</view>
+        <view class="lsn3" wx:if="{{l.content}}">{{l.content}}</view>
+      </view>
+      <view wx:if="{{canWrite && !g.archived}}" class="lsnacts">
+        <text wx:if="{{canConfirm && !l.confirmed}}" class="mi act" catchtap="confirmLesson" data-id="{{l.id}}">确认</text>
+        <text class="mi act" catchtap="openEdit" data-id="{{l.id}}">编辑</text>
+        <text class="mi del" catchtap="delLesson" data-id="{{l.id}}">删除</text>
+      </view>
+    </view>
+    <view wx:if="{{!g.lessons.length}}" class="empty">还没有课次{{canWrite && !g.archived ? '，点右上「＋ 添加」或「批量生成」' : ''}}</view>
+  </view>
+
+  <view wx:if="{{!groups.length}}" class="card empty">还没有课次。点下方「＋ 添加课次」（默认挂当前学期）或「批量生成」。</view>
+</view>
+
+<!-- 空态/便捷入口：固定底部按钮（默认挂当前进行中学期，数据层会兜底） -->
+<view class="termfab">
+  <block wx:if="{{canWrite}}">
+    <view wx:if="{{!groups.length}}" class="btn" hover-class="btn-hover" bindtap="openAdd" data-tid="{{0}}">＋ 添加课次</view>
+    <view wx:else class="btn ghost" hover-class="btn-hover" bindtap="openAdd" data-tid="{{groups[0].id}}">＋ 添加到「{{groups[0].name}}」</view>
+  </block>
+</view>
+
+<!-- ============ 单次添加 / 编辑弹层 ============ -->
+<view wx:if="{{sheet === 'add' || sheet === 'edit'}}" class="mask" catchtap="closeSheet">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-t">{{sheet === 'edit' ? '编辑课次' : '添加课次'}}</view>
+
+    <view class="lbl">上课日期（选填，不填 = 先进大纲）</view>
+    <picker mode="date" value="{{form.date}}" bindchange="onForm" data-k="date">
+      <view class="inp pick">{{form.date || '点击选择'}}</view>
+    </picker>
+
+    <view class="lbl">时间段（选填）</view>
+    <view class="timerow">
+      <picker mode="time" value="{{form.startTime}}" bindchange="onForm" data-k="startTime">
+        <view class="inp pick">{{form.startTime || '开始'}}</view>
+      </picker>
+      <text class="tsep">~</text>
+      <picker mode="time" value="{{form.endTime}}" bindchange="onForm" data-k="endTime">
+        <view class="inp pick">{{form.endTime || '结束'}}</view>
+      </picker>
+    </view>
+
+    <view class="lbl">课题（选填，如：球体明暗）</view>
+    <view class="vin">
+      <input class="inp vin-in" value="{{form.title}}" placeholder="这次课的主题" bindinput="onForm" data-k="title" maxlength="30" />
+      <image class="vmic {{micKey==='form.title'?'rec':''}}" src="{{micKey==='form.title'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="form.title" />
+    </view>
+
+    <view class="lbl">详细内容（选填，可课后补充：知识点 / 作业）</view>
+    <view class="vin">
+      <textarea class="crstext vin-in" value="{{form.content}}" placeholder="这堂课学了什么、留了什么作业…" placeholder-class="ph" bindinput="onForm" data-k="content" maxlength="2000" auto-height />
+      <image class="vmic {{micKey==='form.content'?'rec':''}}" src="{{micKey==='form.content'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="form.content" />
+    </view>
+
+    <view class="row2">
+      <view class="btn ghost" bindtap="closeSheet">取消</view>
+      <view class="btn" bindtap="saveForm">保存</view>
+    </view>
+  </view>
+</view>
+
+<!-- ============ 批量生成弹层 ============ -->
+<view wx:if="{{sheet === 'batch'}}" class="mask" catchtap="closeSheet">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-t">批量生成课次</view>
+    <view class="hint2 note">按「每周上课日」从起始日期起排 N 次课，生成后可逐次改课题/内容。</view>
+
+    <view class="lbl">起始日期</view>
+    <picker mode="date" value="{{batch.startDate}}" bindchange="onBatch" data-k="startDate">
+      <view class="inp pick">{{batch.startDate || '点击选择'}}</view>
+    </picker>
+
+    <view class="lbl">每周上课日（可多选）</view>
+    <view class="chips">
+      <view wx:for="{{weekChips}}" wx:key="k" class="chip {{batch.weekdays.indexOf(item.k) > -1 ? 'on' : ''}}" bindtap="toggleWeek" data-k="{{item.k}}">{{item.t}}</view>
+    </view>
+
+    <view class="lbl">生成几次课（1-60）</view>
+    <view class="vin">
+      <input class="inp" type="number" value="{{batch.count}}" bindinput="onBatch" data-k="count" />
+    </view>
+
+    <view class="lbl">时间段（选填）</view>
+    <view class="timerow">
+      <picker mode="time" value="{{batch.startTime}}" bindchange="onBatch" data-k="startTime">
+        <view class="inp pick">{{batch.startTime || '开始'}}</view>
+      </picker>
+      <text class="tsep">~</text>
+      <picker mode="time" value="{{batch.endTime}}" bindchange="onBatch" data-k="endTime">
+        <view class="inp pick">{{batch.endTime || '结束'}}</view>
+      </picker>
+    </view>
+
+    <view class="row2">
+      <view class="btn ghost" bindtap="closeSheet">取消</view>
+      <view class="btn" bindtap="saveBatch">生成</view>
+    </view>
+  </view>
+</view>
+
+<privacy-popup id="privacy" />
+</view>

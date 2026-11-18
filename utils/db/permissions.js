@@ -35,6 +35,11 @@ const ACTIONS = {
   'term.manage':    { roles: ['owner', 'admin'] },   // 学期：新建/启停/结转向导/报名与课时调整
   'class.write':    { roles: ['owner', 'admin'] },
   'course.write':   { roles: ['owner', 'admin'] },
+  // 课次：老师能建课次/补内容/确认——这是现有 course.write 不够用的地方
+  // （它只允许 owner/admin，而课次的日常维护者恰恰是一线老师）。
+  // courseScoped：目标课程必须在老师的 member.courseIds（可管理课程清单）内。
+  'lesson.write':   { roles: ['owner', 'admin', 'teacher'], courseScoped: true },
+  'lesson.confirm': { roles: ['owner', 'admin', 'teacher'], courseScoped: true },   // 确认是软标记，非强制
   'student.write':  { roles: ['owner', 'admin', 'teacher'], scoped: true },
   'record.create':  { roles: ['owner', 'admin', 'teacher'], scoped: true },
   'record.update':  { roles: ['owner', 'admin', 'teacher'], scoped: true, own: true },
@@ -161,6 +166,13 @@ function can(actor, action, target) {
       // 新建时还没目标，允许进入（具体落库时再按学生/班级校验）
       return actor.role !== 'parent' || action === 'profile.write';
     }
+  }
+  // 限课程（课次专用）：目标课程必须在老师可管理的课程清单内。
+  // 与 scoped 同一哲学：空目标放行（abilities 预判用），拿到具体课程时 fail-closed——
+  // 配漏一个课程就是静默越权，所以宁严勿松。
+  if (rule.courseScoped && !actor.all &&
+      t.courseId !== undefined && t.courseId !== null) {
+    return has(actor.courseIds, t.courseId);
   }
   return true;
 }

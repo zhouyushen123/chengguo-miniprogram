@@ -76,6 +76,26 @@ class_courses,班级课程绑定,本机 + 云端,updatedAt,int(ms),更新时间�
 class_courses,班级课程绑定,本机 + 云端,removed,bool,软删除标记（删除必须能被同步，不能硬删）,是
 class_courses,班级课程绑定,本机 + 云端,removedAt,int(ms),哪一次删除：同一批次共用，回收站按它整批还原,是
 class_courses,班级课程绑定,本机 + 云端,removedBy,int,操作人 member.id，0 = 系统,是
+lessons,课次,本机 + 云端,id,int,课次 id,是
+lessons,课次,本机 + 云端,courseId,int,所属课程 courses.id,是
+lessons,课次,本机 + 云端,termId,int,教学周期 terms.id（期班=所在学期；长期课程挂内置「长期班」）,是
+lessons,课次,本机 + 云端,seq,int,第几次课，同一课程同学期内递增；存储序号（档案锚点，不随日期实时变），错乱可一键重排,是
+lessons,课次,本机 + 云端,date,string,上课日期 YYYY-MM-DD，可空（空 = 大纲型课次，还没排到）,是
+lessons,课次,本机 + 云端,weekday,int,星期几 1~7，由 date 自动推导，0 = 未排日期,是
+lessons,课次,本机 + 云端,startTime,string,开始时间 HH:mm，可空（学生排课匹配的机器可读预留）,是
+lessons,课次,本机 + 云端,endTime,string,结束时间 HH:mm，可空,是
+lessons,课次,本机 + 云端,title,string,课题，如 球体明暗,是
+lessons,课次,本机 + 云端,content,string,本课详细内容/知识点/作业，可课后补充,是
+lessons,课次,本机 + 云端,status,string,draft 待确认 / confirmed 已确认（软标记，非强制）,是
+lessons,课次,本机 + 云端,confirmedBy,int,确认人 member.id，0 = 未确认,是
+lessons,课次,本机 + 云端,confirmedAt,int,确认时间,是
+lessons,课次,本机 + 云端,contentEditedAt,int,"内容编辑时间（≠updatedAt：仅内容字段变化才动）。与 confirmedAt 对比显示""已确认·内容有更新""",是
+lessons,课次,本机 + 云端,orgId,string,归属机构。orgs 集合里等于 id,是
+lessons,课次,本机 + 云端,createdAt,int(ms),创建时间,是
+lessons,课次,本机 + 云端,updatedAt,int(ms),更新时间，同步 LWW 的依据,是
+lessons,课次,本机 + 云端,removed,bool,软删除标记（删除必须能被同步，不能硬删）,是
+lessons,课次,本机 + 云端,removedAt,int(ms),哪一次删除：同一批次共用，回收站按它整批还原,是
+lessons,课次,本机 + 云端,removedBy,int,操作人 member.id，0 = 系统,是
 subjects,学科,本机 + 云端,id,int,机构内自增 id,是
 subjects,学科,本机 + 云端,gid,string,全局 ID（sub_math…），内置学科跨机构一致，永不复用,是
 subjects,学科,本机 + 云端,name,string,语文 / 数学 / 书法 / 美术…,是
@@ -152,7 +172,8 @@ records,课堂记录,本机 + 云端,photos,array,照片（最多 9 张，可含
 records,课堂记录,本机 + 云端,videos,array,视频（最多 3 个）,是
 records,课堂记录,本机 + 云端,audio,string,语音 fileID 或本地路径,是
 records,课堂记录,本机 + 云端,sent,bool,是否已发布到家长端,是
-records,课堂记录,本机 + 云端,session,int,课次号,是
+records,课堂记录,本机 + 云端,session,int,课次号（班级维度的第几次课，结清时 +1）,是
+records,课堂记录,本机 + 云端,lessonId,int,"关联课次 lessons.id（课程维度的第几次课），0 = 未关联；展示时实时查序号，不冗余存""第几次""",是
 records,课堂记录,本机 + 云端,kpIds,array,关联知识点（阶段二填，V9 新增）,是
 records,课堂记录,本机 + 云端,tid,string,录入老师 user.id,是
 records,课堂记录,本机 + 云端,demo,bool,演示数据标记,是

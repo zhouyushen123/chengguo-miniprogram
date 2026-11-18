@@ -55,11 +55,11 @@ const nameOf = f => f.replace(/\.js$/, '');
 // 基础组（BASIC）是数据层的底座：schema 定义、storage 读写、core 内存集合、permissions 规则、migrate 迁移。
 // 它们天生互相依赖（core 要用 storage 和 schema），所以组内允许互相引用；
 // 业务领域之间的依赖则必须严格下行。
-const BASIC = ['subject-seeds', 'schema-base', 'schema', 'entities', 'storage', 'core', 'permissions', 'migrate'];
+const BASIC = ['subject-seeds', 'schema-base', 'schema-lesson', 'schema', 'entities', 'storage', 'core', 'permissions', 'migrate'];
 const LAYER = {
-  'subject-seeds': 0, 'schema-base': 0, schema: 0, entities: 0, storage: 0, core: 0, permissions: 0, migrate: 0,  // 基础组
+  'subject-seeds': 0, 'schema-base': 0, 'schema-lesson': 0, schema: 0, entities: 0, storage: 0, core: 0, permissions: 0, migrate: 0,  // 基础组（schema-lesson：课次纯函数，同 subject-seeds 先例）
   ctx: 1,                                   // 底座：now/org/oc/actor/deny，只依赖基础组
-  org: 2, terms: 2, courses: 2, students: 2, templates: 2, content: 2,  // content: 学科与知识点（只依赖基础组 + ctx）
+  org: 2, terms: 2, courses: 2, lessons: 2, students: 2, templates: 2, content: 2,  // lessons: 课次（课程维度），只依赖基础组 + ctx（学期直读 terms 原始数据，不 require）
   classes: 3,                               // → terms（新建班级默认挂进行中学期）
   enrollments: 4,                           // → classes, students
   identity: 4,                              // → org, classes, students（成员视图要班级/学生名）
@@ -177,7 +177,7 @@ const db = require('../utils/db');
 ok('顶层导出与关键分组齐全', () => {
   ['init', 'status', 'settings', 'today', 'canSend', 'merge', 'me', 'isParent', 'org', 'nextId']
     .forEach(k => assert.strictEqual(typeof db[k], 'function', '缺少 db.' + k));
-  ['auth', 'orgs', 'members', 'terms', 'enrollments', 'classes', 'courses', 'students', 'records', 'users', 'templates', 'demo']
+  ['auth', 'orgs', 'members', 'terms', 'enrollments', 'classes', 'courses', 'lessons', 'students', 'records', 'users', 'templates', 'demo']
     .forEach(k => assert.ok(db[k] && typeof db[k] === 'object', '缺少分组 db.' + k));
   assert.ok(db.TAGS && db.TYPES, '缺少常量 TAGS / TYPES');
 });
@@ -192,6 +192,7 @@ ok('各分组的方法都在且可调用（拆文件时漏搬会在这里暴露�
     enrollments: ['list', 'get', 'ofStudent', 'ofClass', 'of', 'create', 'update', 'remove'],
     classes: ['list', 'get', 'name', 'mode', 'countOfTerm', 'create', 'update', 'remove', '_all'],
     courses: ['list', 'of', 'get', 'create', 'update', 'remove'],
+    lessons: ['get', 'groups', 'linked', 'create', 'batch', 'update', 'remove', 'confirm', 'disorder', 'reorder'],
     students: ['list', 'of', 'get', 'search', 'name', 'create', 'update', 'updateProfile', 'remove'],
     records: ['list', 'ofStudent', 'ofClass', 'get', 'latest', 'save', 'markSent', 'remove'],
     users: ['list', 'get', 'name', 'current', 'switchTo', 'switchHome', 'create', 'update', 'remove'],

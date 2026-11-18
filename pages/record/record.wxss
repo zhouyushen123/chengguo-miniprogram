@@ -192,3 +192,21 @@
 .aift { display: flex; margin-top: 32rpx; }
 .aift .btn { flex: 1; }
 .aift .btn + .btn { margin-left: 20rpx; }
+
+/* ---------- 快捷新建课次弹层（与各页 mask/sheet 同一视觉） ---------- */
+.mask {
+  position: fixed; left: 0; top: 0; right: 0; bottom: 0;
+  background: var(--mask); z-index: 96;
+  display: flex; align-items: flex-end;
+}
+.sheet {
+  width: 100%; background: var(--card); border-radius: 32rpx 32rpx 0 0;
+  padding: 36rpx 32rpx calc(36rpx + env(safe-area-inset-bottom));
+  max-height: 94vh; overflow-y: auto; -webkit-overflow-scrolling: touch; box-sizing: border-box;
+}
+.sheet-t { text-align: center; font-size: 34rpx; font-weight: 700; color: var(--text); margin-bottom: 10rpx; }
+.sheet .row2 { margin-top: 30rpx; margin-bottom: 0; }
+.lsnta {
+  background: var(--bg); border-radius: 14rpx; padding: 18rpx 22rpx;
+  font-size: 27rpx; color: var(--text); width: 100%; box-sizing: border-box; min-height: 120rpx;
+}

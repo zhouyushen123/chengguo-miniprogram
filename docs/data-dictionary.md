@@ -4,7 +4,7 @@
 > 门禁：`npm run check` 会跑 `node tools/schema-doc.js --check`，代码与本文不一致即失败。
 > 改字段的正确顺序：改 `schema.js` 的 normalize/validate → 改 `entities.js` 登记 → 重新生成本文。
 
-共 **23** 张集合：本机库 **13** 张（其中参与同步的 **12** 张）+ 云端专用 **10** 张。
+共 **24** 张集合：本机库 **14** 张（其中参与同步的 **13** 张）+ 云端专用 **10** 张。
 
 > 注意 `users` 同名不同物：本机那张是"演示身份"，云端那张是"这个微信绑过哪些机构"，见第 2 节末尾。
 
@@ -18,6 +18,7 @@
 | `classes` | 班级 | 本机 + 云端 | 教学域 | int 自增 | ✅ | 客户端（负责人/管理员/班主任） | 长期保留 |
 | `courses` | 课程 | 本机 + 云端 | 内容域 | int 自增 | ✅ | 客户端（负责人/管理员/老师） | 长期保留（班级删除不影响课程本身） |
 | `class_courses` | 班级课程绑定 | 本机 + 云端 | 教学域 | int 自增 | ✅ | 客户端（负责人/管理员/老师） | 随班级存在；解绑即软删 |
+| `lessons` | 课次 | 本机 + 云端 | 内容域 | int 自增 | ✅ | 客户端（负责人/管理员/老师） | 长期保留；学期归档后随期只读 |
 | `subjects` | 学科 | 本机 + 云端 | 内容域 | int 自增 | ✅ | 客户端（首次使用种子化 + 负责人可改名） | 随机构存在 |
 | `knowledge_points` | 知识点 | 本机 + 云端 | 内容域 | int 自增 | ✅ | 阶段一：脚本/后台；阶段二：题库后台 | 长期保留；被题目引用时禁止物理删除 |
 | `students` | 学生 | 本机 + 云端 | 教学域 | int 自增 | ✅ | 客户端（负责人/管理员/老师） | 长期保留（离班后仍保留档案与历史记录） |
@@ -175,6 +176,36 @@
 | `removedAt` | int(ms) | 哪一次删除：同一批次共用，回收站按它整批还原 |
 | `removedBy` | int | 操作人 member.id，0 = 系统 |
 
+### `lessons` 课次
+
+- 域：内容域　id：int 自增　同步：是
+- 写入方：客户端（负责人/管理员/老师）
+- 保留期：长期保留；学期归档后随期只读
+- 索引：`orgId + courseId + termId`（复合（这门课这个学期的课次列表））；`orgId + termId`（复合（学期视图））
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `id` | int | 课次 id |
+| `courseId` | int | 所属课程 courses.id |
+| `termId` | int | 教学周期 terms.id（期班=所在学期；长期课程挂内置「长期班」） |
+| `seq` | int | 第几次课，同一课程同学期内递增；存储序号（档案锚点，不随日期实时变），错乱可一键重排 |
+| `date` | string | 上课日期 YYYY-MM-DD，可空（空 = 大纲型课次，还没排到） |
+| `weekday` | int | 星期几 1~7，由 date 自动推导，0 = 未排日期 |
+| `startTime` | string | 开始时间 HH:mm，可空（学生排课匹配的机器可读预留） |
+| `endTime` | string | 结束时间 HH:mm，可空 |
+| `title` | string | 课题，如 球体明暗 |
+| `content` | string | 本课详细内容/知识点/作业，可课后补充 |
+| `status` | string | draft 待确认 / confirmed 已确认（软标记，非强制） |
+| `confirmedBy` | int | 确认人 member.id，0 = 未确认 |
+| `confirmedAt` | int | 确认时间 |
+| `contentEditedAt` | int | 内容编辑时间（≠updatedAt：仅内容字段变化才动）。与 confirmedAt 对比显示"已确认·内容有更新" |
+| `orgId` | string | 归属机构。orgs 集合里等于 id |
+| `createdAt` | int(ms) | 创建时间 |
+| `updatedAt` | int(ms) | 更新时间，同步 LWW 的依据 |
+| `removed` | bool | 软删除标记（删除必须能被同步，不能硬删） |
+| `removedAt` | int(ms) | 哪一次删除：同一批次共用，回收站按它整批还原 |
+| `removedBy` | int | 操作人 member.id，0 = 系统 |
+
 ### `subjects` 学科
 
 - 域：内容域　id：int 自增　同步：是
@@ -300,7 +331,8 @@
 | `videos` | array | 视频（最多 3 个） |
 | `audio` | string | 语音 fileID 或本地路径 |
 | `sent` | bool | 是否已发布到家长端 |
-| `session` | int | 课次号 |
+| `session` | int | 课次号（班级维度的第几次课，结清时 +1） |
+| `lessonId` | int | 关联课次 lessons.id（课程维度的第几次课），0 = 未关联；展示时实时查序号，不冗余存"第几次" |
 | `kpIds` | array | 关联知识点（阶段二填，V9 新增） |
 | `tid` | string | 录入老师 user.id |
 | `demo` | bool | 演示数据标记 |

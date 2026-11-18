@@ -17,7 +17,6 @@
         {{aiBusy ? aiProg : 'AI 生成全班评语'}}
       </view>
     </view>
-    <view class="hint">长按学生一行可标记 / 取消请假；请假的人本次不生成记录</view>
   </view>
 
   <!-- 统一上传图片：一次拍/选整节课的照片 → 分给对应学生，或全班共用 -->
@@ -51,16 +50,19 @@
 
   <!-- 成绩单：一列学生 -->
   <view class="card" wx:if="{{rows.length}}">
+    <view class="hint" style="margin:0 0 6rpx">长按学生一行可标记 / 取消请假；请假的人本次不生成记录</view>
     <view class="srow {{row.leave ? 'off' : ''}} {{row.hit ? 'hit' : ''}}" wx:for="{{rows}}" wx:for-index="ri" wx:for-item="row" wx:key="id"
       bindlongpress="toggleLeave" data-i="{{ri}}">
-      <ava name="{{row.name}}" src="{{row.photo}}" size="{{64}}" />
-      <view class="rmain">
+      <view class="shead">
+        <ava name="{{row.name}}" src="{{row.photo}}" size="{{56}}" />
         <view class="rhead">
           <text class="b">{{row.name}}</text>
           <text wx:if="{{row.carried && !row.leave}}" class="mi">沿用上次</text>
           <text wx:if="{{row.leave}}" class="lvtag">请假</text>
           <text wx:if="{{row.hit}}" class="lvtag bad">未过安全检查</text>
         </view>
+      </view>
+      <view class="rmain">
         <view class="chips tchips">
           <view wx:for="{{tags}}" wx:for-item="tg" wx:key="*this"
             class="chip {{row.tag === tg ? 'on' : ''}}" catchtap="pickTag" data-i="{{ri}}" data-t="{{tg}}">{{tg}}</view>

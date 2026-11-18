@@ -40,6 +40,9 @@ Page({
     courses: [], courseIdx: 0, course: '',
     // 补录切换：归入哪次课（默认本次）。只有班上已经结清过（sessMax>1）才出现
     sessMax: 1, sessOpts: ['第1次课'], sessIdx: 0,
+    // 课程维度的课次（lessons）：选了有课次的课程才出现；0 = 不关联
+    lessonOpts: [], lessonIds: [0], lessonIdx: 0, canMakeLesson: false,
+    lsnSheet: false, lsnForm: { date: '', title: '', content: '' },
     score: 85, tags: TAGS, tag: '',
     note: '', photos: [], videos: [], audio: null, recording: false, recognizing: false, canSend: false,
     // AI 引导层：aiChips 是五个可选视角，aiWho 只用来告诉老师「这一条是写给谁、什么课」
@@ -126,7 +129,62 @@ Page({
       canTplEdit: db.auth.can('template.write')
     });
     this._applyStuFilter();
+    this._loadLessons();
     this.refreshCan();
+  },
+  // 课程维度的课次列表：只有选中的课程建有课次才出这个选框（选填）。
+  // 归档学期的课次带前缀，方便补录历史；默认选日期最接近今天的那次。
+  _loadLessons() {
+    const c = this.data.courses[this.data.courseIdx];
+    const cid = c && c.id;
+    // 编辑态不动课次（与 session 同哲学：改历史记录不能悄悄挪课）
+    if (!cid || this.data.editing) {
+      this.setData({ lessonOpts: [], lessonIds: [0], lessonIdx: 0, canMakeLesson: false });
+      return;
+    }
+    const groups = db.lessons.groups(cid);
+    const opts = ['不关联课次'];
+    const ids = [0];
+    const today = new Date();
+    let best = 0, bestDiff = Infinity;
+    groups.forEach(g => {
+      const prefix = g.term && g.term.status === 'archived' ? '〔' + g.term.name + '〕' : '';
+      g.lessons.forEach(l => {
+        opts.push(prefix + '第' + l.seq + '次' + (l.date ? ' · ' + l.date.slice(5) : '') + (l.title ? ' · ' + l.title : ''));
+        ids.push(l.id);
+        if (l.date) {
+          const d = Math.abs(new Date(l.date) - today);
+          if (d < bestDiff) { bestDiff = d; best = ids.length - 1; }
+        }
+      });
+    });
+    this.setData({
+      lessonOpts: opts, lessonIds: ids,
+      lessonIdx: best,
+      canMakeLesson: db.auth.can('lesson.write', { courseId: cid })
+    });
+  },
+  onLesson(e) { this.setData({ lessonIdx: +e.detail.value }); },
+  // 快捷新建本次课：录着录着发现课次还没建，就地弹层补一个，不中断录入
+  openLsnSheet() {
+    const t = new Date();
+    const pad = n => (n < 10 ? '0' + n : '' + n);
+    this.setData({ lsnSheet: true, lsnForm: { date: t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()), title: '', content: '' } });
+  },
+  closeLsnSheet() { this.setData({ lsnSheet: false }); },
+  onLsnForm(e) { this.setData({ ['lsnForm.' + e.currentTarget.dataset.k]: e.detail.value }); },
+  saveLsnForm() {
+    const f = this.data.lsnForm;
+    const c = this.data.courses[this.data.courseIdx];
+    if (!c || !c.id) return;
+    const r = db.lessons.create(c.id, { date: f.date, title: f.title, content: f.content });
+    if (!r.ok) { wx.showToast({ title: r.msg, icon: 'none' }); return; }
+    this.setData({ lsnSheet: false });
+    this._loadLessons();
+    // 自动选中新课次，接着录
+    const i = this.data.lessonIds.indexOf(r.item.id);
+    if (i > -1) this.setData({ lessonIdx: i });
+    wx.showToast({ title: '已建第 ' + r.item.seq + ' 次课', icon: 'none' });
   },
   // 学生选择区：默认只展示 45 人，超出部分折叠；搜索时在全体中匹配
   _applyStuFilter() {
@@ -175,6 +233,7 @@ Page({
   onCourse(e) {
     const c = this.data.courses[e.detail.value];
     this.setData({ courseIdx: e.detail.value, course: c ? c.name : '' });
+    this._loadLessons();
   },
   // 归入课次（补录用）：默认本次，可改选更早的课
   onSess(e) { this.setData({ sessIdx: +e.detail.value }); },
@@ -475,7 +534,9 @@ Page({
       course: this.data.course, score: this.data.score, tag: this.data.tag,
       note: this.data.note, photos: this.data.photos, videos: this.data.videos, audio: this.data.audio,
       // 归入课次：默认本次；补录时是老师改选的那一课（编辑记录时数据层会忽略它，保留原课次）
-      session: this.data.sessIdx + 1
+      session: this.data.sessIdx + 1,
+      // 关联课次（课程维度）：只在新建时传，编辑保持原关联
+      lessonId: this.data.editing ? undefined : (this.data.lessonIds[this.data.lessonIdx] || 0)
     };
     this._saving = true;
     this.setData({ saving: true });

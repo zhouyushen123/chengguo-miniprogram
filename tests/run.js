@@ -21,6 +21,7 @@ const SUITES = [
   ['verify_ai_guide.js', 'AI 评价引导'],
   ['verify_phone.js', '手机号'],
   ['verify_session.js', '课次结清'],
+  ['verify_lesson.js', '课次（lessons）'],
   ['verify_batch.js', '批量录入成绩单'],
   ['verify_photo_batch.js', '统一上传图片与照片分拣'],
   ['verify_sec.js', '安全与触达'],

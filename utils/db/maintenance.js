@@ -195,7 +195,7 @@ function normalizeAll(full) {
     each('members', schema.normalizeMember);
     each('terms', schema.normalizeTerm);
     each('classes', schema.normalizeClass);
-    each('courses', schema.normalizeCourse);
+    each('courses', schema.normalizeCourse); each('lessons', schema.normalizeLesson);
     each('subjects', schema.normalizeSubject);
     each('knowledge_points', schema.normalizeKnowledgePoint);
     each('students', schema.normalizeStudent);
@@ -362,7 +362,7 @@ function buildDemoData() {
     schema.normalizeRecord(Object.assign({ tid: d.meta.me }, r), o, stamp));
   // v7：演示记录同样盖课次号（同班同一天 = 同一课），班级页「第 N 次课」才有意义
   schema.assignRecordSessions(d.classes, d.records);
-
+  if (!d.lessons) d.lessons = [];   // writeDemoPackage 按注册表全量落盘，缺 key 会让分片层炸掉
   // 家长演示账号绑第一个孩子：权限在 member 上，不在 user 上
   const p = d.members.find(m => m.role === 'parent');
   if (p) {

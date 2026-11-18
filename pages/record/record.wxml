@@ -44,6 +44,15 @@
     </picker>
   </view>
 
+  <!-- 课程维度的课次（选填）：选了建有课次的课程才出现；编辑态不显示（保持原关联） -->
+  <view class="card" wx:if="{{lessonOpts.length > 1 && !editing}}">
+    <view class="sec"><view class="label">关联课次<text class="mihint">（这次成果是这门课的第几次，选填）</text></view></view>
+    <picker mode="selector" range="{{lessonOpts}}" value="{{lessonIdx}}" bindchange="onLesson">
+      <view class="pickerbox">{{lessonOpts[lessonIdx]}}<image class="xico" src="{{icoChevD}}" mode="aspectFit" /></view>
+    </picker>
+    <view wx:if="{{canMakeLesson}}" class="mi act" style="margin-top:14rpx" catchtap="openLsnSheet">＋ 还没建这次课？新建本次课</view>
+  </view>
+
   <!-- 归入课次（补录用）：默认本次；班上还没结清过（只有第1课）时不显示 -->
   <view class="card" wx:if="{{sessMax > 1}}">
     <view class="sec"><view class="label">归入课次<text class="mihint">（默认本次；补录上一次课的内容时改选）</text></view></view>
@@ -169,6 +178,31 @@
   <view class="aift">
     <view class="btn ghost" hover-class="btn-hover" bindtap="aiClose">取消</view>
     <view class="btn" hover-class="btn-hover" bindtap="aiGo">生成评价</view>
+  </view>
+</view>
+
+<!-- 快捷新建课次：录着录着发现课次没建，就地补一个，不中断录入 -->
+<view wx:if="{{lsnSheet}}" class="mask" catchtap="closeLsnSheet">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-t">新建本次课</view>
+    <view class="sec"><view class="label">上课日期（选填）</view></view>
+    <picker mode="date" value="{{lsnForm.date}}" bindchange="onLsnForm" data-k="date">
+      <view class="pickerbox">{{lsnForm.date || '点击选择（默认今天）'}}<image class="xico" src="{{icoChevD}}" mode="aspectFit" /></view>
+    </picker>
+    <view class="sec"><view class="label">课题（选填，如：球体明暗）</view></view>
+    <view class="vin">
+      <input class="input vin-in" style="margin-bottom:0" placeholder="这次课的主题" value="{{lsnForm.title}}" bindinput="onLsnForm" data-k="title" maxlength="30" />
+      <image class="vmic {{micKey==='lsnForm.title'?'rec':''}}" src="{{micKey==='lsnForm.title'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="lsnForm.title" />
+    </view>
+    <view class="sec"><view class="label">详细内容（选填，可课后补充）</view></view>
+    <view class="vin">
+      <textarea class="lsnta vin-in" placeholder="知识点 / 作业…" placeholder-class="ph" value="{{lsnForm.content}}" bindinput="onLsnForm" data-k="content" maxlength="2000" auto-height />
+      <image class="vmic {{micKey==='lsnForm.content'?'rec':''}}" src="{{micKey==='lsnForm.content'?icoWhite:icoMic}}" mode="aspectFit" catchtap="onMic" data-k="lsnForm.content" />
+    </view>
+    <view class="row2">
+      <view class="btn ghost" hover-class="btn-hover" bindtap="closeLsnSheet">取消</view>
+      <view class="btn" hover-class="btn-hover" bindtap="saveLsnForm">保存并关联</view>
+    </view>
   </view>
 </view>
 

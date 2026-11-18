@@ -42,6 +42,7 @@ const identity = require('./identity');
 const terms = require('./terms');
 const classes = require('./classes');
 const courses = require('./courses');
+const lessons = require('./lessons');
 const content = require('./content');
 const students = require('./students');
 const family = require('./family');
@@ -208,7 +209,9 @@ const db = {
     create: students.studentCreate, update: students.studentUpdate, updateProfile: students.studentUpdateProfile,
     remove: students.studentRemove, restore: students.studentRestore
   },
-  family: { kids: family.kids, kid: family.kid, records: family.records, className: family.className, hours: family.hours },  records: {
+  family: { kids: family.kids, kid: family.kid, records: family.records, className: family.className, hours: family.hours },
+  lessons: lessons.api,   // 课次（API 面由领域自带，序号机制见 lessons.js 头注释）
+  records: {
     list: records.recordList, ofStudent: records.recordOfStudent, ofClass: records.recordOfClass,
     get: records.recordGet, latest: records.recordLatest, save: records.recordSave,
     markSent: records.recordMarkSent, attachCloud: records.recordAttachCloud, remove: records.recordRemove,

@@ -15,7 +15,7 @@ const db = cloud.database();
 const _ = db.command;
 
 // 允许同步的集合（users 是本机身份，不同步；演示数据在独立命名空间，天然不进这里）
-const COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'class_courses', 'subjects', 'knowledge_points',
+const COLLS = ['orgs', 'members', 'terms', 'classes', 'courses', 'class_courses', 'lessons', 'subjects', 'knowledge_points',
   'students', 'enrollments', 'records', 'templates'];
 const PAGE = 100;
 // 版本历史：核心资产每次被"真的改内容"之前留一份旧值。
@@ -93,7 +93,7 @@ function aliveMember(m) {
  */
 const COLL_MGR_ONLY = ['orgs', 'terms', 'classes', 'courses', 'class_courses',
   'subjects', 'knowledge_points', 'templates'];   // 机构配置：负责人/管理员
-const COLL_TEACHER = ['students', 'enrollments', 'records']; // 教学内容：老师（受班级范围限制）
+const COLL_TEACHER = ['students', 'enrollments', 'records', 'lessons']; // 教学内容：老师（受班级/课程范围限制）
 
 // 老师的写入范围：目标必须落在自己负责的班级里。
 async function inTeacherScope(c, d, me) {
@@ -112,6 +112,12 @@ async function inTeacherScope(c, d, me) {
     const s = (r.data || [])[0];
     if (!s) return false;
     return (Array.isArray(s.clsIds) ? s.clsIds : []).map(Number).some(x => cls.indexOf(x) > -1);
+  }
+  if (c === 'lessons') {
+    // 课次挂课程维度：写入范围 = 自己可管理的课程（与前端 lesson.write 同口径，fail-closed）
+    const cs = (Array.isArray(me.courseIds) ? me.courseIds : []).map(Number).filter(n => n > 0);
+    if (!cs.length) return false;
+    return cs.indexOf(Number(d.courseId)) > -1;
   }
   return false;
 }

@@ -1876,3 +1876,12 @@ Major-3（callGLM/callGLMText 去重复）留待下次动 aiEval 时一起做。
 - 改动 3 个文件：`pages/mine/mine.wxml`（slogan 下加 `.icp` 一行）、`mine.js`（`copyIcp`：复制备案号 + 弹窗提示到 beian.miit.gov.cn 核验）、`mine.wxss`（`.icp` 弱化小字样式，含 safe-area 底距）。
 - 未跑测试（纯静态三行改动）；下次 `npm run check` 会顺带覆盖。
 - 后台侧不用改代码：mp 后台「设置→基本设置→小程序备案」展示是平台自动的。
+
+## 发版执行（2026-11-23 夜）
+
+- `npm run cloud`：7 个云函数全部重部署完成（含改动过的 syncv2/backup/admin）。
+- `npm run check`：全量套件通过，lint 0，主包 64.0%。
+- `npm run ship`：体验版 **1154** 已上传并记录 .release.json。
+- 待用户后台手动操作：mp.weixin.qq.com → 版本管理 → 把 1154 设为体验版 →
+  真机过 TC-REAL 清单 → 提交审核 → 发布。
+- BUG-001/002 未修，未随本版带出（未获拍板）。

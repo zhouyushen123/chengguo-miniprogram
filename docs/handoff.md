@@ -1895,3 +1895,11 @@ Major-3（callGLM/callGLMText 去重复）留待下次动 aiEval 时一起做。
   aiGen 字段入库随同步上云（schema/records）、家长端 student 页三处「AI 生成 · 人工智能生成内容」标签。
 - 临时隐藏（本 commit）：record.js `AI_FEATURE_ON = false` 总开关，隐藏「AI 评」按钮与引导层，
   其余功能不动；类目通过后改回 true 即恢复，标识即刻生效。提审版本按此隐藏态上传。
+
+## 隐藏态发版（2026-11-24 深夜）
+
+- 全量 check 先红后绿：数据模型缺 aiGen 登记（entities.js 补 BOOL 字段）、
+  schema.js 超 500 行（注释压 1 行）、数据字典过期（npm run docs:schema 重生成）。
+- `npm run ship`：体验版 **1155** 已上传（AI 入口隐藏态），.release.json 已记。
+- 待用户后台手动：mp.weixin.qq.com → 版本管理 → 提交审核（用 1155）。
+  类目材料路线与恢复方法见上节。

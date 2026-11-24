@@ -83,7 +83,7 @@
       <image class="aico" src="{{icoAudio}}" mode="aspectFit" /><text class="mi" style="flex:1">语音已录入</text>
       <text class="mi act" bindtap="playAudio">播放</text><text class="mi del" bindtap="rmAudio">删除</text>
     </view>
-    <view class="sec" style="margin-top:24rpx"><view class="label">课堂评价</view></view>
+    <view class="sec" style="margin-top:24rpx"><view class="label">课堂评价</view><text wx:if="{{noteAi}}" class="aibadge">AI 生成</text></view>
     <view class="notearea">
       <textarea class="noteta" placeholder="本节课表现、作品点评等；可用模板或语音快速生成" placeholder-class="ph" value="{{note}}" bindinput="onNote" maxlength="500" auto-height />
       <view class="notetools">
@@ -149,6 +149,7 @@
 <view wx:if="{{aiOpen}}" class="aimask" bindtap="aiClose"></view>
 <view wx:if="{{aiOpen}}" class="aisheet">
   <view class="aitit">让 AI 按你的要求写</view>
+  <view class="ainote">本内容由 AI（人工智能生成）自动生成，发布前请核对修改</view>
   <view class="aisub">{{aiWho || '这节课'}} · 会自动带上姓名、课程和上次评语</view>
   <view class="ailab">
     <text class="ailabt">重点看什么</text>

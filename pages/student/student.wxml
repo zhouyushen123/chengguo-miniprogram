@@ -56,6 +56,7 @@
       <video wx:for="{{videoUrls}}" wx:key="*this" class="vplayer" src="{{item}}" object-fit="cover" controls show-center-play-btn></video>
     </view>
     <view class="notegroups">
+      <view wx:if="{{rec.aiGen}}" class="aigentag">AI 生成 · 人工智能生成内容</view>
       <view class="mi nline" wx:for="{{rec.noteLines}}" wx:key="index"><text wx:if="{{item.label}}" class="nlabel">{{item.label}}：</text><text class="ntext">{{item.text}}</text></view>
     </view>
     <template is="voicebar" wx:if="{{rec.audio}}" data="{{vk:'rec', vsrc:rec.audio, playing, teacher, icoPlay, icoPause}}" />
@@ -103,6 +104,7 @@
         <video wx:for="{{videoUrls}}" wx:key="*this" class="vplayer" src="{{item}}" object-fit="cover" controls show-center-play-btn></video>
       </view>
       <view class="notegroups">
+        <view wx:if="{{latest.aiGen}}" class="aigentag">AI 生成 · 人工智能生成内容</view>
         <view class="mi nline" wx:for="{{latest.noteLines}}" wx:key="index"><text wx:if="{{item.label}}" class="nlabel">{{item.label}}：</text><text class="ntext">{{item.text}}</text></view>
       </view>
       <template is="voicebar" wx:if="{{latest.audio}}" data="{{vk:'latest', vsrc:latest.audio, playing, teacher, icoPlay, icoPause}}" />
@@ -160,6 +162,7 @@
             <video wx:for="{{item.videos}}" wx:for-item="vd" wx:key="*this" class="vplayer" src="{{vd}}" object-fit="cover" controls show-center-play-btn></video>
           </view>
           <view class="notegroups">
+            <view wx:if="{{item.aiGen}}" class="aigentag">AI 生成 · 人工智能生成内容</view>
             <view class="mi nline" wx:for="{{item.noteLines}}" wx:for-item="line" wx:key="index"><text wx:if="{{line.label}}" class="nlabel">{{line.label}}：</text><text class="ntext">{{line.text}}</text></view>
           </view>
           <template is="voicebar" wx:if="{{item.audio}}" data="{{vk:'h'+item.id, vsrc:item.audio, playing, teacher, icoPlay, icoPause}}" />

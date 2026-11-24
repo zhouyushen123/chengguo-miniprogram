@@ -45,6 +45,8 @@ Page({
     lsnSheet: false, lsnForm: { date: '', title: '', content: '' },
     score: 85, tags: TAGS, tag: '',
     note: '', photos: [], videos: [], audio: null, recording: false, recognizing: false, canSend: false,
+    // 评语是否由 AI 生成：决定录入页「AI 生成」角标与家长端合规标识（审核硬要求）
+    noteAi: false,
     // AI 引导层：aiChips 是五个可选视角，aiWho 只用来告诉老师「这一条是写给谁、什么课」
     aiBusy: false, aiOpen: false, aiSay: '', aiWho: '',
     aiChips: AI_VIEWS.map(v => ({ k: v.k, t: v.t, on: false })),
@@ -70,6 +72,7 @@ Page({
       pick = {
         cls: rec.cid, sid: rec.sid, rid: rec.id, score: rec.score,
         tag: rec.tag || '', note: rec.note || '', course: rec.course || '',
+        aiGen: rec.aiGen === true,
         photos: rec.photos || [], videos: rec.videos || [], audio: rec.audio || null,
         sent: !!rec.sent, date: rec.date, session: rec.session
       };
@@ -121,6 +124,7 @@ Page({
       sid: pick.sid || null, score: (pick.score === undefined || pick.score === null) ? 85 : pick.score,
       tag: pick.tag || '',
       note: pick.note || '', photos: pick.photos || [], videos: pick.videos || [], audio: pick.audio || null,
+      noteAi: pick.aiGen === true,
       rid: rid || null, editing: !!rid, wasSent,
       // 编辑态顶部明写改的是谁：老师一眼能看出没串到别的同学
       editStuName: pick.sid ? (db.students.name(pick.sid) || '') : '',
@@ -248,7 +252,7 @@ Page({
       confirmText: '清空',
       confirmColor: '#C0564A',
       success: res => {
-        if (res.confirm) this.setData({ note: '' });
+        if (res.confirm) this.setData({ note: '', noteAi: false });
       }
     });
   },
@@ -356,9 +360,10 @@ Page({
       }
       const text = String(r.text || '').trim().slice(0, 500);
       if (!text) throw new Error('AI 没有返回内容，请重试');
-      this.setData({ note: text });
+      this.setData({ note: text, noteAi: true });
       this.refreshCan();
-      wx.showToast({ title: '已生成，可自由修改', icon: 'success' });
+      // 审核要求：AI 生成内容须有显著标识，成功提示里也带上
+      wx.showToast({ title: 'AI 已生成，可自由修改', icon: 'success' });
     } catch (e) {
       const m = String((e && e.message) || '');
       // 微信侧掐断云函数是 -504003 / time out，别只说「请重试」：多半是 aiEval 超时还停在 3 秒。
@@ -533,6 +538,7 @@ Page({
       cls: this.data.clsId, sid: this.data.sid, rid: this.data.rid,
       course: this.data.course, score: this.data.score, tag: this.data.tag,
       note: this.data.note, photos: this.data.photos, videos: this.data.videos, audio: this.data.audio,
+      aiGen: this.data.noteAi === true,
       // 归入课次：默认本次；补录时是老师改选的那一课（编辑记录时数据层会忽略它，保留原课次）
       session: this.data.sessIdx + 1,
       // 关联课次（课程维度）：只在新建时传，编辑保持原关联

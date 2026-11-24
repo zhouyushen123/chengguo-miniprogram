@@ -137,6 +137,8 @@ function recordSave(pick, send) {
     // 新建盖课次；编辑不带 session（base 多余字段会被 Object.assign 里的 r 覆盖回原值）
     session: sess
   };
+  // AI 生成标识：页面传 aiGen=true 时落库（normalizeRecord 白名单里的字段，编辑时不传则保留原值）
+  if (p.aiGen === true) base.aiGen = true;
 
   if (rid) {
     const r = oc('records').find(y => y.id === rid);

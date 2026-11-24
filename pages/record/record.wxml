@@ -90,7 +90,7 @@
         <image wx:if="{{note}}" class="noteclear" src="{{icoClose}}" mode="aspectFit" hover-class="btn-hover" catchtap="clearNote" />
         <text class="notecnt">{{note.length}}/500</text>
         <view class="barbtn" hover-class="btn-hover" bindtap="toggleTpl">模板<text wx:if="{{selCount}}" class="badge">{{selCount}}</text></view>
-        <view class="barbtn aibtn {{aiBusy?'busy':''}}" hover-class="btn-hover" bindtap="aiDraft">AI 评</view>
+        <view wx:if="{{aiOn}}" class="barbtn aibtn {{aiBusy?'busy':''}}" hover-class="btn-hover" bindtap="aiDraft">AI 评</view>
         <view class="micbtn {{(recording||recognizing)?'rec':''}}" hover-class="btn-hover" bindtap="toggleRec"><image class="micico" src="{{(recording||recognizing)?icoWhite:icoOrange}}" mode="aspectFit" /></view>
       </view>
     </view>
@@ -146,8 +146,8 @@
 </view>
 
 <!-- AI 评价引导：先告诉 AI 这节课要看什么，再生成。不勾任何一项也能直接生成 -->
-<view wx:if="{{aiOpen}}" class="aimask" bindtap="aiClose"></view>
-<view wx:if="{{aiOpen}}" class="aisheet">
+<view wx:if="{{aiOn && aiOpen}}" class="aimask" bindtap="aiClose"></view>
+<view wx:if="{{aiOn && aiOpen}}" class="aisheet">
   <view class="aitit">让 AI 按你的要求写</view>
   <view class="ainote">本内容由 AI（人工智能生成）自动生成，发布前请核对修改</view>
   <view class="aisub">{{aiWho || '这节课'}} · 会自动带上姓名、课程和上次评语</view>

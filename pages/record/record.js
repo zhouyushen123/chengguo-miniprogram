@@ -34,6 +34,12 @@ const AI_VIEWS = [
   { k: 'mood', t: '情绪与状态' }
 ];
 
+// 【AI 功能总开关】2026-11-24：小程序审核要求「深度合成-AI创作」类目（须第三方
+// 备案材料），材料备齐前先隐藏 AI 入口过审，其余功能不受影响。
+// 类目通过后把 false 改回 true 即可恢复；AI 合规标识（面板说明/角标/家长端标签）
+// 已在 4ebf030 落好，恢复即生效，无需再改。
+const AI_FEATURE_ON = false;
+
 Page({
   data: {
     clsId: null, students: [], stuShow: [], stuQuery: '', stuExpanded: false, over45: false,
@@ -49,6 +55,8 @@ Page({
     noteAi: false,
     // AI 引导层：aiChips 是五个可选视角，aiWho 只用来告诉老师「这一条是写给谁、什么课」
     aiBusy: false, aiOpen: false, aiSay: '', aiWho: '',
+    // AI 入口显隐：false 时隐藏「AI 评」按钮与引导层（审核期间，见 AI_FEATURE_ON）
+    aiOn: AI_FEATURE_ON,
     aiChips: AI_VIEWS.map(v => ({ k: v.k, t: v.t, on: false })),
     selCount: 0, editing: false, saving: false,
     tplOpen: false, tplList: [], sel: [],

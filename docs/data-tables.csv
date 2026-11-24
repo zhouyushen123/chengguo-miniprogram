@@ -177,6 +177,7 @@ records,课堂记录,本机 + 云端,lessonId,int,"关联课次 lessons.id（课
 records,课堂记录,本机 + 云端,kpIds,array,关联知识点（阶段二填，V9 新增）,是
 records,课堂记录,本机 + 云端,tid,string,录入老师 user.id,是
 records,课堂记录,本机 + 云端,demo,bool,演示数据标记,是
+records,课堂记录,本机 + 云端,aiGen,bool,评语由 AI 生成（深度合成合规标识，家长端据此展示「AI 生成」标签）,是
 records,课堂记录,本机 + 云端,orgId,string,归属机构。orgs 集合里等于 id,是
 records,课堂记录,本机 + 云端,createdAt,int(ms),创建时间,是
 records,课堂记录,本机 + 云端,updatedAt,int(ms),更新时间，同步 LWW 的依据,是

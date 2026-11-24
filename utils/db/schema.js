@@ -319,9 +319,7 @@ function normalizeRecord(raw, orgId, stamp) {
     lessonId: num(r.lessonId, 0),
     tid: str(r.tid),        // 录入老师，用于"XX老师的课堂语音"
     demo: r.demo === true,
-    // AI 生成标识：评语由 AI 生成时置 true，家长端据此展示「AI 生成」合规标识
-    //（小程序审核要求：AI 深度合成内容须有显著标识）。只置不清——老师后续人工改写
-    // 也基于 AI 初稿，保守保留标识；老数据无此字段自动为 false。
+    // AI 生成标识：评语由 AI 生成时置 true（深度合成合规要求），家长端据此挂「AI 生成」标签；只置不清，老数据自动 false
     aiGen: r.aiGen === true
   }, audit(r, orgId, stamp));
 }

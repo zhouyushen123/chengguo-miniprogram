@@ -336,6 +336,7 @@
 | `kpIds` | array | 关联知识点（阶段二填，V9 新增） |
 | `tid` | string | 录入老师 user.id |
 | `demo` | bool | 演示数据标记 |
+| `aiGen` | bool | 评语由 AI 生成（深度合成合规标识，家长端据此展示「AI 生成」标签） |
 | `orgId` | string | 归属机构。orgs 集合里等于 id |
 | `createdAt` | int(ms) | 创建时间 |
 | `updatedAt` | int(ms) | 更新时间，同步 LWW 的依据 |

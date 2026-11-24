@@ -237,7 +237,8 @@ const ENTITIES = [
       { k: 'lessonId', t: INT, d: '关联课次 lessons.id（课程维度的第几次课），0 = 未关联；展示时实时查序号，不冗余存"第几次"' },
       { k: 'kpIds', t: ARR, d: '关联知识点（阶段二填，V9 新增）' },
       { k: 'tid', t: STR, d: '录入老师 user.id' },
-      { k: 'demo', t: BOOL, d: '演示数据标记' }
+      { k: 'demo', t: BOOL, d: '演示数据标记' },
+      { k: 'aiGen', t: BOOL, d: '评语由 AI 生成（深度合成合规标识，家长端据此展示「AI 生成」标签）' }
     ]
   },
   {

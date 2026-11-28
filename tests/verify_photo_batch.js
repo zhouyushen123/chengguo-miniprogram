@@ -242,7 +242,8 @@ t('C04 全班共用：未分配归零，保存时全员都带照片', () => {
 
 /* ================= D. 保存 / 草稿 / 源码守卫 ================= */
 t('D01 草稿带照片池、分配关系与共用开关', () => {
-  const d = wx.getStorageSync('chengguo_batchdraft_v1_' + cls.id);
+  // 草稿键已分桶（draft.js kind 参数）：批量页默认 'batch' 桶
+  const d = wx.getStorageSync('chengguo_draft_v1_batch_' + cls.id);
   assert.ok(d && d.photos && d.photos.length === 3);
   assert.strictEqual(d.shared, true);
   assert.ok(Array.isArray(d.rows) && d.rows.every(r => Array.isArray(r.photos)));

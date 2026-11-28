@@ -63,6 +63,7 @@
     <template is="voicebar" wx:if="{{rec.audio}}" data="{{vk:'rec', vsrc:rec.audio, playing, teacher, icoPlay, icoPause}}" />
     <view wx:if="{{rec.canEdit}}" class="chips" style="margin:12rpx 0 0">
       <text class="pill" style="background:var(--brand);color:#fff" hover-class="btn-hover" bindtap="editRec" data-rid="{{rec.id}}">修改这条记录</text>
+      <text wx:if="{{rec.canDel}}" class="pill" style="background:var(--warn);color:#fff" hover-class="btn-hover" bindtap="delRec" data-rid="{{rec.id}}">删除</text>
     </view>
     <!-- 家长留言：只有家长 + 云通 + 已发布才出现；老师看自己的记录不需要这块 -->
     <view wx:if="{{fbOn && rec.sent}}" class="fbbox">
@@ -111,6 +112,7 @@
       <template is="voicebar" wx:if="{{latest.audio}}" data="{{vk:'latest', vsrc:latest.audio, playing, teacher, icoPlay, icoPause}}" />
       <view wx:if="{{latest.canEdit}}" class="chips" style="margin:12rpx 0 0">
         <text class="pill" style="background:var(--brand);color:#fff" hover-class="btn-hover" bindtap="editRec" data-rid="{{latest.id}}">修改这条记录</text>
+        <text wx:if="{{latest.canDel}}" class="pill" style="background:var(--warn);color:#fff" hover-class="btn-hover" bindtap="delRec" data-rid="{{latest.id}}">删除</text>
       </view>
       <!-- 家长留言：对最近这次课给老师留句话（已发布才显示） -->
       <view wx:if="{{fbOn && latest.sent}}" class="fbbox">
@@ -154,6 +156,7 @@
           <view class="chips" style="margin:0 0 12rpx">
             <text class="pill" style="background:{{item.sent?'var(--sent)':'var(--warn)'}}">{{item.sent?'已发布':'待发布'}}</text>
             <text wx:if="{{item.canEdit}}" class="pill" style="background:var(--brand);color:#fff" hover-class="btn-hover" bindtap="editRec" data-rid="{{item.id}}">修改这条</text>
+            <text wx:if="{{item.canDel}}" class="pill" style="background:var(--warn);color:#fff" hover-class="btn-hover" bindtap="delRec" data-rid="{{item.id}}">删除</text>
             <text wx:if="{{fbOn && item.sent}}" class="pill" style="background:var(--brand-soft);color:var(--brand)" hover-class="btn-hover" bindtap="openNote" data-rid="{{item.id}}" data-course="{{item.course}}" data-date="{{item.date}}">给老师留句话</text>
           </view>
           <view class="photogrid {{item.pcls}}" wx:if="{{item.photos.length}}">

@@ -9,6 +9,7 @@ const photocloud = require('../../utils/photocloud');
 const theme = require('../../utils/theme');
 const aipref = require('../../utils/aipref');
 const firstrun = require('../../utils/firstrun');
+const draft = require('../../utils/draft');
 
 // 媒体限制：单个文件 50MB；照片/视频张数取数据层那一份（db.LIMITS），不在这里再写一遍
 const MAX_FILE = 50 * 1024 * 1024;
@@ -156,6 +157,34 @@ Page({
     this._applyStuFilter();
     this._loadLessons();
     this.refreshCan();
+    // 自动草稿恢复（B0-3）：新建模式下若本班有未保存的单条录入，问一声。
+    // 编辑态不恢复（以库里原记录为准）；从具体学生块进来的，只提本来就属于 TA 的草稿。
+    if (!rid) {
+      const d = draft.get(clsId, 'rec');
+      const hasContent = d && (String(d.note || '').trim() || (d.photos || []).length
+        || (d.videos || []).length || d.audio || d.tag || String(d.course || '').trim());
+      if (hasContent && (!pick.sid || String(d.sid || '') === String(pick.sid))) {
+        const self = this;
+        wx.showModal({
+          title: '恢复未保存的录入？',
+          content: '上次有一次没保存完的单条录入，恢复后继续；不恢复则丢弃。',
+          confirmText: '恢复',
+          cancelText: '丢弃',
+          success: res => {
+            if (!res.confirm) { draft.clear(clsId, 'rec'); return; }
+            const ci2 = d.course ? self.data.courses.findIndex(c => c.name === d.course) : -1;
+            self.setData({
+              sid: (pick.sid ? self.data.sid : (d.sid || self.data.sid)) || null,
+              score: d.score || 85, tag: d.tag || '', note: d.note || '',
+              photos: (d.photos || []).slice(), videos: (d.videos || []).slice(),
+              audio: d.audio || null, course: d.course || self.data.course,
+              courseIdx: ci2 > -1 ? ci2 : self.data.courseIdx,
+              sessIdx: (d.sess >= 1 && d.sess <= self.data.sessOpts.length) ? d.sess - 1 : self.data.sessIdx
+            }, () => { self._applyStuFilter(); self.refreshCan(); });
+          }
+        });
+      }
+    }
   },
   // 课程维度的课次列表：只有选中的课程建有课次才出这个选框（选填）。
   // 归档学期的课次带前缀，方便补录历史；默认选日期最接近今天的那次。
@@ -247,13 +276,14 @@ Page({
   refreshCan() {
     this.setData({ canSend: db.canSend(this.data) });
   },
-  pickStu(e) { this.setData({ sid: e.currentTarget.dataset.sid }); this.refreshCan(); },
-  onScore(e) { this.setData({ score: e.detail.value }); },
+  pickStu(e) { this.setData({ sid: e.currentTarget.dataset.sid }); this.refreshCan(); this._saveDraft(); },
+  onScore(e) { this.setData({ score: e.detail.value }); this._saveDraft(); },
   pickTag(e) {
     const t = e.currentTarget.dataset.t;
     const hit = TAGS.find(x => x.t === t);
     // 点选等级时，分数自动落到该档代表分，保持等级与分数一致
     this.setData({ tag: t, score: hit ? hit.anchor : this.data.score });
+    this._saveDraft();
   },
   onCourse(e) {
     const c = this.data.courses[e.detail.value];
@@ -263,10 +293,11 @@ Page({
   // 历史课程名快捷选择（班上没绑课程时的一键复用）
   pickHisCourse(e) {
     this.setData({ course: e.currentTarget.dataset.c || '' });
+    this._saveDraft();
   },
   // 归入课次（补录用）：默认本次，可改选更早的课
-  onSess(e) { this.setData({ sessIdx: +e.detail.value }); },
-  onNote(e) { this.setData({ note: e.detail.value }); this.refreshCan(); },
+  onSess(e) { this.setData({ sessIdx: +e.detail.value }); this._saveDraft(); },
+  onNote(e) { this.setData({ note: e.detail.value }); this.refreshCan(); this._saveDraft(); },
 
   // 一键清空课堂评语（字数左侧的 ✕）：评语可能是 AI 生成长文，误触代价高，先确认一次
   clearNote() {
@@ -277,7 +308,7 @@ Page({
       confirmText: '清空',
       confirmColor: '#C0564A',
       success: res => {
-        if (res.confirm) this.setData({ note: '', noteAi: false });
+        if (res.confirm) this.setData({ note: '', noteAi: false }, () => this._saveDraft());
       }
     });
   },
@@ -446,6 +477,7 @@ Page({
         if (tips.length) wx.showToast({ title: tips.join('，'), icon: 'none' });
         this.setData({ photos: photos.slice(0, MAX_PHOTOS), videos: videos.slice(0, MAX_VIDEOS) });
         this.refreshCan();
+        this._saveDraft();
       },
       fail: err => media.handleChooseFail(err, this)
     });
@@ -459,6 +491,7 @@ Page({
     videos.splice(i, 1);
     this.setData({ videos });
     this.refreshCan();
+    this._saveDraft();
   },
   rmPhoto(e) {
     const i = e.currentTarget.dataset.i;
@@ -466,6 +499,7 @@ Page({
     photos.splice(i, 1);
     this.setData({ photos });
     this.refreshCan();
+    this._saveDraft();
   },
   previewPhoto(e) { wx.previewImage({ urls: this.data.photos, current: this.data.photos[e.currentTarget.dataset.i] }); },
   // 留言条麦克风：优先语音转文字（同声传译插件），识别结果写入留言可手动修改；
@@ -540,14 +574,28 @@ Page({
     if (this.rec && this.data.recording) this.rec.stop();
     if (this.recog) { this.recog.stop(); this.recog = null; }
     voice.stop(this); // 语音输入的录音也别带到页面外
+    this._saveDraft();
   },
   // 语音输入：点搜索框后的麦克风说话，再点一次结束
   onMic(e) { voice.dictate(this, e.currentTarget.dataset.k); },
   onHide() {
     if (this.recog) { this.recog.stop(); this.recog = null; this.setData({ recognizing: false }); }
     voice.stop(this);
+    this._saveDraft();   // 录到一半被打断也不丢内容（B0-3）
   },
-  rmAudio() { this.setData({ audio: null }); this.refreshCan(); },
+  rmAudio() { this.setData({ audio: null }); this.refreshCan(); this._saveDraft(); },
+  // 单条录入草稿：只在新建模式存（编辑态以库里记录为准）；保存成功后由 _doSave 清掉。
+  // 与批量页同一份 draft 基建但分桶（kind='rec'），互不干扰。
+  _saveDraft() {
+    if (this.data.editing || this._saving || !this.data.clsId) return;
+    draft.set(this.data.clsId, {
+      sid: this.data.sid || null,
+      score: this.data.score, tag: this.data.tag, note: this.data.note,
+      photos: (this.data.photos || []).slice(), videos: (this.data.videos || []).slice(),
+      audio: this.data.audio || null, course: this.data.course || '',
+      sess: this.data.sessIdx + 1
+    }, 'rec');
+  },
   preview() {
     // 预览页要一并展示照片/视频/语音，跳转前把当前媒体同步进 pick
     const pick = getApp().globalData.pick || (getApp().globalData.pick = {});
@@ -608,8 +656,12 @@ Page({
     // 直接发布给家长时，顺手把订阅通知交出去（未配模板/云未通时 familyNotify 静默跳过）
     if (res.record.sent) api.familyNotify({ items: sec.itemsFromRecords([res.record], db.students.name, db.classes.name) });
     // warn：记录已存下，但关联的课时账没记上（空间不足），得让老师知道
-    // 已发布过的记录再保存 = 修改，文案不骗人说「已发布」
-    wx.showToast({ title: res.warn || (send ? (this.data.wasSent ? '已保存修改' : '已发布') : '已存草稿'), icon: res.warn ? 'none' : 'success' });
+    // 已发布过的记录再保存 = 修改，文案不骗人说「已发布」；发布成功顺带说清去向（B0-2）
+    draft.clear(this.data.clsId, 'rec');
+    wx.showToast({
+      title: res.warn || (send ? (this.data.wasSent ? '已保存修改' : '已发布，家长从您发的邀请卡进入即可看到') : '已存草稿'),
+      icon: res.warn ? 'none' : 'success'
+    });
     setTimeout(() => wx.navigateBack(), 800);
   },
   /* ================= 模板：页内全屏面板（多选/增删改） ================= */

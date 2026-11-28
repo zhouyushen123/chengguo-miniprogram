@@ -38,6 +38,8 @@
       <text wx:if="{{fbNotes}}" class="fbdot">· {{fbNotes}} 条留言</text>
       <text class="fblink">家长反馈 ›</text>
     </view>
+    <!-- 发布去向引导（B0-2）：把"发到哪了"说破，不再让老师猜；回执不可用（云未通）时也要显示 -->
+    <view wx:if="{{pubCount && !fbReady}}" class="hint">已发布 {{pubCount}} 条：家长用您发的邀请卡进入小程序即可看到</view>
   </view>
 
   <!-- 本班记录：课次 + 日期 + 等级筛选 -->

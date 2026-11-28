@@ -100,7 +100,9 @@ Page({
       // 且本次课至少录了 1 条才显示（历史课次的记录不算）
       canSettle: db.auth.can('record.create', { clsId: this.clsId }),
       hasCurRecs: curCount > 0,
-      allCount: this._all.length
+      allCount: this._all.length,
+      // 已发布总数（B0-2 去向提示用）：不依赖云回执，本地计数
+      pubCount: this._all.filter(r => r.sent).length
     }, () => { this._applyTiles(); this._applyRecs(); });
     this._loadFb();
   },

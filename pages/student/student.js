@@ -100,7 +100,8 @@ Page({
         clsName: r.clsName || db.classes.name(r.cid),
         orgName: r.orgName || '',
         tcls: tagCls(r.tag), pcnt: (r.photos || []).length, snip, sess: r.session || 0,
-        canEdit: db.auth.can('record.update', { record: r })
+        canEdit: db.auth.can('record.update', { record: r }),
+        canDel: db.auth.can('record.delete', { record: r })
       });
     };
 
@@ -344,6 +345,32 @@ Page({
       tag: r.tag || '', note: r.note || '', rid: r.id, course: r.course, sent: !!r.sent
     };
     wx.navigateTo({ url: '/pages/record/record?rid=' + r.id });
+  },
+  // 删除记录（B0-1）：软删进回收站，数据层与权限早就有，页面一直没入口——
+  // 冯老师访谈第 8 段「保存以后就别想删除」的根因。已发布的内容会同步从家长端移除。
+  delRec(e) {
+    const rid = Number(e.currentTarget.dataset.rid) || 0;
+    const r = db.records.get(rid);
+    if (!r) { wx.showToast({ title: '记录不存在', icon: 'none' }); return; }
+    if (!db.auth.can('record.delete', { record: r })) {
+      wx.showToast({ title: db.auth.denyReason('record.delete'), icon: 'none' });
+      return;
+    }
+    wx.showModal({
+      title: '删除这条记录？',
+      content: r.sent ? '已发布的内容会同步从家长端移除；删除后可在回收站恢复。' : '删除后可在回收站恢复。',
+      confirmText: '删除',
+      confirmColor: '#C0564A',
+      success: res => {
+        if (!res.confirm) return;
+        const out = db.records.remove(rid);
+        if (!out.ok) { wx.showToast({ title: out.msg || '删除失败，请重试', icon: 'none' }); return; }
+        wx.showToast({ title: '已删除，可在回收站恢复', icon: 'success' });
+        // 单条视图删的就是当前这条：回上一页；列表视图就地刷新
+        if (this.rid && this.data.rec) { setTimeout(() => wx.navigateBack(), 700); return; }
+        this.render();
+      }
+    });
   },
   goRecord() {
     const s = db.students.get(this.sid);

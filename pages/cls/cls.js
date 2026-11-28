@@ -3,6 +3,7 @@ const api = require('../../utils/api');
 const sec = require('../../utils/sec');
 const icons = require('../../utils/icons');
 const theme = require('../../utils/theme');
+const firstrun = require('../../utils/firstrun');
 
 // 班级详情页：学生「本次录入」三状态（未录/已录/已发布）+ 筛选；下方本班记录支持按课次、日期、等级筛选
 // 三状态按【课次】算而不是自然日：同一节课两个老师分两天录，状态依然准确。
@@ -25,6 +26,8 @@ Page({
     canSettle: false, hasCurRecs: false,
     // 家长回执：本次课已发布记录里，有多少家长真的打开看过；有留言时也在这里露一句
     fbReady: false, fbSeen: 0, fbSent: 0, fbNotes: 0,
+    // 一次性引导条：多班级 / 多老师协作（冯老师访谈：功能都在，但用户不知道）
+    guideHint: '',
     icoChevD: icons.chevronDown, icoChev: icons.chevron
   },
   onLoad(q) {
@@ -40,6 +43,15 @@ Page({
       return;
     }
     wx.setNavigationBarTitle({ title: cls.name });
+    // 一次性引导：第一次进班级详情时告诉用户还有哪些组织方式（轻提示条，可关，不再弹）。
+    // 邀请成员是负责人/管理员的能力，老师只见多班级半句。
+    if (firstrun.hintOnce('cls-guide')) {
+      this.setData({
+        guideHint: db.auth.can('member.manage')
+          ? '小提示：可以按课程再建多个班级；在「我的 → 邀请成员」生成机构码，可让其他老师一起录入'
+          : '小提示：可以按课程再建多个班级，分类记录更清晰'
+      });
+    }
     // 本次录入 = 班级当前课次（session），不再按自然日
     const cur = Math.max(1, cls.session || 1);
     const students = db.students.of(this.clsId);
@@ -115,6 +127,8 @@ Page({
     });
   },
   goFeedback() { wx.navigateTo({ url: '/pages/feedback/feedback?id=' + this.clsId }); },
+  // 引导条只弹这一次，点 × 即收起
+  closeGuide() { this.setData({ guideHint: '' }); },
   // 学生状态筛选
   pickFilt(e) {
     this.setData({ filt: e.currentTarget.dataset.f }, () => this._applyTiles());

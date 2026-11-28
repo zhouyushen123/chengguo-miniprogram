@@ -5,6 +5,11 @@
     <view class="clshead">
       <view class="h1">{{cls.name}} · 第{{sess}}次课</view>
     </view>
+    <!-- 一次性引导条（首次进班级详情出现，可关闭） -->
+    <view wx:if="{{guideHint}}" class="guidebar">
+      <text class="gtxt">{{guideHint}}</text>
+      <text class="gclose" catchtap="closeGuide">×</text>
+    </view>
 
     <!-- 状态分类筛选：统计数直接融进页签 -->
     <view class="filtbar">

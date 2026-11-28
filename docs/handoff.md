@@ -1903,3 +1903,13 @@ Major-3（callGLM/callGLMText 去重复）留待下次动 aiEval 时一起做。
 - `npm run ship`：体验版 **1155** 已上传（AI 入口隐藏态），.release.json 已记。
 - 待用户后台手动：mp.weixin.qq.com → 版本管理 → 提交审核（用 1155）。
   类目材料路线与恢复方法见上节。
+
+## 冯老师访谈落地：学期制进度 + 引导提示 + 批量补录（2026-11-28）
+
+- 访谈存档与方案见 `docs/interview-2026-11-28-冯老师.md`、`docs/interview-followup-plan-2026-11-28.md`（拍板状态在文末）。
+- P0-1 家长端学期制进度：student/index 双页（含跨机构）显示「已上 X / 共 Y 次」；X=该班记录条数，Y=报名 totalHours，没填 Y 不显示。family.js 新增 termLessons 并从 db/index.js 导出。
+- P0-2 引导：firstrun.hintOnce 一次性提示基建；cls 页首次进详情弹引导条（member.manage 权限分文案）；record 页课程区常显「选填 · 家长端按课程查看」。
+- P1-1 批量补录：pkg-low/batch 新增归入课次（1~当前）+ 上课日期选择，items 显式传 session/date，确认弹窗明示；切换不清空已填内容。
+- P1-2 课程名复用：班上没绑课程时，record 页从本班历史记录取课程名做 chips。
+- P2 录音前一次性 toast「建议在安静环境下录制」。
+- `npm run check` 全部套件通过。未发版：改动待下次 ship 随体验版带出。

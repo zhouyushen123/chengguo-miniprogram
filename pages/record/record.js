@@ -8,6 +8,7 @@ const sec = require('../../utils/sec');
 const photocloud = require('../../utils/photocloud');
 const theme = require('../../utils/theme');
 const aipref = require('../../utils/aipref');
+const firstrun = require('../../utils/firstrun');
 
 // 媒体限制：单个文件 50MB；照片/视频张数取数据层那一份（db.LIMITS），不在这里再写一遍
 const MAX_FILE = 50 * 1024 * 1024;
@@ -44,6 +45,8 @@ Page({
   data: {
     clsId: null, students: [], stuShow: [], stuQuery: '', stuExpanded: false, over45: false,
     courses: [], courseIdx: 0, course: '',
+    // 历史课程名：班上还没绑课程时，从本班已录记录里取课程名供一键复用
+    hisCourses: [],
     // 补录切换：归入哪次课（默认本次）。只有班上已经结清过（sessMax>1）才出现
     sessMax: 1, sessOpts: ['第1次课'], sessIdx: 0,
     // 课程维度的课次（lessons）：选了有课次的课程才出现；0 = 不关联
@@ -100,6 +103,16 @@ Page({
     if (pick.course && !courses.some(c => c.name === pick.course)) {
       courses = [{ id: 0, name: pick.course }].concat(courses);
     }
+    // 班上没绑课程时，从本班已录记录里取历史课程名（去重）做快捷选择，
+    // 让「录课程」不用先去管理页建课程实体（冯老师访谈：录课麻烦 → 一键复用）。
+    // 有绑定课程时不显示（picker 已覆盖，历史名里绑过的会在下拉里）。
+    let hisCourses = [];
+    if (!courses.length) {
+      db.records.ofClass(clsId).forEach(r => {
+        const c = String(r.course || '').trim();
+        if (c && hisCourses.indexOf(c) === -1) hisCourses.push(c);
+      });
+    }
     let students = db.students.of(clsId); // 已按姓氏拼音排序
     // 学生转班后仍要能看见/选中记录原本属于谁
     if (pick.sid && !students.some(s => s.id === pick.sid)) {
@@ -124,7 +137,7 @@ Page({
     const sessOpts = [];
     for (let i = 1; i <= sessMax; i++) sessOpts.push('第' + i + '次课' + (i === sessMax ? '（本次）' : ''));
     this.setData({
-      clsId, students, courses, courseIdx: ci,
+      clsId, students, courses, courseIdx: ci, hisCourses,
       sessMax, sessOpts, sessIdx: sess - 1,
       over45: students.length > 45,
       course: courses[ci] ? courses[ci].name : pick.course || '',
@@ -246,6 +259,10 @@ Page({
     const c = this.data.courses[e.detail.value];
     this.setData({ courseIdx: e.detail.value, course: c ? c.name : '' });
     this._loadLessons();
+  },
+  // 历史课程名快捷选择（班上没绑课程时的一键复用）
+  pickHisCourse(e) {
+    this.setData({ course: e.currentTarget.dataset.c || '' });
   },
   // 归入课次（补录用）：默认本次，可改选更早的课
   onSess(e) { this.setData({ sessIdx: +e.detail.value }); },
@@ -454,6 +471,10 @@ Page({
   // 留言条麦克风：优先语音转文字（同声传译插件），识别结果写入留言可手动修改；
   // 插件不可用时降级为录音（MediaRecorder 等价物），语音作为附件随记录发送
   toggleRec() {
+    // 录音前一次性轻提示（冯老师访谈：录音噪音大影响体验；不做降噪，只提醒环境）
+    if (firstrun.hintOnce('rec-quiet')) {
+      wx.showToast({ title: '建议在安静环境下录制，效果更好', icon: 'none' });
+    }
     if (this.data.recognizing) { if (this.recog) this.recog.stop(); return; }
     if (stt.available()) {
       // 开录前已有的文字是「底稿」。识别过程中每次回调都拿全文重新拼一次（替换），

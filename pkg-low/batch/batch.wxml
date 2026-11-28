@@ -17,6 +17,21 @@
         {{aiBusy ? aiProg : 'AI 生成全班评语'}}
       </view>
     </view>
+    <!-- 补录：归入课次 + 上课日期（默认本次课 + 今天；课程尾声补历史课时改这里） -->
+    <view class="bkrow">
+      <view class="bkcell">
+        <view class="bklab">归入课次</view>
+        <picker mode="selector" range="{{sessOpts}}" value="{{sessIdx}}" bindchange="onSess">
+          <view class="bkpick">{{sessOpts[sessIdx]}}</view>
+        </picker>
+      </view>
+      <view class="bkcell">
+        <view class="bklab">上课日期</view>
+        <picker mode="date" value="{{recDate}}" bindchange="onDate">
+          <view class="bkpick">{{recDate}}</view>
+        </picker>
+      </view>
+    </view>
   </view>
 
   <!-- 统一上传图片：一次拍/选整节课的照片 → 分给对应学生，或全班共用 -->

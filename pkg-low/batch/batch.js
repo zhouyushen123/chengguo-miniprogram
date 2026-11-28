@@ -21,6 +21,8 @@ const MAX_POOL = 30;
 const MAX_PER_STU = db.LIMITS.photos;
 const MAX_FILE = 50 * 1024 * 1024;
 const uniq = arr => arr.filter((p, i) => p && arr.indexOf(p) === i);
+// 今天（本地时区 YYYY-MM-DD），与 schema.ymd 同格式
+const ymd = () => { const d = new Date(); const p = n => ('0' + n).slice(-2); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); };
 
 // 评分五档与代表分，与单人录入页（pages/record）同一套口径
 const TAGS = [
@@ -36,6 +38,9 @@ const AI_BATCH = 10;
 Page({
   data: {
     cls: null, sess: 1,
+    // 补录：归入课次（默认本次，可选历史课次）+ 上课日期（默认今天）。
+    // 数据层早已支持显式 session/date（recordSave 校验 1~当前课次），这里只是把口子露出来。
+    sessOpts: ['第1次课'], sessIdx: 0, recDate: '',
     rows: [], topic: '',
     tags: TAGS.map(x => x.t),
     aiBusy: false, aiProg: '', saving: false,
@@ -55,7 +60,10 @@ Page({
     const deny = db.auth.can('record.create', { clsId: this.clsId }) ? null : db.auth.denyReason('record.create');
     if (deny) { wx.showToast({ title: deny, icon: 'none' }); setTimeout(() => wx.navigateBack(), 900); return; }
     const sess = Math.max(1, cls.session || 1);
-    this.setData({ cls: { id: cls.id, name: cls.name }, sess });
+    // 课次选项：1~当前课次（数据层拒绝未来课次，选项不给选到）；默认落在当前课次
+    const sessOpts = [];
+    for (let i = 1; i <= sess; i++) sessOpts.push('第' + i + '次课' + (i === sess ? '（本次）' : ''));
+    this.setData({ cls: { id: cls.id, name: cls.name }, sess, sessOpts, sessIdx: sess - 1, recDate: ymd() });
     this._build(sess, q);
   },
   onShow() { theme.apply(this); this._count(); },
@@ -93,9 +101,13 @@ Page({
         success: res => {
           if (!res.confirm) { draft.clear(this.clsId); return; }
           // 老草稿没有 photos 字段：按空池恢复，不让旧数据把页面卡住
+          // 课次/日期同样恢复（老草稿没有就回落到进页默认：本次课 + 今天）
+          const sessBack = (d.sess >= 1 && d.sess <= this.data.sessOpts.length) ? d.sess : this.data.sess;
           this.setData({
             rows: (d.rows || []).map(r => Object.assign({}, r, { photos: (r.photos || []).slice() })),
             topic: d.topic || '',
+            sess: sessBack, sessIdx: sessBack - 1,
+            recDate: d.recDate || this.data.recDate,
             photos: Array.isArray(d.photos) ? d.photos.slice(0, MAX_POOL) : [],
             shared: !!d.shared
           }, () => { this._syncPhotos(); this._count(); });
@@ -255,6 +267,14 @@ Page({
     }
   },
   onTopic(e) { this.setData({ topic: e.detail.value }); this._saveDraft(); },
+  // 补录：切换归入课次 / 上课日期。只改归属，不清空已填内容（老师中途换课次不应丢评语）；
+  // 「沿用上次」仍按进页时的课次取值，不改行内容。
+  onSess(e) {
+    const idx = +e.detail.value;
+    this.setData({ sessIdx: idx, sess: idx + 1 });
+    this._saveDraft();
+  },
+  onDate(e) { this.setData({ recDate: e.detail.value }); this._saveDraft(); },
   // 长按学生行 = 标记/取消请假（请假的人本次不落库，结清时不算未录）
   toggleLeave(e) {
     const i = +e.currentTarget.dataset.i;
@@ -267,6 +287,7 @@ Page({
     // 照片池与分配关系一起进草稿：录到一半被打断，回来不用重选图、重分一遍
     draft.set(this.clsId, {
       rows: this.data.rows, topic: this.data.topic,
+      sess: this.data.sess, recDate: this.data.recDate,
       photos: this.data.photos, shared: this.data.shared
     });
   },
@@ -365,7 +386,7 @@ Page({
     const items = rows.map((r, i) => ({
       cls: this.clsId, sid: r.id, score: r.score, tag: r.tag,
       note: r.note, course: r.course, courseId: r.courseId,
-      session: this.data.sess,
+      session: this.data.sess, date: this.data.recDate,
       photos: lists[i].slice(0, MAX_PER_STU)
     }));
     const clipped = lists.filter(a => a.length > MAX_PER_STU).length;
@@ -378,8 +399,9 @@ Page({
     }
     const clipTip = clipped ? '（' + clipped + ' 人超过 ' + MAX_PER_STU + ' 张，只取前 ' + MAX_PER_STU + ' 张）' : '';
     wx.showModal({
-      title: '保存本次课记录？',
-      content: '将为 ' + items.length + ' 名学生保存第 ' + this.data.sess + ' 次课记录' + leaveTip + photoTip + clipTip + '。',
+      title: '保存第 ' + this.data.sess + ' 次课记录？',
+      content: '将为 ' + items.length + ' 名学生保存第 ' + this.data.sess + ' 次课（日期 ' + (this.data.recDate || ymd()) + '）'
+        + leaveTip + photoTip + clipTip + '。',
       confirmText: '保存',
       success: res => {
         if (!res.confirm) return;

@@ -14,4 +14,20 @@ function markAutoShown() {
   try { wx.setStorageSync(KEY, 1); } catch (e) { /* 记不住就算了，最多下次再自动跳一次 */ }
 }
 
-module.exports = { KEY, autoShown, markAutoShown };
+// 一次性轻提示：同一个 key 只在第一次返回 true（之后自动标记，不再打扰）。
+// 给「功能发现性」类提示用 —— 冯老师访谈（2026-11-28）的核心结论是好功能都在、
+// 但用户不知道；这类提示必须轻（toast/提示条），且绝不能每次都弹。
+// 存储读写失败时返回 false：宁可少提示一次，也不要每次启动都弹。
+const HINTS_KEY = 'chengguo_hints_v1';
+function hintOnce(key) {
+  if (!key) return false;
+  try {
+    const o = wx.getStorageSync(HINTS_KEY) || {};
+    if (o[key]) return false;
+    o[key] = 1;
+    wx.setStorageSync(HINTS_KEY, o);
+    return true;
+  } catch (e) { return false; }
+}
+
+module.exports = { KEY, autoShown, markAutoShown, HINTS_KEY, hintOnce };

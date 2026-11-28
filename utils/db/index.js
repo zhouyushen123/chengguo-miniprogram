@@ -209,7 +209,7 @@ const db = {
     create: students.studentCreate, update: students.studentUpdate, updateProfile: students.studentUpdateProfile,
     remove: students.studentRemove, restore: students.studentRestore
   },
-  family: { kids: family.kids, kid: family.kid, records: family.records, className: family.className, hours: family.hours },
+  family: { kids: family.kids, kid: family.kid, records: family.records, className: family.className, hours: family.hours, termLessons: family.termLessons },
   lessons: lessons.api,   // 课次（API 面由领域自带，序号机制见 lessons.js 头注释）
   records: {
     list: records.recordList, ofStudent: records.recordOfStudent, ofClass: records.recordOfClass,

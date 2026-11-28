@@ -15,6 +15,7 @@
       <text class="stat st-g">优秀 {{stats.great}} 次</text>
       <text class="stat st-d">{{stats.days}} 个学习日</text>
       <text wx:if="{{hasCarry}}" class="stat st-h">剩余 {{hoursRemain}} 课时</text>
+      <text wx:if="{{hasTerm}}" class="stat st-h">已上 {{termUsed}} / 共 {{termTotal}} 次</text>
     </view>
   </view>
 

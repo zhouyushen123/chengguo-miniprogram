@@ -36,12 +36,15 @@
     </view>
   </view>
 
-  <!-- 课程是选填的：班级还没建课程时不显示这个空选框，别让老师卡在这里 -->
-  <view class="card" wx:if="{{courses.length}}">
-    <view class="sec"><view class="label">课程</view></view>
-    <picker mode="selector" range="{{courses}}" range-key="name" value="{{courseIdx}}" bindchange="onCourse">
+  <!-- 课程是选填的：班级还没建课程但有历史课程名时，用快捷 chips 复用，别让老师卡在这里 -->
+  <view class="card" wx:if="{{courses.length || hisCourses.length}}">
+    <view class="sec"><view class="label">课程<text class="mihint">（选填 · 家长端按课程查看成果）</text></view></view>
+    <picker wx:if="{{courses.length}}" mode="selector" range="{{courses}}" range-key="name" value="{{courseIdx}}" bindchange="onCourse">
       <view class="pickerbox">{{course || '选择课程'}}<image class="xico" src="{{icoChevD}}" mode="aspectFit" /></view>
     </picker>
+    <view wx:elif="{{hisCourses.length}}" class="chips">
+      <view wx:for="{{hisCourses}}" wx:key="*this" class="chip {{course===item?'on':''}}" bindtap="pickHisCourse" data-c="{{item}}">{{item}}</view>
+    </view>
   </view>
 
   <!-- 课程维度的课次（选填）：选了建有课次的课程才出现；编辑态不显示（保持原关联） -->

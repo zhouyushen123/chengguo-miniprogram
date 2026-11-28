@@ -15,6 +15,8 @@ Page({
     // familyMode：家长端用跨机构视图（pid 归并）。成员关系还没拉回来时退回单机构视图，
     // 两种视图的 kidId 类型不同，页面靠这个开关决定走哪条渲染与跳转。
     familyMode: false, kOrgs: [], hoursGroups: [],
+    // 学期制进度（孩子卡）：已上 X / 共 Y 次；跨机构时按机构分组
+    termGroups: [], termUsed: 0, termTotal: 0, hasTerm: false,
     kName: '', kCls: '', stats: null, kLatest: null, latestPhotos: [],
     kHistory: [], kCare: [],
     roleLabel: '', uName: '', dateStr: '',
@@ -296,6 +298,8 @@ Page({
     };
     // 课时包按机构分开：两家各买各的，加在一起是个没有意义的数字
     const hoursGroups = db.family.hours(pid);
+    // 学期制进度（按机构分组）：学期班不消课，「已上」以该班记录条数为准
+    const termGroups = db.family.termLessons(pid);
     const latest = recs[0] ? deco(recs[0]) : null;
     this.setData({
       kName: k.name,
@@ -308,6 +312,10 @@ Page({
       hoursGroups,
       hoursRemain: hoursGroups.reduce((n, g) => n + g.remain, 0),
       hasCarry: hoursGroups.length > 0,
+      termGroups,
+      termUsed: termGroups.reduce((n, g) => n + g.used, 0),
+      termTotal: termGroups.reduce((n, g) => n + g.total, 0),
+      hasTerm: termGroups.length > 0,
       kLatest: latest,
       latestPhotos: recs[0] ? (recs[0].photos || []).slice(0, 3) : [],
       kHistory: recs.slice(1).map(deco),
@@ -356,6 +364,15 @@ Page({
       hasCarry = true;
       hoursRemain += Math.max(0, (en.totalHours || 0) - (en.usedHours || 0));
     });
+    // 学期制进度：已上 X / 共 Y 次（Y 取报名填的总课次；没填就不显示，宁缺不瞎报）。
+    // 学期班不消课，「已上」以该班记录条数为准，与「X 节课」统计同口径。
+    let termUsed = 0, termTotal = 0, hasTerm = false;
+    db.enrollments.ofStudent(sid).forEach(en => {
+      if (en.status !== 'active') return;
+      if (db.classes.mode(en.clsId) !== 'term') return;
+      termUsed += recs.filter(r => Number(r.cid) === Number(en.clsId)).length;
+      if ((en.totalHours || 0) > 0) { hasTerm = true; termTotal += en.totalHours; }
+    });
     const latest = recs[0] ? deco(recs[0]) : null;
     this.setData({
       kName: s.name,
@@ -363,6 +380,7 @@ Page({
       kCls: (s.clsIds || []).map(db.classes.name).join(' · '),
       stats,
       hoursRemain, hasCarry,
+      termGroups: [], termUsed, termTotal, hasTerm,
       kLatest: latest,
       latestPhotos: latest ? ((db.records.get(latest.id) || {}).photos || []).slice(0, 3) : [],
       kHistory: recs.slice(1).map(deco),

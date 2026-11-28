@@ -76,3 +76,8 @@
 }
 .fbdot { color: var(--brand); }
 .fblink { margin-left: auto; color: var(--brand); font-weight: 600; }
+
+/* 一次性引导条：轻提示，可关闭；用品牌弱底色与正文字区分 */
+.guidebar { display: flex; align-items: flex-start; gap: 12rpx; margin-top: 16rpx; padding: 16rpx 20rpx; background: var(--brand-soft, rgba(0,0,0,0.04)); border-radius: 12rpx; }
+.guidebar .gtxt { flex: 1; font-size: 24rpx; line-height: 1.5; color: var(--muted); }
+.guidebar .gclose { font-size: 32rpx; line-height: 1; color: var(--faint); padding: 0 6rpx; }

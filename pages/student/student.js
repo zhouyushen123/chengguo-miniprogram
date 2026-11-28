@@ -19,6 +19,8 @@ Page({
     // 新增：个人卡统计 / 资料入口 / 班级筛选 / 评价汇总
     stats: null, profileFilled: true, clsFilters: [], clsF: 'all', tagCounts: [],
     hoursRemain: 0, hasCarry: false,
+    // 学期制进度：已上 X / 共 Y 次（Y 取报名填的总课次；没填就不显示，宁缺不瞎报）
+    termUsed: 0, termTotal: 0, hasTerm: false,
     playing: '', teacher: '', icoPlay: icons.play(icons.brand()), icoPause: icons.pause(icons.brand()),
     icoChev: icons.chevron, icoPlus: icons.plus('#FFFFFF'), icoCam: icons.camera, icoUser: icons.user,
     // 家长留言 / 已读回执：fbOn = 云通 + 真的是家长，入口才出现（失败就整块不显示，绝不吓家长）
@@ -134,6 +136,17 @@ Page({
       hasCarry = true;
       hoursRemain += Math.max(0, (en.totalHours || 0) - (en.usedHours || 0));
     });
+    // ---- 学期制进度：已上 X / 共 Y 次 ----
+    // 学期班不消课（consumeHours 只走 carry），「已上」以该班记录条数为准，
+    // 与统计行「X 节课」同口径；「共 Y 次」取报名里填的总课次，没填的班不参与，
+    // 避免 Y 缺数时把「还剩多少课」报成空话（冯老师访谈的高价值需求点）。
+    let termUsed = 0, termTotal = 0, hasTerm = false;
+    db.enrollments.ofStudent(s.id).forEach(en => {
+      if (en.status !== 'active') return;
+      if (db.classes.mode(en.clsId) !== 'term') return;
+      termUsed += recs.filter(r => Number(r.cid) === Number(en.clsId)).length;
+      if ((en.totalHours || 0) > 0) { hasTerm = true; termTotal += en.totalHours; }
+    });
     // ---- 资料入口：家长资料表单（profile）一个字没填才提示「待填写」 ----
     const p = s.profile || {};
     const profileFilled = ['nick', 'birth', 'school', 'phone', 'wechat', 'level', 'goal', 'note'].some(k => p[k]);
@@ -159,7 +172,7 @@ Page({
     this.setData({
       s: this.stuView(s), rec: null,
       stats, profileFilled, clsFilters, clsF, tagCounts,
-      hoursRemain, hasCarry,
+      hoursRemain, hasCarry, termUsed, termTotal, hasTerm,
       filters, filt, total: recs.length, shown: list.length,
       latest: deco(list[0] || null),
       // 历史条目带全量字段，行内展开详情用（不再跳新页）

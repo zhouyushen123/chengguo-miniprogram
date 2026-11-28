@@ -192,6 +192,10 @@
         <text wx:for="{{hoursGroups}}" wx:key="orgId" class="pstat ps-b">{{item.orgName || '机构'}} 剩 {{item.remain}} 节</text>
       </block>
       <text wx:elif="{{hasCarry}}" class="pstat ps-b">剩余 {{hoursRemain}} 课时</text>
+      <block wx:if="{{termGroups.length > 1}}">
+        <text wx:for="{{termGroups}}" wx:key="orgId" class="pstat ps-b">{{item.orgName || '机构'}} 已上 {{item.used}} / 共 {{item.total}} 次</text>
+      </block>
+      <text wx:elif="{{hasTerm}}" class="pstat ps-b">已上 {{termUsed}} / 共 {{termTotal}} 次</text>
     </view>
     <view wx:if="{{stats && stats.care}}" class="caretip">有 {{stats.care}} 次课需要多鼓励，见下方「需要注意」</view>
   </view>

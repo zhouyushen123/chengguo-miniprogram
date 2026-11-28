@@ -143,4 +143,30 @@ function hours(pid) {
   }).filter(x => x.hasCarry);
 }
 
-module.exports = { kids, kid, records, className, hours, orgNameOf, myMemberRows, keyOf };
+// 学期制进度（按机构分组）：学期班不消课（consumeHours 只走 carry），
+// 「已上」以该班记录条数为准，「共几次」以报名里填的总课次为准。
+// 没填总课次的机构不进结果 —— 宁可不显示，也不把「还剩多少课」报成空话。
+function termLessons(pid) {
+  const k = kid(pid);
+  if (!k) return [];
+  const allEn = core.coll('enrollments') || [];
+  const allRec = core.coll('records') || [];
+  return k.orgs.map(o => {
+    let used = 0, total = 0;
+    allEn.forEach(en => {
+      if (!en || en.removed) return;
+      if (Number(en.studentId) !== Number(o.sid)) return;
+      if (String(en.orgId || '') !== String(o.orgId)) return;
+      if (en.status !== 'active') return;
+      const c = (core.coll('classes') || []).find(x => x && !x.removed
+        && Number(x.id) === Number(en.clsId) && String(x.orgId || '') === String(o.orgId));
+      if (!c || c.mode !== 'term') return;
+      used += allRec.filter(r => r && !r.removed && Number(r.cid) === Number(en.clsId)
+        && Number(r.sid) === Number(o.sid)).length;
+      if ((en.totalHours || 0) > 0) total += en.totalHours;
+    });
+    return { orgId: o.orgId, orgName: o.orgName, used, total };
+  }).filter(x => x.total > 0);
+}
+
+module.exports = { kids, kid, records, className, hours, termLessons, orgNameOf, myMemberRows, keyOf };

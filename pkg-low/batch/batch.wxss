@@ -117,3 +117,9 @@
 }
 .sheetacts { display: flex; gap: 20rpx; }
 .sheetacts .btn { flex: 1; margin: 0; }
+
+/* 补录行：归入课次 + 上课日期并排，弱化成次级设置 */
+.bkrow { display: flex; gap: 20rpx; margin-top: 20rpx; }
+.bkcell { flex: 1; }
+.bklab { font-size: 22rpx; color: var(--faint); margin-bottom: 8rpx; }
+.bkpick { font-size: 26rpx; color: var(--text); background: var(--bg-soft, rgba(0,0,0,0.04)); border-radius: 10rpx; padding: 12rpx 20rpx; }
